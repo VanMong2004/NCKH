@@ -1,20 +1,15 @@
 import React from "react";
 import { ShoppingCart } from "lucide-react";
 
-const ProductCard = ({
-    image,
-    title,
-    author,
-    price,
-    badge = null,
-    onAddToCart,
-}) => {
+const ProductCard = ({ product, onAddToCart, viewMode = "grid" }) => {
+    const { image, title, author, price, badge = null } = product;
+
     const renderBadge = () => {
         if (!badge) return null;
 
         if (badge === "new") {
             return (
-                <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-white text-xs font-semibold px-2 py-1 rounded">
+                <div className="absolute top-2 left-2 bg-white text-xs font-semibold px-2 py-1 rounded">
                     New
                 </div>
             );
@@ -22,45 +17,82 @@ const ProductCard = ({
 
         if (badge === "sale") {
             return (
-                <div className="absolute top-2 left-2 md:top-3 md:left-3 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded">
                     Sale
                 </div>
             );
         }
     };
 
+    /* ================= LIST VIEW ================= */
+    if (viewMode === "list") {
+        return (
+            <div className="flex gap-4 bg-white border rounded-lg p-4">
+                <div className="relative w-32 h-32 flex-shrink-0">
+                    {renderBadge()}
+                    <img
+                        src={image[0]}
+                        alt={title}
+                        className="w-full h-full object-cover rounded"
+                    />
+                </div>
+
+                <div className="flex flex-col justify-between flex-1">
+                    <div>
+                        <h3 className="font-semibold text-base line-clamp-2">
+                            {title}
+                        </h3>
+                        <p className="text-sm text-gray-600">{author}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-red-600">
+                            {price.toLocaleString("vi-VN")}₫
+                        </span>
+
+                        <button
+                            onClick={onAddToCart}
+                            className="px-3 py-2 text-sm border-2 border-blue-700 text-blue-700 hover:border-red-600 hover:text-red-600 rounded-lg flex items-center gap-1"
+                        >
+                            <ShoppingCart className="w-4 h-4" />
+                            Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    /* ================= GRID VIEW (DEFAULT) ================= */
     return (
-        <div className="bg-white rounded-lg border overflow-hidden transition-all duration-300 ease-out hover:shadow-sm hover:-translate-y-1 group">
+        <div className="bg-white rounded-lg border overflow-hidden transition-all hover:shadow-sm hover:-translate-y-1 group">
             <div className="relative aspect-square bg-gray-100 overflow-hidden">
                 {renderBadge()}
                 <img
-                    src={image}
+                    src={image[0]}
                     alt={title}
-                    className="w-full h-full object-covertransition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
             </div>
 
-            <div className="p-3 md:p-4">
+            <div className="p-4">
                 <div className="h-[60px] mb-2">
-                    <h3 className="font-semibold text-sm md:text-base mb-1 line-clamp-2">
+                    <h3 className="font-semibold text-base line-clamp-2">
                         {title}
                     </h3>
-    
-                    <p className="text-xs md:text-sm text-gray-600">
-                        {author}
-                    </p>
+                    <p className="text-sm text-gray-600">{author}</p>
                 </div>
 
-                <div className="flex items-center justify-between gap-2">
-                    <span className="text-base md:text-lg font-bold text-red-600">
+                <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-red-600">
                         {price.toLocaleString("vi-VN")}₫
                     </span>
 
                     <button
                         onClick={onAddToCart}
-                        className="px-2 md:px-3 py-1.5 text-xs md:text-sm border rounded-lg transition-colors hover:bg-gray-50 flex items-center gap-1"
+                        className="px-3 py-1.5 text-sm border-2 border-blue-700 text-blue-700 hover:border-red-600 hover:text-red-600 rounded-lg flex items-center gap-1"
                     >
-                        <ShoppingCart className="w-3 h-3 md:w-4 md:h-4" />
+                        <ShoppingCart className="w-4 h-4" />
                         <span className="hidden md:inline">Add</span>
                     </button>
                 </div>

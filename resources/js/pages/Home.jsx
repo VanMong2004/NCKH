@@ -148,13 +148,7 @@ function Home() {
                         {mockProducts.map((pro) => (
                             <SwiperSlide key={pro.id}>
                                 <Link to={`/product/${pro.id}`}>
-                                    <ProductCard
-                                        image={pro.image[0]}
-                                        title={pro.title}
-                                        author={pro.author}
-                                        price={pro.price}
-                                        badge={pro.badge}
-                                    />
+                                    <ProductCard product={pro} />
                                 </Link>
                             </SwiperSlide>
                         ))}

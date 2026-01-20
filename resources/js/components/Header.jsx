@@ -67,7 +67,7 @@ function Header() {
                                     Trang chủ
                                 </Link>
                                 <Link
-                                    to="/dong-phuc"
+                                    to="/products"
                                     className="text-sm font-medium hover:text-blue-600"
                                 >
                                     Đồng phục

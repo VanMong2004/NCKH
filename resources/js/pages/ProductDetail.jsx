@@ -2,17 +2,23 @@
 
 import React from "react";
 import { useState } from "react";
-import { Star, Heart, Truck, CheckCircle, ShoppingCart } from "lucide-react";
+import { Star, Heart, Truck, CheckCircle, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
 import Breadcrumb from "../components/Breadcrumb";
 import mockProducts from "../data/mockProducts";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import ReviewCard from "../components/ReviewCard";
+import RatingSummary from "../components/RatingSummary";
+import mockReviews from "../data/mockReviews";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Navigation } from "swiper/modules";
+import ProductCard from "../components/ProductCard";
 
 export default function ProductDetail() {
     const { id } = useParams();
     const [selectedSize, setSelectedSize] = useState("L");
     const [quantity, setQuantity] = useState(1);
     const [mainImage, setMainImage] = useState(0);
-    const [liked, setLiked] = useState(false)
+    const [showAll, setShowAll] = useState(false);
 
     const productId = mockProducts.find((item) => item.id === Number(id));
     if (!productId) {
@@ -23,9 +29,13 @@ export default function ProductDetail() {
         );
     }
 
+    //Sao
     const fullStars = Math.floor(productId.rating);
     const hasHalfStar = productId.rating % 1 !== 0;
     const totalStars = 5;
+
+    //Reviews
+    const displayedReviews = showAll ? mockReviews : mockReviews.slice(0, 2);
 
     return (
         <main className="px-4 sm:px-6 lg:px-8">
@@ -36,11 +46,11 @@ export default function ProductDetail() {
             />
 
             {/* Phần ảnh sản phẩm */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
                 <div className="space-y-4">
                     <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
                         <div className="absolute top-4 left-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
-                            {productId.badge.toLocaleUpperCase()}
+                            {productId.badge?.toLocaleUpperCase()}
                         </div>
                         <img
                             src={productId.image[mainImage]}
@@ -96,7 +106,7 @@ export default function ProductDetail() {
                                     ...Array(
                                         totalStars -
                                             fullStars -
-                                            (hasHalfStar ? 1 : 0)
+                                            (hasHalfStar ? 1 : 0),
                                     ),
                                 ].map((_, i) => (
                                     <Star
@@ -128,7 +138,7 @@ export default function ProductDetail() {
                             </span>
                             <span className="text-xl text-gray-400 line-through">
                                 {productId.originalPrice.toLocaleString(
-                                    "vi-VN"
+                                    "vi-VN",
                                 )}
                                 ₫
                             </span>
@@ -192,8 +202,9 @@ export default function ProductDetail() {
                                     setQuantity(
                                         Math.max(
                                             1,
-                                            Number.parseInt(e.target.value) || 1
-                                        )
+                                            Number.parseInt(e.target.value) ||
+                                                1,
+                                        ),
                                     )
                                 }
                                 className="w-12 text-center border-l border-r border-gray-300 outline-none"
@@ -209,10 +220,6 @@ export default function ProductDetail() {
                         <button className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 flex items-center justify-center gap-2">
                             <ShoppingCart className="w-5 h-5" />
                             Thêm vào giỏ
-                        </button>
-                        {/* Yêu thích */}
-                        <button onClick={() => setLiked(!liked)} className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
-                            <Heart className={`w-5 h-5 ${liked ? "fill-red-500 text-red-500" : "text-gray-500"}`} />
                         </button>
                     </div>
 
@@ -242,7 +249,90 @@ export default function ProductDetail() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            {/* Đánh giá */}
+            <section>
+                <h2 className="text-2xl font-bold mb-6">Đánh giá</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-1">
+                        <div className="bg-white rounded-lg p-6 border">
+                            <RatingSummary />
+                        </div>
+                    </div>
+
+                    <div className="md:col-span-2 mb-4">
+                        <div className="space-y-4">
+                            {displayedReviews.map((review) => (
+                                <ReviewCard key={review.id} review={review} />
+                            ))}
+                        </div>
+
+                        {!showAll && mockReviews.length > 2 && (
+                            <div className="py-6 text-center">
+                                <button
+                                    onClick={() => setShowAll(true)}
+                                    className="text-blue-500 hover:text-blue-600 font-medium"
+                                >
+                                    Xem tất cả {mockReviews.length} đánh giá
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Sản phẩm liên quan */}
+            <section className="mx-auto px-4 py-8 md:py-12">
+                <div className="flex items-center justify-between mb-6 md:mb-8">
+                    <h2 className="text-2xl md:text-3xl font-bold">
+                        Sản phẩm liên quan
+                    </h2>
+                    <div className="flex gap-2">
+                        <button
+                            className="swiper-prev p-2 border rounded-lg hover:bg-gray-100 transition-colors"
+                            aria-label="Previous"
+                        >
+                            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                        <button
+                            className="swiper-next p-2 border rounded-lg hover:bg-gray-100 transition-colors"
+                            aria-label="Next"
+                        >
+                            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                    </div>
+                </div>
+                <div className="relative">
+                    <Swiper
+                        modules={[Autoplay, Navigation]}
+                        navigation={{
+                            prevEl: ".swiper-prev",
+                            nextEl: ".swiper-next",
+                        }}
+                        autoplay={{
+                            delay: 3000,
+                            pauseOnMouseEnter: true,
+                            disableOnInteraction: false,
+                        }}
+                        spaceBetween={20}
+                        breakpoints={{
+                            0: { slidesPerView: 2, slidesPerGroup: 2 },
+                            768: { slidesPerView: 2, slidesPerGroup: 2 },
+                            1024: { slidesPerView: 4, slidesPerGroup: 4 },
+                        }}
+                    >
+                        {mockProducts.map((pro) => (
+                            <SwiperSlide key={pro.id}>
+                                <Link to={`/product/${pro.id}`} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                                    <ProductCard product={pro}/>
+                                </Link>
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                </div>
+            </section>
         </main>
     );
 }

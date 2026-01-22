@@ -83,7 +83,7 @@ const ProductCard = ({ product, onAddToCart, viewMode = "grid" }) => {
                     <p className="text-sm text-gray-600">{author}</p>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                     <span className="text-lg font-bold text-red-600">
                         {price.toLocaleString("vi-VN")}₫
                     </span>
@@ -93,7 +93,7 @@ const ProductCard = ({ product, onAddToCart, viewMode = "grid" }) => {
                         className="px-3 py-1.5 text-sm border-2 border-blue-700 text-blue-700 hover:border-red-600 hover:text-red-600 rounded-lg flex items-center gap-1"
                     >
                         <ShoppingCart className="w-4 h-4" />
-                        <span className="hidden md:inline">Add</span>
+                        <span className="hidden md:inline">Thêm vào giỏ</span>
                     </button>
                 </div>
             </div>

@@ -147,7 +147,15 @@ function Home() {
                     >
                         {mockProducts.map((pro) => (
                             <SwiperSlide key={pro.id}>
-                                <Link to={`/product/${pro.id}`}>
+                                <Link
+                                    to={`/product/${pro.id}`}
+                                    onClick={() =>
+                                        window.scrollTo({
+                                            top: 0,
+                                            behavior: "smooth",
+                                        })
+                                    }
+                                >
                                     <ProductCard product={pro} />
                                 </Link>
                             </SwiperSlide>

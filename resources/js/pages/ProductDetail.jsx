@@ -2,7 +2,15 @@
 
 import React from "react";
 import { useState } from "react";
-import { Star, Heart, Truck, CheckCircle, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+    Star,
+    Heart,
+    Truck,
+    CheckCircle,
+    ShoppingCart,
+    ChevronLeft,
+    ChevronRight,
+} from "lucide-react";
 import Breadcrumb from "../components/Breadcrumb";
 import mockProducts from "../data/mockProducts";
 import { Link, useParams } from "react-router-dom";
@@ -325,8 +333,16 @@ export default function ProductDetail() {
                     >
                         {mockProducts.map((pro) => (
                             <SwiperSlide key={pro.id}>
-                                <Link to={`/product/${pro.id}`} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                                    <ProductCard product={pro}/>
+                                <Link
+                                    to={`/product/${pro.id}`}
+                                    onClick={() =>
+                                        window.scrollTo({
+                                            top: 0,
+                                            behavior: "smooth",
+                                        })
+                                    }
+                                >
+                                    <ProductCard product={pro} />
                                 </Link>
                             </SwiperSlide>
                         ))}

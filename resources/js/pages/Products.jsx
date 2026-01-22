@@ -3,11 +3,12 @@ import ProductCard from "../components/ProductCard";
 import Breadcrumb from "../components/Breadcrumb";
 import mockProducts from "../data/mockProducts";
 import { Grid3x3, List } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const categories = [
     { name: "Tất cả", count: mockProducts.length },
-    { name: "Đồng phục Nam", count: 10 },
-    { name: "Đồng phục Nữ", count: 3 },
+    { name: "Nam", count: 10 },
+    { name: "Nữ", count: 3 },
     { name: "Phụ kiện", count: 2 },
 ];
 
@@ -54,17 +55,17 @@ function ProductsPage() {
     const handleClearFilters = () => {
         setSelectedCategory("Tất cả");
         setCurrentPage(1);
-    };;
+    };
 
     return (
-        <main className="min-h-screen bg-gray-50">
+        <main className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8">
             {/* ========== BREADCRUMB ========== */}
             <Breadcrumb
                 items={["Trang chủ", "Danh mục", "Sản phẩm"]}
                 to={["/", "/danh-muc", "san-pham"]}
             />
             {/* ========== MAIN CONTENT ========== */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+            <div className="max-w-7xl mx-auto pb-12">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {/* ========== SIDEBAR - BỘ LỌC ========== */}
                     <aside className="md:col-span-1">
@@ -94,9 +95,14 @@ function ProductsPage() {
                                                 type="radio"
                                                 name="category"
                                                 checked={
-                                                    selectedCategory === cat.name
+                                                    selectedCategory ===
+                                                    cat.name
                                                 }
-                                                onChange={() => handleCategoryChange(cat.name)}
+                                                onChange={() =>
+                                                    handleCategoryChange(
+                                                        cat.name,
+                                                    )
+                                                }
                                                 className="w-4 h-4"
                                             />
                                             <span className="text-sm flex-1">
@@ -187,16 +193,26 @@ function ProductsPage() {
                             <div
                                 className={
                                     viewMode === "grid"
-                                        ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+                                        ? "grid grid-cols-2 lg:grid-cols-3 gap-6"
                                         : "space-y-4"
                                 }
                             >
-                                {displayedProducts.map((product) => (
-                                    <ProductCard
-                                        key={product.id}
-                                        product={product}
-                                        viewMode={viewMode}
-                                    />
+                                {displayedProducts.map((pro) => (
+                                    <Link
+                                        to={`/product/${pro.id}`}
+                                        onClick={() =>
+                                            window.scrollTo({
+                                                top: 0,
+                                                behavior: "smooth",
+                                            })
+                                        }
+                                    >
+                                        <ProductCard
+                                            key={pro.id}
+                                            product={pro}
+                                            viewMode={viewMode}
+                                        />
+                                    </Link>
                                 ))}
                             </div>
                         ) : (
@@ -221,7 +237,10 @@ function ProductsPage() {
                                 </button>
 
                                 {/* Hiển thị các số trang */}
-                                {Array.from({ length: totalPages },(_, i) => i + 1,).map((page) => (
+                                {Array.from(
+                                    { length: totalPages },
+                                    (_, i) => i + 1,
+                                ).map((page) => (
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}

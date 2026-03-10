@@ -1,116 +1,125 @@
-import { useState } from "react";
-import ProductCard from "../components/ProductCard";
-import Breadcrumb from "../components/Breadcrumb";
-import mockProducts from "../data/mockProducts";
-import { Grid3x3, List } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Grid3x3, List } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import Breadcrumb from '../components/common/Breadcrumb';
+import ProductCard from '../components/common/ProductCard';
+import { mockProducts } from '../data/mockProducts';
 
 const categories = [
-    { name: "Tất cả", count: mockProducts.length },
-    { name: "Nam", count: 10 },
-    { name: "Nữ", count: 3 },
-    { name: "Phụ kiện", count: 2 },
+    { key: 'all', name: 'Tất cả', count: mockProducts.length },
+    { key: 'male', name: 'Nam', count: 10 },
+    { key: 'female', name: 'Nữ', count: 3 },
+    { key: 'accessory', name: 'Phụ kiện', count: 2 },
 ];
 
-function ProductsPage() {
-    // ========== STATE  ==========
-    const [selectedCategory, setSelectedCategory] = useState("Tất cả");
-    const [sortBy, setSortBy] = useState("popular");
-    const [viewMode, setViewMode] = useState("grid");
-    const [currentPage, setCurrentPage] = useState(1);
+function Products() {
+    // 🔥 CHANGED: dùng cả setSearchParams
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    const itemsPerPage = 9;
+    // 🔥 CHANGED: đọc toàn bộ từ URL
+    const keyword = searchParams.get('keyword') || '';
+    const category = searchParams.get('category') || 'all';
+    const sort = searchParams.get('sort') || 'popular';
+    const viewMode = searchParams.get('viewmode') || 'grid';
+    const currentPage = parseInt(searchParams.get('page')) || 1;
 
-    // ========== BƯỚC 1: LỌC THEO DANH MỤC ==========
-    const filteredByCategory = mockProducts.filter((product) => {
-        if (selectedCategory === "Tất cả") return true;
-        return product.category === selectedCategory;
+    // 🔥 CHANGED: filter theo URL
+    const filteredProducts = mockProducts.filter((product) => {
+        const matchCategory = category === 'all' || product.category === category;
+
+        const matchSearch = !keyword || product.name.toLowerCase().includes(keyword.toLowerCase());
+
+        return matchCategory && matchSearch;
     });
 
-    // ========== BƯỚC 2: SẮP XẾP ==========
-    let sortedProducts = [...filteredByCategory]; // Copy mảng để không ảnh hưởng gốc
+    // 🔥 CHANGED: sort theo URL
+    let sortedProducts = [...filteredProducts];
 
-    if (sortBy === "price_asc") {
+    if (sort === 'price_asc') {
         sortedProducts.sort((a, b) => a.price - b.price);
-    } else if (sortBy === "price_desc") {
+    } else if (sort === 'price_desc') {
         sortedProducts.sort((a, b) => b.price - a.price);
-    } else if (sortBy === "rating") {
+    } else if (sort === 'rating') {
         sortedProducts.sort((a, b) => b.rating - a.rating);
-    } else if (sortBy === "popular") {
+    } else if (sort === 'popular') {
         sortedProducts.sort((a, b) => b.reviews - a.reviews);
     }
 
-    // ========== BƯỚC 3: PHÂN TRANG ==========
+    // 🔥 CHANGED: pagination theo URL
+    const itemsPerPage = 9;
     const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const displayedProducts = sortedProducts.slice(startIndex, endIndex);
 
-    // ========== XỬ LÝ SỰ KIỆN ==========
-    const handleCategoryChange = (category) => {
-        setSelectedCategory(category);
-        setCurrentPage(1); // Reset về trang 1
+    // 🔥 CHANGED: update URL helper
+    const updateURL = (key, value) => {
+        const params = new URLSearchParams(searchParams);
+
+        if (!value || value === 'all') {
+            params.delete(key);
+        } else {
+            params.set(key, value);
+        }
+
+        params.set('page', 1); // reset page khi filter đổi
+
+        setSearchParams(params);
+    };
+
+    const handleCategoryChange = (newCategory) => {
+        updateURL('category', newCategory);
+    };
+
+    const handleViewMode = (newCategory) => {
+        updateURL('viewmode', newCategory);
+    };
+
+    const handleSortChange = (newSort) => {
+        updateURL('sort', newSort);
+    };
+
+    const handlePageChange = (page) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('page', page);
+        setSearchParams(params);
     };
 
     const handleClearFilters = () => {
-        setSelectedCategory("Tất cả");
-        setCurrentPage(1);
+        setSearchParams({});
     };
 
     return (
-        <main className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8">
-            {/* ========== BREADCRUMB ========== */}
-            <Breadcrumb
-                items={["Trang chủ", "Danh mục", "Sản phẩm"]}
-                to={["/", "/danh-muc", "san-pham"]}
-            />
-            {/* ========== MAIN CONTENT ========== */}
-            <div className="max-w-7xl mx-auto pb-12">
+        <main className="bg-page px-4 sm:px-6 lg:px-8">
+            <Breadcrumb items={['Trang chủ', 'Sản phẩm']} to={['/', 'sanpham']} />
+
+            <div className="max-w-7xl mx-auto pb-12 mt-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* ========== SIDEBAR - BỘ LỌC ========== */}
+                    {/* SIDEBAR */}
                     <aside className="md:col-span-1">
-                        <div className="bg-white rounded-lg border p-6">
+                        <div className="card p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-semibold text-lg">
-                                    Bộ lọc
-                                </h3>
-                                <button
-                                    onClick={handleClearFilters}
-                                    className="text-sm text-blue-600 hover:text-blue-700"
-                                >
+                                <h3 className="font-semibold text-lg text-title">Bộ lọc</h3>
+                                <button onClick={handleClearFilters} className="btn-link text-sm">
                                     Xóa tất cả
                                 </button>
                             </div>
 
-                            {/* Danh mục */}
                             <div className="mb-6">
-                                <h4 className="font-medium mb-3">Danh mục</h4>
+                                <h4 className="font-medium mb-3 text-title">Danh mục</h4>
                                 <div className="space-y-2">
                                     {categories.map((cat) => (
                                         <label
-                                            key={cat.name}
-                                            className="flex items-center gap-2 cursor-pointer"
+                                            key={cat.key}
+                                            className="flex items-center gap-2 cursor-pointer text-body"
                                         >
                                             <input
                                                 type="radio"
-                                                name="category"
-                                                checked={
-                                                    selectedCategory ===
-                                                    cat.name
-                                                }
-                                                onChange={() =>
-                                                    handleCategoryChange(
-                                                        cat.name,
-                                                    )
-                                                }
-                                                className="w-4 h-4"
+                                                checked={category === cat.key} // 🔥 CHANGED
+                                                onChange={() => handleCategoryChange(cat.key)}
+                                                className="w-4 h-4 accent-blue-600"
                                             />
-                                            <span className="text-sm flex-1">
-                                                {cat.name}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                ({cat.count})
-                                            </span>
+                                            <span className="text-sm flex-1">{cat.name}</span>
+                                            <span className="text-xs text-muted">({cat.count})</span>
                                         </label>
                                     ))}
                                 </div>
@@ -118,69 +127,41 @@ function ProductsPage() {
                         </div>
                     </aside>
 
-                    {/* ========== DANH SÁCH SẢN PHẨM ========== */}
+                    {/* PRODUCT LIST */}
                     <div className="md:col-span-3">
-                        {/* Thanh công cụ */}
-                        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap bg-white p-2 rounded-lg border">
-                            {/* Sắp xếp */}
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">
-                                    Hiển thị{" "}
-                                    <span className="font-semibold">
-                                        {startIndex + 1}-
-                                        {Math.min(
-                                            endIndex,
-                                            sortedProducts.length,
-                                        )}
-                                    </span>{" "}
-                                    của{" "}
-                                    <span className="font-semibold">
-                                        {sortedProducts.length}
-                                    </span>{" "}
-                                    sản phẩm
-                                </span>
-                            </div>
+                        {/* TOOLBAR */}
+                        <div className="card p-2 mb-6 flex items-center justify-between gap-4 flex-wrap">
+                            <span className="text-sm text-muted">
+                                Hiển thị{' '}
+                                <span className="font-semibold text-title">
+                                    {startIndex + 1}-{Math.min(endIndex, sortedProducts.length)}
+                                </span>{' '}
+                                của <span className="font-semibold text-title">{sortedProducts.length}</span> sản phẩm
+                            </span>
+
                             <div className="flex items-center gap-4">
-                                <label className="text-sm font-medium text-gray-700">
-                                    Sắp xếp:
-                                </label>
+                                <label className="text-sm font-medium text-body">Sắp xếp:</label>
                                 <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
-                                    className="px-3 py-2 border rounded-lg text-sm"
+                                    value={sort} // 🔥 CHANGED
+                                    onChange={(e) => handleSortChange(e.target.value)}
+                                    className="input-base text-sm"
                                 >
                                     <option value="popular">Phổ biến</option>
-                                    <option value="newest">Mới nhất</option>
-                                    <option value="price_asc">
-                                        Giá: Thấp đến cao
-                                    </option>
-                                    <option value="price_desc">
-                                        Giá: Cao đến thấp
-                                    </option>
-                                    <option value="rating">
-                                        Đánh giá tốt nhất
-                                    </option>
+                                    <option value="price_asc">Giá: Thấp đến cao</option>
+                                    <option value="price_desc">Giá: Cao đến thấp</option>
+                                    <option value="rating">Đánh giá tốt nhất</option>
                                 </select>
-                                {/* Chuyển đổi view Grid/List */}
-
+                                {/* VIEW MODE */}
                                 <div className="flex gap-1">
                                     <button
-                                        onClick={() => setViewMode("grid")}
-                                        className={`p-2 rounded-lg ${
-                                            viewMode === "grid"
-                                                ? "bg-gray-900 text-white"
-                                                : "bg-gray-200 text-gray-700"
-                                        }`}
+                                        onClick={() => handleViewMode('grid')}
+                                        className={`btn-toggle ${viewMode === 'grid' ? 'btn-toggle-active' : ''}`}
                                     >
                                         <Grid3x3 className="w-5 h-5" />
                                     </button>
                                     <button
-                                        onClick={() => setViewMode("list")}
-                                        className={`p-2 rounded-lg ${
-                                            viewMode === "list"
-                                                ? "bg-gray-900 text-white"
-                                                : "bg-gray-200 text-gray-700"
-                                        }`}
+                                        onClick={() => handleViewMode('list')}
+                                        className={`btn-toggle ${viewMode === 'list' ? 'btn-toggle-active' : ''}`}
                                     >
                                         <List className="w-5 h-5" />
                                     </button>
@@ -188,81 +169,42 @@ function ProductsPage() {
                             </div>
                         </div>
 
-                        {/* Grid sản phẩm */}
+                        {keyword && (
+                            <div className="-mt-2 mb-4 ms-2 text-sm text-muted">
+                                Kết quả tìm kiếm cho:
+                                <span className="font-semibold text-title ml-1">"{keyword}"</span>
+                            </div>
+                        )}
+
+
                         {displayedProducts.length > 0 ? (
                             <div
-                                className={
-                                    viewMode === "grid"
-                                        ? "grid grid-cols-2 lg:grid-cols-3 gap-6"
-                                        : "space-y-4"
-                                }
+                                className={viewMode === 'grid' ? 'grid grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}
                             >
                                 {displayedProducts.map((pro) => (
-                                    <Link
-                                        to={`/product/${pro.id}`}
-                                        onClick={() =>
-                                            window.scrollTo({
-                                                top: 0,
-                                                behavior: "smooth",
-                                            })
-                                        }
-                                    >
-                                        <ProductCard
-                                            key={pro.id}
-                                            product={pro}
-                                            viewMode={viewMode}
-                                        />
-                                    </Link>
+                                    <ProductCard key={pro.id} product={pro} viewMode={viewMode} />
                                 ))}
                             </div>
                         ) : (
                             <div className="text-center py-12">
-                                <p className="text-gray-500 text-lg">
-                                    Không tìm thấy sản phẩm
-                                </p>
+                                <p className="text-muted text-lg">Không tìm thấy sản phẩm</p>
                             </div>
                         )}
 
-                        {/* Pagination */}
+                        {/* PAGINATION */}
                         {totalPages > 1 && (
-                            <div className="flex justify-center gap-2 mt-8">
-                                <button
-                                    onClick={() =>
-                                        setCurrentPage(currentPage - 1)
-                                    }
-                                    disabled={currentPage === 1}
-                                    className="px-4 py-2 border rounded-lg disabled:opacity-50"
-                                >
-                                    ← Previous
-                                </button>
-
-                                {/* Hiển thị các số trang */}
-                                {Array.from(
-                                    { length: totalPages },
-                                    (_, i) => i + 1,
-                                ).map((page) => (
+                            <div className="flex justify-center items-center gap-2 mt-8">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                     <button
                                         key={page}
-                                        onClick={() => setCurrentPage(page)}
-                                        className={`w-10 h-10 rounded-lg ${
-                                            page === currentPage
-                                                ? "bg-blue-600 text-white"
-                                                : "border hover:bg-gray-50"
+                                        onClick={() => handlePageChange(page)}
+                                        className={`w-10 h-10 rounded-lg transition-colors ${
+                                            page === currentPage ? 'btn-toggle btn-toggle-active' : 'btn-secondary'
                                         }`}
                                     >
                                         {page}
                                     </button>
                                 ))}
-
-                                <button
-                                    onClick={() =>
-                                        setCurrentPage(currentPage + 1)
-                                    }
-                                    disabled={currentPage === totalPages}
-                                    className="px-4 py-2 border rounded-lg disabled:opacity-50"
-                                >
-                                    Next →
-                                </button>
                             </div>
                         )}
                     </div>
@@ -272,4 +214,4 @@ function ProductsPage() {
     );
 }
 
-export default ProductsPage;
+export default Products;

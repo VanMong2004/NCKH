@@ -1,13 +1,13 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
 
 function MainLayout() {
     return (
         <div>
             <Header />
-            <div className="min-h-screen bg-gray-50 pt-8">
+            <div className="min-h-screen bg-page transition-colors">
                 <Outlet />
             </div>
             <Footer />

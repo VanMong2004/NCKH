@@ -1,197 +1,118 @@
-'use client';
+import { Trash2, ArrowLeft, ShoppingBag } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import CartItem from '../components/cart/CartItem';
+import OrderSummary from '../components/cart/OrderSummary';
+import Breadcrumb from '../components/common/Breadcrumb';
+import { useCart } from '../context/CartContext';
+import Swal from 'sweetalert2';
 
-import { useState } from 'react';
-import { Trash2, ChevronLeft, Plus, Minus } from 'lucide-react';
-import CartItem from '@/components/CartItem';
-import OrderSummary from '@/components/OrderSummary';
-import CompleteYourLook from '@/components/CompleteYourLook';
+function Cart() {
+    // LẤY DỮ LIỆU TỪ CONTEXT
+    const { cartItems, removeCart, clearCart, totalPrice, totalItems, quantityChange } = useCart();
 
-// Mock cart items
-const MOCK_CART_ITEMS = [
-  {
-    id: 1,
-    name: 'CTUT Standard Uniform Shirt - Male',
-    price: 15.00,
-    quantity: 1,
-    size: 'L',
-    color: 'White',
-    image: '/white-dress-shirt-folded.jpg',
-    inStock: true,
-  },
-  {
-    id: 2,
-    name: 'Department of IT Innovation Hoodie',
-    price: 25.00,
-    quantity: 1,
-    size: 'M',
-    color: 'Heather Grey',
-    image: '/premium-id-lanyard-orange.jpg',
-    inStock: true,
-  },
-  {
-    id: 3,
-    name: 'Physical Education Kit',
-    price: 12.00,
-    quantity: 1,
-    size: 'XL',
-    color: 'Set: Shorts & Tee',
-    image: '/pe-sport-set-blue-unisex.jpg',
-    inStock: false,
-  },
-];
+    const handleClearCart = () => {
+        Swal.fire({
+            title: 'Xóa giỏ hàng?',
+            text: 'Bạn có chắc muốn xóa sạch giỏ hàng không?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Xóa hết',
+            cancelButtonText: 'Giữ lại',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                clearCart();
+                Swal.fire('Đã xóa!', '', 'success');
+            }
+        });
+    };
 
-// Mock recommended products
-const MOCK_RECOMMENDED = [
-  {
-    id: 10,
-    name: 'CTUT Spiral Notebook',
-    price: 4.50,
-    image: '/male-student-polo-shirt.jpg',
-  },
-  {
-    id: 11,
-    name: 'Athletic Socks (3-Pack)',
-    price: 8.00,
-    image: '/male-student-polo-uniform-front.jpg',
-  },
-  {
-    id: 12,
-    name: 'Standard Lab Coat',
-    price: 18.00,
-    image: '/white-lab-coat.png',
-  },
-  {
-    id: 13,
-    name: 'CTUT Metal Water Bottle',
-    price: 12.00,
-    image: '/blue-necktie-with-university-logo.jpg',
-  },
-];
+    const isCartEmpty = cartItems.length === 0;
 
-export default function CartPage() {
-  const [cartItems, setCartItems] = useState(MOCK_CART_ITEMS);
-  const [promoCode, setPromoCode] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState(null);
-
-  // Calculate totals
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const studentDiscount = subtotal * 0.05; // 5% student discount
-  const tax = 0; // VAT included
-  const total = subtotal - studentDiscount + tax;
-
-  const handleQuantityChange = (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      handleRemoveItem(itemId);
-      return;
-    }
-    setCartItems(
-      cartItems.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const handleRemoveItem = (itemId) => {
-    setCartItems(cartItems.filter(item => item.id !== itemId));
-  };
-
-  const handleApplyPromo = () => {
-    if (promoCode.trim() === 'STUDENT10') {
-      setAppliedPromo('STUDENT10');
-    } else {
-      setAppliedPromo(null);
-    }
-  };
-
-  const handleClearCart = () => {
-    if (confirm('Are you sure you want to clear your cart?')) {
-      setCartItems([]);
-    }
-  };
-
-  const isCartEmpty = cartItems.length === 0;
-
-  return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            Your Cart
-            {!isCartEmpty && <span className="text-lg font-normal text-gray-600 ml-2">({cartItems.length} items)</span>}
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">Free pickup available at CTUT Main Campus, Building A.</p>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isCartEmpty ? (
-          <div className="text-center py-12">
-            <p className="text-lg text-gray-500 mb-4">Your cart is empty</p>
-            <a href="/products" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              Continue Shopping
-            </a>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                {/* Table Header */}
-                <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-200 bg-gray-50 font-semibold text-sm text-gray-700">
-                  <div className="col-span-5">PRODUCT DETAILS</div>
-                  <div className="col-span-2">PRICE</div>
-                  <div className="col-span-2">QUANTITY</div>
-                  <div className="col-span-2">TOTAL</div>
-                  <div className="col-span-1"></div>
-                </div>
-
-                {/* Cart Items List */}
-                <div className="divide-y divide-gray-200">
-                  {cartItems.map(item => (
-                    <CartItem
-                      key={item.id}
-                      item={item}
-                      onQuantityChange={handleQuantityChange}
-                      onRemove={handleRemoveItem}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                <a href="/products" className="flex items-center justify-center gap-2 px-4 py-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium">
-                  <ChevronLeft className="w-4 h-4" />
-                  Continue Shopping
-                </a>
-                <button
-                  onClick={handleClearCart}
-                  className="px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
-                >
-                  Clear Cart
-                </button>
-              </div>
+    return (
+        <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 bg-page">
+            <div className="hidden md:block">
+                <Breadcrumb items={['Trang chủ', 'Giỏ hàng']} to={['/', '/giohang']} />
             </div>
 
-            {/* Order Summary */}
-            <OrderSummary
-              subtotal={subtotal}
-              studentDiscount={studentDiscount}
-              tax={tax}
-              total={total}
-              promoCode={promoCode}
-              onPromoCodeChange={setPromoCode}
-              onApplyPromo={handleApplyPromo}
-              appliedPromo={appliedPromo}
-            />
-          </div>
-        )}
-      </div>
+            {/* HEADER */}
+            <div className="card p-4 my-4 flex items-center justify-between">
+                <h1 className="text-xl md:text-2xl font-bold text-title flex items-center gap-2">
+                    <ShoppingBag className="w-6 h-6 text-blue-600" />
+                    Giỏ hàng
+                    {!isCartEmpty && (
+                        <span className="text-sm font-medium text-muted bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                            {totalItems} sản phẩm
+                        </span>
+                    )}
+                </h1>
 
-      {/* Complete Your Look Section */}
-      {!isCartEmpty && <CompleteYourLook products={MOCK_RECOMMENDED} />}
-    </main>
-  );
+                {!isCartEmpty && (
+                    <button onClick={handleClearCart} className="btn-danger flex items-center gap-1.5 px-3 py-1.5">
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Xóa tất cả</span>
+                    </button>
+                )}
+            </div>
+
+            {/* MAIN */}
+            <div className="pb-8">
+                {isCartEmpty ? (
+                    <div className="card p-12 text-center">
+                        <div className="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <ShoppingBag className="w-12 h-12 text-blue-300 dark:text-blue-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-title mb-2">Giỏ hàng của bạn đang trống</h2>
+                        <p className="text-muted mb-4 max-w-md mx-auto">Bạn chưa thêm sản phẩm nào vào giỏ.</p>
+                        <Link to="/sanpham" className="btn-primary inline-flex items-center gap-2 px-4 py-2 rounded-xl">
+                            <ArrowLeft className="w-4 h-4" />
+                            Tiếp tục mua hàng
+                        </Link>
+                    </div>
+                ) : (
+                    <>
+                        <Link to="/sanpham" className="btn-link mb-4 inline-flex items-center gap-2 w-full md:w-auto">
+                            <ArrowLeft className="w-4 h-4" />
+                            Tiếp tục mua sắm
+                        </Link>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* DANH SÁCH SẢN PHẨM */}
+                            <div className="lg:col-span-2 flex flex-col gap-4">
+                                <div className="card overflow-hidden">
+                                    <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 dark:bg-gray-800 font-semibold text-sm text-muted border-b border-default">
+                                        <div className="col-span-5">Sản phẩm</div>
+                                        <div className="col-span-2 text-center">Đơn giá</div>
+                                        <div className="col-span-2 text-center">Số lượng</div>
+                                        <div className="col-span-2 text-right">Thành tiền</div>
+                                        <div className="col-span-1"></div>
+                                    </div>
+
+                                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                                        {cartItems.map((item) => (
+                                            <CartItem
+                                                key={`${item.id}-${item.size ?? 'no-size'}`}
+                                                item={item}
+                                                onQuantityChange={(qty) => quantityChange(item.cartItemId, qty)}
+                                                onRemove={() => removeCart(item.cartItemId)}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* TỔNG QUAN */}
+                            <div className="lg:col-span-1">
+                                <div className="sticky top-4">
+                                    <OrderSummary total={totalPrice} />
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+        </main>
+    );
 }
+
+export default Cart;

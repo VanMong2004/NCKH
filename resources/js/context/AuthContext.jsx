@@ -1,36 +1,70 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import authService from '../service/authService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Load user từ localStorage khi reload trang
+    // Khởi động app: đọc user đã lưu
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
+        const savedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+
+        if (savedUser && token) {
+            setUser(JSON.parse(savedUser));
         }
+
+        setIsLoading(false);
     }, []);
 
-    const login = (email, password) => {
-        // Demo: không check password
-        const fakeUser = {
-            name: 'Lê Văn Mộng',
-            email,
-            avatar: 'https://ui-avatars.com/api/?name=Nguyen+Van+A&background=0D8ABC&color=fff',
-        };
+    const login = async (email, password) => {
+        const data = await authService.login({ email, password });
 
-        localStorage.setItem('user', JSON.stringify(fakeUser));
-        setUser(fakeUser);
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+
+        return data;
     };
 
-    const logout = () => {
-        localStorage.removeItem('user');
-        setUser(null);
+    const register = async (payload) => {
+        const data = await authService.register(payload);
+
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+
+        return data;
     };
 
-    return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+    const logout = async () => {
+        try {
+            await authService.logout();
+        } catch (error) {
+            console.error('Logout API error:', error);
+        } finally {
+            setUser(null);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+        }
+    };
+
+    return (
+        <AuthContext.Provider
+            value={{
+                user,
+                isLoading,
+                login,
+                register,
+                logout,
+                isAuthenticated: !!user,
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export const useAuth = () => useContext(AuthContext);

@@ -260,7 +260,16 @@ function Checkout() {
 
                     {/* CỘT PHẢI */}
                     <div className="lg:col-span-1">
-                        <CheckoutOrder items={cartItems} onValidateForm={validateForm} />
+                        <CheckoutOrder
+                            items={cartItems}
+                            onValidateForm={validateForm}
+                            checkoutData={{
+                                fullName: `${shippingInfo.firstName} ${shippingInfo.lastName}`.trim(),
+                                phone: shippingInfo.phone,
+                                address: shippingInfo.address,
+                                paymentMethod,
+                            }}
+                        />
                     </div>
                 </div>
             </div>

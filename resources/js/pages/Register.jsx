@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { Link } from 'react-router-dom';
 import imgRegister from '../../images/imgRegister.png';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const DEPARTMENTS = [
     'Chọn Khoa',
@@ -16,6 +18,7 @@ const DEPARTMENTS = [
 ];
 
 export default function Register() {
+    const { register } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
         studentId: '',
@@ -70,13 +73,16 @@ export default function Register() {
         if (!validateForm()) return;
 
         setLoading(true);
-        setTimeout(() => {
-            try {
-                console.log('Đăng ký thành công:', formData);
-            } finally {
-                setLoading(false);
-            }
-        }, 1000);
+        try {
+            await register(formData);
+            toast.success('Đăng ký thành công');
+            navigate('/auth/dangnhap', { replace: true });
+        } catch (error) {
+            console.error(error);
+            toast.error('Đăng ký thất bại');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

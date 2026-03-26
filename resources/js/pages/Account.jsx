@@ -7,7 +7,7 @@ import ProfileDetails from '../components/account/ProfileDetails';
 import ShippingAddresses from '../components/account/ShippingAddress';
 import Breadcrumb from '../components/common/Breadcrumb';
 import { mockAddress } from '../data/mockAddress';
-import { mockOrders } from '../data/mockOrders';
+
 
 function Account() {
     const [searchParams] = useSearchParams();
@@ -72,7 +72,7 @@ function Account() {
                         {/* ORDERS */}
                         {activeTab === 'donhang' && (
                             <div>
-                                <OrdersHistory orders={mockOrders} showAll />
+                                <OrdersHistory />
                             </div>
                         )}
 

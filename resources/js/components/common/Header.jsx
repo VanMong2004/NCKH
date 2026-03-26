@@ -323,14 +323,14 @@ function Header() {
 
                             {/* User Actions */}
                             {user ? (
-                                <div className="relative group ml-2 hidden sm:block">
+                                <div className="sm:block relative group ml-2">
                                     <button className="flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 p-1 pr-3 rounded-full border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all">
                                         <img
                                             src={user.avatar}
                                             alt="User"
                                             className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-600"
                                         />
-                                        <span className="text-sm font-medium hidden xl:block text-gray-700 dark:text-gray-200">
+                                        <span className="hidden xl:block text-sm font-medium text-gray-700 dark:text-gray-200">
                                             {user.name}
                                         </span>
                                         <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -360,41 +360,28 @@ function Header() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="hidden lg:flex items-center gap-2 ml-2">
+                                <>
+                                    <div className="hidden lg:flex items-center gap-2 ml-2">
+                                        <Link
+                                            to="/auth/dangnhap"
+                                            className="text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 transition-colors"
+                                        >
+                                            Đăng nhập
+                                        </Link>
+                                        <Link
+                                            to="/auth/dangky"
+                                            className="text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg shadow-sm transition-colors"
+                                        >
+                                            Đăng ký
+                                        </Link>
+                                    </div>
                                     <Link
                                         to="/auth/dangnhap"
-                                        className="text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 transition-colors"
+                                        className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-700 dark:text-gray-300 transition-colors"
                                     >
-                                        Đăng nhập
+                                        <User className="w-5 h-5" />
                                     </Link>
-                                    <Link
-                                        to="/auth/dangky"
-                                        className="text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg shadow-sm transition-colors"
-                                    >
-                                        Đăng ký
-                                    </Link>
-                                </div>
-                            )}
-
-                            {!user && (
-                                <Link
-                                    to="/auth/dangnhap"
-                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full lg:hidden text-gray-700 dark:text-gray-300 transition-colors"
-                                >
-                                    <User className="w-5 h-5" />
-                                </Link>
-                            )}
-                            {user && (
-                                <Link
-                                    to="/taikhoan"
-                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full sm:hidden transition-colors"
-                                >
-                                    <img
-                                        src={user.avatar}
-                                        alt="User"
-                                        className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-600"
-                                    />
-                                </Link>
+                                </>
                             )}
                         </div>
                     </div>

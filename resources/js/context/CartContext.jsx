@@ -1,27 +1,37 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import cartService from '../service/cartService';
 import { useAuth } from './AuthContext';
+import { useLocation } from 'react-router-dom';
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState([]);
+    const { user } = useAuth();
+    const location = useLocation();
 
     // Load cart từ localStorage khi khởi động
     useEffect(() => {
-        const savedCart = localStorage.getItem('shopping_cart');
-        if (savedCart) {
-            setCartItems(JSON.parse(savedCart));
-        }
+        const loadCart = async () => {
+            const cart = await cartService.getCart();
+            setCartItems(cart);
+        };
+        loadCart();
     }, []);
 
     // Lưu cart vào localStorage khi thay đổi
     useEffect(() => {
-        localStorage.setItem('shopping_cart', JSON.stringify(cartItems));
+        cartService.saveCart(cartItems);
     }, [cartItems]);
 
     // Thêm sản phẩm vào giỏ
     const addToCart = (product, size, quantity = 1) => {
+        if (!user) {
+            navigate('/auth/dangnhap', {
+                state: { from: location.pathname },
+            });
+            return;
+        }
 
         if (product.hasSize && !size) {
             toast.warn('Vui lòng chọn size');
@@ -48,9 +58,7 @@ export const CartProvider = ({ children }) => {
             if (existingItem) {
                 toast.info('Đã tăng số lượng sản phẩm trong giỏ');
                 return prevItems.map((item) =>
-                    item.cartItemId === cartItemId
-                        ? { ...item, quantity: item.quantity + quantity }
-                        : item,
+                    item.cartItemId === cartItemId ? { ...item, quantity: item.quantity + quantity } : item,
                 );
             }
             toast.success('Đã thêm sản phẩm vào giỏ');
@@ -77,9 +85,9 @@ export const CartProvider = ({ children }) => {
     };
 
     // Clear toàn bộ giỏ hàng
-    const clearCart = () => {
-        setCartItems([]);
-        localStorage.removeItem('shopping_cart');
+    const clearCart = async () => {
+        const removed = await cartService.clearCart();
+        setCartItems(removed);
     };
 
     // Tổng tiền

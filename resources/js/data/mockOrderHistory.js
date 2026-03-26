@@ -199,11 +199,4 @@ export const mockOrdersHistory = [
     },
 ];
 
-export const STATUS_TABS = [
-    { key: 'all', label: 'Tất cả đơn hàng', count: 5 },
-    { key: 'pending', label: 'Đợi thanh toán', count: 0 },
-    { key: 'processing', label: 'Đang xử lý', count: 1 },
-    { key: 'ready', label: 'Sẵn sàng lấy', count: 1 },
-    { key: 'completed', label: 'Đã hoàn thành', count: 2 },
-    { key: 'cancelled', label: 'Đã hủy', count: 1 },
-];
+

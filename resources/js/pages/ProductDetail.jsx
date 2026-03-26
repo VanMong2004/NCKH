@@ -15,8 +15,6 @@ import { mockReviews } from '../data/mockReviews';
 
 export default function ProductDetail() {
     const { addToCart } = useCart();
-    const { user } = useAuth();
-    const location = useLocation();
     const navigate = useNavigate();
     const { id } = useParams();
     const [selectedSize, setSelectedSize] = useState(null);
@@ -34,12 +32,6 @@ export default function ProductDetail() {
     const canAddToCart = productId.inStock && (!productId.hasSize || !!selectedSize);
 
     const handleAddToCart = () => {
-        if (!user) {
-            navigate('/auth/dangnhap', {
-                state: { from: location.pathname },
-            });
-            return;
-        }
         addToCart(productId, selectedSize, quantity);
     };
 

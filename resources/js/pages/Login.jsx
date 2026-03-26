@@ -4,6 +4,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import imgLogin from '../../images/imgLogin.png';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 function Login() {
     const { login } = useAuth();
@@ -19,7 +20,7 @@ function Login() {
         rememberMe: false,
     });
 
-    const from = location.state?.from || '/'
+    const from = location.state?.from || '/';
     const validateForm = () => {
         const newErrors = {};
         if (!formData.email.trim()) {
@@ -52,17 +53,16 @@ function Login() {
         if (!validateForm()) return;
 
         setLoading(true);
-        setTimeout(() => {
-            try {
-                login(formData.email, formData.password);
-                console.log('Đăng nhập thành công:', formData);
-                navigate(from, {replace: true});
-            } catch (error) {
-                console.error('Đăng nhập thất bại:', error);
-            } finally {
-                setLoading(false);
-            }
-        }, 1000);
+        try {
+            await login(formData.email, formData.password);
+            toast.success('Đăng nhập thành công');
+            navigate(from, { replace: true });
+        } catch (error) {
+            console.error(error);
+            toast.error('Đăng nhập thất bại');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

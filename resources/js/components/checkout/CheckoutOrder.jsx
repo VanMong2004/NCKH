@@ -3,11 +3,12 @@ import { Lock, Loader2, Check, ArrowRight, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
+import orderService from '../../service/orderService';
 
-function CheckoutOrder({ items, onValidateForm }) {
+function CheckoutOrder({ items, onValidateForm, checkoutData }) {
     const { clearCart } = useCart();
-
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [createdOrderId, setCreatedOrderId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -15,18 +16,40 @@ function CheckoutOrder({ items, onValidateForm }) {
     const total = subtotal + shippingCost;
 
     const handlePayment = async () => {
+        // if (!items || items.length === 0) {
+        //     toast.error('Giỏ hàng trống');
+        //     return;
+        // }
         if (onValidateForm && !onValidateForm()) return;
 
-        setIsProcessing(true);
+        setIsLoading(true);
         try {
             await new Promise((resolve) => setTimeout(resolve, 2000));
+            const newOrder = await orderService.createOrder({
+                items,
+                subtotal,
+                shippingFee: shippingCost,
+                totalAmount: total,
+                shippingAddress: {
+                    name: checkoutData?.fullName || 'Chưa cập nhật',
+                    phone: checkoutData?.phone || 'Chưa cập nhật',
+                    address: checkoutData?.address || 'Chưa cập nhật',
+                },
+
+                paymentMethod: {
+                    method: paymentMethod === 'cash' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản ngân hàng',
+                    status: paymentMethod === 'cash' ? 'Chưa thanh toán' : 'Đã thanh toán',
+                },
+            });
+            setCreatedOrderId(newOrder.id);
             toast.success('Đặt hàng thành công!');
-            clearCart();
+            await clearCart();
             setIsSuccess(true);
         } catch {
-            toast.error('Lỗi');
+            console.error(error);
+            toast.error('Có lỗi khi tạo đơn hàng');
         } finally {
-            setIsProcessing(false);
+            setIsLoading(false);
         }
     };
 
@@ -44,12 +67,14 @@ function CheckoutOrder({ items, onValidateForm }) {
                     <h2 className="text-2xl font-bold text-title mb-2">Thanh toán thành công!</h2>
 
                     <p className="text-body mb-6">
-                        Mã đơn hàng:{' '}
-                        <span className="font-bold text-title">#ORD-{Math.floor(Math.random() * 100000)}</span>
+                        Mã đơn hàng: <span className="font-bold text-title">#{createdOrderId}</span>
                     </p>
 
                     <div className="space-y-3">
-                        <Link to="/taikhoan?tab=donhang" className="btn-primary w-full flex items-center justify-center gap-2">
+                        <Link
+                            to="/taikhoan?tab=donhang"
+                            className="btn-primary w-full flex items-center justify-center gap-2"
+                        >
                             Xem đơn hàng <ArrowRight className="w-4 h-4" />
                         </Link>
 
@@ -113,12 +138,10 @@ function CheckoutOrder({ items, onValidateForm }) {
                 {/* NÚT THANH TOÁN */}
                 <button
                     onClick={handlePayment}
-                    disabled={isProcessing}
-                    className={`btn-primary w-full py-3.5 flex justify-center gap-2 ${
-                        isProcessing ? 'btn-loading' : ''
-                    }`}
+                    disabled={isLoading || items.length === 0}
+                    className={`btn-primary w-full py-3.5 flex justify-center gap-2 ${isLoading || items.length === 0 ? 'btn-loading' : ''}`}
                 >
-                    {isProcessing ? (
+                    {isLoading ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" /> Đang xử lý...
                         </>

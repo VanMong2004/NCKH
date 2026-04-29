@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import authService from '../service/authService';
+import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -8,15 +8,41 @@ export function AuthProvider({ children }) {
     const [isLoading, setIsLoading] = useState(true);
 
     // Khởi động app: đọc user đã lưu
+    // useEffect(() => {
+    //     const savedUser = localStorage.getItem('user');
+    //     const token = localStorage.getItem('token');
+
+    //     if (savedUser && token) {
+    //         setUser(JSON.parse(savedUser));
+    //     }
+
+    //     setIsLoading(false);
+    // }, []);
     useEffect(() => {
-        const savedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
+        const initAuth = async () => {
+            const token = localStorage.getItem('token');
 
-        if (savedUser && token) {
-            setUser(JSON.parse(savedUser));
-        }
+            if (!token) {
+                setIsLoading(false);
+                return;
+            }
 
-        setIsLoading(false);
+            try {
+                const data = await authService.me();
+
+                setUser(data);
+                localStorage.setItem('user', JSON.stringify(data));
+            } catch (error) {
+                // token hết hạn
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setUser(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        initAuth();
     }, []);
 
     const login = async (email, password) => {

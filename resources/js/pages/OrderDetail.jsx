@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Download, Truck, CheckCircle, Clock, XCircle, Package, ArrowLeft, MapPin, CreditCard } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import orderService from '../service/orderService';
+import orderService from '../services/orderService';
 
 function getStatusIcon(status) {
     const icons = {

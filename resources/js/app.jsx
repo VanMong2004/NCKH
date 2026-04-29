@@ -20,6 +20,7 @@ import { AuthProvider } from './context/AuthContext';
 import OrderDetail from './pages/OrderDetail';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CategoryPage from './pages/Categories';
+
 function App() {
     return (
         <>

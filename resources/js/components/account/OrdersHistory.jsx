@@ -4,7 +4,7 @@ import OrdersTabs from '../account/ordershistory/OrdersTabs';
 import OrdersFilters from '../account/ordershistory/OrdersFilters';
 import OrderCard from '../account/ordershistory/OrderCard';
 import Pagination from './ordershistory/Pagination';
-import orderService from '../../service/orderService';
+import orderService from '../../services/orderService';
 
 const STATUS_TABS = [
     { key: 'all', label: 'Tất cả đơn hàng', count: 5 },

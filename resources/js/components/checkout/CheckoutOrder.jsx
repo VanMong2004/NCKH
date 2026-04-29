@@ -3,7 +3,7 @@ import { Lock, Loader2, Check, ArrowRight, Home } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
-import orderService from '../../service/orderService';
+import orderService from '../../services/orderService';
 
 function CheckoutOrder({ items, onValidateForm, checkoutData }) {
     const { clearCart } = useCart();

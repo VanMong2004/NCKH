@@ -10,8 +10,8 @@ function Cart() {
     // LẤY DỮ LIỆU TỪ CONTEXT
     const { cartItems, removeCart, clearCart, totalPrice, totalItems, quantityChange } = useCart();
 
-    const handleClearCart = () => {
-        Swal.fire({
+    const handleClearCart = async () => {
+        const result = await Swal.fire({
             title: 'Xóa giỏ hàng?',
             text: 'Bạn có chắc muốn xóa sạch giỏ hàng không?',
             icon: 'warning',
@@ -20,12 +20,12 @@ function Cart() {
             cancelButtonColor: '#3085d6',
             confirmButtonText: 'Xóa hết',
             cancelButtonText: 'Giữ lại',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                clearCart();
-                Swal.fire('Đã xóa!', '', 'success');
-            }
         });
+
+        if (result.isConfirmed) {
+            await clearCart();
+            Swal.fire('Đã xóa!', '', 'success');
+        }
     };
 
     const isCartEmpty = cartItems.length === 0;
@@ -43,7 +43,7 @@ function Cart() {
                     Giỏ hàng
                     {!isCartEmpty && (
                         <span className="text-sm font-medium text-muted bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                            {totalItems} sản phẩm
+                            {cartItems.length} sản phẩm
                         </span>
                     )}
                 </h1>
@@ -91,7 +91,7 @@ function Cart() {
                                     <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                         {cartItems.map((item) => (
                                             <CartItem
-                                                key={`${item.id}-${item.size ?? 'no-size'}`}
+                                                key={item.cartItemId}
                                                 item={item}
                                                 onQuantityChange={(qty) => quantityChange(item.cartItemId, qty)}
                                                 onRemove={() => removeCart(item.cartItemId)}

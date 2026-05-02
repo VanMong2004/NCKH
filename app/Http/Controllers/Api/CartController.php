@@ -19,7 +19,7 @@ class CartController extends Controller
     {
         $cart = $this->cartService
             ->getOrCreateCart($request->user()->id)
-            ->load('items.productVariant');
+            ->load('items.productVariant.product.images'); // Cho thêm product.images
 
         $totals = $this->cartService->calculateCart($cart);
 

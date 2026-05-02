@@ -7,24 +7,27 @@ import { useCart } from '../context/CartContext';
 function Checkout() {
     const { cartItems } = useCart();
 
-    // --- STATE FORM ---
     const [email, setEmail] = useState('');
     const [subscribeNews, setSubscribeNews] = useState(true);
+
     const [shippingInfo, setShippingInfo] = useState({
         firstName: '',
         lastName: '',
         address: '',
         phone: '',
     });
-    const [paymentMethod, setPaymentMethod] = useState('vietcombank');
+
+    // [SỬA] dùng bank_transfer / momo / cod
+    const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
+
     const [cardInfo, setCardInfo] = useState({
         cardNumber: '',
         expiry: '',
         cvv: '',
     });
+
     const [errors, setErrors] = useState({});
 
-    // --- XỬ LÝ FORM ---
     const handleFormChange = (e) => {
         const { name, value } = e.target;
         setShippingInfo((prev) => ({ ...prev, [name]: value }));
@@ -42,7 +45,6 @@ function Checkout() {
         if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
-    // --- VALIDATE FORM ---
     const validateForm = () => {
         const newErrors = {};
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,10 +60,11 @@ function Checkout() {
         if (!shippingInfo.phone.trim()) newErrors.phone = 'Vui lòng nhập Số điện thoại';
         else if (!phoneRegex.test(shippingInfo.phone)) newErrors.phone = 'SĐT không hợp lệ (10-11 số)';
 
-        if (paymentMethod === 'vietcombank') {
-            if (!cardInfo.cardNumber.trim()) newErrors.cardNumber = 'Nhập số thẻ';
+        // [SỬA] validate khi chọn bank_transfer
+        if (paymentMethod === 'bank_transfer') {
+            if (!cardInfo.cardNumber.trim()) newErrors.cardNumber = 'Nhập số tài khoản / số thẻ';
             if (!cardInfo.expiry.trim()) newErrors.expiry = 'Nhập ngày hết hạn';
-            if (!cardInfo.cvv.trim()) newErrors.cvv = 'Nhập mã CVC';
+            if (!cardInfo.cvv.trim()) newErrors.cvv = 'Nhập mã bảo mật';
         }
 
         setErrors(newErrors);
@@ -74,9 +77,7 @@ function Checkout() {
 
             <div className="sm:px-6 lg:px-8 pb-12 mt-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 -mt-4">
-                    {/* CỘT TRÁI */}
                     <div className="lg:col-span-2 space-y-8">
-                        {/* THÔNG TIN LIÊN HỆ */}
                         <div className="card p-4">
                             <h2 className="text-xl font-bold text-title mb-6">Thông tin liên hệ</h2>
 
@@ -106,7 +107,6 @@ function Checkout() {
                             </div>
                         </div>
 
-                        {/* ĐỊA CHỈ GIAO HÀNG */}
                         <div className="card p-4">
                             <h2 className="text-xl font-bold text-title mb-6">Địa chỉ giao hàng</h2>
 
@@ -119,9 +119,7 @@ function Checkout() {
                                         value={shippingInfo.firstName}
                                         onChange={handleFormChange}
                                         placeholder="Nguyễn"
-                                        className={`input-base w-full px-4 py-3 ${
-                                            errors.firstName ? 'input-error' : ''
-                                        }`}
+                                        className={`input-base w-full px-4 py-3 ${errors.firstName ? 'input-error' : ''}`}
                                     />
                                     {errors.firstName && <p className="error-text">{errors.firstName}</p>}
                                 </div>
@@ -134,9 +132,7 @@ function Checkout() {
                                         value={shippingInfo.lastName}
                                         onChange={handleFormChange}
                                         placeholder="Văn A"
-                                        className={`input-base w-full px-4 py-3 ${
-                                            errors.lastName ? 'input-error' : ''
-                                        }`}
+                                        className={`input-base w-full px-4 py-3 ${errors.lastName ? 'input-error' : ''}`}
                                     />
                                     {errors.lastName && <p className="error-text">{errors.lastName}</p>}
                                 </div>
@@ -169,57 +165,65 @@ function Checkout() {
                             </div>
                         </div>
 
-                        {/* PHƯƠNG THỨC THANH TOÁN */}
                         <div className="card p-4">
                             <h2 className="text-xl font-bold text-title mb-6">Phương thức thanh toán</h2>
 
                             <div className="space-y-4">
-                                {/* THẺ */}
+                                {/* BANK TRANSFER */}
                                 <div
                                     className={`border-default rounded-lg overflow-hidden ${
-                                        paymentMethod === 'vietcombank'
+                                        paymentMethod === 'bank_transfer'
                                             ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
                                             : ''
                                     }`}
                                 >
                                     <div
-                                        onClick={() => setPaymentMethod('vietcombank')}
+                                        onClick={() => setPaymentMethod('bank_transfer')}
                                         className="p-4 cursor-pointer flex items-center gap-4"
                                     >
-                                        <input type="radio" checked={paymentMethod === 'vietcombank'} readOnly />
+                                        <input type="radio" checked={paymentMethod === 'bank_transfer'} readOnly />
                                         <CreditCard className="w-5 h-5 text-body" />
-                                        <span className="font-medium text-title flex-1">Thẻ tín dụng / Ghi nợ</span>
+                                        <span className="font-medium text-title flex-1">Chuyển khoản ngân hàng</span>
                                     </div>
 
-                                    {paymentMethod === 'vietcombank' && (
+                                    {paymentMethod === 'bank_transfer' && (
                                         <div className="p-4 pt-0 space-y-4 border-t border-default mt-2">
-                                            <input
-                                                type="text"
-                                                name="cardNumber"
-                                                value={cardInfo.cardNumber}
-                                                onChange={handleCardInfoChange}
-                                                placeholder="Số thẻ (16 số)"
-                                                className={`input-base w-full ${
-                                                    errors.cardNumber ? 'input-error' : ''
-                                                }`}
-                                            />
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    name="cardNumber"
+                                                    value={cardInfo.cardNumber}
+                                                    onChange={handleCardInfoChange}
+                                                    placeholder="Số tài khoản / số thẻ"
+                                                    className={`input-base w-full ${errors.cardNumber ? 'input-error' : ''}`}
+                                                />
+                                                {errors.cardNumber && <p className="error-text">{errors.cardNumber}</p>}
+                                            </div>
+
                                             <div className="grid grid-cols-2 gap-4">
-                                                <input
-                                                    type="text"
-                                                    name="expiry"
-                                                    value={cardInfo.expiry}
-                                                    onChange={handleCardInfoChange}
-                                                    placeholder="MM/YY"
-                                                    className={`input-base ${errors.expiry ? 'input-error' : ''}`}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    name="cvv"
-                                                    value={cardInfo.cvv}
-                                                    onChange={handleCardInfoChange}
-                                                    placeholder="CVC"
-                                                    className={`input-base ${errors.cvv ? 'input-error' : ''}`}
-                                                />
+                                                <div>
+                                                    <input
+                                                        type="text"
+                                                        name="expiry"
+                                                        value={cardInfo.expiry}
+                                                        onChange={handleCardInfoChange}
+                                                        placeholder="MM/YY"
+                                                        className={`input-base w-full ${errors.expiry ? 'input-error' : ''}`}
+                                                    />
+                                                    {errors.expiry && <p className="error-text">{errors.expiry}</p>}
+                                                </div>
+
+                                                <div>
+                                                    <input
+                                                        type="text"
+                                                        name="cvv"
+                                                        value={cardInfo.cvv}
+                                                        onChange={handleCardInfoChange}
+                                                        placeholder="Mã bảo mật"
+                                                        className={`input-base w-full ${errors.cvv ? 'input-error' : ''}`}
+                                                    />
+                                                    {errors.cvv && <p className="error-text">{errors.cvv}</p>}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -242,12 +246,12 @@ function Checkout() {
                                 {/* COD */}
                                 <div
                                     className={`border-default rounded-lg overflow-hidden ${
-                                        paymentMethod === 'cash' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' : ''
+                                        paymentMethod === 'cod' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' : ''
                                     }`}
-                                    onClick={() => setPaymentMethod('cash')}
+                                    onClick={() => setPaymentMethod('cod')}
                                 >
                                     <div className="p-4 cursor-pointer flex items-center gap-4">
-                                        <input type="radio" checked={paymentMethod === 'cash'} readOnly />
+                                        <input type="radio" checked={paymentMethod === 'cod'} readOnly />
                                         <Truck className="w-5 h-5 text-body" />
                                         <span className="font-medium text-title flex-1">
                                             Thanh toán khi nhận hàng (COD)
@@ -258,16 +262,18 @@ function Checkout() {
                         </div>
                     </div>
 
-                    {/* CỘT PHẢI */}
                     <div className="lg:col-span-1">
                         <CheckoutOrder
                             items={cartItems}
                             onValidateForm={validateForm}
                             checkoutData={{
                                 fullName: `${shippingInfo.firstName} ${shippingInfo.lastName}`.trim(),
+                                email,
                                 phone: shippingInfo.phone,
                                 address: shippingInfo.address,
                                 paymentMethod,
+                                subscribeNews,
+                                cardInfo,
                             }}
                         />
                     </div>

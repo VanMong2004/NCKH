@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
 
 class PaymentService
@@ -15,33 +16,47 @@ class PaymentService
     }
 
     // 🎯 giả lập thanh toán
-    public function pay($orderId)
+    public function pay($userId, $orderId)  // Mộng thêm userId ở đây
     {
-        $order = Order::with('items.productVariant')->findOrFail($orderId);
+        $order = Order::with('items.productVariant')
+            ->where('id', $orderId)             // Mộng thêm 2 điều kiện where
+            ->where('user_id', $userId)
+            ->firstOrFail();
 
         if ($order->status !== 'pending') {
             throw new \Exception('Order không hợp lệ');
         }
 
+        $payment = Payment::create([
+            'order_id' => $order->id,
+            'method' => $order->payment_method ?? 'unknown',
+            'status' => 'pending',
+            'transaction_id' => uniqid('PAY_'),
+            'response_data' => null,
+        ]);
+
         // 🔥 giả lập random success / fail
         $success = rand(0, 1);
 
         if ($success) {
-            // ✅ thanh toán thành công
-            return $this->handleSuccess($order);
+            return $this->handleSuccess($order, $payment);
         }
 
-        // ❌ thất bại
-        return $this->handleFail($order);
+        return $this->handleFail($order, $payment);
     }
 
     // ✅ SUCCESS
-    protected function handleSuccess($order)
+    protected function handleSuccess($order, $payment)
     {
-        return DB::transaction(function () use ($order) {
-
-            // 🔥 finalize (reuse code)
+        return DB::transaction(function () use ($order, $payment) {
             $this->orderService->finalizeOrder($order->id);
+
+            $payment->update([
+                'status' => 'success',
+                'response_data' => [
+                    'message' => 'Thanh toán thành công'
+                ]
+            ]);
 
             return [
                 'status' => 'success',
@@ -51,14 +66,12 @@ class PaymentService
     }
 
     // ❌ FAIL → release stock
-    protected function handleFail($order)
+    protected function handleFail($order, $payment)
     {
-        return DB::transaction(function () use ($order) {
+        return DB::transaction(function () use ($order, $payment) {
+            $order->load('items.productVariant');
 
-        $order->load('items.productVariant');
-
-        foreach ($order->items as $item) {
-
+            foreach ($order->items as $item) {
                 $variant = $item->productVariant;
 
                 // 🔥 trả lại reserved
@@ -67,6 +80,13 @@ class PaymentService
 
             $order->update([
                 'status' => 'cancelled'
+            ]);
+
+            $payment->update([
+                'status' => 'failed',
+                'response_data' => [
+                    'message' => 'Thanh toán thất bại'
+                ]
             ]);
 
             return [

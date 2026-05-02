@@ -8,8 +8,8 @@ const orderService = {
     },
 
     // 📦 USER ORDERS
-    async getMyOrders() {
-        const res = await api.get('/orders');
+    async getMyOrders(params = {}) {
+        const res = await api.get('/orders', { params });
         return res.data;
     },
 

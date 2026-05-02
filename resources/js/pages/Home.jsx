@@ -1,46 +1,70 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, BadgePercent, ChevronLeft, ChevronRight, Cpu, Package, Palette, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import CategoryCard from '../components/home/CategoryCard';
-import Features from '../components/home/Features';
-import ProductCard from '../components/common/ProductCard';
-import { mockCategory } from '../data/mockCategory';
-import { mockProducts } from '../data/mockProducts';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
+
+import CategoryCard from '../components/home/CategoryCard';
+import Features from '../components/home/Features';
+import ProductCard from '../components/common/ProductCard';
+
+import categoryService from '../services/categoryService';
+import productService from '../services/productService';
+
 import bannerImg from '../../images/imgBanner.png';
 
 function Home() {
+    const [categories, setCategories] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHomeData = async () => {
+            try {
+                setLoading(true);
+
+                const [categoryData, productData] = await Promise.all([
+                    categoryService.getCategories(),
+                    productService.getProducts(),
+                ]);
+
+                const categoryList = Array.isArray(categoryData) ? categoryData : categoryData?.data || [];
+                const productList = Array.isArray(productData) ? productData : productData?.data || [];
+
+                setCategories(categoryList);
+                setProducts(productList);
+            } catch (error) {
+                console.error('Lỗi tải dữ liệu trang chủ:', error);
+                setCategories([]);
+                setProducts([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchHomeData();
+    }, []);
+
+    // Lấy 4 danh mục đầu tiên
+    const displayedCategories = categories.slice(0, 4);
+
+    // Gợi ý: sản phẩm mới = sản phẩm mới tạo gần nhất
+    const newestProducts = [...products].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 12);
+
     return (
         <main className="bg-page max-w-7xl mx-auto px-4 pt-8">
-            {/* ================= HERO ================= */}
+            {/* HERO */}
             <section className="relative rounded-lg overflow-hidden min-h-[400px] md:min-h-[500px]">
                 <div className="px-8 py-8 md:py-24">
-                    {/* <div className="relative z-10 max-w-2xl">
-                        <div className="inline-block bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded mb-4">
-                            NĂM HỌC MỚI
-                        </div>
-
-                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
-                            Tự hào CTUT - Sáng tạo từ giảng đường
-                        </h1>
-
-                        <p className="text-sm md:text-base text-gray-300 mb-8">
-                            Khám phá đồng phục, phụ kiện và những sản phẩm sáng tạo của sinh viên CTUT.
-                        </p>
-
-                        <Link to='/sanpham' className="btn-primary px-6 py-3">Tất cả sản phẩm</Link>
-                    </div> */}
-
                     <div className="absolute inset-0">
                         <img src={bannerImg} alt="Students in CTUT uniforms" className="w-full h-full object-cover" />
                     </div>
                 </div>
             </section>
 
-            {/* ================= FEATURES ================= */}
+            {/* FEATURES */}
             <section className="py-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     <Features
@@ -61,25 +85,31 @@ function Home() {
                 </div>
             </section>
 
-            {/* ================= CATEGORY ================= */}
+            {/* CATEGORY */}
             <section className="py-8">
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-title text-2xl md:text-3xl font-bold">Danh mục</h2>
 
-                    <Link to="/danhmuc" className="btn-link flex items-center gap-2 text-sm">
+                    <Link to="/sanpham" className="btn-link flex items-center gap-2 text-sm">
                         Xem tất cả
                         <ArrowRight className="w-4 h-4" />
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    {mockCategory.slice(0,4).map((cat) => (
-                        <CategoryCard key={cat.id} {...cat} />
-                    ))}
-                </div>
+                {loading ? (
+                    <div className="text-muted">Đang tải danh mục...</div>
+                ) : displayedCategories.length > 0 ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        {displayedCategories.map((cat) => (
+                            <CategoryCard key={cat.id} id={cat.id} name={cat.name} slug={cat.slug} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-muted">Chưa có danh mục</div>
+                )}
             </section>
 
-            {/* ================= NEW PRODUCTS ================= */}
+            {/* NEW PRODUCTS */}
             <section className="py-8 md:py-12">
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-title text-2xl md:text-3xl font-bold">Sản phẩm mới</h2>
@@ -94,33 +124,39 @@ function Home() {
                     </div>
                 </div>
 
-                <Swiper
-                    modules={[Autoplay, Navigation]}
-                    navigation={{
-                        prevEl: '.swiper-prev',
-                        nextEl: '.swiper-next',
-                    }}
-                    autoplay={{
-                        delay: 3000,
-                        pauseOnMouseEnter: true,
-                        disableOnInteraction: false,
-                    }}
-                    spaceBetween={20}
-                    breakpoints={{
-                        0: { slidesPerView: 2 },
-                        768: { slidesPerView: 2 },
-                        1024: { slidesPerView: 4 },
-                    }}
-                >
-                    {mockProducts.map((pro) => (
-                        <SwiperSlide key={pro.id}>
-                            <ProductCard product={pro} />
-                        </SwiperSlide>
-                    ))}
-                </Swiper>
+                {loading ? (
+                    <div className="text-muted">Đang tải sản phẩm...</div>
+                ) : newestProducts.length > 0 ? (
+                    <Swiper
+                        modules={[Autoplay, Navigation]}
+                        navigation={{
+                            prevEl: '.swiper-prev',
+                            nextEl: '.swiper-next',
+                        }}
+                        autoplay={{
+                            delay: 3000,
+                            pauseOnMouseEnter: true,
+                            disableOnInteraction: false,
+                        }}
+                        spaceBetween={20}
+                        breakpoints={{
+                            0: { slidesPerView: 2 },
+                            768: { slidesPerView: 2 },
+                            1024: { slidesPerView: 4 },
+                        }}
+                    >
+                        {newestProducts.map((pro) => (
+                            <SwiperSlide key={pro.id}>
+                                <ProductCard product={pro} />
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                ) : (
+                    <div className="text-muted">Chưa có sản phẩm</div>
+                )}
             </section>
 
-            {/* ================= STUDENT PROJECTS ================= */}
+            {/* STUDENT PROJECTS */}
             <section className="py-8">
                 <div className="rounded-lg overflow-hidden bg-gray-900 border-default">
                     <div className="p-6 md:p-12 lg:p-16">

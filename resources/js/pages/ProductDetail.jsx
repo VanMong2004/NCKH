@@ -1,79 +1,128 @@
 import { CheckCircle, ChevronLeft, ChevronRight, ShoppingCart, Truck } from 'lucide-react';
-import { useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Autoplay, Navigation } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
+
 import Breadcrumb from '../components/common/Breadcrumb';
 import ProductCard from '../components/common/ProductCard';
+import ProductImage from '../components/product/ProductImage';
 import RatingSummary from '../components/product/RatingSummary';
 import ReviewCard from '../components/product/ReviewCard';
 import StarRating from '../components/product/StarRating';
-import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { mockProducts } from '../data/mockProducts';
+
+import productService from '../services/productService';
 import { mockReviews } from '../data/mockReviews';
+import { mockProducts } from '../data/mockProducts';
 
 export default function ProductDetail() {
     const { addToCart } = useCart();
     const navigate = useNavigate();
     const { id } = useParams();
+
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+
     const [selectedSize, setSelectedSize] = useState(null);
     const [quantity, setQuantity] = useState(1);
-    const [mainImage, setMainImage] = useState(0);
     const [showAll, setShowAll] = useState(false);
 
-    const productId = mockProducts.find((item) => item.id === Number(id));
-    if (!productId) {
-        return <h4 className="flex justify-center mt-8 text-muted">Không tìm thấy sản phẩm này</h4>;
-    }
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                const data = await productService.getProductById(id);
+                setProduct(data);
+            } catch (error) {
+                console.error('Lỗi lấy chi tiết sản phẩm:', error);
+                setProduct(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProduct();
+    }, [id]);
+
+    const variants = product?.variants || [];
+
+    useEffect(() => {
+        if (!product) return;
+
+        if (variants.length > 1 && !selectedSize) {
+            const firstAvailableVariant = variants.find((variant) => Number(variant.stock || 0) > 0);
+
+            if (firstAvailableVariant?.size) {
+                setSelectedSize(firstAvailableVariant.size);
+            }
+        }
+    }, [product, variants, selectedSize]);
+
+    const availableSizes = useMemo(() => {
+        const sizes = variants.map((variant) => variant.size).filter(Boolean);
+        return [...new Set(sizes)];
+    }, [variants]);
+
+    const selectedVariant = useMemo(() => {
+        if (!product) return null;
+
+        if (variants.length === 1) {
+            return variants[0];
+        }
+
+        if (selectedSize) {
+            return variants.find((variant) => variant.size === selectedSize) || null;
+        }
+
+        return null;
+    }, [product, variants, selectedSize]);
 
     const displayedReviews = showAll ? mockReviews : mockReviews.slice(0, 2);
 
-    const canAddToCart = productId.inStock && (!productId.hasSize || !!selectedSize);
+    const isInStock = selectedVariant
+        ? Number(selectedVariant.stock || 0) > 0
+        : variants.some((variant) => Number(variant.stock || 0) > 0);
 
-    const handleAddToCart = () => {
-        addToCart(productId, selectedSize, quantity);
+    const canAddToCart = !!product && !!selectedVariant && isInStock;
+
+    const fallbackVariant = variants[0] || null;
+    const currentPrice = Number(selectedVariant?.price ?? fallbackVariant?.price ?? 0);
+
+    const handleAddToCart = async () => {
+        if (!product) return;
+        await addToCart(product, selectedSize, quantity);
     };
+
+    const handleBuyNow = async () => {
+        if (!product) return;
+        await handleAddToCart();
+        navigate('/giohang');
+    };
+
+    if (loading) {
+        return <h4 className="flex justify-center mt-8 text-muted">Đang tải sản phẩm...</h4>;
+    }
+
+    if (!product) {
+        return <h4 className="flex justify-center mt-8 text-muted">Không tìm thấy sản phẩm này</h4>;
+    }
 
     return (
         <main className="bg-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Breadcrumb */}
             <Breadcrumb items={['Trang chủ', 'Sản phẩm']} to={['/', '/sanpham']} />
 
-            {/* Product main section */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4 mt-4">
-                {/* Images */}
-                <div className="space-y-4">
-                    <div className="relative bg-surface rounded-lg overflow-hidden aspect-square flex items-center justify-center">
-                        <div className="absolute top-4 left-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
-                            {productId.badge?.toLocaleUpperCase()}
-                        </div>
-                        <img src={productId.image[mainImage]} alt="Product" className="w-full h-full object-cover" />
-                    </div>
+                <ProductImage images={product.images || []} badge={product.badge} />
 
-                    <div className="flex gap-3">
-                        {productId.image.map((thumb, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setMainImage(i)}
-                                className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                                    mainImage === i ? 'border-blue-500' : 'border-default'
-                                }`}
-                            >
-                                <img src={thumb} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Product info */}
                 <div className="space-y-6">
                     <div>
-                        <h1 className="text-3xl font-bold mb-3 text-title">{productId.name}</h1>
+                        <h1 className="text-3xl font-bold mb-3 text-title">{product.name}</h1>
+
                         <div className="flex items-center gap-2 mb-4">
-                            <StarRating rating={productId.rating} />
-                            <span className="text-sm text-muted">({productId.reviewCount} đánh giá)</span>
-                            {productId.inStock ? (
+                            <StarRating rating={product.avg_rating || 0} />
+                            <span className="text-sm text-muted">({product.review_count || 0} đánh giá)</span>
+
+                            {isInStock ? (
                                 <span className="text-green-600 text-sm font-semibold">● Còn hàng</span>
                             ) : (
                                 <span className="text-red-600 text-sm font-semibold">● Hết hàng</span>
@@ -81,53 +130,47 @@ export default function ProductDetail() {
                         </div>
                     </div>
 
-                    {/* Price */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
                             <span className="text-4xl font-bold text-title">
-                                {productId.price.toLocaleString('vi-VN')}₫
+                                {Number(currentPrice).toLocaleString('vi-VN')}₫
                             </span>
-                            <span className="text-xl text-muted line-through">
-                                {productId.originalPrice.toLocaleString('vi-VN')}₫
-                            </span>
-                            {productId.discount && <span className="badge badge-error">{productId.discount}</span>}
                         </div>
                     </div>
 
-                    {/* Description */}
-                    <p className="text-body leading-relaxed">{productId.desc}</p>
+                    <p className="text-body leading-relaxed">{product.description}</p>
 
-                    {/* Size */}
-                    {productId.hasSize && (
+                    {availableSizes.length > 0 && (
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="font-semibold text-title">Chọn size</label>
-                                <a href="#" className="btn-link text-sm">
-                                    📐 Hướng dẫn chọn size
-                                </a>
                             </div>
+
                             <div className="flex gap-3">
-                                {productId.sizes.map((size) => (
-                                    <button
-                                        key={size}
-                                        disabled={!productId.inStock}
-                                        onClick={() => setSelectedSize(size)}
-                                        className={`w-12 h-12 rounded border-2 font-semibold transition ${
-                                            selectedSize === size
-                                                ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                                : 'border-default text-body hover:border-gray-300'
-                                        }`}
-                                    >
-                                        {size}
-                                    </button>
-                                ))}
+                                {availableSizes.map((size) => {
+                                    const variantOfSize = variants.find((variant) => variant.size === size);
+                                    const disabled = !variantOfSize || Number(variantOfSize.stock || 0) <= 0;
+
+                                    return (
+                                        <button
+                                            key={size}
+                                            disabled={disabled}
+                                            onClick={() => setSelectedSize(size)}
+                                            className={`w-12 h-12 rounded border-2 font-semibold transition ${
+                                                selectedSize === size
+                                                    ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                                    : 'border-default text-body hover:border-gray-300'
+                                            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            {size}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
 
-                    {/* Quantity & Add to cart */}
                     <div className="flex flex-col gap-4 md:gap-5">
-                        {/* Quantity */}
                         <div className="flex items-center border border-gray-300 dark:border-gray-700 rounded w-fit">
                             <button
                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -139,7 +182,7 @@ export default function ProductDetail() {
                             <input
                                 type="number"
                                 value={quantity}
-                                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
                                 className="w-16 text-center border-l border-r h-10 bg-transparent outline-none text-title"
                             />
 
@@ -151,7 +194,6 @@ export default function ProductDetail() {
                             </button>
                         </div>
 
-                        {/* Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3 w-full">
                             <button
                                 type="button"
@@ -167,10 +209,7 @@ export default function ProductDetail() {
                                 type="button"
                                 disabled={!canAddToCart}
                                 className="btn-danger w-full py-3 flex items-center justify-center gap-2"
-                                onClick={() => {
-                                    handleAddToCart();
-                                    navigate('/giohang');
-                                }}
+                                onClick={handleBuyNow}
                             >
                                 <ShoppingCart className="w-5 h-5" />
                                 Mua ngay
@@ -178,7 +217,6 @@ export default function ProductDetail() {
                         </div>
                     </div>
 
-                    {/* Features */}
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                         <div className="flex items-center gap-2 border-default p-4">
                             <Truck className="w-5 h-5 text-blue-500" />
@@ -187,6 +225,7 @@ export default function ProductDetail() {
                                 <p className="text-muted text-xs">Available at Building C1</p>
                             </div>
                         </div>
+
                         <div className="flex items-center gap-2 border-default p-4">
                             <CheckCircle className="w-5 h-5 text-green-600" />
                             <div className="text-sm">
@@ -198,7 +237,6 @@ export default function ProductDetail() {
                 </div>
             </section>
 
-            {/* Reviews */}
             <section>
                 <h2 className="text-2xl font-bold mb-6 text-title">Đánh giá</h2>
 
@@ -227,7 +265,6 @@ export default function ProductDetail() {
                 </div>
             </section>
 
-            {/* Related products */}
             <section className="mx-auto px-4 py-8 md:py-12">
                 <div className="flex items-center justify-between mb-6 md:mb-8">
                     <h2 className="text-2xl md:text-3xl font-bold text-title">Sản phẩm liên quan</h2>

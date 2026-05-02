@@ -8,10 +8,11 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\RevenueController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\CategoryController;
 
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminRevenueController;
-
 
 
 
@@ -37,6 +38,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
 });
 
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/categories', [CategoryController::class, 'index']);
+
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::patch('/admin/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
     
@@ -50,6 +55,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/admin/revenue/top-products', [AdminRevenueController::class, 'topProducts']);
 
 });
+
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

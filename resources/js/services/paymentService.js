@@ -3,7 +3,7 @@ import api from './api';
 const paymentService = {
     // 💳 PAY
     async pay(orderId) {
-        const res = await api.post(`/payment/${orderId}`);
+        const res = await api.post(`/orders/${orderId}/pay`);
         return res.data; // { status, message }
     },
 

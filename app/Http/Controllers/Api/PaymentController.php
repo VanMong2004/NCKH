@@ -17,15 +17,13 @@ class PaymentController extends Controller
         $this->paymentService = $paymentService;
     }
 
-    public function pay($orderId)
+    public function pay(Request $request, $orderId)
     {
         try {
-            $result = $this->paymentService->pay($orderId);
+            $result = $this->paymentService->pay($request->user()->id, $orderId); // Mộng sửa lại chỗ này, cho biết user nào pay cho orderId nào
 
             return response()->json($result);
-
         } catch (\Exception $e) {
-
             return response()->json([
                 'message' => $e->getMessage()
             ], 400);
@@ -45,18 +43,14 @@ class PaymentController extends Controller
             }
 
             if ($status === 'success') {
-
                 app(OrderService::class)->finalizeOrder($order->id);
-
             } else {
-
                 app(OrderService::class)->cancelOrder($order->id);
             }
 
             return response()->json([
                 'message' => 'Callback processed'
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()

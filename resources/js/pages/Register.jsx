@@ -1,7 +1,7 @@
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import imgRegister from '../../images/imgRegister.png';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -18,6 +18,7 @@ const DEPARTMENTS = [
 ];
 
 export default function Register() {
+    const navigate = useNavigate()
     const { register } = useAuth();
     const [formData, setFormData] = useState({
         fullName: '',
@@ -47,7 +48,7 @@ export default function Register() {
         else if (!formData.email.includes('@')) newErrors.email = 'Email không hợp lệ';
 
         if (!formData.password) newErrors.password = 'Vui lòng nhập mật khẩu';
-        else if (formData.password.length < 6) newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự';
+        else if (formData.password.length < 6) newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
 
         if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
 
@@ -74,7 +75,11 @@ export default function Register() {
 
         setLoading(true);
         try {
-            await register(formData);
+            await register({
+                name: formData.fullName,
+                email: formData.email,
+                password: formData.password,
+            });
             toast.success('Đăng ký thành công');
             navigate('/auth/dangnhap', { replace: true });
         } catch (error) {

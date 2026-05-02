@@ -1,61 +1,101 @@
 import { Grid3x3, List, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+
 import Breadcrumb from '../components/common/Breadcrumb';
 import ProductCard from '../components/common/ProductCard';
-import { mockProducts } from '../data/mockProducts';
-import { useState } from 'react';
-
-const categories = [
-    { key: 'all', name: 'Tất cả', count: mockProducts.length },
-    { key: 'male', name: 'Nam', count: 10 },
-    { key: 'female', name: 'Nữ', count: 3 },
-    { key: 'accessory', name: 'Phụ kiện', count: 2 },
-];
+import productService from '../services/productService';
+import categoryService from '../services/categoryService';
 
 function Products() {
-    // 🔥 Dùng setSearchParams
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // 🔥 Đóng mở Filter ở mobile
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [products, setProducts] = useState([]);
+    const [categoriesFromApi, setCategoriesFromApi] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // 🔥 Đọc toàn bộ từ URL
     const keyword = searchParams.get('keyword') || '';
     const category = searchParams.get('category') || 'all';
     const sort = searchParams.get('sort') || 'popular';
     const viewMode = searchParams.get('viewmode') || 'grid';
-    const currentPage = parseInt(searchParams.get('page')) || 1;
+    const currentPage = parseInt(searchParams.get('page') || '1', 10);
 
-    // 🔥 Filter theo URL
-    const filteredProducts = mockProducts.filter((product) => {
-        const matchCategory = category === 'all' || product.category === category;
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
 
-        const matchSearch = !keyword || product.name.toLowerCase().includes(keyword.toLowerCase());
+                const [productData, categoryData] = await Promise.all([
+                    productService.getProducts(),
+                    categoryService.getCategories(),
+                ]);
 
-        return matchCategory && matchSearch;
-    });
+                setProducts(Array.isArray(productData) ? productData : productData?.data || []);
+                setCategoriesFromApi(Array.isArray(categoryData) ? categoryData : categoryData?.data || []);
+            } catch (error) {
+                console.error('Lỗi tải danh sách sản phẩm:', error);
+                setProducts([]);
+                setCategoriesFromApi([]);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    // 🔥 Sort theo URL
-    let sortedProducts = [...filteredProducts];
+        fetchData();
+    }, []);
 
-    if (sort === 'price_asc') {
-        sortedProducts.sort((a, b) => a.price - b.price);
-    } else if (sort === 'price_desc') {
-        sortedProducts.sort((a, b) => b.price - a.price);
-    } else if (sort === 'rating') {
-        sortedProducts.sort((a, b) => b.rating - a.rating);
-    } else if (sort === 'popular') {
-        sortedProducts.sort((a, b) => b.reviews - a.reviews);
-    }
+    const categories = useMemo(() => {
+        const dynamicCategories = categoriesFromApi.map((cat) => ({
+            key: cat.slug,
+            name: cat.name,
+            count: products.filter((product) => product.category?.slug === cat.slug).length,
+        }));
 
-    // 🔥 Pagination theo URL
+        return [{ key: 'all', name: 'Tất cả', count: products.length }, ...dynamicCategories];
+    }, [categoriesFromApi, products]);
+
+    const filteredProducts = useMemo(() => {
+        return products.filter((product) => {
+            const matchCategory = category === 'all' || product.category?.slug === category;
+
+            const matchSearch = !keyword || (product.name || '').toLowerCase().includes(keyword.toLowerCase());
+
+            return matchCategory && matchSearch;
+        });
+    }, [products, category, keyword]);
+
+    const sortedProducts = useMemo(() => {
+        const cloned = [...filteredProducts];
+
+        if (sort === 'price_asc') {
+            cloned.sort((a, b) => {
+                const aPrice = Number(a.variants?.[0]?.price || 0);
+                const bPrice = Number(b.variants?.[0]?.price || 0);
+                return aPrice - bPrice;
+            });
+        } else if (sort === 'price_desc') {
+            cloned.sort((a, b) => {
+                const aPrice = Number(a.variants?.[0]?.price || 0);
+                const bPrice = Number(b.variants?.[0]?.price || 0);
+                return bPrice - aPrice;
+            });
+        } else if (sort === 'rating') {
+            cloned.sort((a, b) => Number(b.avg_rating || 0) - Number(a.avg_rating || 0));
+        } else if (sort === 'popular') {
+            cloned.sort((a, b) => Number(b.review_count || 0) - Number(a.review_count || 0));
+        }
+
+        return cloned;
+    }, [filteredProducts, sort]);
+
     const itemsPerPage = 9;
     const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    const safeCurrentPage = Math.min(Math.max(currentPage, 1), Math.max(totalPages, 1));
+    const startIndex = (safeCurrentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const displayedProducts = sortedProducts.slice(startIndex, endIndex);
 
-    // 🔥 Update URL helper
     const updateURL = (key, value) => {
         const params = new URLSearchParams(searchParams);
 
@@ -65,8 +105,7 @@ function Products() {
             params.set(key, value);
         }
 
-        params.set('page', 1); // reset page khi filter đổi
-
+        params.set('page', '1');
         setSearchParams(params);
     };
 
@@ -74,8 +113,8 @@ function Products() {
         updateURL('category', newCategory);
     };
 
-    const handleViewMode = (newCategory) => {
-        updateURL('viewmode', newCategory);
+    const handleViewMode = (newViewMode) => {
+        updateURL('viewmode', newViewMode);
     };
 
     const handleSortChange = (newSort) => {
@@ -84,7 +123,7 @@ function Products() {
 
     const handlePageChange = (page) => {
         const params = new URLSearchParams(searchParams);
-        params.set('page', page);
+        params.set('page', String(page));
         setSearchParams(params);
     };
 
@@ -94,7 +133,7 @@ function Products() {
 
     return (
         <main className="bg-page px-4 sm:px-6 lg:px-8">
-            <Breadcrumb items={['Trang chủ', 'Sản phẩm']} to={['/', 'sanpham']} />
+            <Breadcrumb items={['Trang chủ', 'Sản phẩm']} to={['/', '/sanpham']} />
 
             <div className="max-w-7xl mx-auto pb-12 mt-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -133,15 +172,16 @@ function Products() {
 
                     {/* PRODUCT LIST */}
                     <div className="md:col-span-3">
-                        {/* TOOLBAR */}
                         <div className="card p-2 md:mb-6 flex items-center justify-between gap-4 flex-wrap sticky top-0 z-30 bg-page">
                             <span className="text-sm text-muted">
                                 Hiển thị{' '}
                                 <span className="font-semibold text-title">
-                                    {startIndex + 1}-{Math.min(endIndex, sortedProducts.length)}
+                                    {sortedProducts.length === 0 ? 0 : startIndex + 1}-
+                                    {Math.min(endIndex, sortedProducts.length)}
                                 </span>{' '}
                                 của <span className="font-semibold text-title">{sortedProducts.length}</span> sản phẩm
                             </span>
+
                             <button
                                 onClick={() => setIsFilterOpen(true)}
                                 className="md:hidden btn-secondary flex items-center gap-2"
@@ -154,7 +194,7 @@ function Products() {
                                 <div className="flex gap-2 items-center">
                                     <label className="hidden sm:block text-sm font-medium text-body">Sắp xếp:</label>
                                     <select
-                                        value={sort} // 🔥 CHANGED
+                                        value={sort}
                                         onChange={(e) => handleSortChange(e.target.value)}
                                         className="input-base text-sm"
                                     >
@@ -164,7 +204,7 @@ function Products() {
                                         <option value="rating">Đánh giá tốt nhất</option>
                                     </select>
                                 </div>
-                                {/* VIEW MODE */}
+
                                 <div className="flex gap-1">
                                     <button
                                         onClick={() => handleViewMode('grid')}
@@ -187,12 +227,11 @@ function Products() {
                                 <button
                                     key={cat.key}
                                     onClick={() => handleCategoryChange(cat.key)}
-                                    className={`px-3 py-1 rounded text-sm whitespace-nowrap
-                                        ${
-                                            category === cat.key
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-200 dark:bg-gray-700 text-body'
-                                        }`}
+                                    className={`px-3 py-1 rounded text-sm whitespace-nowrap ${
+                                        category === cat.key
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-body'
+                                    }`}
                                 >
                                     {cat.name}
                                 </button>
@@ -206,7 +245,11 @@ function Products() {
                             </div>
                         )}
 
-                        {displayedProducts.length > 0 ? (
+                        {loading ? (
+                            <div className="text-center py-12">
+                                <p className="text-muted text-lg">Đang tải sản phẩm...</p>
+                            </div>
+                        ) : displayedProducts.length > 0 ? (
                             <div
                                 className={viewMode === 'grid' ? 'grid grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}
                             >
@@ -220,7 +263,6 @@ function Products() {
                             </div>
                         )}
 
-                        {/* PAGINATION */}
                         {totalPages > 1 && (
                             <div className="flex justify-center items-center gap-2 mt-8">
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -228,7 +270,7 @@ function Products() {
                                         key={page}
                                         onClick={() => handlePageChange(page)}
                                         className={`w-10 h-10 rounded-lg transition-colors ${
-                                            page === currentPage ? 'btn-toggle btn-toggle-active' : 'btn-secondary'
+                                            page === safeCurrentPage ? 'btn-toggle btn-toggle-active' : 'btn-secondary'
                                         }`}
                                     >
                                         {page}
@@ -242,12 +284,9 @@ function Products() {
 
             {isFilterOpen && (
                 <div className="fixed inset-0 z-50 flex">
-                    {/* overlay */}
                     <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)} />
 
-                    {/* panel */}
                     <div className="w-80 max-w-full h-full bg-surface shadow-2xl animate-slide-in flex flex-col">
-                        {/* HEADER */}
                         <div className="sticky top-0 z-10 bg-surface border-b border-default px-5 py-4 flex items-center justify-between">
                             <h3 className="font-semibold text-lg text-title">Bộ lọc</h3>
                             <button
@@ -258,9 +297,7 @@ function Products() {
                             </button>
                         </div>
 
-                        {/* BODY */}
                         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-                            {/* CATEGORY */}
                             <div>
                                 <h4 className="text-sm font-semibold text-title mb-3">Danh mục</h4>
 
@@ -268,18 +305,17 @@ function Products() {
                                     {categories.map((cat) => (
                                         <label
                                             key={cat.key}
-                                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition
-                                    ${
-                                        category === cat.key
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-500'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent'
-                                    }`}
+                                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+                                                category === cat.key
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-500'
+                                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent'
+                                            }`}
                                         >
                                             <div className="flex items-center gap-3">
-                                                {/* custom radio */}
                                                 <div
-                                                    className={`w-4 h-4 rounded-full border flex items-center justify-center
-                                            ${category === cat.key ? 'border-blue-600' : 'border-gray-400'}`}
+                                                    className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                                        category === cat.key ? 'border-blue-600' : 'border-gray-400'
+                                                    }`}
                                                 >
                                                     {category === cat.key && (
                                                         <div className="w-2 h-2 bg-blue-600 rounded-full" />
@@ -303,7 +339,6 @@ function Products() {
                             </div>
                         </div>
 
-                        {/* FOOTER */}
                         <div className="border-t border-default p-4 space-y-3">
                             <button
                                 onClick={() => {

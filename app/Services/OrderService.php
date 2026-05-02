@@ -53,6 +53,8 @@ class OrderService
                 'order_code' => 'ORD-' . strtoupper(Str::random(8)),
             ]);
 
+            
+
             // 📦 3. TẠO ORDER ITEMS
             foreach ($cart->items as $item) {
 
@@ -181,30 +183,48 @@ class OrderService
         });
     }
 
+    // public function confirmOrder($order, $userId)
+    // {
+    //     // ❌ không phải chủ đơn
+    //     if ($order->user_id !== $userId) {
+    //         throw new \Exception('Không có quyền');
+    //     }
+
+    //     // ❌ sai trạng thái
+    //     if ($order->status !== 'shipped') {
+    //         throw new \Exception('Chỉ được xác nhận khi đơn đang giao');
+    //     }
+
+    //     return DB::transaction(function () use ($order) {
+
+    //         // 🔥 finalize stock (CHUẨN SHOPEE)
+    //         foreach ($order->items as $item) {
+
+    //             $variant = $item->productVariant;
+
+    //             $variant->decrement('stock', $item->quantity);
+    //             $variant->decrement('reserved_stock', $item->quantity);
+    //             $variant->increment('sold_stock', $item->quantity);
+    //         }
+
+    //         $order->update([
+    //             'status' => 'completed'
+    //         ]);
+
+    //         return $order->fresh('items.productVariant');
+    //     });
+    // }
     public function confirmOrder($order, $userId)
     {
-        // ❌ không phải chủ đơn
         if ($order->user_id !== $userId) {
             throw new \Exception('Không có quyền');
         }
 
-        // ❌ sai trạng thái
         if ($order->status !== 'shipped') {
             throw new \Exception('Chỉ được xác nhận khi đơn đang giao');
         }
 
         return DB::transaction(function () use ($order) {
-
-            // 🔥 finalize stock (CHUẨN SHOPEE)
-            foreach ($order->items as $item) {
-
-                $variant = $item->productVariant;
-
-                $variant->decrement('stock', $item->quantity);
-                $variant->decrement('reserved_stock', $item->quantity);
-                $variant->increment('sold_stock', $item->quantity);
-            }
-
             $order->update([
                 'status' => 'completed'
             ]);

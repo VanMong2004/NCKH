@@ -67,7 +67,7 @@ class CartService
         }
 
         // 6. Return cart mới nhất
-        return $cart->load('items.productVariant');
+        return $cart->load('items.productVariant.product.images');
     }
 
     public function updateItem($userId, $itemId, $quantity)
@@ -86,7 +86,7 @@ class CartService
         if ($quantity <= 0) {
             $item->delete();
 
-            return $cart->load('items.productVariant');
+            return $cart->load('items.productVariant.product.images');
         }
 
         // Check stock
@@ -105,7 +105,7 @@ class CartService
             'quantity' => $quantity
         ]);
 
-        return $cart->load('items.productVariant');
+        return $cart->load('items.productVariant.product.images');
     }
 
     public function removeItem($userId, $itemId)
@@ -122,7 +122,7 @@ class CartService
 
         $item->delete();
 
-        return $cart->load('items.productVariant');
+        return $cart->load('items.productVariant.product.images');
     }
 
     public function calculateCart($cart)

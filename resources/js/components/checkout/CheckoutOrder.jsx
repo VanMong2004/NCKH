@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Lock, Loader2, Check, ArrowRight, Home } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
 import orderService from '../../services/orderService';
+import paymentService from '../../services/paymentService';
 
 function CheckoutOrder({ items, onValidateForm, checkoutData }) {
     const { clearCart } = useCart();
+    const navigate = useNavigate();
+
     const [createdOrderId, setCreatedOrderId] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -16,46 +19,55 @@ function CheckoutOrder({ items, onValidateForm, checkoutData }) {
     const total = subtotal + shippingCost;
 
     const handlePayment = async () => {
-        // if (!items || items.length === 0) {
-        //     toast.error('Giỏ hàng trống');
-        //     return;
-        // }
+        if (!items || items.length === 0) {
+            toast.error('Giỏ hàng trống');
+            return;
+        }
+
         if (onValidateForm && !onValidateForm()) return;
 
         setIsLoading(true);
-        try {
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            const newOrder = await orderService.createOrder({
-                items,
-                subtotal,
-                shippingFee: shippingCost,
-                totalAmount: total,
-                shippingAddress: {
-                    name: checkoutData?.fullName || 'Chưa cập nhật',
-                    phone: checkoutData?.phone || 'Chưa cập nhật',
-                    address: checkoutData?.address || 'Chưa cập nhật',
-                },
 
-                paymentMethod: {
-                    method: paymentMethod === 'cash' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản ngân hàng',
-                    status: paymentMethod === 'cash' ? 'Chưa thanh toán' : 'Đã thanh toán',
-                },
+        try {
+            const newOrder = await orderService.checkout({
+                shipping_name: checkoutData?.fullName || '',
+                shipping_phone: checkoutData?.phone || '',
+                shipping_address: checkoutData?.address || '',
+                payment_method: checkoutData?.paymentMethod || 'cod',
             });
-            setCreatedOrderId(newOrder.id);
-            toast.success('Đặt hàng thành công!');
-            await clearCart();
-            setIsSuccess(true);
-        } catch {
+
+            const orderId = newOrder?.data?.id || newOrder?.order?.id || newOrder?.id;
+
+            if (!orderId) {
+                throw new Error('Không lấy được mã đơn hàng');
+            }
+
+            setCreatedOrderId(orderId);
+
+            if (checkoutData?.paymentMethod === 'cod') {
+                toast.success('Đặt hàng thành công!');
+                setIsSuccess(true);
+                return;
+            }
+
+            const paymentResult = await paymentService.pay(orderId);
+
+            if (paymentResult?.status === 'success') {
+                toast.success(paymentResult?.message || 'Thanh toán thành công!');
+                await clearCart();
+                setIsSuccess(true);
+            } else {
+                toast.error(paymentResult?.message || 'Thanh toán thất bại');
+                navigate(`/donhang/${orderId}`);
+            }
+        } catch (error) {
             console.error(error);
-            toast.error('Có lỗi khi tạo đơn hàng');
+            toast.error(error?.response?.data?.message || error?.message || 'Có lỗi khi tạo đơn hàng');
         } finally {
             setIsLoading(false);
         }
     };
 
-    /* =========================
-       SUCCESS SCREEN
-    ========================= */
     if (isSuccess) {
         return (
             <div className="sticky top-20">
@@ -72,7 +84,7 @@ function CheckoutOrder({ items, onValidateForm, checkoutData }) {
 
                     <div className="space-y-3">
                         <Link
-                            to="/taikhoan?tab=donhang"
+                            to={`/donhang/${createdOrderId}`}
                             className="btn-primary w-full flex items-center justify-center gap-2"
                         >
                             Xem đơn hàng <ArrowRight className="w-4 h-4" />
@@ -87,26 +99,24 @@ function CheckoutOrder({ items, onValidateForm, checkoutData }) {
         );
     }
 
-    /* =========================
-       CHECKOUT SCREEN
-    ========================= */
     return (
         <div className="sticky top-20 space-y-4">
             <div className="card p-6 space-y-4">
                 <h2 className="text-lg font-bold text-title">Chi tiết thanh toán</h2>
 
-                {/* DANH SÁCH SẢN PHẨM */}
                 <div className="space-y-4 max-h-64 overflow-y-auto border-default p-2 rounded-lg">
                     {items.map((item) => (
-                        <div key={`${item.id}-${item.size}`} className="flex gap-3">
+                        <div key={item.cartItemId} className="flex gap-3">
                             <img
-                                src={item.image}
+                                src={item.image || '/images/placeholder-product.jpg'}
                                 alt={item.name}
                                 className="w-16 h-16 object-cover rounded border-default"
                             />
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-title">{item.name}</p>
-                                <p className="text-xs text-muted">Size: {item.size}</p>
+                                <p className="text-xs text-muted">
+                                    {item.size ? `Size: ${item.size}` : ''} {item.color ? `- Màu: ${item.color}` : ''}
+                                </p>
                             </div>
                             <div className="text-sm text-right">
                                 <div className="font-medium text-title">{item.price.toLocaleString('vi-VN')}₫</div>
@@ -116,7 +126,6 @@ function CheckoutOrder({ items, onValidateForm, checkoutData }) {
                     ))}
                 </div>
 
-                {/* CHI TIẾT GIÁ */}
                 <div className="space-y-2 text-sm text-body">
                     <div className="flex justify-between">
                         <span>Tạm tính</span>
@@ -129,17 +138,17 @@ function CheckoutOrder({ items, onValidateForm, checkoutData }) {
                     </div>
                 </div>
 
-                {/* TỔNG CỘNG */}
                 <div className="pt-4 flex justify-between font-bold text-title">
                     <span>Tổng thanh toán</span>
                     <span className="text-blue-600">{total.toLocaleString('vi-VN')}₫</span>
                 </div>
 
-                {/* NÚT THANH TOÁN */}
                 <button
                     onClick={handlePayment}
                     disabled={isLoading || items.length === 0}
-                    className={`btn-primary w-full py-3.5 flex justify-center gap-2 ${isLoading || items.length === 0 ? 'btn-loading' : ''}`}
+                    className={`btn-primary w-full py-3.5 flex justify-center gap-2 ${
+                        isLoading || items.length === 0 ? 'btn-loading' : ''
+                    }`}
                 >
                     {isLoading ? (
                         <>
@@ -150,7 +159,6 @@ function CheckoutOrder({ items, onValidateForm, checkoutData }) {
                     )}
                 </button>
 
-                {/* BẢO MẬT */}
                 <div className="flex justify-center gap-2 text-xs text-muted">
                     <Lock className="w-3 h-3" /> Bảo mật SSL 256-bit
                 </div>

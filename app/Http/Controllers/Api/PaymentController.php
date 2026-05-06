@@ -4,9 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Services\PaymentService;
-use App\Services\OrderService;
 use App\Models\Order;
+use App\Services\PaymentService;
 
 class PaymentController extends Controller
 {
@@ -17,44 +16,26 @@ class PaymentController extends Controller
         $this->paymentService = $paymentService;
     }
 
-    public function pay(Request $request, $orderId)
+    public function pay(Request $request, $id)
     {
-        try {
-            $result = $this->paymentService->pay($request->user()->id, $orderId); // Mộng sửa lại chỗ này, cho biết user nào pay cho orderId nào
+        $request->validate([
+            'method' => 'required|in:vnpay,mock'
+        ]);
 
-            return response()->json($result);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 400);
-        }
+        $order = Order::findOrFail($id);
+
+        $result = $this->paymentService->pay($order, $request->method);
+
+        return response()->json([
+            'message' => 'Tạo payment thành công',
+            'data' => $result
+        ]);
     }
 
     public function callback(Request $request)
     {
-        try {
-            $orderCode = $request->order_code;
-            $status = $request->status; // success | failed
+        $result = $this->paymentService->handleCallback($request->all());
 
-            $order = Order::where('order_code', $orderCode)->firstOrFail();
-
-            if ($order->status !== 'pending') {
-                throw new \Exception('Order đã được xử lý');
-            }
-
-            if ($status === 'success') {
-                app(OrderService::class)->finalizeOrder($order->id);
-            } else {
-                app(OrderService::class)->cancelOrder($order->id);
-            }
-
-            return response()->json([
-                'message' => 'Callback processed'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 400);
-        }
+        return response()->json($result);
     }
 }

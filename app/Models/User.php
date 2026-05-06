@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\Order;
@@ -25,7 +26,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role', // 🔥 FIX
         'avatar',
     ];
 
@@ -67,5 +68,11 @@ class User extends Authenticatable
     public function reviews()
     {
         return $this->hasMany(Review::class);
+    }
+
+    //helpers
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
     }
 }

@@ -5,94 +5,109 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+use App\Services\Gateways\MockPaymentGatewayService;
+use App\Services\Gateways\VNPayService;
+use App\Events\OrderPaid;
 
 class PaymentService
 {
-    protected $orderService;
+    protected $mockGateway;
+    protected $vnpayGateway;
 
-    public function __construct(OrderService $orderService)
-    {
-        $this->orderService = $orderService;
+    public function __construct(
+        MockPaymentGatewayService $mockGateway,
+        VNPayService $vnpayGateway
+    ) {
+        $this->mockGateway = $mockGateway;
+        $this->vnpayGateway = $vnpayGateway;
     }
 
-    // 🎯 giả lập thanh toán
-    public function pay($userId, $orderId)  // Mộng thêm userId ở đây
+    /**
+     * Create payment
+     */
+    public function pay(Order $order, string $method)
     {
-        $order = Order::with('items.productVariant')
-            ->where('id', $orderId)             // Mộng thêm 2 điều kiện where
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        return DB::transaction(function () use ($order, $method) {
 
-        if ($order->status !== 'pending') {
-            throw new \Exception('Order không hợp lệ');
-        }
+            $order = Order::lockForUpdate()->find($order->id);
 
-        $payment = Payment::create([
-            'order_id' => $order->id,
-            'method' => $order->payment_method ?? 'unknown',
-            'status' => 'pending',
-            'transaction_id' => uniqid('PAY_'),
-            'response_data' => null,
-        ]);
-
-        // 🔥 giả lập random success / fail
-        $success = rand(0, 1);
-
-        if ($success) {
-            return $this->handleSuccess($order, $payment);
-        }
-
-        return $this->handleFail($order, $payment);
-    }
-
-    // ✅ SUCCESS
-    protected function handleSuccess($order, $payment)
-    {
-        return DB::transaction(function () use ($order, $payment) {
-            $this->orderService->finalizeOrder($order->id);
-
-            $payment->update([
-                'status' => 'success',
-                'response_data' => [
-                    'message' => 'Thanh toán thành công'
-                ]
-            ]);
-
-            return [
-                'status' => 'success',
-                'message' => 'Thanh toán thành công'
-            ];
-        });
-    }
-
-    // ❌ FAIL → release stock
-    protected function handleFail($order, $payment)
-    {
-        return DB::transaction(function () use ($order, $payment) {
-            $order->load('items.productVariant');
-
-            foreach ($order->items as $item) {
-                $variant = $item->productVariant;
-
-                // 🔥 trả lại reserved
-                $variant->decrement('reserved_stock', $item->quantity);
+            if (!$order) {
+                throw new \Exception('Order không tồn tại');
             }
 
-            $order->update([
-                'status' => 'cancelled'
+            if ($order->status !== 'pending') {
+                throw new \Exception('Order không hợp lệ để thanh toán');
+            }
+
+            // ❗ đã có payment success
+            if ($order->payments()->where('status', 'success')->exists()) {
+                throw new \Exception('Order đã được thanh toán');
+            }
+
+            $latestPayment = $order->payments()
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
+
+            if ($latestPayment) {
+                throw new \Exception('Đơn hàng đang có payment đang xử lý');
+            }
+
+            // 🔥 check pending
+            $pendingPayment = $order->payments()
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
+
+            if ($pendingPayment) {
+                return $this->resolveGateway($pendingPayment);
+            }
+
+            // 🔥 create mới
+            $payment = Payment::create([
+                'order_id' => $order->id,
+                'method' => $method,
+                'status' => 'pending',
+                'amount' => $order->total,
+                'transaction_id' => Str::uuid(),
             ]);
 
-            $payment->update([
-                'status' => 'failed',
-                'response_data' => [
-                    'message' => 'Thanh toán thất bại'
-                ]
-            ]);
-
-            return [
-                'status' => 'fail',
-                'message' => 'Thanh toán thất bại'
-            ];
+            return $this->resolveGateway($payment);
         });
+    }
+
+    protected function resolveGateway($payment)
+    {
+        switch ($payment->method) {
+            case 'mock':
+                return $this->mockGateway->create($payment);
+
+            case 'vnpay':
+                return $this->vnpayGateway->create($payment);
+
+            default:
+                throw new \Exception('Payment method không hỗ trợ');
+        }
+    }
+
+    /**
+     * Handle callback
+     */
+    public function handleCallback(array $data)
+    {
+        $method = $data['method'] ?? 'mock';
+
+        switch ($method) {
+            case 'mock':
+                return $this->mockGateway->callback($data);
+
+            case 'vnpay':
+                return $this->vnpayGateway->callback($data);
+
+            default:
+                throw new \Exception('Callback không hợp lệ');
+        }
     }
 }

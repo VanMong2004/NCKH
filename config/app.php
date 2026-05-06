@@ -185,4 +185,5 @@ return [
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
 
+    'order_auto_cancel_minutes' => env('ORDER_AUTO_CANCEL_MINUTES', 15),
 ];

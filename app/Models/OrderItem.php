@@ -14,10 +14,16 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_variant_id',
-        'price',
-        'quantity',
+        'campaign_item_id',
         'product_name',
         'variant_snapshot',
+        'price',
+        'quantity',
+    ];
+
+    protected $casts = [
+        'price' => 'float',
+        'quantity' => 'integer',
     ];
 
     // ========================
@@ -31,6 +37,11 @@ class OrderItem extends Model
 
     public function productVariant()
     {
-        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+        return $this->belongsTo(ProductVariant::class);
+    }
+
+    public function campaignItem()
+    {
+        return $this->belongsTo(CampaignItem::class);
     }
 }

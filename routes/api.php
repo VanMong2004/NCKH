@@ -1,89 +1,153 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
+// =============================
+// CONTROLLERS
+// =============================
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\RevenueController;
-use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CategoryController;
 
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminRevenueController;
 
 
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
-
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
-
-// Route::middleware(['auth:sanctum', 'admin'])
-//     ->patch('/admin/orders/{id}/status', [OrderController::class, 'updateStatus']);
+// =============================
+// PUBLIC ROUTES
+// =============================
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
 });
 
-Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{id}', [ProductController::class, 'show']);
-Route::get('/categories', [CategoryController::class, 'index']);
-
-Route::middleware(['auth:sanctum', 'admin'])->group(function () {
-    Route::patch('/admin/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
-    
-    Route::get('/admin/orders', [AdminOrderController::class, 'adminOrders']);
-    Route::get('/admin/orders/{id}', [AdminOrderController::class, 'adminShow']);
-    
-    Route::get('/admin/revenue/overview', [AdminRevenueController::class, 'overview']);
-    Route::get('/admin/revenue/daily', [AdminRevenueController::class, 'daily']);
-    Route::get('/admin/revenue/products', [AdminRevenueController::class, 'byProduct']);
-    Route::get('/admin/revenue/chart', [AdminRevenueController::class, 'chart']);
-    Route::get('/admin/revenue/top-products', [AdminRevenueController::class, 'topProducts']);
-
+// =============================
+// PRODUCTS (PUBLIC)
+// =============================
+Route::prefix('products')->group(function () {
+    Route::get('/', [ProductController::class, 'index']);
+    Route::get('/{id}', [ProductController::class, 'show']);
+    Route::get('/{id}/variants', [ProductController::class, 'variants']);
+    Route::get('/{id}/reviews', [ProductController::class, 'reviews']);
 });
 
+// =============================
+// CATEGORIES (PUBLIC)
+// =============================
+Route::prefix('categories')->group(function () {
+    Route::get('/', [CategoryController::class, 'index']);
+});
 
+// =============================
+// CAMPAIGNS (PUBLIC VIEW)
+// =============================
+Route::prefix('campaigns')->group(function () {
+    Route::get('/', [CampaignController::class, 'index']);
+    Route::get('/{id}', [CampaignController::class, 'show']);
+    Route::get('/{id}/items', [CampaignController::class, 'items']);
+});
 
+// =============================
+// AUTHENTICATED USER
+// =============================
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'me']);
 
+    // Route::get('/test-queue', function () {
+    //     dispatch(function () {
+    //         Log::info('DELAY WORKS - ' . now());
+    //     })->delay(now()->addSeconds(10));
+
+    //     return response()->json([
+    //         'message' => 'Job đã được dispatch, chờ 10s...'
+    //     ]);
+    // });
+
+    // 🔐 AUTH
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [AuthController::class, 'update']);
+    Route::post('/refresh-token', [AuthController::class, 'refresh']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // =============================
+    // CART
+    // =============================
     Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']);
         Route::post('/add', [CartController::class, 'add']);
-        Route::post('/update', [CartController::class, 'update']);
+        Route::put('/update', [CartController::class, 'update']); 
         Route::delete('/remove', [CartController::class, 'remove']);
+        Route::get('/count', [CartController::class, 'count']);
     });
+
+    // =============================
+    // ORDERS (NORMAL)
+    // =============================
     Route::post('/checkout', [OrderController::class, 'checkout']);
-    Route::post('/orders/{id}/finalize', [OrderController::class, 'finalize']);
 
-    Route::post('/orders/{id}/pay', [PaymentController::class, 'pay']);
+    Route::prefix('orders')->group(function () {
+        Route::get('/', [OrderController::class, 'myOrders']);
+        Route::get('/{id}', [OrderController::class, 'show']);
+
+        Route::post('/{id}/cancel', [OrderController::class, 'cancel']);
+        Route::post('/{id}/confirm', [OrderController::class, 'confirm']);
+
+        // 🔥 PAYMENT (moved here)
+        Route::post('/{id}/pay', [PaymentController::class, 'pay']);
+        Route::get('/{id}/payments', [PaymentController::class, 'list']);
+    });
+
+    // =============================
+    // CAMPAIGN CHECKOUT
+    // =============================
+    Route::post('/campaign/checkout', [CampaignController::class, 'checkout']);
+
+    // =============================
+    // PAYMENT CALLBACK
+    // =============================
     Route::get('/payment/callback', [PaymentController::class, 'callback']);
-    // Route::post('/payment/callback', [PaymentController::class, 'callback']);
-    
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
-    Route::post('/orders/{id}/confirm', [OrderController::class, 'confirm']);
 
-    Route::get('/orders', [OrderController::class, 'myOrders']);
-    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    // =============================
+    // REVIEW
+    // =============================
+    Route::post('/reviews', [ReviewController::class, 'store']);
 
+    // =============================
+    // USER ANALYTICS
+    // =============================
     Route::get('/analytics', [RevenueController::class, 'userAnalytics']);
+});
 
 
+// =============================
+// ADMIN
+// =============================
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    // =============================
+    // ADMIN ORDERS
+    // =============================
+    Route::prefix('admin/orders')->group(function () {
+        Route::get('/', [AdminOrderController::class, 'index']);
+        Route::get('/{id}', [AdminOrderController::class, 'show']);
+        Route::patch('/{id}/status', [AdminOrderController::class, 'updateStatus']);
+    });
 
+    // =============================
+    // ADMIN REVENUE
+    // =============================
+    Route::prefix('admin/revenue')->group(function () {
+        Route::get('/overview', [AdminRevenueController::class, 'overview']);
+        Route::get('/daily', [AdminRevenueController::class, 'daily']);
+        Route::get('/products', [AdminRevenueController::class, 'byProduct']);
+        Route::get('/chart', [AdminRevenueController::class, 'chart']);
+        Route::get('/top-products', [AdminRevenueController::class, 'topProducts']);
+    });
 });
 

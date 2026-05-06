@@ -2,234 +2,115 @@
 
 namespace App\Services;
 
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Exception;
+use App\Jobs\CancelPendingOrderJob;
 
 class OrderService
 {
-    public function checkout($userId, $cart, $data)
+    // =========================
+    // CHECKOUT
+    // =========================
+    public function checkout($user, $data)
     {
-        if ($cart->items->isEmpty()) {
-            throw new \Exception('Giỏ hàng trống');
-        }
+        $order = DB::transaction(function () use ($user, $data) {
 
-        return DB::transaction(function () use ($userId, $cart, $data) {
+            $cart = Cart::with('items.productVariant.product')
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->firstOrFail();
+
+            if ($cart->items->isEmpty()) {
+                throw new Exception('Giỏ hàng trống');
+            }
+
+            foreach ($cart->items as $item) {
+                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
+
+                $available = $variant->stock - $variant->reserved_stock;
+
+                if ($available < $item->quantity) {
+                    throw new Exception("Sản phẩm {$variant->product->name} không đủ hàng");
+                }
+            }
+
+            // 🔥 tạo order
+            $order = Order::create([
+                'user_id' => $user->id,
+                'type' => 'normal',
+                'order_code' => $this->generateOrderCode(),
+                'status' => 'pending',
+                'total' => 0,
+                'shipping_fee' => 0,
+                'shipping_name' => $data['shipping_name'],
+                'shipping_phone' => $data['shipping_phone'],
+                'shipping_address' => $data['shipping_address'],
+            ]);
+
+            event(new \App\Events\OrderCreated($order));
 
             $total = 0;
 
-            // 🔥 1. CHECK + LOCK STOCK
             foreach ($cart->items as $item) {
 
                 $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
 
-                if (!$variant) {
-                    throw new \Exception('Sản phẩm không tồn tại');
-                }
-
-                $available = $variant->stock - $variant->reserved_stock;
-
-                if ($item->quantity > $available) {
-                    throw new \Exception("Sản phẩm {$variant->sku} chỉ còn {$available}");
-                }
-
-                // 🔒 giữ hàng (anti oversell)
                 $variant->increment('reserved_stock', $item->quantity);
 
-                $total += $item->quantity * $variant->price;
-            }
-
-            // 🧾 2. TẠO ORDER
-            $order = Order::create([
-                'user_id' => $userId,
-                'shipping_name' => $data['shipping_name'],
-                'shipping_phone' => $data['shipping_phone'],
-                'shipping_address' => $data['shipping_address'],
-                'total' => 0, // update sau
-                'shipping_fee' => 0,
-                'status' => 'pending',
-                'order_code' => 'ORD-' . strtoupper(Str::random(8)),
-            ]);
-
-            
-
-            // 📦 3. TẠO ORDER ITEMS
-            foreach ($cart->items as $item) {
-
-                $variant = ProductVariant::find($item->product_variant_id);
+                $price = $variant->price;
+                $lineTotal = $price * $item->quantity;
 
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_variant_id' => $variant->id,
-                    'price' => $variant->price,
+                    'price' => $price,
                     'quantity' => $item->quantity,
-                    'product_name' => $variant->product->name ?? null,
-                    'variant_snapshot' => $variant->size . '-' . $variant->color,
+                    'product_name' => $variant->product->name,
+                    'variant_snapshot' => "Size: {$variant->size}, Color: {$variant->color}",
                 ]);
+
+                $total += $lineTotal;
             }
 
-            // 💰 4. UPDATE TOTAL
             $order->update([
                 'total' => $total
             ]);
 
-            // 🧹 5. CLEAR CART (quan trọng)
-            $cart->items()->delete();
-
-            return $order->load('items.productVariant');
-        });
-    }
-
-    public function finalizeOrder($orderId)
-    {
-        return DB::transaction(function () use ($orderId) {
-
-            $order = Order::with('items.productVariant')->findOrFail($orderId);
-
-            if ($order->status !== 'pending') {
-                throw new \Exception('Order không hợp lệ');
-            }
-
-            foreach ($order->items as $item) {
-
-                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
-
-                if (!$variant) {
-                    throw new \Exception('Variant không tồn tại');
-                }
-
-                // 🔥 TRỪ STOCK THẬT
-                $variant->decrement('stock', $item->quantity);
-
-                // 🔥 GIẢM RESERVED
-                $variant->decrement('reserved_stock', $item->quantity);
-
-                // 🔥 TĂNG SOLD
-                $variant->increment('sold_stock', $item->quantity);
-            }
-
-            // ✅ update order status
-            $order->update([
-                'status' => 'paid'
+            $cart->update([
+                'status' => 'checked_out'
             ]);
 
             return $order;
         });
-    }
 
-    public function cancelOrder($order)
-    {
-        if ($order->status !== 'pending') {
-            throw new \Exception('Chỉ được huỷ đơn khi đang chờ thanh toán');
-        }
+        CancelPendingOrderJob::dispatch($order->id)
+            ->delay(now()->addMinutes(config('app.order_auto_cancel_minutes')));
 
-        return DB::transaction(function () use ($order) {
-
-            // 🔥 rollback reserved stock
-            foreach ($order->items as $item) {
-
-                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
-
-                // trả lại stock đã giữ
-                $variant->decrement('reserved_stock', $item->quantity);
-            }
-
-            // ❌ update status
-            $order->update([
-                'status' => 'cancelled'
-            ]);
-
-            return $order->fresh('items.productVariant');
-        });
-    }
-
-    public function updateStatus($order, $newStatus)
-    {
-        $allowed = [
-            'paid' => ['processing'],
-            'processing' => ['shipped'],
-            'shipped' => ['completed']
+        return [
+            'success' => true,
+            'message' => 'Đặt hàng thành công',
+            'data' => [
+                'order_id' => $order->id,
+                'order_code' => $order->order_code,
+                'total' => $order->total
+            ]
         ];
-
-        if (!isset($allowed[$order->status])) {
-            throw new \Exception('Không thể cập nhật trạng thái đơn này');
-        }
-
-        if (!in_array($newStatus, $allowed[$order->status])) {
-            throw new \Exception("Không thể chuyển từ {$order->status} sang {$newStatus}");
-        }
-
-        return DB::transaction(function () use ($order, $newStatus) {
-
-            // 🔥 FINAL STEP: completed → chốt stock
-            // if ($newStatus === 'completed') {
-            //     foreach ($order->items as $item) {
-
-            //         $variant = $item->productVariant;
-
-            //         $variant->decrement('stock', $item->quantity);
-            //         $variant->decrement('reserved_stock', $item->quantity);
-            //         $variant->increment('sold_stock', $item->quantity);
-            //     }
-            // }
-
-            $order->update([
-                'status' => $newStatus
-            ]);
-
-            return $order->fresh('items.productVariant');
-        });
     }
 
-    // public function confirmOrder($order, $userId)
-    // {
-    //     // ❌ không phải chủ đơn
-    //     if ($order->user_id !== $userId) {
-    //         throw new \Exception('Không có quyền');
-    //     }
-
-    //     // ❌ sai trạng thái
-    //     if ($order->status !== 'shipped') {
-    //         throw new \Exception('Chỉ được xác nhận khi đơn đang giao');
-    //     }
-
-    //     return DB::transaction(function () use ($order) {
-
-    //         // 🔥 finalize stock (CHUẨN SHOPEE)
-    //         foreach ($order->items as $item) {
-
-    //             $variant = $item->productVariant;
-
-    //             $variant->decrement('stock', $item->quantity);
-    //             $variant->decrement('reserved_stock', $item->quantity);
-    //             $variant->increment('sold_stock', $item->quantity);
-    //         }
-
-    //         $order->update([
-    //             'status' => 'completed'
-    //         ]);
-
-    //         return $order->fresh('items.productVariant');
-    //     });
-    // }
-    public function confirmOrder($order, $userId)
+    // =========================
+    // GENERATE ORDER CODE
+    // =========================
+    private function generateOrderCode()
     {
-        if ($order->user_id !== $userId) {
-            throw new \Exception('Không có quyền');
-        }
+        $date = now()->format('Ymd');
 
-        if ($order->status !== 'shipped') {
-            throw new \Exception('Chỉ được xác nhận khi đơn đang giao');
-        }
+        $count = Order::whereDate('created_at', now())->count() + 1;
 
-        return DB::transaction(function () use ($order) {
-            $order->update([
-                'status' => 'completed'
-            ]);
-
-            return $order->fresh('items.productVariant');
-        });
+        return 'ORD-' . $date . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 }

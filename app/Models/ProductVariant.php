@@ -21,6 +21,13 @@ class ProductVariant extends Model
         'sold_stock',
     ];
 
+    protected $casts = [
+        'price' => 'float',
+        'stock' => 'integer',
+        'reserved_stock' => 'integer',
+        'sold_stock' => 'integer',
+    ];
+
     public function product()
     {
         return $this->belongsTo(Product::class);

@@ -15,11 +15,15 @@ class Payment extends Model
         'method',
         'status',
         'transaction_id',
+        'amount',
         'response_data',
+        'meta',
     ];
 
     protected $casts = [
+        'amount' => 'float',
         'response_data' => 'array',
+        'meta' => 'array',
     ];
 
     public function order()

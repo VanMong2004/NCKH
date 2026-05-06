@@ -13,6 +13,7 @@ class Cart extends Model
 
     protected $fillable = [
         'user_id',
+        'status', // 🔥 ADD
     ];
 
     public function user()
@@ -27,6 +28,6 @@ class Cart extends Model
 
     public function activeItems()
     {
-        return $this->hasMany(CartItem::class);
+        return $this->items(); // tránh duplicate logic
     }
 }

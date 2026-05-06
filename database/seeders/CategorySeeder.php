@@ -2,43 +2,28 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Models\Category;
 
 class CategorySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        DB::table('categories')->insert([
-            [
-                'name' => 'Nam',
-                'slug' => 'male',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Nữ',
-                'slug' => 'female',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Phụ kiện',
-                'slug' => 'accessory',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Học tập',
-                'slug' => 'study',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
+        $clothes = Category::create([
+            'name' => 'Quần áo',
+            'slug' => 'quan-ao',
+        ]);
+
+        Category::create([
+            'name' => 'Áo thun',
+            'slug' => 'ao-thun',
+            'parent_id' => $clothes->id,
+        ]);
+
+        Category::create([
+            'name' => 'Áo hoodie',
+            'slug' => 'hoodie',
+            'parent_id' => $clothes->id,
         ]);
     }
 }

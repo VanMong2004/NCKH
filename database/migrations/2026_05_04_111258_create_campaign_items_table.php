@@ -25,8 +25,12 @@ return new class extends Migration
             // 💰 giá riêng cho campaign
             $table->decimal('price', 12, 2);
 
-            // 📊 số lượng đăng ký
+            $table->unsignedInteger('limit_quantity')
+                ->nullable();
+
+                // 📊 số lượng đăng ký
             $table->unsignedBigInteger('registered_quantity')->default(0);
+
 
             $table->timestamps();
 

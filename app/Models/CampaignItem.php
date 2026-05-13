@@ -13,6 +13,7 @@ class CampaignItem extends Model
         'campaign_id',
         'product_variant_id',
         'price',
+        'limit_quantity',
         'registered_quantity',
     ];
 
@@ -35,6 +36,11 @@ class CampaignItem extends Model
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function userCampaignItems()
+    {
+        return $this->hasMany(UserCampaignItem::class);
     }
 
     public function product()

@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Models\Address;
 use Illuminate\Support\Str;
 
 class OrderSeeder extends Seeder
@@ -15,6 +16,10 @@ class OrderSeeder extends Seeder
         $variant = ProductVariant::first();
 
         $statuses = ['pending', 'paid', 'shipped', 'completed', 'cancelled'];
+
+        $address = Address::query()
+                ->where('user_id', 2)
+                ->first();
 
         foreach ($statuses as $status) {
 
@@ -26,9 +31,25 @@ class OrderSeeder extends Seeder
                 'cancel_reason' => $status === 'cancelled' ? 'payment_timeout' : null,
                 'total' => 200000,
                 'shipping_fee' => 0,
-                'shipping_name' => 'Test',
-                'shipping_phone' => '0123456789',
-                'shipping_address' => 'CTU',
+                'shipping_name'
+                    => $address?->full_name ?? 'Nguyen Van A',
+
+                'shipping_phone'
+                    => $address?->phone ?? '0123456789',
+
+                'shipping_address'
+                    => $address
+                        ? implode(', ', [
+
+                            $address->address_line,
+
+                            $address->ward,
+
+                            $address->district,
+
+                            $address->province,
+                        ])
+                        : 'CTUT',
             ]);
 
             OrderItem::create([

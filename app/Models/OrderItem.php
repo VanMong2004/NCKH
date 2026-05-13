@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Order;
-use App\Models\ProductVariant;
 
 class OrderItem extends Model
 {
@@ -15,6 +13,7 @@ class OrderItem extends Model
         'order_id',
         'product_variant_id',
         'campaign_item_id',
+        'user_campaign_item_id',
         'product_name',
         'variant_snapshot',
         'price',
@@ -43,5 +42,10 @@ class OrderItem extends Model
     public function campaignItem()
     {
         return $this->belongsTo(CampaignItem::class);
+    }
+
+    public function userCampaignItem()
+    {
+        return $this->belongsTo(UserCampaignItem::class);
     }
 }

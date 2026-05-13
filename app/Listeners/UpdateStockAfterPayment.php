@@ -31,10 +31,58 @@ class UpdateStockAfterPayment
                 $variant = $item->productVariant;
 
                 // 🔥 giảm reserved
-                $variant->decrement('reserved_stock', $item->quantity);
+                $variant->decrement(
+                    'reserved_stock',
+                    $item->quantity
+                );
 
                 // 🔥 tăng sold
-                $variant->increment('sold_stock', $item->quantity);
+                $variant->increment(
+                    'sold_stock',
+                    $item->quantity
+                );
+
+                // 🔥 campaign logic
+                if (
+                    $order->type === 'campaign'
+                    && $item->campaign_item_id
+                ) {
+
+                    $userCampaignItem =
+                        \App\Models\UserCampaignItem::where(
+                            'campaign_item_id',
+                            $item->campaign_item_id
+                        )
+                        ->whereHas('userCampaign', function ($q) use ($order) {
+
+                            $q->where(
+                                'user_id',
+                                $order->user_id
+                            );
+                        })
+                        ->first();
+
+                    if ($userCampaignItem) {
+
+                        // paid quantity
+                        $userCampaignItem->increment(
+                            'paid_quantity',
+                            $item->quantity
+                        );
+
+                        // reserved quantity
+                        $userCampaignItem->decrement(
+                            'reserved_quantity',
+                            $item->quantity
+                        );
+
+                        // registered quantity
+                        $item->campaignItem->increment(
+                            'registered_quantity',
+                            $item->quantity
+                        );
+                    }
+                }
             }
         });
 
@@ -52,6 +100,4 @@ class UpdateStockAfterPayment
             'order_id' => $order->id
         ]);
     }
-
-
 }

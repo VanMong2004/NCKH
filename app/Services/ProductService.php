@@ -4,105 +4,514 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ProductVariant;
+use App\Models\RecentlyViewedProduct;
+use App\Models\Review;
+
 
 class ProductService
 {
-    const MAX_PAGE_SIZE = 50;
+    private const MAX_PAGE_SIZE = 50;
+    private const RELATED_PRODUCTS_LIMIT = 8;
 
     // =========================
     // LIST + FILTER
     // =========================
     public function getList($filters)
     {
-        $pageSize = min($filters['page_size'] ?? 10, self::MAX_PAGE_SIZE);
+        $perPage = min(
+            $filters['per_page'] ?? 10,
+            self::MAX_PAGE_SIZE
+        );
 
         $query = Product::query()
-            ->with(['images', 'variants'])
+            ->with([
+                'images',
+                'variants',
+                'category'
+            ])
             ->where('is_active', true);
 
-        // =========================
-        // KEYWORD
-        // =========================
+        /*
+        |--------------------------------------------------------------------------
+        | KEYWORD
+        |--------------------------------------------------------------------------
+        */
+
         if (!empty($filters['keyword'])) {
-            $query->where('name', 'like', '%' . $filters['keyword'] . '%');
+
+            $keyword = $filters['keyword'];
+
+            $query->where(function ($q) use ($keyword) {
+
+                $q->where(
+                    'name',
+                    'like',
+                    "%{$keyword}%"
+                )
+                ->orWhere(
+                    'description',
+                    'like',
+                    "%{$keyword}%"
+                );
+            });
         }
 
-        // =========================
-        // CATEGORY TREE
-        // =========================
+        /*
+        |--------------------------------------------------------------------------
+        | CATEGORY TREE
+        |--------------------------------------------------------------------------
+        */
+
         if (!empty($filters['category_id'])) {
-            $categoryIds = $this->getAllChildCategoryIds($filters['category_id']);
-            $query->whereIn('category_id', $categoryIds);
+
+            $categoryIds = $this->getAllChildCategoryIds(
+                $filters['category_id']
+            );
+
+            $query->whereIn(
+                'category_id',
+                $categoryIds
+            );
         }
 
-        // =========================
-        // PRICE FILTER
-        // =========================
-        if (!empty($filters['min_price']) || !empty($filters['max_price'])) {
+        /*
+        |--------------------------------------------------------------------------
+        | PRICE FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !empty($filters['min_price'])
+            || !empty($filters['max_price'])
+        ) {
+
             $query->whereHas('variants', function ($q) use ($filters) {
+
                 if (!empty($filters['min_price'])) {
-                    $q->where('price', '>=', $filters['min_price']);
+
+                    $q->where(
+                        'price',
+                        '>=',
+                        $filters['min_price']
+                    );
                 }
 
                 if (!empty($filters['max_price'])) {
-                    $q->where('price', '<=', $filters['max_price']);
+
+                    $q->where(
+                        'price',
+                        '<=',
+                        $filters['max_price']
+                    );
                 }
             });
         }
 
-        // =========================
-        // SORT
-        // =========================
+        /*
+        |--------------------------------------------------------------------------
+        | SIZE FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($filters['sizes'])) {
+
+            $sizes = is_array($filters['sizes'])
+                ? $filters['sizes']
+                : explode(',', $filters['sizes']);
+
+            $query->whereHas('variants', function ($q) use ($sizes) {
+
+                $q->whereIn('size', $sizes);
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | COLOR FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($filters['colors'])) {
+
+            $colors = is_array($filters['colors'])
+                ? $filters['colors']
+                : explode(',', $filters['colors']);
+
+            $query->whereHas('variants', function ($q) use ($colors) {
+
+                $q->whereIn('color', $colors);
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | RATING FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($filters['rating'])) {
+
+            $query->where(
+                'average_rating',
+                '>=',
+                $filters['rating']
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | IN STOCK
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($filters['in_stock'])) {
+
+            $query->whereHas('variants', function ($q) {
+
+                $q->whereRaw(
+                    '(stock - reserved_stock) > 0'
+                );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | SORT
+        |--------------------------------------------------------------------------
+        */
+
         switch ($filters['sort'] ?? 'newest') {
+
+            case 'oldest':
+
+                $query->oldest();
+
+                break;
+
             case 'price_asc':
+
                 $query->withMin('variants', 'price')
-                    ->orderBy('variants_min_price', 'asc');
+                    ->orderBy(
+                        'variants_min_price',
+                        'asc'
+                    );
+
                 break;
 
             case 'price_desc':
+
                 $query->withMin('variants', 'price')
-                    ->orderBy('variants_min_price', 'desc');
+                    ->orderBy(
+                        'variants_min_price',
+                        'desc'
+                    );
+
                 break;
 
             case 'rating':
-                $query->orderBy('avg_rating', 'desc');
+
+                $query->orderByDesc(
+                    'average_rating'
+                );
+
+                break;
+
+            case 'best_selling':
+
+                $query->orderByDesc(
+                    'sold_count'
+                );
+
+                break;
+
+            case 'popular':
+
+                $query->orderByDesc(
+                    'view_count'
+                );
+
                 break;
 
             default:
+
                 $query->latest();
         }
 
-        $products = $query->paginate($pageSize);
+        /*
+        |--------------------------------------------------------------------------
+        | PAGINATION
+        |--------------------------------------------------------------------------
+        */
 
-        // 🔥 format lại cho FE
-        /** @var \Illuminate\Pagination\LengthAwarePaginator $products */
-        $products->getCollection()->transform(function ($product) {
-            return $this->formatProduct($product);
-        });
+        $products = $query->paginate($perPage);
+
+        /*
+        |--------------------------------------------------------------------------
+        | TRANSFORM
+        |--------------------------------------------------------------------------
+        */
+
+        $data = collect($products->items())
+            ->map(function ($product) {
+
+                $prices = $product->variants
+                    ->pluck('price');
+
+                $availableStock = $product->variants
+                    ->sum(function ($variant) {
+
+                        return max(
+                            0,
+                            $variant->stock
+                            - $variant->reserved_stock
+                        );
+                    });
+
+                return [
+
+                    'id' => $product->id,
+
+                    'name' => $product->name,
+
+                    'description'
+                        => $product->description,
+
+                    'thumbnail'
+                        => $product->thumbnail,
+
+                    'category' => [
+                        'id'
+                            => $product->category?->id,
+
+                        'name'
+                            => $product->category?->name,
+                    ],
+
+                    'min_price'
+                        => $prices->min(),
+
+                    'max_price'
+                        => $prices->max(),
+
+                    'average_rating'
+                        => $product->average_rating,
+
+                    'total_reviews'
+                        => $product->total_reviews,
+
+                    'in_stock'
+                        => $availableStock > 0,
+
+                    'available_stock'
+                        => $availableStock,
+                ];
+            });
+
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER METADATA
+        |--------------------------------------------------------------------------
+        */
+
+        $allVariants = ProductVariant::query();
+
+        $filterMeta = [
+
+            'sizes' => $allVariants
+                ->select('size')
+                ->distinct()
+                ->pluck('size'),
+
+            'colors' => $allVariants
+                ->select('color')
+                ->distinct()
+                ->pluck('color'),
+
+            'price_range' => [
+
+                'min' => ProductVariant::min('price'),
+
+                'max' => ProductVariant::max('price'),
+            ]
+        ];
 
         return [
+
             'success' => true,
-            'data' => $products
+
+            'message'
+                => 'Lấy danh sách sản phẩm thành công',
+
+            'data'
+                => $data,
+
+            'meta' => [
+
+                'current_page'
+                    => $products->currentPage(),
+
+                'last_page'
+                    => $products->lastPage(),
+
+                'per_page'
+                    => $products->perPage(),
+
+                'total'
+                    => $products->total(),
+            ],
+
+            'filters'
+                => $filterMeta,
         ];
     }
 
     // =========================
     // DETAIL
     // =========================
-    public function getDetail($id)
+    public function show($id, $user)
     {
-        $product = Product::with([
-            'images',
-            'variants',
-            'reviews.user:id,name,avatar'
-        ])->findOrFail($id);
+        $product = Product::query()
+            ->with([
+                'images',
+                'variants',
+                'category',
+            ])
+            ->findOrFail($id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | AUTO SAVE RECENTLY VIEWED
+        |--------------------------------------------------------------------------
+        */
+
+        if ($user) {
+
+            RecentlyViewedProduct::updateOrCreate(
+
+                [
+                    'user_id' => $user->id,
+                    'product_id' => $product->id,
+                ],
+
+                [
+                    'viewed_at' => now(),
+                ]
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | AVAILABLE ATTRIBUTES
+        |--------------------------------------------------------------------------
+        */
+
+        $sizes = $product->variants
+            ->pluck('size')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $colors = $product->variants
+            ->pluck('color')
+            ->filter()
+            ->unique()
+            ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | STOCK
+        |--------------------------------------------------------------------------
+        */
+
+        $inStock = $product->variants
+            ->contains(function ($variant) {
+
+                return (
+                    $variant->stock
+                    -
+                    $variant->reserved_stock
+                ) > 0;
+            });
+
+        /*
+        |--------------------------------------------------------------------------
+        | REVIEW SUMMARY
+        |--------------------------------------------------------------------------
+        */
+
+        $ratingBreakdown = Review::query()
+            ->where('product_id', $product->id)
+            ->whereNull('deleted_at')
+            ->selectRaw('rating, COUNT(*) as total')
+            ->groupBy('rating')
+            ->pluck('total', 'rating');
+
+        /*
+        |--------------------------------------------------------------------------
+        | RELATED PRODUCTS
+        |--------------------------------------------------------------------------
+        */
+
+        $relatedProducts = Product::query()
+            ->with([
+                'images',
+                'variants',
+                'category',
+            ])
+            ->where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->where('is_active', true)
+            ->withSum('variants', 'sold_stock')
+            ->orderByDesc('variants_sum_sold_stock')
+            ->orderByDesc('average_rating')
+            ->latest()
+            ->limit(self::RELATED_PRODUCTS_LIMIT)
+            ->get()
+            ->map(fn($item)
+                => $this->formatProduct($item)
+            );
 
         return [
+
             'success' => true,
+
+            'message'
+                => 'Lấy chi tiết sản phẩm thành công',
+
             'data' => [
+
                 ...$this->formatProduct($product),
-                'variants_grouped' => $this->groupVariants($product->variants),
-                'reviews' => $product->reviews
+
+                'description'
+                    => $product->description,
+
+                'images'
+                    => $product->images,
+
+                'variants'
+                    => $product->variants,
+
+                'available_sizes'
+                    => $sizes,
+
+                'available_colors'
+                    => $colors,
+
+                'average_rating'
+                    => $product->average_rating,
+
+                'total_reviews'
+                    => $product->total_reviews,
+
+                'rating_breakdown'
+                    => $ratingBreakdown,
+
+                'in_stock'
+                    => $inStock,
+
+                'related_products'
+                    => $relatedProducts,
             ]
         ];
     }
@@ -140,7 +549,7 @@ class ProductService
     // =========================
     // FORMAT PRODUCT (🔥 FE READY)
     // =========================
-    private function formatProduct($product)
+    public function formatProduct($product)
     {
         return [
             'id' => $product->id,
@@ -200,5 +609,37 @@ class ProductService
         }
 
         return $ids;
+    }
+
+    // =========================
+    // RECENTLY VIEWED PRODUCTS
+    // =========================
+    public function recentlyViewed($user)
+    {
+        $items = RecentlyViewedProduct::query()
+            ->with([
+                'product.images',
+                'product.variants',
+                'product.category',
+            ])
+            ->where('user_id', $user->id)
+            ->orderByDesc('viewed_at')
+            ->limit(20)
+            ->get();
+
+        return [
+
+            'success' => true,
+
+            'message'
+                => 'Lấy recently viewed thành công',
+
+            'data' => $items->map(function ($item) {
+
+                return $this->formatProduct(
+                    $item->product
+                );
+            }),
+        ];
     }
 }

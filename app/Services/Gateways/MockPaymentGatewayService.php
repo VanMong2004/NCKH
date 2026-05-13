@@ -48,6 +48,35 @@ class MockPaymentGatewayService
                 // 🔥 FIRE EVENT
                 $order->load('items.productVariant');
                 event(new OrderPaid($order));
+            } else {
+
+                foreach ($order->items as $item) {
+
+                    if (
+                        $order->type === 'campaign'
+                        && $item->campaign_item_id
+                    ) {
+
+                        $userCampaignItem =
+                            \App\Models\UserCampaignItem::where(
+                                'campaign_item_id',
+                                $item->campaign_item_id
+                            )
+                            ->whereHas('userCampaign', function ($q) use ($order) {
+
+                                $q->where('user_id', $order->user_id);
+                            })
+                            ->first();
+
+                        if ($userCampaignItem) {
+
+                            $userCampaignItem->decrement(
+                                'reserved_quantity',
+                                $item->quantity
+                            );
+                        }
+                    }
+                }
             }
 
             return [

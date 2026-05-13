@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
             PaymentSeeder::class,
             CampaignSeeder::class,
             ReviewSeeder::class,
+            UserCampaignSeeder::class,
+            UserCampaignItemSeeder::class,
+            AddressSeeder::class,
         ]);
     }
 }

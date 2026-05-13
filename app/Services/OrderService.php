@@ -6,6 +6,8 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Models\Address;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Exception;
@@ -29,58 +31,115 @@ class OrderService
                 throw new Exception('Giỏ hàng trống');
             }
 
+            // 🔥 validate stock
             foreach ($cart->items as $item) {
-                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
 
-                $available = $variant->stock - $variant->reserved_stock;
+                $variant = ProductVariant::lockForUpdate()
+                    ->find($item->product_variant_id);
+
+                $available =
+                    $variant->stock - $variant->reserved_stock;
 
                 if ($available < $item->quantity) {
-                    throw new Exception("Sản phẩm {$variant->product->name} không đủ hàng");
+
+                    throw new Exception(
+                        "Sản phẩm {$variant->product->name} không đủ hàng"
+                    );
                 }
             }
 
-            // 🔥 tạo order
+            $address = Address::query()
+                ->where('user_id', $user->id)
+                ->findOrFail($data['address_id']);
+
+            // 🔥 create order
             $order = Order::create([
                 'user_id' => $user->id,
+
                 'type' => 'normal',
+
                 'order_code' => $this->generateOrderCode(),
+
                 'status' => 'pending',
+
                 'total' => 0,
+
                 'shipping_fee' => 0,
-                'shipping_name' => $data['shipping_name'],
-                'shipping_phone' => $data['shipping_phone'],
-                'shipping_address' => $data['shipping_address'],
+
+                'shipping_name'
+                    => $address->full_name,
+
+                'shipping_phone'
+                    => $address->phone,
+
+                'shipping_address'
+                    => implode(', ', [
+
+                        $address->address_line,
+
+                        $address->ward,
+
+                        $address->district,
+
+                        $address->province,
+                    ]),
+
+                // 'shipping_name' => $data['shipping_name'],
+
+                // 'shipping_phone' => $data['shipping_phone'],
+
+                // 'shipping_address' => $data['shipping_address'],
             ]);
 
             event(new \App\Events\OrderCreated($order));
 
             $total = 0;
 
+            // 🔥 create items
             foreach ($cart->items as $item) {
 
-                $variant = ProductVariant::lockForUpdate()->find($item->product_variant_id);
+                $variant = ProductVariant::lockForUpdate()
+                    ->find($item->product_variant_id);
 
-                $variant->increment('reserved_stock', $item->quantity);
+                // reserve stock
+                $variant->increment(
+                    'reserved_stock',
+                    $item->quantity
+                );
 
                 $price = $variant->price;
+
                 $lineTotal = $price * $item->quantity;
 
                 OrderItem::create([
+
                     'order_id' => $order->id,
-                    'product_variant_id' => $variant->id,
+
+                    'product_variant_id'
+                        => $variant->id,
+
+                    // ❌ KHÔNG có user_campaign_item_id
+
                     'price' => $price,
+
                     'quantity' => $item->quantity,
-                    'product_name' => $variant->product->name,
-                    'variant_snapshot' => "Size: {$variant->size}, Color: {$variant->color}",
+
+                    'product_name'
+                        => $variant->product->name,
+
+                    'variant_snapshot'
+                        => "Size: {$variant->size}, Color: {$variant->color}",
                 ]);
 
                 $total += $lineTotal;
             }
 
+            // update total
             $order->update([
                 'total' => $total
             ]);
 
+            // close cart
             $cart->update([
                 'status' => 'checked_out'
             ]);
@@ -88,17 +147,18 @@ class OrderService
             return $order;
         });
 
+        // 🔥 auto cancel
         CancelPendingOrderJob::dispatch($order->id)
-            ->delay(now()->addMinutes(config('app.order_auto_cancel_minutes')));
+            ->delay(
+                now()->addMinutes(
+                    config('app.order_auto_cancel_minutes')
+                )
+            );
 
         return [
-            'success' => true,
-            'message' => 'Đặt hàng thành công',
-            'data' => [
-                'order_id' => $order->id,
-                'order_code' => $order->order_code,
-                'total' => $order->total
-            ]
+            'order_id' => $order->id,
+            'order_code' => $order->order_code,
+            'total' => $order->total
         ];
     }
 

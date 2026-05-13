@@ -2,23 +2,30 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Product;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Review extends Model
 {
-    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'user_id',
         'product_id',
-        'order_item_id', // 🔥 ADD
+        'order_id',
         'rating',
-        'content',
-        'status',
+        'comment',
     ];
+
+    protected $casts = [
+        'rating' => 'integer',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | RELATIONS
+    |--------------------------------------------------------------------------
+    */
 
     public function user()
     {
@@ -30,8 +37,36 @@ class Review extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function orderItem()
+    public function order()
     {
-        return $this->belongsTo(OrderItem::class);
+        return $this->belongsTo(Order::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ReviewImage::class);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ACCESSORS
+    |--------------------------------------------------------------------------
+    */
+
+    public function getAnonymousUserNameAttribute()
+    {
+        $name = $this->user->name ?? 'User';
+
+        $parts = explode(' ', $name);
+
+        if (count($parts) === 1) {
+            return substr($name, 0, 2) . '***';
+        }
+
+        $first = substr($parts[0], 0, 2) . '***';
+
+        $last = end($parts);
+
+        return $first . ' ' . $last;
     }
 }

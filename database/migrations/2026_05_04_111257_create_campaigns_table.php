@@ -17,6 +17,15 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
 
+            $table->string('banner')
+                ->nullable();
+
+            $table->string('thumbnail')
+                ->nullable();
+
+            $table->unsignedInteger('limit')
+                ->nullable();
+
             $table->timestamp('start_date');
             $table->timestamp('end_date');
 

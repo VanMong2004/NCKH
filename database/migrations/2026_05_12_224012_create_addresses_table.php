@@ -12,29 +12,34 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('addresses', function (Blueprint $table) {
+
             $table->id();
 
-            $table->unsignedBigInteger('user_id')->nullable();
-            $table->foreign('user_id')
-                ->references('id')
-                ->on('users')
-                ->cascadeOnDelete()
-                ->cascadeOnUpdate();
+            $table->foreignId('user_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
-            $table->string('name');
+            $table->string('full_name');
+
             $table->string('phone');
 
-            $table->string('street');
-            $table->string('ward');
+            $table->string('province');
+
             $table->string('district');
-            $table->string('city');
 
-            $table->enum('type', ['home', 'school', 'other'])
-                ->default('home');
+            $table->string('ward');
 
-            $table->boolean('is_default')->default(false);
+            $table->text('address_line');
+
+            $table->string('postal_code')
+                ->nullable();
+
+            $table->boolean('is_default')
+                ->default(false);
 
             $table->timestamps();
+
+            $table->softDeletes();
         });
     }
 

@@ -4,10 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Category;
-use App\Models\ProductImage;
-use App\Models\ProductVariant;
-use App\Models\Review;
 
 class Product extends Model
 {
@@ -20,8 +16,8 @@ class Product extends Model
         'description',
         'is_active',
         'is_featured',
-        'avg_rating',
-        'review_count',
+        'average_rating',
+        'total_reviews',
     ];
 
     // category

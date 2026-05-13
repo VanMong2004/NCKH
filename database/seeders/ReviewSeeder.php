@@ -19,10 +19,9 @@ class ReviewSeeder extends Seeder
                 Review::create([
                     'user_id' => $order->user_id,
                     'product_id' => $item->product_variant_id,
-                    'order_item_id' => $item->id,
+                    'order_id' => $item->id,
                     'rating' => rand(4, 5),
-                    'content' => 'Sản phẩm rất tốt!',
-                    'status' => 'approved',
+                    'comment' => 'Sản phẩm rất tốt!',
                 ]);
             }
         }

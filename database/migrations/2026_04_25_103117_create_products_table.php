@@ -31,6 +31,18 @@ return new class extends Migration
             // optional but very useful
             $table->boolean('is_featured')->default(false);
 
+            $table->decimal('average_rating', 3, 2)
+                ->default(0);
+
+            $table->unsignedInteger('total_reviews')
+                ->default(0);
+
+            $table->integer('sold_count')
+                ->default(0);
+
+            $table->integer('view_count')
+                ->default(0);
+
             $table->timestamps();
         });
     }

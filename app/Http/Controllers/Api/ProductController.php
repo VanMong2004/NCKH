@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\ProductService;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
@@ -20,27 +21,76 @@ class ProductController extends Controller
     // =========================
     public function index(Request $request)
     {
-        $filters = $request->only([
-            'keyword',
-            'category_id',
-            'min_price',
-            'max_price',
-            'sort',
-        ]);
+        try {
 
-        return response()->json(
-            $this->productService->getList($filters)
-        );
+            $filters = $request->only([
+                'keyword',
+
+                'category_id',
+
+                'min_price',
+                'max_price',
+
+                'sizes',
+                'colors',
+
+                'rating',
+
+                'in_stock',
+
+                'sort',
+
+                'page',
+                'per_page',
+            ]);
+
+            $result = $this->productService
+                ->getList($filters);
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+
+                'message'
+                    => 'Lỗi khi lấy danh sách sản phẩm',
+
+                'error'
+                    => app()->environment('local')
+                        ? $e->getMessage()
+                        : null,
+            ], 500);
+        }
     }
 
     // =========================
     // DETAIL
     // =========================
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        return response()->json(
-            $this->productService->getDetail($id)
-        );
+        try {
+
+            return response()->json(
+                $this->productService->show(
+                    $id,
+                    Auth::guard('sanctum')->user()
+                )
+            );
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+
+                'message'
+                    => $e->getMessage(),
+
+                'data'
+                    => null,
+            ], 400);
+        }
     }
 
     // =========================
@@ -61,5 +111,35 @@ class ProductController extends Controller
         return response()->json(
             $this->productService->getReviews($id)
         );
+    }
+
+    // =========================
+    // RECENTLY VIEWED PRODUCTS
+    // =========================
+    public function recentlyViewed(Request $request)
+    {
+        try {
+
+            $result = $this->productService
+                ->recentlyViewed(
+                    $request->user()
+                );
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+
+                'message'
+                    => 'Lỗi khi lấy recently viewed',
+
+                'error'
+                    => app()->environment('local')
+                        ? $e->getMessage()
+                        : null,
+            ], 500);
+        }
     }
 }

@@ -12,6 +12,9 @@ class Campaign extends Model
     protected $fillable = [
         'title',
         'description',
+        'banner',
+        'thumbnail',
+        'limit',
         'start_date',
         'end_date',
         'is_active', // 🔥 ADD
@@ -20,6 +23,10 @@ class Campaign extends Model
     protected $casts = [
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+    ];
+
+    protected $appends = [
+        'status',
     ];
 
     // 🔥 relations
@@ -33,9 +40,33 @@ class Campaign extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function userCampaigns()
+    {
+        return $this->hasMany(UserCampaign::class);
+    }
+
     // 🔥 helpers
     public function isActive()
     {
         return now()->between($this->start_date, $this->end_date);
+    }
+
+    // 🔥 accessor
+    public function getStatusAttribute()
+    {
+        if (now()->lt($this->start_date)) {
+            return 'upcoming';
+        }
+
+        if (
+            now()->between(
+                $this->start_date,
+                $this->end_date
+            )
+        ) {
+            return 'active';
+        }
+
+        return 'ended';
     }
 }

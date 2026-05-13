@@ -4,23 +4,42 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Address extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
+
         'user_id',
-        'name',
+
+        'full_name',
+
         'phone',
-        'street',
-        'ward',
+
+        'province',
+
         'district',
-        'city',
-        'type',
+
+        'ward',
+
+        'address_line',
+
+        'postal_code',
+
         'is_default',
     ];
+
+    protected $casts = [
+        'is_default' => 'boolean',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | RELATIONS
+    |--------------------------------------------------------------------------
+    */
 
     public function user()
     {

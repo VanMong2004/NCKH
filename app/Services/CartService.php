@@ -15,10 +15,16 @@ class CartService
     // =========================
     public function getCart($user)
     {
-        $cart = Cart::with([
-            'items.productVariant.product.images'
-        ])->firstOrCreate([
-            'user_id' => $user->id
+        $cart = Cart::firstOrCreate([
+            'user_id' => $user->id,
+            'status' => 'active',
+        ]);
+
+        $cart->load([
+            'items',
+            'items.productVariant',
+            'items.productVariant.product',
+            'items.productVariant.product.images',
         ]);
 
         return [
@@ -43,7 +49,8 @@ class CartService
             }
 
             $cart = Cart::firstOrCreate([
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'status' => 'active',
             ]);
 
             $item = CartItem::where([
@@ -99,18 +106,21 @@ class CartService
     // =========================
     // UPDATE ITEM
     // =========================
-    public function updateItem($user, $data)
+    public function updateItem($user, $cartItemId, $quantity)
     {
-        return DB::transaction(function () use ($user, $data) {
+        return DB::transaction(function () use ($user, $cartItemId, $quantity) {
 
             $cart = Cart::where('user_id', $user->id)->firstOrFail();
 
             $item = CartItem::where([
-                'cart_id' => $cart->id,
-                'product_variant_id' => $data['product_variant_id']
+                'cart_id'=>$cart->id,
+                'id'=>$cartItemId
             ])->firstOrFail();
 
-            $variant = ProductVariant::lockForUpdate()->findOrFail($data['product_variant_id']);
+            $variant = ProductVariant::lockForUpdate()
+            ->findOrFail(
+                $item->product_variant_id
+            );
 
             $available = $variant->stock - $variant->reserved_stock;
 
@@ -118,12 +128,12 @@ class CartService
                 throw new Exception('Sản phẩm đã hết hàng');
             }
 
-            $qty = min($data['quantity'], $available);
+            $qty = min($quantity, $available);
 
             $item->quantity = $qty;
             $item->save();
 
-            if ($qty < $data['quantity']) {
+            if($qty < $quantity) {
                 return [
                     'success' => true,
                     'warning' => 'Đã điều chỉnh theo tồn kho'
@@ -140,13 +150,13 @@ class CartService
     // =========================
     // REMOVE ITEM
     // =========================
-    public function removeItem($user, $data)
+    public function removeItem($user, $cartItemId)
     {
         $cart = Cart::where('user_id', $user->id)->firstOrFail();
 
         CartItem::where([
-            'cart_id' => $cart->id,
-            'product_variant_id' => $data['product_variant_id']
+            'cart_id'=>$cart->id,
+            'id'=>$cartItemId
         ])->delete();
 
         return [
@@ -166,22 +176,69 @@ class CartService
             $product = $variant->product;
 
             return [
+                'cart_item_id' => $item->id,
+
+                'product_id' => $product->id,
+
                 'product_variant_id' => $variant->id,
+
+                'slug' => $product->slug,
+
                 'product_name' => $product->name,
+
                 'thumbnail' => optional(
-                    $product->images->where('type', 'thumbnail')->first()
+                    $product->images
+                    ->where('type','thumbnail')
+                    ->first()
                 )->url,
+
                 'price' => $variant->price,
+
                 'quantity' => $item->quantity,
+
                 'size' => $variant->size,
+
                 'color' => $variant->color,
-                'total' => $variant->price * $item->quantity
+
+                'stock' => $variant->stock,
+
+                'available_stock'
+                => max(
+                    0,
+                    $variant->stock
+                    -
+                    $variant->reserved_stock
+                ),
+
+                'selected' => (bool) $item->is_selected,
+
+                'total'
+                => $variant->price
+                *
+                $item->quantity
             ];
         });
 
+        $subTotal = $items->sum('total');
+
+        $shipping = 0;
+
+        $discount = 0;
+
+        $grandTotal = $subTotal + $shipping - $discount;
+
         return [
             'items' => $items,
-            'total' => $items->sum('total')
+
+            'item_count' => $items->sum('quantity'),
+
+            'sub_total' => $subTotal,
+
+            'shipping' => $shipping,
+
+            'discount' => $discount,
+
+            'grand_total' => $grandTotal,
         ];
     }
 

@@ -16,12 +16,12 @@ class HomeController extends Controller
         $this->homeService = $homeService;
     }
 
-    public function index()
+    public function getHomeData()
     {
         try {
 
             $result = $this->homeService
-                ->index();
+                ->getHomeData();
 
             return response()->json($result);
 

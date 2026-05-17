@@ -1,0 +1,726 @@
+<?php
+
+namespace App\Services\Admin;
+
+use Exception;
+use App\Models\Product;
+use App\Models\Category;
+use Illuminate\Support\Str;
+use App\Models\ProductImage;
+use Illuminate\Support\Facades\DB;
+use App\Models\ProductVariant;
+use Illuminate\Support\Facades\File;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+class AdminProductService
+{
+    // =========================
+    // LẤY DANH SÁCH SẢN PHẨM
+    // =========================
+    public function index($request)
+    {
+        $query = Product::query()
+            ->with([
+                'category',
+                'images',
+                'variants',
+            ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | SEARCH
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('keyword')) {
+
+            $query->where(function ($q) use ($request) {
+
+                $q->where(
+                    'name',
+                    'like',
+                    '%' . $request->keyword . '%'
+                )
+
+                ->orWhere(
+                    'slug',
+                    'like',
+                    '%' . $request->keyword . '%'
+                );
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CATEGORY FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->filled('category_id')) {
+
+            $query->where(
+                'category_id',
+                $request->category_id
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | ACTIVE FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->has('is_active')) {
+
+            $query->where(
+                'is_active',
+                $request->is_active
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FEATURED FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->has('is_featured')) {
+
+            $query->where(
+                'is_featured',
+                $request->is_featured
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | SORTING
+        |--------------------------------------------------------------------------
+        */
+
+        switch ($request->sort_by) {
+
+            case 'oldest':
+
+                $query->oldest();
+
+                break;
+
+            case 'name_asc':
+
+                $query->orderBy('name');
+
+                break;
+
+            case 'name_desc':
+
+                $query->orderByDesc('name');
+
+                break;
+
+            default:
+
+                $query->latest();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAGINATION
+        |--------------------------------------------------------------------------
+        */
+
+        $perPage = $request->per_page ?? 10;
+
+        $products = $query
+            ->paginate($perPage);
+
+        /*
+        |--------------------------------------------------------------------------
+        | FORMAT RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
+        $productCollection = collect(
+            $products->items()
+        )->map(
+
+            fn($product) => [
+
+                'id'
+                    => $product->id,
+
+                'name'
+                    => $product->name,
+
+                'slug'
+                    => $product->slug,
+
+                'category'
+                    => $product->category?->name,
+
+                'thumbnail'
+                    => optional(
+                        $product->images
+                            ->where('type', 'thumbnail')
+                            ->first()
+                    )->url,
+
+                'variants_count'
+                    => $product->variants->count(),
+
+                'min_price'
+                    => $product->variants->min('price'),
+
+                'max_price'
+                    => $product->variants->max('price'),
+
+                'total_stock'
+                    => $product->variants->sum('stock'),
+
+                'sold_count'
+                    => $product->sold_count,
+
+                'average_rating'
+                    => $product->average_rating,
+
+                'total_reviews'
+                    => $product->total_reviews,
+
+                'is_active'
+                    => $product->is_active,
+
+                'is_featured'
+                    => $product->is_featured,
+
+                'created_at'
+                    => $product->created_at,
+            ]
+        );
+
+        $products->setCollection(
+            $productCollection
+        );
+
+        return [
+
+            'success' => true,
+
+            'message'
+                => 'Lấy danh sách sản phẩm thành công',
+
+            'data'
+                => $products,
+        ];
+    }
+
+    // =========================
+    // LẤY CHI TIẾT SẢN PHẨM
+    // =========================
+    public function show($id)
+    {
+        $product = Product::query()
+            ->with([
+                'category',
+                'images',
+                'variants',
+            ])
+            ->findOrFail($id);
+
+        return [
+
+            'success' => true,
+
+            'message'
+                => 'Lấy chi tiết sản phẩm thành công',
+
+            'data' => $product,
+        ];
+    }
+
+    // =========================
+    // TẠO SẢN PHẨM MỚI
+    // =========================
+    public function store($request)
+    {
+        validator($request->all(), [
+
+            'name'
+                => 'required|string|max:255',
+
+            'description'
+                => 'nullable|string',
+
+            'category_id'
+                => 'required|exists:categories,id',
+
+            'is_active'
+                => 'required|boolean',
+
+            'is_featured'
+                => 'required|boolean',
+
+            /*
+            |--------------------------------------------------------------------------
+            | IMAGES
+            |--------------------------------------------------------------------------
+            */
+
+            'images'
+                => 'required|array|min:1|max:10',
+
+            'images.*'
+                => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+
+            /*
+            |--------------------------------------------------------------------------
+            | VARIANTS
+            |--------------------------------------------------------------------------
+            */
+
+            'variants'
+                => 'required|array|min:1',
+
+            'variants.*.size'
+                => 'nullable|string|max:50',
+
+            'variants.*.color'
+                => 'nullable|string|max:50',
+
+            'variants.*.price'
+                => 'required|numeric|min:0',
+
+            'variants.*.stock'
+                => 'required|integer|min:0',
+
+        ])->validate();
+
+        // dd($request->all());
+
+        return DB::transaction(function () use ($request) {
+
+            $product = Product::create([
+
+                'name'
+                    => $request->name,
+
+                'slug'
+                    => Str::slug($request->name),
+
+                'category_id'
+                    => $request->category_id,
+
+                'description'
+                    => $request->description,
+
+                'is_active'
+                    => $request->is_active,
+
+                'is_featured'
+                    => $request->is_featured,
+
+                'average_rating'
+                    => 0,
+
+                'total_reviews'
+                    => 0,
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | UPLOAD IMAGES
+            |--------------------------------------------------------------------------
+            */
+
+            $this->uploadImages(
+                $product,
+                $request->file('images')
+            );
+
+            /*
+            |--------------------------------------------------------------------------
+            | CREATE VARIANTS
+            |--------------------------------------------------------------------------
+            */
+
+            $this->syncVariants(
+                $product,
+                $request->variants
+            );
+
+            return [
+
+                'success' => true,
+
+                'message'
+                    => 'Tạo sản phẩm thành công',
+
+                'data'
+                    => $this->show($product->id)['data'],
+            ];
+        });
+    }
+
+    // =========================
+    // CẬP NHẬT SẢN PHẨM
+    // =========================
+    public function update($request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        validator($request->all(), [
+
+            'name'
+                => 'required|string|max:255',
+
+            'description'
+                => 'nullable|string',
+
+            'category_id'
+                => 'required|exists:categories,id',
+
+            'is_active'
+                => 'required|boolean',
+
+            'is_featured'
+                => 'required|boolean',
+
+            /*
+            |--------------------------------------------------------------------------
+            | IMAGES
+            |--------------------------------------------------------------------------
+            */
+
+            'images'
+                => 'nullable|array|min:1|max:10',
+
+            'images.*'
+                => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+
+            /*
+            |--------------------------------------------------------------------------
+            | VARIANTS
+            |--------------------------------------------------------------------------
+            */
+
+            'variants'
+                => 'nullable|array|min:1',
+
+            'variants.*.size'
+                => 'nullable|string|max:50',
+
+            'variants.*.color'
+                => 'nullable|string|max:50',
+
+            'variants.*.price'
+                => 'required|numeric|min:0',
+
+            'variants.*.stock'
+                => 'required|integer|min:0',
+
+        ])->validate();
+
+        return DB::transaction(function () use (
+            $request,
+            $product
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | UPDATE PRODUCT
+            |--------------------------------------------------------------------------
+            */
+
+            $product->update([
+
+                'name'
+                    => $request->name,
+
+                'slug'
+                    => Str::slug($request->name),
+
+                'category_id'
+                    => $request->category_id,
+
+                'description'
+                    => $request->description,
+
+                'is_active'
+                    => $request->is_active,
+
+                'is_featured'
+                    => $request->is_featured,
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | REPLACE IMAGES
+            |--------------------------------------------------------------------------
+            */
+
+            if ($request->hasFile('images')) {
+
+                $this->replaceImages(
+                    $product,
+                    $request->file('images')
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | REPLACE VARIANTS
+            |--------------------------------------------------------------------------
+            */
+
+            if ($request->filled('variants')) {
+
+                $this->replaceVariants(
+                    $product,
+                    $request->variants
+                );
+            }
+
+            return [
+
+                'success' => true,
+
+                'message'
+                    => 'Cập nhật sản phẩm thành công',
+
+                'data'
+                    => $this->show($product->id)['data'],
+            ];
+        });
+    }
+
+    // =========================
+    // XÓA SẢN PHẨM
+    // =========================
+    public function destroy($id)
+    {
+        $product = Product::findOrFail($id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | SOFT DELETE
+        |--------------------------------------------------------------------------
+        */
+
+        $product->delete();
+
+        return [
+
+            'success' => true,
+
+            'message'
+                => 'Xóa sản phẩm thành công',
+
+            'data'
+                => null,
+        ];
+    }
+
+    // =========================
+    // IMAGE UPLOADING
+    // =========================
+    private function uploadImages($product, $images)
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | FOLDER
+        |--------------------------------------------------------------------------
+        */
+
+        $folderName = Str::slug($product->name);
+
+        $folderPath = resource_path(
+            'images/products/' . $folderName
+        );
+
+        if (!File::exists($folderPath)) {
+
+            File::makeDirectory(
+                $folderPath,
+                0755,
+                true
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | SAVE IMAGES
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($images as $index => $image) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | GENERATE FILE NAME
+            |--------------------------------------------------------------------------
+            */
+
+            $originalName = pathinfo(
+                $image->getClientOriginalName(),
+                PATHINFO_FILENAME
+            );
+
+            $extension = $image->getClientOriginalExtension();
+
+            $fileName =
+                Str::slug($originalName)
+                . '-'
+                . uniqid()
+                . '.'
+                . $extension;
+
+            /*
+            |--------------------------------------------------------------------------
+            | MOVE IMAGE
+            |--------------------------------------------------------------------------
+            */
+
+            $image->move(
+                $folderPath,
+                $fileName
+            );
+
+            /*
+            |--------------------------------------------------------------------------
+            | SAVE DATABASE
+            |--------------------------------------------------------------------------
+            */
+
+            $relativePath =
+                'images/products/'
+                . $folderName
+                . '/'
+                . $fileName;
+
+            ProductImage::create([
+
+                'product_id'
+                    => $product->id,
+
+                'url'
+                    => url($relativePath),
+
+                'type'
+                    => $index === 0
+                        ? 'thumbnail'
+                        : 'gallery',
+
+                'position'
+                    => $index + 1,
+            ]);
+        }
+    }
+
+    // =========================
+    // VARIANT MANAGEMENT
+    // =========================
+    private function syncVariants($product, $variants)
+    {
+        foreach ($variants as $variant) {
+
+            if (!is_array($variant)) {
+                continue;
+            }
+
+            ProductVariant::create([
+
+                'product_id'
+                    => $product->id,
+
+                'size'
+                    => $variant['size'] ?? null,
+
+                'color'
+                    => $variant['color'] ?? null,
+
+                'sku'
+                    => $this->generateSku(),
+
+                'price'
+                    => $variant['price'] ?? 0,
+
+                'stock'
+                    => $variant['stock'] ?? 0,
+
+                'reserved_stock'
+                    => 0,
+
+                'sold_stock'
+                    => 0,
+            ]);
+        }
+    }
+
+    private function generateSku()
+    {
+        return strtoupper(
+            Str::random(12)
+        );
+    }
+
+    // =========================
+    // REPLACE IMAGES & VARIANTS
+    // =========================
+    private function replaceImages($product, $images)
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | DELETE OLD FILES
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($product->images as $image) {
+
+            $imagePath = str_replace(
+                url('/'),
+                '',
+                $image->url
+            );
+
+            $fullPath = public_path($imagePath);
+
+            if (File::exists($fullPath)) {
+
+                File::delete($fullPath);
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | DELETE OLD DB
+        |--------------------------------------------------------------------------
+        */
+
+        ProductImage::where(
+            'product_id',
+            $product->id
+        )->delete();
+
+        /*
+        |--------------------------------------------------------------------------
+        | UPLOAD NEW
+        |--------------------------------------------------------------------------
+        */
+
+        $this->uploadImages(
+            $product,
+            $images
+        );
+    }
+    private function replaceVariants($product, $variants)
+    {
+        ProductVariant::where(
+            'product_id',
+            $product->id
+        )->delete();
+
+        $this->syncVariants(
+            $product,
+            $variants
+        );
+    }
+}

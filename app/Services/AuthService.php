@@ -29,7 +29,15 @@ class AuthService
             'success' => true,
             'message' => 'Đăng nhập thành công',
             'data' => [
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'mssv' => $user->mssv,
+                    'role' => $user->role,
+                    'avatar' => $user->avatar_url,
+                ],
                 'token' => $token,
             ]
         ];
@@ -41,7 +49,7 @@ class AuthService
     public function register($data)
     {
         // 🔥 auto detect role (optional)
-        $role = 'user';
+        $role = !empty($data['mssv']) ? 'sinhvien' : 'user';
 
         $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
 
@@ -49,6 +57,8 @@ class AuthService
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'phone' => $data['phone'] ?? null,
+            'mssv' => $data['mssv'] ?? null,
             'role' => $role,
             'avatar' => $avatar,
         ]);
@@ -59,7 +69,15 @@ class AuthService
             'success' => true,
             'message' => 'Đăng ký thành công',
             'data' => [
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'mssv' => $user->mssv,
+                    'role' => $user->role,
+                    'avatar' => $user->avatar_url,
+                ],
                 'token' => $token,
             ]
         ];
@@ -72,6 +90,18 @@ class AuthService
     {
         if (isset($data['name'])) {
             $user->name = $data['name'];
+        }
+
+        if (isset($data['email'])) {
+            $user->email = $data['email'];
+        }
+
+        if (isset($data['phone'])) {
+            $user->phone = $data['phone'];
+        }
+
+        if (isset($data['mssv'])) {
+            $user->mssv = $data['mssv'];
         }
 
         if (isset($data['avatar'])) {

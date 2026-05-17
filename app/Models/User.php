@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Notifications\Messages\MailMessage;
 
 
 use App\Models\Address;
@@ -26,8 +27,14 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role', // 🔥 FIX
+        'phone',
+        'mssv',
+        'role',
         'avatar',
+    ];
+
+    protected $appends = [
+        'avatar_url'
     ];
 
     /**
@@ -44,6 +51,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'deleted_at' => 'datetime',
     ];
 
     // ======================
@@ -79,5 +87,48 @@ class User extends Authenticatable
     public function isAdmin()
     {
         return $this->role === 'admin';
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
+        $resetUrl = $frontendUrl
+            . '/reset-password?token=' . $token
+            . '&email=' . urlencode($this->email);
+
+        $this->notify(new class($resetUrl) extends \Illuminate\Notifications\Notification {
+            public function __construct(private string $resetUrl)
+            {
+            }
+
+            public function via($notifiable): array
+            {
+                return ['mail'];
+            }
+
+            public function toMail($notifiable): MailMessage
+            {
+                return (new MailMessage)
+                    ->subject('Đặt lại mật khẩu')
+                    ->line('Bạn nhận được email này vì có yêu cầu đặt lại mật khẩu cho tài khoản của bạn.')
+                    ->action('Đặt lại mật khẩu', $this->resetUrl)
+                    ->line('Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.');
+            }
+        });
+    }
+
+    public function getAvatarUrlAttribute()
+    {
+        if (!$this->avatar) {
+            return null;
+        }
+
+        // base64 hiện tại
+        if (str_starts_with($this->avatar, 'data:image')) {
+            return $this->avatar;
+        }
+
+        return asset('storage/' . $this->avatar);
     }
 }

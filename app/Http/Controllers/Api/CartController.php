@@ -24,7 +24,7 @@ class CartController extends Controller
     }
 
     // =========================
-    public function add(Request $request)
+    public function store(Request $request)
     {
         $data = $request->validate([
             'product_variant_id' => 'required|exists:product_variants,id',
@@ -32,32 +32,37 @@ class CartController extends Controller
         ]);
 
         return response()->json(
-            $this->cartService->addToCart($request->user(), $data)
+            $this->cartService->addToCart(
+                $request->user(),
+                $data
+            )
         );
     }
 
     // =========================
-    public function update(Request $request)
+    public function update(Request $request, $id)
     {
         $data = $request->validate([
-            'product_variant_id' => 'required|exists:product_variants,id',
             'quantity' => 'required|integer|min:1'
         ]);
 
         return response()->json(
-            $this->cartService->updateItem($request->user(), $data)
+            $this->cartService->updateItem(
+                $request->user(),
+                $id,
+                $data['quantity']
+            )
         );
     }
 
     // =========================
-    public function remove(Request $request)
+    public function destroy(Request $request, $id)
     {
-        $data = $request->validate([
-            'product_variant_id' => 'required|exists:product_variants,id'
-        ]);
-
         return response()->json(
-            $this->cartService->removeItem($request->user(), $data)
+            $this->cartService->removeItem(
+                $request->user(),
+                $id
+            )
         );
     }
 

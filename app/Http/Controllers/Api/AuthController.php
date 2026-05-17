@@ -22,7 +22,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'email' => 'required|email',
-            'password' => 'required',
+            'password' => 'required|string',
         ]);
 
         $result = $this->authService->login($data);
@@ -38,8 +38,10 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'avatar' => 'nullable|string', // base64
+            'password' => 'required|min:6|confirmed',
+            'phone' => 'nullable|string|max:20',
+            'mssv' => 'nullable|string|max:50|unique:users,mssv',
+            'avatar' => 'nullable|string',
         ]);
 
         $result = $this->authService->register($data);
@@ -52,9 +54,19 @@ class AuthController extends Controller
     // =========================
     public function me(Request $request)
     {
+        $user = $request->user();
+
         return response()->json([
             'success' => true,
-            'data' => $request->user(),
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'mssv' => $user->mssv,
+                'role' => $user->role,
+                'avatar' => $user->avatar_url,
+            ],
         ]);
     }
 
@@ -78,6 +90,9 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name' => 'nullable|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'mssv' => 'nullable|string|max:50|unique:users,mssv',
             'avatar' => 'nullable|string',
         ]);
 

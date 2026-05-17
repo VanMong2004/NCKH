@@ -68,13 +68,13 @@ class ProductController extends Controller
     // =========================
     // DETAIL
     // =========================
-    public function show(Request $request, $id)
+    public function show(Request $request, $slug)
     {
         try {
 
             return response()->json(
                 $this->productService->show(
-                    $id,
+                    $slug,
                     Auth::guard('sanctum')->user()
                 )
             );

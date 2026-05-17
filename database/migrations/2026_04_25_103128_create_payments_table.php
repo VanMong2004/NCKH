@@ -31,6 +31,9 @@ return new class extends Migration
                 'refunded'
             ])->default('pending');
 
+            $table->decimal('amount', 12, 2)->default(0);
+            $table->json('meta')->nullable();
+
             $table->string('transaction_id')->nullable()->unique();
 
             $table->json('response_data')->nullable();

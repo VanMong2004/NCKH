@@ -11,13 +11,14 @@ class Campaign extends Model
 
     protected $fillable = [
         'title',
+        'slug',
         'description',
         'banner',
         'thumbnail',
         'limit',
         'start_date',
         'end_date',
-        'is_active', // 🔥 ADD
+        'is_active',
     ];
 
     protected $casts = [

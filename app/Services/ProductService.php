@@ -28,7 +28,7 @@ class ProductService
             ->with([
                 'images',
                 'variants',
-                'category'
+                'category.parent'
             ])
             ->where('is_active', true);
 
@@ -268,6 +268,8 @@ class ProductService
                         );
                     });
 
+                $sold = $product->variants->sum('sold_stock');
+
                 return [
 
                     'id' => $product->id,
@@ -277,15 +279,24 @@ class ProductService
                     'description'
                         => $product->description,
 
-                    'thumbnail'
-                        => $product->thumbnail,
+                    'thumbnail' => optional(
+                        $product->images->where('type', 'thumbnail')->first()
+                    )->url
+                        ?? optional($product->images->first())->url
+                        ?? 'https://placehold.co/600x600?text=CTU',
 
                     'category' => [
-                        'id'
-                            => $product->category?->id,
+                        'id' => $product->category?->id,
+                        'name' => $product->category?->name,
+                        'slug' => $product->category?->slug,
 
-                        'name'
-                            => $product->category?->name,
+                        'parent' => $product->category?->parent
+                            ? [
+                                'id' => $product->category->parent->id,
+                                'name' => $product->category->parent->name,
+                                'slug' => $product->category->parent->slug,
+                            ]
+                            : null,
                     ],
 
                     'min_price'
@@ -294,11 +305,13 @@ class ProductService
                     'max_price'
                         => $prices->max(),
 
-                    'average_rating'
-                        => $product->average_rating,
+                    'average_rating' 
+                        => (float) $product->average_rating,
 
                     'total_reviews'
                         => $product->total_reviews,
+
+                    'sold' => $sold,
 
                     'in_stock'
                         => $availableStock > 0,
@@ -333,7 +346,33 @@ class ProductService
                 'min' => ProductVariant::min('price'),
 
                 'max' => ProductVariant::max('price'),
-            ]
+            ],
+
+            'categories'
+                => Category::query()
+                ->whereNull('parent_id')
+                ->with('children')
+                ->get()
+                ->map(function($item){
+
+                    return [
+
+                        'id'=>$item->id,
+
+                        'name'=>$item->name,
+
+                        'slug'=>$item->slug,
+
+                        'children'=>
+                        $item->children->map(
+                            fn($child)=>[
+                                'id'=>$child->id,
+                                'name'=>$child->name,
+                                'slug'=>$child->slug
+                            ]
+                        )
+                    ];
+                }),
         ];
 
         return [
@@ -369,15 +408,20 @@ class ProductService
     // =========================
     // DETAIL
     // =========================
-    public function show($id, $user)
+    public function show($slug, $user)
     {
         $product = Product::query()
             ->with([
                 'images',
                 'variants',
-                'category',
+                'category.parent',
+                'reviews.user'
             ])
-            ->findOrFail($id);
+            ->where(
+                'slug',
+                $slug
+            )
+            ->firstOrFail();
 
         /*
         |--------------------------------------------------------------------------
@@ -440,12 +484,13 @@ class ProductService
         |--------------------------------------------------------------------------
         */
 
-        $ratingBreakdown = Review::query()
-            ->where('product_id', $product->id)
-            ->whereNull('deleted_at')
-            ->selectRaw('rating, COUNT(*) as total')
-            ->groupBy('rating')
-            ->pluck('total', 'rating');
+        $ratingBreakdown = [];
+
+        for ($i = 5; $i >= 1; $i--) {
+            $ratingBreakdown[$i] = $product->reviews
+                ->where('rating', $i)
+                ->count();
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -457,7 +502,7 @@ class ProductService
             ->with([
                 'images',
                 'variants',
-                'category',
+                'category.parent',
             ])
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
@@ -486,11 +531,21 @@ class ProductService
                 'description'
                     => $product->description,
 
-                'images'
-                    => $product->images,
+                'images' => $product->images->map(fn($image) => [
+                    'url' => $image->url,
+                    'type' => $image->type,
+                ]),
 
-                'variants'
-                    => $product->variants,
+                'variants' => $product->variants->map(fn($variant) => [
+                    'id' => $variant->id,
+                    'size' => $variant->size,
+                    'color' => $variant->color,
+                    'sku' => $variant->sku,
+                    'price' => $variant->price,
+                    'stock' => $variant->stock,
+                    'reserved_stock' => $variant->reserved_stock,
+                    'sold_stock' => $variant->sold_stock,
+                ]),
 
                 'available_sizes'
                     => $sizes,
@@ -498,8 +553,8 @@ class ProductService
                 'available_colors'
                     => $colors,
 
-                'average_rating'
-                    => $product->average_rating,
+                'average_rating' 
+                    => (float) $product->average_rating,
 
                 'total_reviews'
                     => $product->total_reviews,
@@ -512,6 +567,17 @@ class ProductService
 
                 'related_products'
                     => $relatedProducts,
+
+                'reviews' => $product->reviews->take(10)->map(fn($review) => [
+                    'id' => $review->id,
+                    'rating' => $review->rating,
+                    'comment' => $review->comment,
+                    'user' => [
+                        'name' => $review->user?->name,
+                        'avatar' => $review->user?->avatar_url,
+                    ],
+                    'created_at' => $review->created_at->format('d/m/Y'),
+                ]),
             ]
         ];
     }
@@ -551,6 +617,12 @@ class ProductService
     // =========================
     public function formatProduct($product)
     {
+        $availableStock = $product->variants->sum(function ($variant) {
+            return max(0, $variant->stock - $variant->reserved_stock);
+        });
+
+        $sold = $product->variants->sum('sold_stock');
+
         return [
             'id' => $product->id,
             'name' => $product->name,
@@ -560,13 +632,45 @@ class ProductService
             'price_max' => $product->variants->max('price'),
 
             'thumbnail' => optional(
-                $product->images->where('type', 'thumbnail')->first()
-            )->url,
+                $product->images
+                    ->where('type','thumbnail')
+                    ->first()
+            )->url
 
-            'images' => $product->images->pluck('url'),
+            ?? optional(
+                $product->images->first()
+            )->url
 
-            'rating' => $product->avg_rating,
-            'review_count' => $product->review_count,
+            ?? 'https://placehold.co/600x600?text=CTU',
+
+            'images' => $product->images->map(fn($image) => [
+                'url' => $image->url,
+                'type' => $image->type,
+            ]),
+
+            'rating' => (float) $product->average_rating,
+            'average_rating' => (float) $product->average_rating,
+            'review_count' => $product->total_reviews,
+
+            'sold' => $sold,
+            'stock' => $availableStock,
+            'in_stock' => $availableStock > 0,
+
+            'is_featured' => (bool) $product->is_featured,
+            'is_active' => (bool) $product->is_active,
+
+            'category' => [
+                'id'=>$product->category?->id,
+                'name'=>$product->category?->name,
+                'slug'=>$product->category?->slug,
+                'parent' => $product->category?->parent
+                    ? [
+                        'id' => $product->category->parent->id,
+                        'name' => $product->category->parent->name,
+                        'slug' => $product->category->parent->slug,
+                    ]
+                    : null,
+            ],
         ];
     }
 
@@ -620,7 +724,7 @@ class ProductService
             ->with([
                 'product.images',
                 'product.variants',
-                'product.category',
+                'product.category.parent',
             ])
             ->where('user_id', $user->id)
             ->orderByDesc('viewed_at')

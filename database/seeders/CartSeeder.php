@@ -2,26 +2,21 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\User;
 use App\Models\Cart;
-use App\Models\CartItem;
-use App\Models\ProductVariant;
+use Illuminate\Database\Seeder;
 
 class CartSeeder extends Seeder
 {
     public function run(): void
     {
-        $cart = Cart::create([
-            'user_id' => 2,
-            'status' => 'active',
-        ]);
+        $users = User::all();
 
-        $variant = ProductVariant::first();
+        foreach ($users as $user) {
 
-        CartItem::create([
-            'cart_id' => $cart->id,
-            'product_variant_id' => $variant->id,
-            'quantity' => 2,
-        ]);
+            Cart::firstOrCreate([
+                'user_id' => $user->id
+            ]);
+        }
     }
 }

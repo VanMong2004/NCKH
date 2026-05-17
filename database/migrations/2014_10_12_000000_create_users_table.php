@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+
             $table->string('name');
 
             $table->string('email')->unique();
@@ -20,14 +21,17 @@ return new class extends Migration
 
             $table->string('password');
 
-            $table->enum('role', ['user', 'admin'])->default('user');
+            $table->string('phone')->nullable();
 
-            $table->string('avatar')->nullable();
+            $table->string('mssv')->nullable()->unique();
+
+            $table->enum('role', ['user', 'admin', 'sinhvien'])->default('user');
+
+            $table->longText('avatar')->nullable();
 
             $table->rememberToken();
             $table->timestamps();
 
-            // optional
             $table->softDeletes();
         });
     }

@@ -29,6 +29,8 @@ return new class extends Migration
 
             $table->unsignedInteger('quantity');
 
+            $table->boolean('is_selected')->default(true);
+
             $table->timestamps();
 
             $table->unique(['cart_id', 'product_variant_id']);

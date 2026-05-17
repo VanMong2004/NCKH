@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\File;
 
 // =============================
 // CONTROLLERS
@@ -18,7 +20,9 @@ use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\PasswordResetController;
 
+use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminRevenueController;
 use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
@@ -36,7 +40,7 @@ Route::prefix('auth')->group(function () {
 // HOME (PUBLIC)
 // =============================
 Route::prefix('home')->group(function () {
-    Route::get('/', [HomeController::class,'index']); // Lấy dữ liệu cho trang chủ (sản phẩm nổi bật, chiến dịch nổi bật, v.v.)
+    Route::get('/', [HomeController::class,'getHomeData']); // Lấy dữ liệu cho trang chủ Home Page 
 });
 
 // =============================
@@ -44,7 +48,7 @@ Route::prefix('home')->group(function () {
 // =============================
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);// Lấy danh sách sản phẩm, có hỗ trợ filter, search, pagination
-    Route::get('/{id}', [ProductController::class, 'show']);// Lấy chi tiết sản phẩm
+    Route::get('/{slug}', [ProductController::class, 'show']);// Lấy chi tiết sản phẩm
     Route::get('/{id}/variants', [ProductController::class, 'variants']);// Lấy danh sách biến thể của sản phẩm
     Route::get('/{id}/reviews', [ReviewController::class, 'productReviews']);// Lấy danh sách đánh giá của sản phẩm
 });
@@ -91,14 +95,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/refresh-token', [AuthController::class, 'refresh']); // Làm mới token (nếu có refresh token, hoặc chỉ đơn giản là tạo token mới)
     Route::post('/logout', [AuthController::class, 'logout']); // Đăng xuất
 
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)
+    Route::post('/reset-password', [PasswordResetController::class, 'reset']); // Đặt lại mật khẩu (xử lý link reset password, cập nhật mật khẩu mới) 
+
     // =============================
     // CART
     // =============================
     Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']); // Lấy danh sách sản phẩm trong giỏ hàng
-        Route::post('/add', [CartController::class, 'add']); // Thêm sản phẩm vào giỏ hàng
-        Route::put('/update', [CartController::class, 'update']); // Cập nhật số lượng sản phẩm trong giỏ hàng
-        Route::delete('/remove', [CartController::class, 'remove']); // Xóa sản phẩm khỏi giỏ hàng
+        Route::post('/', [CartController::class, 'store']); // Thêm sản phẩm vào giỏ hàng
+        Route::put('/{id}', [CartController::class, 'update']); // Cập nhật số lượng sản phẩm trong giỏ hàng
+        Route::delete('/{id}', [CartController::class, 'destroy']); // Xóa sản phẩm khỏi giỏ hàng
         Route::get('/count', [CartController::class, 'count']); // Lấy số lượng sản phẩm trong giỏ hàng
     });
 
@@ -188,11 +195,11 @@ Route::middleware('auth:sanctum')->group(function () {
 // =============================
 // ADMIN
 // =============================
-Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     // =============================
     // ADMIN ORDERS
     // =============================
-    Route::prefix('admin/orders')->group(function () {
+    Route::prefix('orders')->group(function () {
         Route::get('/', [AdminOrderController::class, 'index']);
         Route::get('/{id}', [AdminOrderController::class, 'show']);
         Route::patch('/{id}/status', [AdminOrderController::class, 'updateStatus']);
@@ -201,7 +208,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // =============================
     // ADMIN REVENUE
     // =============================
-    Route::prefix('admin/revenue')->group(function () {
+    Route::prefix('revenue')->group(function () {
         Route::get('/overview', [AdminRevenueController::class, 'overview']);
         Route::get('/daily', [AdminRevenueController::class, 'daily']);
         Route::get('/products', [AdminRevenueController::class, 'byProduct']);
@@ -212,17 +219,47 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // =============================
     // ADMIN USER CAMPAIGN APPROVAL
     // =============================
-    Route::prefix('admin')->group(function () {
-        Route::prefix('user-campaign-items')->group(function () {
-            Route::post('/{id}/approve', [
-                UserCampaignApprovalController::class,
-                'approve'
-            ]);
-            Route::post('/{id}/reject', [
-                UserCampaignApprovalController::class,
-                'reject'
-            ]);
-        });
+    Route::prefix('user-campaign-items')->group(function () {
+        Route::post('/{id}/approve', [
+            UserCampaignApprovalController::class,
+            'approve'
+        ]);
+        Route::post('/{id}/reject', [
+            UserCampaignApprovalController::class,
+            'reject'
+        ]);
+    });
+    
+
+    // =============================
+    // ADMIN PRODUCTS
+    // =============================
+    Route::prefix('products')->group(function () {
+        Route::get('/', [AdminProductController::class, 'index']);// Lấy danh sách sản phẩm (có hỗ trợ filter, search, pagination)
+        Route::post('/', [AdminProductController::class, 'store']);// Tạo sản phẩm mới
+        Route::get('/{id}', [AdminProductController::class, 'show']);// Lấy chi tiết sản phẩm
+        Route::post('/{id}', [AdminProductController::class, 'update']);// Cập nhật sản phẩm
+        Route::delete('/{id}', [AdminProductController::class, 'destroy']);// Xóa sản phẩm
+    });
+
+    Route::get('/images/products/{folder}/{file}', function (
+        $folder,
+        $file
+    ) {
+
+        $path = resource_path(
+            'images/products/'
+            . $folder
+            . '/'
+            . $file
+        );
+
+        if (!File::exists($path)) {
+            abort(404);
+        }
+
+        return Response::file($path);
+
     });
 });
 

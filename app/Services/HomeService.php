@@ -16,74 +16,34 @@ class HomeService
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function getHomeData()
     {
         return [
+            'featured_products' => $this->featuredProducts(),
+            'new_products' => $this->newProducts(),
+            'best_selling_products' => $this->bestSellingProducts(),
+            'top_rated_products' => $this->topRatedProducts(),
 
-            'success' => true,
+            'active_campaigns' => $this->activeCampaigns(),
+            'upcoming_campaigns' => $this->upcomingCampaigns(),
 
-            'message'
-                => 'Lấy dữ liệu home thành công',
+            'categories' => $this->categories(),
 
-            'data' => [
+            'cart_count' => auth()->check()
+                ? app(CartService::class)->getCount(auth()->user())['data']
+                : 0,
 
-                /*
-                |--------------------------------------------------------------------------
-                | FEATURED PRODUCTS
-                |--------------------------------------------------------------------------
-                */
+            'unread_notifications' => 0,
 
-                'featured_products'
-                    => $this->featuredProducts(),
+            'news_events' => [],
 
-                /*
-                |--------------------------------------------------------------------------
-                | NEW PRODUCTS
-                |--------------------------------------------------------------------------
-                */
-
-                'new_products'
-                    => $this->newProducts(),
-
-                /*
-                |--------------------------------------------------------------------------
-                | BEST SELLING
-                |--------------------------------------------------------------------------
-                */
-
-                'best_selling_products'
-                    => $this->bestSellingProducts(),
-
-                /*
-                |--------------------------------------------------------------------------
-                | TOP RATED
-                |--------------------------------------------------------------------------
-                */
-
-                'top_rated_products'
-                    => $this->topRatedProducts(),
-
-                /*
-                |--------------------------------------------------------------------------
-                | CAMPAIGNS
-                |--------------------------------------------------------------------------
-                */
-
-                'active_campaigns'
-                    => $this->activeCampaigns(),
-
-                'upcoming_campaigns'
-                    => $this->upcomingCampaigns(),
-
-                /*
-                |--------------------------------------------------------------------------
-                | CATEGORIES
-                |--------------------------------------------------------------------------
-                */
-
-                'categories'
-                    => $this->categories(),
-            ]
+            'trending_keywords' => [
+                'đồng phục',
+                'phụ kiện',
+                'bảng tên',
+                'sự kiện',
+                'campaign',
+            ],
         ];
     }
 
@@ -205,6 +165,7 @@ class HomeService
     protected function activeCampaigns()
     {
         return Campaign::query()
+            ->where('is_active',true)
             ->where(
                 'start_date',
                 '<=',
@@ -225,8 +186,8 @@ class HomeService
                     'id'
                         => $campaign->id,
 
-                    'name'
-                        => $campaign->name,
+                    'title'
+                        => $campaign->title,
 
                     'description'
                         => $campaign->description,
@@ -237,11 +198,23 @@ class HomeService
                     'thumbnail'
                         => $campaign->thumbnail,
 
+                    'limit'
+                        => $campaign->limit,
+
                     'start_date'
                         => $campaign->start_date,
 
                     'end_date'
                         => $campaign->end_date,
+
+                    'status' 
+                        => $campaign->status,
+
+                    'countdown_seconds'
+                        => now()->diffInSeconds(
+                            $campaign->end_date,
+                            false
+                        )
                 ];
             });
     }
@@ -255,6 +228,7 @@ class HomeService
     protected function upcomingCampaigns()
     {
         return Campaign::query()
+            ->where('is_active', true)
             ->where(
                 'start_date',
                 '>',
@@ -270,8 +244,8 @@ class HomeService
                     'id'
                         => $campaign->id,
 
-                    'name'
-                        => $campaign->name,
+                    'title'
+                        => $campaign->title,
 
                     'description'
                         => $campaign->description,
@@ -282,11 +256,20 @@ class HomeService
                     'thumbnail'
                         => $campaign->thumbnail,
 
+                    'limit' 
+                        => $campaign->limit,
+
                     'start_date'
                         => $campaign->start_date,
 
                     'end_date'
                         => $campaign->end_date,
+
+                    'status'
+                        => $campaign->status,
+
+                    'countdown_seconds'
+                        => now()->diffInSeconds($campaign->start_date, false),
                 ];
             });
     }
@@ -305,17 +288,14 @@ class HomeService
             ->latest()
             ->get()
             ->map(function ($category) {
-
                 return [
-
-                    'id'
-                        => $category->id,
-
-                    'name'
-                        => $category->name,
-
-                    'children_count'
-                        => $category->children_count,
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'icon' => $category->icon,
+                    'image' => $category->image,
+                    'thumbnail' => $category->thumbnail,
+                    'children_count' => $category->children_count,
                 ];
             });
     }

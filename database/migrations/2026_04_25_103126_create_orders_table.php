@@ -14,12 +14,19 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
 
+            $table->enum('type', ['normal', 'campaign'])->default('normal');
+
             $table->unsignedBigInteger('user_id')->nullable();
             $table->foreign('user_id')
                 ->references('id')
                 ->on('users')
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
+
+            $table->foreignId('campaign_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
             // snapshot address
             $table->string('shipping_name');
@@ -40,9 +47,13 @@ return new class extends Migration
                 'cancelled'
             ])->default('pending');
 
+            $table->string('cancel_reason')->nullable();
+
             $table->string('order_code')->unique();
 
             $table->timestamps();
+
+            $table->index(['type']);
         });
     }
 

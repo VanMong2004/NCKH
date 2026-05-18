@@ -48,7 +48,58 @@ class OrderQueryService
         // 🔥 pagination
         $perPage = $filters['per_page'] ?? 10;
 
-        return $query->paginate($perPage);
+        $orders = $query->paginate($perPage);
+
+        $orders->setCollection(
+
+            $orders->getCollection()->map(function ($order) {
+
+                $payment = $order->payments
+                    ->sortByDesc('created_at')
+                    ->first();
+
+                $firstItem = $order->items->first();
+
+                $thumbnail = optional(
+                    $firstItem?->productVariant?->product?->images
+                        ?->where('type','thumbnail')
+                        ->first()
+                )->url
+
+                ?? optional(
+                    $firstItem?->productVariant?->product?->images
+                        ?->first()
+                )->url;
+
+                return [
+
+                    'id' => $order->id,
+
+                    'order_code' => $order->order_code,
+
+                    'type' => $order->type,
+
+                    'status' => $order->status,
+
+                    'payment_status' => $payment?->status ?? 'pending',
+
+                    'thumbnail' => $thumbnail,
+
+                    'item_count' => $order->items->sum('quantity'),
+
+                    'total' => $order->total,
+
+                    'created_at' => optional(
+                        $order->created_at
+                    )->format('d/m/Y H:i'),
+
+                    'detail_url' => "/profile/orders/" . $order->id
+                ];
+            })
+
+        );
+
+        return $orders;
     }
 
     /**

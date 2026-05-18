@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 
 class OrderQueryService
@@ -55,13 +56,88 @@ class OrderQueryService
      */
     public function show($user, $id)
     {
-        return Order::with([
-            'items.productVariant.product',
+        $order = Order::with([
+            'items.productVariant.product.images',
             'payments',
             'campaign'
         ])
             ->where('user_id', $user->id)
             ->findOrFail($id);
+
+        $payment = $order->payments->sortByDesc('created_at')->first();
+
+        return [
+            'id' => $order->id,
+            'order_code' => $order->order_code,
+            'type' => $order->type,
+            'status' => $order->status,
+
+            'qr_code' => $order->order_code,
+
+            'receiver' => [
+                'name' => $order->shipping_name,
+                'phone' => $order->shipping_phone,
+                'address' => $order->shipping_address,
+            ],
+
+            'payment' => $payment ? [
+                'id' => $payment->id,
+                'method' => $payment->method,
+                'status' => $payment->status,
+                'amount' => $payment->amount,
+                'transaction_id' => $payment->transaction_id,
+            ] : null,
+
+            'summary' => [
+                'sub_total' => $order->total - $order->shipping_fee,
+                'shipping_fee' => $order->shipping_fee,
+                'discount' => 0,
+                'grand_total' => $order->total,
+            ],
+
+            'items' => $order->items->map(function ($item) {
+                /** @var \App\Models\OrderItem $item */
+
+                $variant = $item->productVariant;
+                $product = $variant?->product;
+
+                return [
+                    'id' => $item->id,
+                    'product_name' => $item->product_name,
+                    'thumbnail' => optional(
+                        $product?->images?->where('type', 'thumbnail')->first()
+                    )->url ?? optional($product?->images?->first())->url,
+
+                    'variant' => $item->variant_snapshot,
+                    'price' => $item->price,
+                    'quantity' => $item->quantity,
+                    'total' => $item->price * $item->quantity,
+                ];
+            }),
+
+            'pickup' => [
+                'location' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+                'instruction' => 'Vui lòng mang theo MSSV, mã đơn hàng hoặc mã QR để nhận hàng.',
+            ],
+
+            'timeline' => [
+                [
+                    'label' => 'Đã tạo đơn',
+                    'status' => true,
+                    'time' => optional($order->created_at)->format('d/m/Y H:i'),
+                ],
+                [
+                    'label' => 'Đã thanh toán',
+                    'status' => $payment?->status === 'success',
+                    'time' => $payment?->updated_at?->format('d/m/Y H:i'),
+                ],
+                [
+                    'label' => 'Chờ nhận hàng',
+                    'status' => in_array($order->status, ['paid', 'processing', 'ready_to_pickup', 'delivered', 'completed']),
+                    'time' => null,
+                ],
+            ],
+        ];
     }
 
     /**

@@ -15,6 +15,7 @@ class MockPaymentGatewayService
         // giả lập trả URL
         return [
             'payment_id' => $payment->id,
+            'transaction_id' => $payment->transaction_id,
             'redirect_url' => url("/api/payment/callback?payment_id={$payment->id}&status=success&method=mock")
         ];
     }

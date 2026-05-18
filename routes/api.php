@@ -112,15 +112,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // =============================
     // ORDERS (NORMAL)
     // =============================
-    Route::post('/checkout', [OrderController::class, 'checkout']); // Thanh toán đơn hàng từ giỏ hàng (checkout)
-
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'myOrders']); // Lấy danh sách đơn hàng của người dùng
         Route::get('/{id}', [OrderController::class, 'show']); // Lấy chi tiết đơn hàng
 
+        Route::post('/checkout', [OrderController::class, 'checkout']); // Thanh toán đơn hàng từ giỏ hàng (checkout)
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']); // Hủy đơn hàng (nếu chưa thanh toán)
         Route::post('/{id}/confirm', [OrderController::class, 'confirm']); // Xác nhận đơn hàng
-
+    
         // 🔥 PAYMENT (moved here)
         Route::post('/{id}/pay', [PaymentController::class, 'pay']); // Thanh toán đơn hàng (tạo payment, redirect sang cổng thanh toán)
         Route::get('/{id}/payments', [PaymentController::class, 'list']); // Lấy danh sách payment của đơn hàng (có hỗ trợ filter theo status)

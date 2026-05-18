@@ -23,6 +23,7 @@ class OrderItem extends Model
     protected $casts = [
         'price' => 'float',
         'quantity' => 'integer',
+        'variant_snapshot' => 'array',
     ];
 
     // ========================

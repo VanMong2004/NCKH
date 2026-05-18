@@ -83,12 +83,6 @@ class OrderService
 
                         $address->province,
                     ]),
-
-                // 'shipping_name' => $data['shipping_name'],
-
-                // 'shipping_phone' => $data['shipping_phone'],
-
-                // 'shipping_address' => $data['shipping_address'],
             ]);
 
             event(new \App\Events\OrderCreated($order));
@@ -127,8 +121,11 @@ class OrderService
                     'product_name'
                         => $variant->product->name,
 
-                    'variant_snapshot'
-                        => "Size: {$variant->size}, Color: {$variant->color}",
+                    'variant_snapshot' => [
+                        'size' => $variant->size,
+                        'color' => $variant->color,
+                        'sku' => $variant->sku,
+                    ],
                 ]);
 
                 $total += $lineTotal;
@@ -155,10 +152,36 @@ class OrderService
                 )
             );
 
+        $order->load('items');
+
+        $items = $order->items;
+
+        $subTotal = $items->sum(function ($item) {
+            return $item->price * $item->quantity;
+        });
+
+        $shippingFee = $order->shipping_fee ?? 0;
+
+        $paymentMethod = $data['payment_method'] ?? 'mock';
+
         return [
             'order_id' => $order->id,
             'order_code' => $order->order_code,
-            'total' => $order->total
+            'status' => $order->status,
+
+            'sub_total' => $subTotal,
+            'shipping_fee' => $shippingFee,
+            'discount' => 0,
+            'grand_total' => $order->total,
+
+            'payment_method' => $paymentMethod,
+
+            'items' => $items->map(fn($item) => [
+                'product_name' => $item->product_name,
+                'price' => $item->price,
+                'quantity' => $item->quantity,
+                'total' => $item->price * $item->quantity,
+            ]),
         ];
     }
 

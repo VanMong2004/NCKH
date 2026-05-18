@@ -46,7 +46,7 @@ return new class extends Migration
 
             // optional but recommended snapshot
             $table->string('product_name')->nullable();
-            $table->string('variant_snapshot')->nullable();
+            $table->json('variant_snapshot')->nullable();
 
             $table->timestamps();
 

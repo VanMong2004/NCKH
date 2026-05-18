@@ -21,7 +21,7 @@ return new class extends Migration
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
 
-            $table->enum('method', ['vnpay', 'momo', 'bank_transfer']);
+            $table->enum('method', ['vnpay', 'momo', 'banking', 'baokim', 'mock']);
 
             $table->enum('status', [
                 'pending',

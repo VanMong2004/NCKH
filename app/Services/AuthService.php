@@ -113,7 +113,15 @@ class AuthService
         return [
             'success' => true,
             'message' => 'Cập nhật thông tin thành công',
-            'data' => $user
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'mssv' => $user->mssv,
+                'role' => $user->role,
+                'avatar' => $user->avatar_url,
+            ]
         ];
     }
 

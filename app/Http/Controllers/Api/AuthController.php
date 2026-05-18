@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -90,9 +91,22 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name' => 'nullable|string|max:255',
-            'email' => 'required|email|unique:users,email',
+
+            'email' => [
+                'nullable',
+                'email',
+                Rule::unique('users', 'email')->ignore($request->user()->id),
+            ],
+
             'phone' => 'nullable|string|max:20',
-            'mssv' => 'nullable|string|max:50|unique:users,mssv',
+
+            'mssv' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('users', 'mssv')->ignore($request->user()->id),
+            ],
+
             'avatar' => 'nullable|string',
         ]);
 

@@ -131,8 +131,11 @@ class User extends Authenticatable
             return null;
         }
 
-        // base64 hiện tại
-        if (str_starts_with($this->avatar, 'data:image')) {
+        if (
+            str_starts_with($this->avatar, 'http://') ||
+            str_starts_with($this->avatar, 'https://') ||
+            str_starts_with($this->avatar, 'data:image')
+        ) {
             return $this->avatar;
         }
 

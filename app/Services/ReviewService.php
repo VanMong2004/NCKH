@@ -26,23 +26,26 @@ class ReviewService
 
             /*
             |--------------------------------------------------------------------------
-            | CHECK PURCHASED + COMPLETED
+            | CHECK PURCHASED + COMPLETED ORDER
             |--------------------------------------------------------------------------
             */
 
-            $completedOrder = Order::where('user_id', $user->id)
-                ->where('status', 'completed')
-                ->whereHas('items', function ($q) use ($product) {
-                    $q->whereHas('productVariant', function ($q2) use ($product) {
-                        $q2->where('product_id', $product->id);
-                    });
+            $completedOrder = Order::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'paid')
+                ->whereHas('items.productVariant', function ($q) use ($data) {
+                    $q->where(
+                        'product_id',
+                        $data['product_id']
+                    );
                 })
                 ->latest()
                 ->first();
 
             if (!$completedOrder) {
+
                 throw new \Exception(
-                    'Bạn chỉ có thể review sản phẩm đã mua và hoàn thành đơn hàng'
+                    'Chỉ được đánh giá sản phẩm đã mua'
                 );
             }
 
@@ -99,7 +102,9 @@ class ReviewService
 
             $this->recalculateProductRating($product);
 
-            return $review->load('images', 'user');
+            return $this->formatReview(
+                $review->load('images', 'user', 'product')
+            );
         });
     }
 
@@ -150,7 +155,9 @@ class ReviewService
                 $review->product
             );
 
-            return $review->load('images', 'user');
+            return $this->formatReview(
+                $review->load('images', 'user', 'product')
+            );
         });
     }
 
@@ -254,13 +261,15 @@ class ReviewService
                 'name' => $product->name,
             ],
 
-            'average_rating' => $product->average_rating,
+            'average_rating' => (float) $product->average_rating,
 
-            'total_reviews' => $product->total_reviews,
+            'total_reviews' => (int) $product->total_reviews,
 
             'rating_breakdown' => $breakdown,
 
-            'data' => $reviews->items(),
+            'data' => collect($reviews->items())
+                ->map(fn ($review) => $this->formatReview($review))
+                ->values(),
 
             'meta' => [
                 'current_page'
@@ -382,5 +391,35 @@ class ReviewService
 
             $image->delete();
         }
+    }
+
+    private function formatReview($review)
+    {
+        return [
+            'id' => $review->id,
+
+            'rating' => (int) $review->rating,
+
+            'comment' => $review->comment,
+
+            'product' => [
+                'id' => $review->product?->id,
+                'name' => $review->product?->name,
+                'slug' => $review->product?->slug,
+            ],
+
+            'user' => [
+                'id' => $review->user?->id,
+                'name' => $review->user?->name,
+                'avatar' => $review->user?->avatar_url,
+            ],
+
+            'images' => $review->images
+                ->pluck('image_url')
+                ->values(),
+
+            'created_at' => optional($review->created_at)
+                ->format('d/m/Y H:i'),
+        ];
     }
 }

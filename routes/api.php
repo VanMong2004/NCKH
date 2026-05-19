@@ -38,6 +38,8 @@ use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']); // Đăng nhập
     Route::post('/register', [AuthController::class, 'register']); // Đăng ký
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)
+    Route::post('/reset-password', [PasswordResetController::class, 'reset']); // Đặt lại mật khẩu (xử lý link reset password, cập nhật mật khẩu mới) 
 });
 
 // =============================
@@ -99,8 +101,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/refresh-token', [AuthController::class, 'refresh']); // Làm mới token (nếu có refresh token, hoặc chỉ đơn giản là tạo token mới)
     Route::post('/logout', [AuthController::class, 'logout']); // Đăng xuất
 
-    Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)
-    Route::post('/reset-password', [PasswordResetController::class, 'reset']); // Đặt lại mật khẩu (xử lý link reset password, cập nhật mật khẩu mới) 
+    // Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)
+    // Route::post('/reset-password', [PasswordResetController::class, 'reset']); // Đặt lại mật khẩu (xử lý link reset password, cập nhật mật khẩu mới) 
 
     // =============================
     // CART

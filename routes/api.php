@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\AIController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -199,6 +200,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/read-all', [NotificationController::class, 'markAllRead']);
         Route::get('/{id}', [NotificationController::class, 'show']);
         Route::put('/{id}/read', [NotificationController::class, 'markRead']);
+    });
+
+    // =============================
+    // AI ASSISTANT
+    // =============================
+    Route::prefix('ai')->group(function () {
+        Route::post('/chat',[AIController::class,'chat']);
+        Route::get('/history',[AIController::class,'history']);
     });
 });
 

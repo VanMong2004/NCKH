@@ -90,6 +90,13 @@ class User extends Authenticatable
         );
     }
 
+    public function chatHistories()
+    {
+        return $this->hasMany(
+            ChatHistory::class
+        );
+    }
+
     //helpers
     public function isAdmin()
     {

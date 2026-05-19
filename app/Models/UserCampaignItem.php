@@ -33,9 +33,17 @@ class UserCampaignItem extends Model
         return $this->belongsTo(CampaignItem::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<
+     *     \App\Models\OrderItem
+     * >
+     */
     public function orderItems()
     {
-        return $this->hasMany(OrderItem::class);
+        return $this->hasMany(
+            OrderItem::class,
+            'user_campaign_item_id'
+        );
     }
 
     // ========================

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\UserCampaign;
+use App\Models\UserCampaignItem;
+use App\Models\OrderItem;
 
 class MyCampaignService
 {
@@ -144,16 +146,105 @@ class MyCampaignService
      */
     public function detail($user, $id)
     {
-        return UserCampaign::with([
-
+        $userCampaign = UserCampaign::with([
             'campaign',
-
-            'items.campaignItem.productVariant.product',
-
-            'items.orderItems.order'
-
+            'items.campaignItem.productVariant.product.images',
+            'items.orderItems.order',
         ])
-        ->where('user_id', $user->id)
-        ->findOrFail($id);
+            ->where('user_id', $user->id)
+            ->findOrFail($id);
+
+        $campaign = $userCampaign->campaign;
+
+        return [
+            'id' => $userCampaign->id,
+            'status' => $userCampaign->status,
+            'approved_at' => optional($userCampaign->approved_at)->format('d/m/Y H:i'),
+            'expires_at' => optional($userCampaign->expires_at)->format('d/m/Y H:i'),
+            'created_at' => optional($userCampaign->created_at)->format('d/m/Y H:i'),
+
+            'campaign' => [
+                'id' => $campaign?->id,
+                'title' => $campaign?->title,
+                'slug' => $campaign?->slug,
+                'description' => $campaign?->description,
+                'banner' => $campaign?->banner,
+                'thumbnail' => $campaign?->thumbnail,
+                'limit' => $campaign?->limit,
+                'start_date' => optional($campaign?->start_date)->format('d/m/Y H:i'),
+                'end_date' => optional($campaign?->end_date)->format('d/m/Y H:i'),
+                'status' => $campaign?->status,
+                'countdown_seconds' => $campaign?->end_date
+                    ? now()->diffInSeconds($campaign->end_date, false)
+                    : null,
+            ],
+
+            'items' => $userCampaign->items->map(function (UserCampaignItem $item) {
+                $campaignItem = $item->campaignItem;
+                $variant = $campaignItem?->productVariant;
+                $product = $variant?->product;
+
+                $thumbnail = optional(
+                    $product?->images?->where('type', 'thumbnail')->first()
+                )->url ?? optional($product?->images?->first())->url;
+
+                return [
+                    'id' => $item->id,
+                    'quantity' => $item->quantity,
+                    'approved_quantity' => $item->approved_quantity,
+                    'paid_quantity' => $item->paid_quantity,
+                    'reserved_quantity' => $item->reserved_quantity,
+                    'status' => $item->status,
+
+                    'product' => [
+                        'id' => $product?->id,
+                        'name' => $product?->name,
+                        'slug' => $product?->slug,
+                        'thumbnail' => $thumbnail,
+                        'average_rating' => (float) ($product?->average_rating ?? 0),
+                    ],
+
+                    'variant' => [
+                        'id' => $variant?->id,
+                        'sku' => $variant?->sku,
+                        'size' => $variant?->size,
+                        'color' => $variant?->color,
+                        'stock' => $variant?->stock,
+                    ],
+
+                    'price' => $campaignItem?->price,
+                    'limit_quantity' => $campaignItem?->limit_quantity,
+                    'registered_quantity' => $campaignItem?->registered_quantity,
+
+                    'orders' => $item->orderItems->map(function (OrderItem $orderItem) {
+                        return [
+                            'order_id' => $orderItem->order?->id,
+                            'order_code' => $orderItem->order?->order_code,
+                            'order_status' => $orderItem->order?->status,
+                            'quantity' => $orderItem->quantity,
+                            'total' => $orderItem->price * $orderItem->quantity,
+                        ];
+                    }),
+                ];
+            }),
+
+            'timeline' => [
+                [
+                    'label' => 'Đã đăng ký',
+                    'status' => true,
+                    'time' => optional($userCampaign->created_at)->format('d/m/Y H:i'),
+                ],
+                [
+                    'label' => 'Đã duyệt',
+                    'status' => $userCampaign->status === 'approved',
+                    'time' => optional($userCampaign->approved_at)->format('d/m/Y H:i'),
+                ],
+                [
+                    'label' => 'Chờ thanh toán/nhận hàng',
+                    'status' => in_array($userCampaign->status, ['approved', 'paid', 'completed']),
+                    'time' => null,
+                ],
+            ],
+        ];
     }
 }

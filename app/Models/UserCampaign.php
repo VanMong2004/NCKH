@@ -32,9 +32,16 @@ class UserCampaign extends Model
         return $this->belongsTo(Campaign::class);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<
+     *     \App\Models\UserCampaignItem
+     * >
+     */
     public function items()
     {
-        return $this->hasMany(UserCampaignItem::class);
+        return $this->hasMany(
+            UserCampaignItem::class
+        );
     }
 
     // 🔥 helper

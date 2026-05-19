@@ -97,6 +97,13 @@ class User extends Authenticatable
         );
     }
 
+    public function searchHistories()
+    {
+        return $this->hasMany(
+            SearchHistory::class
+        );
+    }
+
     //helpers
     public function isAdmin()
     {

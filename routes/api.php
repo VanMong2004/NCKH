@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AIController;
+use App\Http\Controllers\Api\SearchController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -208,6 +209,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('ai')->group(function () {
         Route::post('/chat',[AIController::class,'chat']);
         Route::get('/history',[AIController::class,'history']);
+    });
+
+    // =============================
+    // SEARCH
+    // =============================
+    Route::prefix('search')->group(function(){
+        Route::get('/suggestions',[SearchController::class,'suggestions']);
+        Route::get('/history',[SearchController::class,'history']);
+        Route::delete('/history/{id}',[SearchController::class,'deleteHistory']);
+        Route::delete('/history',[SearchController::class,'clearHistory']);
     });
 });
 

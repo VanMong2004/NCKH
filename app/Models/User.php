@@ -83,6 +83,13 @@ class User extends Authenticatable
         return $this->hasMany(UserCampaign::class);
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(
+            Notification::class
+        );
+    }
+
     //helpers
     public function isAdmin()
     {

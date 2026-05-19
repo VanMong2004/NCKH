@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\NotificationController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -187,6 +188,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [AddressController::class, 'update']);// Cập nhật địa chỉ (chỉ cho phép cập nhật thông tin địa chỉ, không cho phép thay đổi địa chỉ mặc định)
         Route::delete('/{id}', [AddressController::class, 'destroy']);// Xóa địa chỉ
         Route::post('/{id}/default', [AddressController::class,'setDefault']);// Đặt địa chỉ làm mặc định
+    });
+
+    // =============================
+    // NOTIFICATIONS
+    // =============================
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::put('/read-all', [NotificationController::class, 'markAllRead']);
+        Route::get('/{id}', [NotificationController::class, 'show']);
+        Route::put('/{id}/read', [NotificationController::class, 'markRead']);
     });
 });
 

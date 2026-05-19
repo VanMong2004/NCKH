@@ -16,7 +16,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReviewController;
-use App\Http\Controllers\Api\RevenueController;
+// use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
@@ -24,10 +24,11 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\AnalyticsController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
-use App\Http\Controllers\Api\Admin\AdminRevenueController;
+// use App\Http\Controllers\Api\Admin\AdminRevenueController;
 use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
 
 
@@ -166,7 +167,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // =============================
     // USER ANALYTICS
     // =============================
-    Route::get('/analytics', [RevenueController::class, 'userAnalytics']); // Lấy dữ liệu phân tích cho người dùng (doanh thu theo tháng, sản phẩm bán chạy, v.v.)
+    // Route::get('/analytics', [RevenueController::class, 'userAnalytics']); // Lấy dữ liệu phân tích cho người dùng (doanh thu theo tháng, sản phẩm bán chạy, v.v.)
 
     // =============================
     // MY CAMPAIGNS
@@ -220,6 +221,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/history/{id}',[SearchController::class,'deleteHistory']);
         Route::delete('/history',[SearchController::class,'clearHistory']);
     });
+
+    // =============================
+    // ANALYTICS
+    // =============================
+    Route::prefix('analytics')->group(function(){
+        Route::get('/overview',[AnalyticsController::class,'overview']);
+        Route::get('/top-products',[AnalyticsController::class,'topProducts']);
+        Route::get('/sales-chart',[AnalyticsController::class,'salesChart']);
+        Route::get('/export/pdf',[AnalyticsController::class,'exportPdf']);
+        Route::get('/export/excel',[AnalyticsController::class,'exportExcel']);
+    });
 });
 
 
@@ -239,13 +251,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // =============================
     // ADMIN REVENUE
     // =============================
-    Route::prefix('revenue')->group(function () {
-        Route::get('/overview', [AdminRevenueController::class, 'overview']);
-        Route::get('/daily', [AdminRevenueController::class, 'daily']);
-        Route::get('/products', [AdminRevenueController::class, 'byProduct']);
-        Route::get('/chart', [AdminRevenueController::class, 'chart']);
-        Route::get('/top-products', [AdminRevenueController::class, 'topProducts']);
-    });
+    // Route::prefix('revenue')->group(function () {
+    //     Route::get('/overview', [AdminRevenueController::class, 'overview']);
+    //     Route::get('/daily', [AdminRevenueController::class, 'daily']);
+    //     Route::get('/products', [AdminRevenueController::class, 'byProduct']);
+    //     Route::get('/chart', [AdminRevenueController::class, 'chart']);
+    //     Route::get('/top-products', [AdminRevenueController::class, 'topProducts']);
+    // });
 
     // =============================
     // ADMIN USER CAMPAIGN APPROVAL

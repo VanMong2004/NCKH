@@ -8,9 +8,8 @@ const api = axios.create({
     },
 });
 
-// 🔐 attach token
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('ctut_token');
 
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -19,13 +18,17 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// ❌ handle error global
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        const message = error.response?.data?.message || 'Có lỗi xảy ra';
+        const response = error.response;
 
-        return Promise.reject(error.response?.data?.message || 'Có lỗi xảy ra');
+        return Promise.reject({
+            message: response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.',
+            errors: response?.data?.errors || {},
+            status: response?.status || 500,
+            raw: response?.data || null,
+        });
     },
 );
 

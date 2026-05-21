@@ -1,286 +1,274 @@
-import { useState } from 'react';
-import Breadcrumb from '../components/common/Breadcrumb';
-import { CreditCard, Wallet, Truck } from 'lucide-react';
-import CheckoutOrder from '../components/checkout/CheckoutOrder';
-import { useCart } from '../context/CartContext';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronRight, Home } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
-function Checkout() {
-    const { cartItems } = useCart();
+import MainLayout from '../layout/MainLayout';
+import CheckoutSteps from '../components/checkout/CheckoutSteps';
+import ReceiverForm from '../components/checkout/ReceiverForm';
+import PaymentMethod from '../components/checkout/PaymentMethod';
+import CheckoutSummary from '../components/checkout/CheckoutSummary';
 
-    const [email, setEmail] = useState('');
-    const [subscribeNews, setSubscribeNews] = useState(true);
+import { useCart } from '../contexts/CartContext';
 
-    const [shippingInfo, setShippingInfo] = useState({
-        firstName: '',
-        lastName: '',
-        address: '',
+import addressService from '../services/addressService';
+import orderService from '../services/orderService';
+import paymentService from '../services/paymentService';
+
+export default function Checkout() {
+    const navigate = useNavigate();
+
+    const { cartItems, totalPrice, totalItems, fetchCart } = useCart();
+
+    const [selectedAddressId, setSelectedAddressId] = useState('');
+
+    const [receiver, setReceiver] = useState({
+        name: '',
         phone: '',
+        email: '',
+        address: '',
+        note: '',
     });
 
-    // [SỬA] dùng bank_transfer / momo / cod
-    const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
+    const [addresses, setAddresses] = useState([]);
+    const [loadingAddress, setLoadingAddress] = useState(true);
 
-    const [cardInfo, setCardInfo] = useState({
-        cardNumber: '',
-        expiry: '',
-        cvv: '',
-    });
-
+    const [paymentMethod, setPaymentMethod] = useState('cod');
     const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [orderCreated, setOrderCreated] = useState(false);
 
-    const handleFormChange = (e) => {
-        const { name, value } = e.target;
-        setShippingInfo((prev) => ({ ...prev, [name]: value }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
-    };
+    const subtotal = useMemo(() => {
+        return cartItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    }, [cartItems]);
 
-    const handleEmailChange = (value) => {
-        setEmail(value);
-        if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-    };
+    useEffect(() => {
+        loadAddresses();
+    }, []);
 
-    const handleCardInfoChange = (e) => {
-        const { name, value } = e.target;
-        setCardInfo((prev) => ({ ...prev, [name]: value }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
-    };
+    useEffect(() => {
+        if (cartItems.length === 0 && !loading && !orderCreated) {
+            toast.info('Giỏ hàng đang trống');
+            navigate('/cart', { replace: true });
+        }
+    }, [cartItems.length, loading, orderCreated, navigate]);
 
-    const validateForm = () => {
-        const newErrors = {};
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const phoneRegex = /^[0-9]{10,11}$/;
+    async function loadAddresses() {
+        try {
+            setLoadingAddress(true);
 
-        if (!email.trim()) newErrors.email = 'Vui lòng nhập email';
-        else if (!emailRegex.test(email)) newErrors.email = 'Email không hợp lệ';
+            const list = await addressService.getAddresses();
 
-        if (!shippingInfo.firstName.trim()) newErrors.firstName = 'Vui lòng nhập Họ';
-        if (!shippingInfo.lastName.trim()) newErrors.lastName = 'Vui lòng nhập Tên';
-        if (!shippingInfo.address.trim()) newErrors.address = 'Vui lòng nhập Địa chỉ';
+            setAddresses(list);
 
-        if (!shippingInfo.phone.trim()) newErrors.phone = 'Vui lòng nhập Số điện thoại';
-        else if (!phoneRegex.test(shippingInfo.phone)) newErrors.phone = 'SĐT không hợp lệ (10-11 số)';
+            const defaultAddress = list.find((item) => item.isDefault) || list[0];
 
-        // [SỬA] validate khi chọn bank_transfer
-        if (paymentMethod === 'bank_transfer') {
-            if (!cardInfo.cardNumber.trim()) newErrors.cardNumber = 'Nhập số tài khoản / số thẻ';
-            if (!cardInfo.expiry.trim()) newErrors.expiry = 'Nhập ngày hết hạn';
-            if (!cardInfo.cvv.trim()) newErrors.cvv = 'Nhập mã bảo mật';
+            if (defaultAddress) {
+                setSelectedAddressId(defaultAddress.id);
+                fillAddress(defaultAddress);
+            }
+        } catch {
+            toast.error('Không tải được địa chỉ');
+        } finally {
+            setLoadingAddress(false);
+        }
+    }
+
+    function fillAddress(address) {
+        setReceiver({
+            name: address.fullName || '',
+            phone: address.phone || '',
+            email: address.email || '',
+            address: address.addressLine || address.fullAddress || '',
+            note: '',
+        });
+    }
+
+    function handleReceiverChange(field, value) {
+        setReceiver((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+
+        setErrors((prev) => ({
+            ...prev,
+            [field]: '',
+        }));
+    }
+
+    function handleSelectAddress(id) {
+        setSelectedAddressId(id);
+
+        if (!id) {
+            setReceiver((prev) => ({
+                ...prev,
+                name: '',
+                phone: '',
+                email: '',
+                address: '',
+            }));
+            return;
         }
 
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+        const selected = addresses.find((item) => String(item.id) === String(id));
+
+        if (selected) {
+            fillAddress(selected);
+        }
+    }
+
+    function validate() {
+        const nextErrors = {};
+
+        if (!receiver.name.trim()) {
+            nextErrors.name = 'Vui lòng nhập họ tên';
+        }
+
+        if (!receiver.phone.trim()) {
+            nextErrors.phone = 'Vui lòng nhập số điện thoại';
+        }
+
+        if (!receiver.address.trim()) {
+            nextErrors.address = 'Vui lòng nhập địa chỉ';
+        }
+
+        if (!paymentMethod) {
+            nextErrors.paymentMethod = 'Vui lòng chọn phương thức thanh toán';
+        }
+
+        setErrors(nextErrors);
+
+        return Object.keys(nextErrors).length === 0;
+    }
+
+    async function createAddressIfNeeded() {
+        if (selectedAddressId) return selectedAddressId;
+
+        const createdAddress = await addressService.createAddress(receiver);
+
+        return createdAddress.id;
+    }
+
+    async function handleCheckout() {
+        if (loading || orderCreated) return;
+
+        if (!validate()) return;
+
+        try {
+            setLoading(true);
+
+            const addressId = await createAddressIfNeeded();
+
+            if (!addressId) {
+                toast.error('Không tạo được địa chỉ nhận hàng');
+                return;
+            }
+
+            const order = await orderService.checkout({
+                address_id: addressId,
+                payment_method: paymentMethod,
+                note: receiver.note,
+            });
+
+            if (!order.id) {
+                toast.error('Không lấy được mã đơn hàng');
+                return;
+            }
+
+            setOrderCreated(true);
+
+            if (paymentMethod === 'cod') {
+                await fetchCart();
+                toast.success('Đặt hàng thành công');
+                navigate(`/order-success/${order.id}`, { replace: true });
+                return;
+            }
+
+            const payment = await paymentService.pay(order.id, paymentMethod);
+
+            await fetchCart();
+
+            if (payment.paymentUrl) {
+                window.location.href = payment.paymentUrl;
+                return;
+            }
+
+            toast.success('Đặt hàng thành công');
+            navigate(`/order-success/${order.id}`, { replace: true });
+        } catch (error) {
+            setOrderCreated(false);
+            setErrors(error.errors || {});
+            toast.error(error.message || 'Không thể đặt hàng');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return (
-        <main className="max-w-7xl mx-auto px-4 bg-page">
-            <Breadcrumb items={['Giỏ hàng', 'Thanh toán']} to={['/giohang', '/thanhtoan']} />
+        <MainLayout>
+            <main className="mx-auto max-w-7xl px-4 py-5 sm:py-6">
+                <Breadcrumb />
 
-            <div className="sm:px-6 lg:px-8 pb-12 mt-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 -mt-4">
-                    <div className="lg:col-span-2 space-y-8">
-                        <div className="card p-4">
-                            <h2 className="text-xl font-bold text-title mb-6">Thông tin liên hệ</h2>
+                <CheckoutSteps activeStep={2} />
 
-                            <div className="space-y-2 mb-4">
-                                <label className="label">Email</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => handleEmailChange(e.target.value)}
-                                    placeholder="nguyenvan@student.ctuet.edu.vn"
-                                    className={`input-base w-full px-4 py-3 ${errors.email ? 'input-error' : ''}`}
-                                />
-                                {errors.email && <p className="error-text">{errors.email}</p>}
-                            </div>
+                <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+                    <div className="space-y-6">
+                        <ReceiverForm
+                            receiver={receiver}
+                            errors={errors}
+                            addresses={addresses}
+                            selectedAddressId={selectedAddressId}
+                            loadingAddress={loadingAddress}
+                            onChange={handleReceiverChange}
+                            onSelectAddress={handleSelectAddress}
+                        />
 
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="subscribeNews"
-                                    checked={subscribeNews}
-                                    onChange={(e) => setSubscribeNews(e.target.checked)}
-                                    className="w-4 h-4 text-blue-600 rounded cursor-pointer"
-                                />
-                                <label htmlFor="subscribeNews" className="text-sm text-body cursor-pointer">
-                                    Gửi email cho tôi về các tin tức và ưu đãi.
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="card p-4">
-                            <h2 className="text-xl font-bold text-title mb-6">Địa chỉ giao hàng</h2>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                                <div className="space-y-2">
-                                    <label className="label">Họ</label>
-                                    <input
-                                        type="text"
-                                        name="firstName"
-                                        value={shippingInfo.firstName}
-                                        onChange={handleFormChange}
-                                        placeholder="Nguyễn"
-                                        className={`input-base w-full px-4 py-3 ${errors.firstName ? 'input-error' : ''}`}
-                                    />
-                                    {errors.firstName && <p className="error-text">{errors.firstName}</p>}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="label">Tên</label>
-                                    <input
-                                        type="text"
-                                        name="lastName"
-                                        value={shippingInfo.lastName}
-                                        onChange={handleFormChange}
-                                        placeholder="Văn A"
-                                        className={`input-base w-full px-4 py-3 ${errors.lastName ? 'input-error' : ''}`}
-                                    />
-                                    {errors.lastName && <p className="error-text">{errors.lastName}</p>}
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 mb-4">
-                                <label className="label">Địa chỉ</label>
-                                <input
-                                    type="text"
-                                    name="address"
-                                    value={shippingInfo.address}
-                                    onChange={handleFormChange}
-                                    placeholder="Số nhà, Tên đường, Phường/Xã..."
-                                    className={`input-base w-full px-4 py-3 ${errors.address ? 'input-error' : ''}`}
-                                />
-                                {errors.address && <p className="error-text">{errors.address}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="label">Số điện thoại</label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    value={shippingInfo.phone}
-                                    onChange={handleFormChange}
-                                    placeholder="091 xxx xxxx"
-                                    className={`input-base w-full px-4 py-3 ${errors.phone ? 'input-error' : ''}`}
-                                />
-                                {errors.phone && <p className="error-text">{errors.phone}</p>}
-                            </div>
-                        </div>
-
-                        <div className="card p-4">
-                            <h2 className="text-xl font-bold text-title mb-6">Phương thức thanh toán</h2>
-
-                            <div className="space-y-4">
-                                {/* BANK TRANSFER */}
-                                <div
-                                    className={`border-default rounded-lg overflow-hidden ${
-                                        paymentMethod === 'bank_transfer'
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
-                                            : ''
-                                    }`}
-                                >
-                                    <div
-                                        onClick={() => setPaymentMethod('bank_transfer')}
-                                        className="p-4 cursor-pointer flex items-center gap-4"
-                                    >
-                                        <input type="radio" checked={paymentMethod === 'bank_transfer'} readOnly />
-                                        <CreditCard className="w-5 h-5 text-body" />
-                                        <span className="font-medium text-title flex-1">Chuyển khoản ngân hàng</span>
-                                    </div>
-
-                                    {paymentMethod === 'bank_transfer' && (
-                                        <div className="p-4 pt-0 space-y-4 border-t border-default mt-2">
-                                            <div>
-                                                <input
-                                                    type="text"
-                                                    name="cardNumber"
-                                                    value={cardInfo.cardNumber}
-                                                    onChange={handleCardInfoChange}
-                                                    placeholder="Số tài khoản / số thẻ"
-                                                    className={`input-base w-full ${errors.cardNumber ? 'input-error' : ''}`}
-                                                />
-                                                {errors.cardNumber && <p className="error-text">{errors.cardNumber}</p>}
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <input
-                                                        type="text"
-                                                        name="expiry"
-                                                        value={cardInfo.expiry}
-                                                        onChange={handleCardInfoChange}
-                                                        placeholder="MM/YY"
-                                                        className={`input-base w-full ${errors.expiry ? 'input-error' : ''}`}
-                                                    />
-                                                    {errors.expiry && <p className="error-text">{errors.expiry}</p>}
-                                                </div>
-
-                                                <div>
-                                                    <input
-                                                        type="text"
-                                                        name="cvv"
-                                                        value={cardInfo.cvv}
-                                                        onChange={handleCardInfoChange}
-                                                        placeholder="Mã bảo mật"
-                                                        className={`input-base w-full ${errors.cvv ? 'input-error' : ''}`}
-                                                    />
-                                                    {errors.cvv && <p className="error-text">{errors.cvv}</p>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* MOMO */}
-                                <div
-                                    className={`border-default rounded-lg overflow-hidden ${
-                                        paymentMethod === 'momo' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' : ''
-                                    }`}
-                                    onClick={() => setPaymentMethod('momo')}
-                                >
-                                    <div className="p-4 cursor-pointer flex items-center gap-4">
-                                        <input type="radio" checked={paymentMethod === 'momo'} readOnly />
-                                        <Wallet className="w-5 h-5 text-body" />
-                                        <span className="font-medium text-title flex-1">Ví MoMo</span>
-                                    </div>
-                                </div>
-
-                                {/* COD */}
-                                <div
-                                    className={`border-default rounded-lg overflow-hidden ${
-                                        paymentMethod === 'cod' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' : ''
-                                    }`}
-                                    onClick={() => setPaymentMethod('cod')}
-                                >
-                                    <div className="p-4 cursor-pointer flex items-center gap-4">
-                                        <input type="radio" checked={paymentMethod === 'cod'} readOnly />
-                                        <Truck className="w-5 h-5 text-body" />
-                                        <span className="font-medium text-title flex-1">
-                                            Thanh toán khi nhận hàng (COD)
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="lg:col-span-1">
-                        <CheckoutOrder
-                            items={cartItems}
-                            onValidateForm={validateForm}
-                            checkoutData={{
-                                fullName: `${shippingInfo.firstName} ${shippingInfo.lastName}`.trim(),
-                                email,
-                                phone: shippingInfo.phone,
-                                address: shippingInfo.address,
-                                paymentMethod,
-                                subscribeNews,
-                                cardInfo,
+                        <PaymentMethod
+                            value={paymentMethod}
+                            error={errors.paymentMethod}
+                            onChange={(value) => {
+                                setPaymentMethod(value);
+                                setErrors((prev) => ({
+                                    ...prev,
+                                    paymentMethod: '',
+                                }));
                             }}
                         />
                     </div>
-                </div>
-            </div>
-        </main>
+
+                    <CheckoutSummary
+                        items={cartItems}
+                        subtotal={subtotal || totalPrice}
+                        totalItems={totalItems}
+                        loading={loading || orderCreated}
+                        onCheckout={handleCheckout}
+                    />
+                </section>
+            </main>
+        </MainLayout>
     );
 }
 
-export default Checkout;
+function Breadcrumb() {
+    return (
+        <div className="mb-6 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
+            <Home size={14} className="text-blue-950 dark:text-blue-300" />
+
+            <ChevronRight size={14} />
+
+            <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
+                Trang chủ
+            </Link>
+
+            <ChevronRight size={14} />
+
+            <Link to="/cart" className="hover:text-blue-950 dark:hover:text-blue-300">
+                Giỏ hàng
+            </Link>
+
+            <ChevronRight size={14} />
+
+            <span className="text-blue-950 dark:text-blue-300">Thanh toán</span>
+        </div>
+    );
+}

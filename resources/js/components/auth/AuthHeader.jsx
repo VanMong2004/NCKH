@@ -1,55 +1,28 @@
-import { Link, useLocation } from 'react-router-dom';
-import logoImg from '../../../images/logo.png';
+import { Link } from 'react-router-dom';
 
-function AuthHeader() {
-    const location = useLocation();
-    const isLoginPage = location.pathname === '/auth/dangnhap';
-    const isForgotPassword = location.pathname === '/auth/quenmatkhau';
-
+export default function AuthHeader({ question, linkText, linkHref }) {
     return (
-        <header className="sticky top-0 z-40 bg-surface border-b border-default">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div className="flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                            <img src={logoImg} alt="logo" className="w-full h-full object-cover" />
-                        </div>
-                        <span className="font-bold text-lg md:text-xl text-gray-900 dark:text-white">CTUT Store</span>
+        <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+            <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4">
+                <Link to="/" className="flex items-center gap-3">
+                    <img src="/images/logo.png" alt="ABC University" className="h-10 w-10 rounded" />
+
+                    <div>
+                        <h1 className="text-sm font-extrabold text-blue-950 dark:text-white md:text-lg">
+                            ABC UNIVERSITY
+                        </h1>
+                        <p className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">Together We Grow</p>
+                    </div>
+                </Link>
+
+                <div className="text-sm">
+                    <span className="hidden text-slate-500 dark:text-slate-400 sm:inline">{question}</span>
+
+                    <Link to={linkHref} className="ml-2 font-bold text-blue-700 hover:text-blue-950 dark:text-blue-300">
+                        {linkText}
                     </Link>
-
-                    <nav className="flex items-center gap-6 sm:gap-8">
-                        {isForgotPassword ? (
-                            <div className="flex items-center gap-4">
-                                <span className="text-muted text-sm">Need Help?</span>
-                            </div>
-                        ) : (
-                            <>
-                                {['/', '/sanpham', '/lienhe'].map((path, i) => (
-                                    <Link
-                                        key={i}
-                                        to={path}
-                                        className="text-body hover:text-title text-sm font-medium transition-colors"
-                                    >
-                                        {path === '/' ? 'Trang chủ' : path === '/sanpham' ? 'Sản phẩm' : 'Phụ kiện'}
-                                    </Link>
-                                ))}
-                            </>
-                        )}
-
-                        {isLoginPage ? (
-                            <Link to="/auth/dangky" className="btn-secondary text-sm">
-                                Đăng ký
-                            </Link>
-                        ) : (
-                            <Link to="/auth/dangnhap" className="btn-primary text-sm">
-                                Đăng nhập
-                            </Link>
-                        )}
-                    </nav>
                 </div>
             </div>
         </header>
     );
 }
-
-export default AuthHeader;

@@ -1,93 +1,111 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import '../css/app.css';
+
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
 import Home from './pages/Home';
-import MainLayout from './layout/MainLayout';
-import AuthLayout from './layout/AuthLayout';
+import OrderSuccess from './pages/OrderSuccess';
 import ProductDetail from './pages/ProductDetail';
-import ProductsPage from './pages/Products';
-import CartPage from './pages/Cart';
-import CheckoutPage from './pages/Checkout';
-import AccountPage from './pages/Account';
-import LoginPage from './pages/Login';
-import RegisterPage from './pages/Register';
-import ForgotPasswordPage from './pages/ForgotPassword';
-import { CartProvider } from './context/CartContext';
+import Shop from './pages/Shop';
+
+import ForgotPassword from './pages/ForgotPassword';
+import Login from './pages/Login';
+import Register from './pages/Register';
+
+import '../css/app.css';
+import Campaigns from './pages/Campaigns';
+import CampaignDetail from './pages/CampaiginDetail';
+import CampaignRegistrationSuccess from './pages/CampaignRegistrationSuccess';
+import AccountProfile from './pages/account/AccountProfile';
+import MyTransactions from './pages/account/AccountTransactions';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { CartProvider } from './contexts/CartContext';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ui/ProtectedRoute';
+import AccountLayout from './pages/account/AccountLayout';
+import AccountOrders from './pages/account/AccountOrders';
+import AccountOrderDetail from './pages/account/AccountOrderDetail';
 import { ToastContainer } from 'react-toastify';
-import { ThemeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
-import OrderDetail from './pages/OrderDetail';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import CategoryPage from './pages/Categories';
+import 'react-toastify/dist/ReactToastify.css';
+import ResetPassword from './pages/ResetPassword';
 
-function App() {
-    return (
-        <>
-            <BrowserRouter>
+createRoot(document.getElementById('app')).render(
+    <React.StrictMode>
+        <BrowserRouter>
+            <ThemeProvider>
                 <AuthProvider>
-                    <ThemeProvider>
-                        <CartProvider>
-                            <Routes>
-                                <Route path="/" element={<MainLayout />}>
-                                    <Route index element={<Home />} />
-                                    <Route path="sanpham/:id" element={<ProductDetail />} />
-                                    <Route path="sanpham" element={<ProductsPage />} />
-                                    <Route path="danhmuc" element={<CategoryPage />} />
-                                    <Route
-                                        path="giohang"
-                                        element={
-                                            <ProtectedRoute>
-                                                <CartPage />
-                                            </ProtectedRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="donhang/:id"
-                                        element={
-                                            <ProtectedRoute>
-                                                <OrderDetail />
-                                            </ProtectedRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="thanhtoan"
-                                        element={
-                                            <ProtectedRoute>
-                                                <CheckoutPage />
-                                            </ProtectedRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="taikhoan"
-                                        element={
-                                            <ProtectedRoute>
-                                                <AccountPage />
-                                            </ProtectedRoute>
-                                        }
-                                    />
-                                </Route>
-                                <Route path="/auth" element={<AuthLayout />}>
-                                    <Route path="dangnhap" element={<LoginPage />} />
-                                    <Route path="dangky" element={<RegisterPage />} />
-                                    <Route path="quenmatkhau" element={<ForgotPasswordPage />} />
-                                </Route>
-                            </Routes>
-                        </CartProvider>
-                    </ThemeProvider>
-                </AuthProvider>
-            </BrowserRouter>
-            <ToastContainer
-                position="bottom-left"
-                autoClose={2000}
-                hideProgressBar={false}
-                newestOnTop={true}
-                closeOnClick
-                pauseOnHover
-                theme="colored"
-            />
-        </>
-    );
-}
+                    <CartProvider>
+                        <Routes>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/shop" element={<Shop />} />
+                            <Route path="/product/:slug" element={<ProductDetail />} />
+                            <Route
+                                path="/cart"
+                                element={
+                                    <ProtectedRoute>
+                                        <Cart />
+                                    </ProtectedRoute>
+                                }
+                            />
 
-createRoot(document.getElementById('app')).render(<App />);
+                            <Route
+                                path="/checkout"
+                                element={
+                                    <ProtectedRoute>
+                                        <Checkout />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/order-success/:orderId"
+                                element={
+                                    <ProtectedRoute>
+                                        <OrderSuccess />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route path="/campaigns" element={<Campaigns />} />
+                            <Route path="/campaigns/:id" element={<CampaignDetail />} />
+                            <Route
+                                path="/campaigns/:id/registration-success"
+                                element={<CampaignRegistrationSuccess />}
+                            />
+
+                            <Route
+                                path="/account"
+                                element={
+                                    <ProtectedRoute>
+                                        <AccountLayout />
+                                    </ProtectedRoute>
+                                }
+                            >
+                                <Route index element={<AccountProfile />} />
+                                <Route path="profile" element={<AccountProfile />} />
+                                <Route path="orders" element={<AccountOrders />} />
+                                <Route path="orders/:id" element={<AccountOrderDetail />} />
+                                <Route path="transactions" element={<MyTransactions />} />
+                            </Route>
+
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
+                        </Routes>
+                        <ToastContainer
+                            position="bottom-left"
+                            autoClose={2500}
+                            hideProgressBar={false}
+                            newestOnTop
+                            closeOnClick
+                            pauseOnHover
+                            draggable
+                            theme="colored"
+                        />
+                    </CartProvider>
+                </AuthProvider>
+            </ThemeProvider>
+        </BrowserRouter>
+    </React.StrictMode>,
+);

@@ -2,21 +2,32 @@ import api from './api';
 
 const authService = {
     async login(payload) {
-        const res = await api.post('auth/login', payload);
-        return res.data; // { user, token }
+        const res = await api.post('/auth/login', payload);
+        return res.data;
     },
 
     async register(payload) {
-        const res = await api.post('auth/register', payload);
+        const res = await api.post('/auth/register', payload);
+        return res.data;
+    },
+
+    async forgotPassword(payload) {
+        const res = await api.post('/auth/forgot-password', payload);
+        return res.data;
+    },
+
+    async resetPassword(payload) {
+        const res = await api.post('/auth/reset-password', payload);
         return res.data;
     },
 
     async logout() {
-        return await api.post('/logout');
+        const res = await api.post('/logout');
+        return res.data;
     },
 
     async me() {
-        const res = await api.get('/user');
+        const res = await api.get('/me');
         return res.data;
     },
 };

@@ -1,34 +1,30 @@
 import api from './api';
+import { mapOrderDetailResponse, mapOrderListResponse } from './mappers/orderMapper';
 
 const orderService = {
-    // 🚀 CHECKOUT
     async checkout(payload) {
-        const res = await api.post('/checkout', payload);
-        return res.data; // { message, data }
+        const res = await api.post('/orders/checkout', payload);
+        return mapOrderDetailResponse(res.data);
     },
 
-    // 📦 USER ORDERS
     async getMyOrders(params = {}) {
         const res = await api.get('/orders', { params });
-        return res.data;
+        return mapOrderListResponse(res.data);
     },
 
-    // 🔍 ORDER DETAIL
     async getOrderDetail(id) {
         const res = await api.get(`/orders/${id}`);
-        return res.data;
+        return mapOrderDetailResponse(res.data);
     },
 
-    // ❌ CANCEL ORDER
     async cancelOrder(id) {
         const res = await api.post(`/orders/${id}/cancel`);
-        return res.data;
+        return mapOrderDetailResponse(res.data);
     },
 
-    // ✅ CONFIRM RECEIVED
-    async confirmReceived(id) {
+    async confirmOrder(id) {
         const res = await api.post(`/orders/${id}/confirm`);
-        return res.data;
+        return mapOrderDetailResponse(res.data);
     },
 };
 

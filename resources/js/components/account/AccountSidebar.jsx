@@ -1,62 +1,71 @@
-'use client';
+import { Bell, HelpCircle, Home, LogOut, MapPin, Package, Settings, User, WalletCards } from 'lucide-react';
 
-import { LayoutDashboard, Package, MapPin, CreditCard, User, LogOut } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
-const MENU_ITEMS = [
-    { id: 'thongtinchitiet', label: 'Thông tin chi tiết', icon: User },
-    { id: 'donhang', label: 'Đơn hàng', icon: Package },
-    { id: 'diachicanhan', label: 'Địa chỉ', icon: MapPin },
-    { id: 'thanhtoan', label: 'Thanh toán', icon: CreditCard },
-];
+export default function AccountSidebar() {
+    const { logout } = useAuth();
 
-export default function AccountSidebar({ activeTab, onTabChange }) {
+    const menus = [
+        { label: 'Tổng quan', icon: Home, path: '/account' },
+        { label: 'Đơn hàng của tôi', icon: Package, path: '/account/orders' },
+        { label: 'Lịch sử thanh toán', icon: WalletCards, path: '/account/transactions' },
+        { label: 'Thông tin cá nhân', icon: User, path: '/account/profile' },
+        { label: 'Địa chỉ nhận hàng', icon: MapPin, path: '/account/addresses' },
+        { label: 'Thông báo', icon: Bell, path: '/account/notifications' },
+        { label: 'Cài đặt', icon: Settings, path: '/account/settings' },
+    ];
+
+    async function handleLogout() {
+        await logout();
+    }
+
     return (
-        <div className="card overflow-hidden">
-            {/* Thông tin người dùng */}
-            <div className="p-4 border-b border-default">
-                <div className="flex items-center gap-3 mb-4">
-                    <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nguyen"
-                        alt="User avatar"
-                        className="w-12 h-12 rounded-full"
-                    />
-                    <div className="min-w-0">
-                        <p className="font-semibold text-title truncate">Lê Văn Mộng</p>
-                        <p className="text-sm text-muted">ID: KTPM2211055</p>
-                    </div>
+        <aside className="hidden lg:block">
+            <div className="sticky top-28 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <nav className="space-y-1">
+                    {menus.map(({ label, icon: Icon, path }) => (
+                        <NavLink
+                            key={label}
+                            to={path}
+                            end={path === '/account'}
+                            className={({ isActive }) =>
+                                `flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition ${
+                                    isActive
+                                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                                        : 'text-blue-950 hover:bg-slate-50 dark:text-white dark:hover:bg-slate-800'
+                                }`
+                            }
+                        >
+                            <Icon size={18} />
+                            {label}
+                        </NavLink>
+                    ))}
+
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/30"
+                    >
+                        <LogOut size={18} />
+                        Đăng xuất
+                    </button>
+                </nav>
+
+                <div className="mt-6 rounded-2xl bg-blue-50 p-4 dark:bg-blue-950/40">
+                    <HelpCircle size={26} className="text-blue-950 dark:text-blue-300" />
+
+                    <h3 className="mt-3 font-bold text-blue-950 dark:text-white">Cần hỗ trợ?</h3>
+
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Đội ngũ hỗ trợ luôn sẵn sàng giúp bạn.
+                    </p>
+
+                    <button className="mt-4 w-full rounded-lg border border-blue-950 py-2 text-sm font-bold text-blue-950 dark:border-blue-300 dark:text-blue-300">
+                        Liên hệ hỗ trợ
+                    </button>
                 </div>
             </div>
-
-            {/* Menu */}
-            <nav className="space-y-1 p-2">
-                {MENU_ITEMS.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-
-                    return (
-                        <button
-                            key={item.id}
-                            onClick={() => onTabChange(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                                isActive
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                                    : 'text-body hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
-                        >
-                            <Icon className="w-5 h-5 flex-shrink-0" />
-                            <span className="font-medium">{item.label}</span>
-                        </button>
-                    );
-                })}
-            </nav>
-
-            {/* Logout */}
-            <div className="p-2 border-t border-default">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-error hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium">
-                    <LogOut className="w-5 h-5" />
-                    <span>Đăng xuất</span>
-                </button>
-            </div>
-        </div>
+        </aside>
     );
 }

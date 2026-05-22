@@ -74,7 +74,7 @@ Route::prefix('categories')->group(function () {
 // =============================
 Route::prefix('campaigns')->group(function () {
     Route::get('/', [CampaignController::class, 'index']);// Lấy danh sách chiến dịch, có hỗ trợ filter, search, pagination
-    Route::get('/{id}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
+    Route::get('/{identifier}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
     Route::get('/{id}/items', [CampaignController::class, 'items']);// Lấy danh sách sản phẩm thuộc chiến dịch, bao gồm cả thông tin biến thể, giá cả, số lượng đã đăng ký
 });
 

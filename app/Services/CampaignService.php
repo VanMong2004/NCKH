@@ -496,44 +496,88 @@ class CampaignService
     |--------------------------------------------------------------------------
     */
 
-    public function show($id)
+    public function show($identifier)
     {
         $campaign = Campaign::with([
-            'items.productVariant.product'
-        ])->findOrFail($id);
+            'items.productVariant.product.images',
+            'items.productVariant',
+        ])
+            ->when(
+                is_numeric($identifier),
+                fn ($q) => $q->where('id', $identifier),
+                fn ($q) => $q->where('slug', $identifier)
+            )
+            ->firstOrFail();
+
+        $registeredQuantity = $campaign->items->sum('registered_quantity');
+
+        $limitQuantity = $campaign->items->sum('limit_quantity');
 
         return [
-            'success' => true,
+            'id' => $campaign->id,
 
-            'message'
-                => 'Lấy chi tiết campaign thành công',
+            'title' => $campaign->title,
 
-            'data' => [
-                'id' => $campaign->id,
+            'slug' => $campaign->slug,
 
-                'title' => $campaign->title,
+            'description' => $campaign->description,
 
-                'description'
-                    => $campaign->description,
+            'banner' => $campaign->banner,
 
-                'banner'
-                    => $campaign->banner,
+            'thumbnail' => $campaign->thumbnail,
 
-                'thumbnail'
-                    => $campaign->thumbnail,
+            'start_date' => $campaign->start_date,
 
-                'start_date'
-                    => $campaign->start_date,
+            'end_date' => $campaign->end_date,
 
-                'end_date'
-                    => $campaign->end_date,
+            'status' => $campaign->status,
 
-                'status'
-                    => $campaign->status,
+            'countdown_seconds' => $campaign->end_date
+                ? now()->diffInSeconds($campaign->end_date, false)
+                : null,
 
-                'items'
-                    => $campaign->items,
-            ]
+            'registered_quantity' => (int) $registeredQuantity,
+
+            'remaining_quantity' => (int) ($limitQuantity - $registeredQuantity),
+
+            'items' => $campaign->items->map(function ($item) {
+                $variant = $item->productVariant;
+
+                $product = $variant?->product;
+
+                $thumbnail = optional(
+                    $product?->images?->where('type', 'thumbnail')->first()
+                )->url ?? optional($product?->images?->first())->url;
+
+                return [
+                    'id' => $item->id,
+
+                    'price' => (float) $item->price,
+
+                    'limit_quantity' => (int) $item->limit_quantity,
+
+                    'registered_quantity' => (int) $item->registered_quantity,
+
+                    'remaining_quantity' => (int) (
+                        $item->limit_quantity - $item->registered_quantity
+                    ),
+
+                    'product' => [
+                        'id' => $product?->id,
+                        'name' => $product?->name,
+                        'slug' => $product?->slug,
+                        'thumbnail' => $thumbnail,
+                    ],
+
+                    'variant' => [
+                        'id' => $variant?->id,
+                        'sku' => $variant?->sku,
+                        'size' => $variant?->size,
+                        'color' => $variant?->color,
+                        'stock' => $variant?->stock,
+                    ],
+                ];
+            })->values(),
         ];
     }
 

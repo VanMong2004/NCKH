@@ -192,11 +192,11 @@ class CampaignController extends Controller
     /**
      * Chi tiết chiến dịch (dùng cho trang detail)
      */
-    public function show($id)
+    public function show($identifier)
     {
         try {
 
-            $result = $this->campaignService->show($id);
+            $result = $this->campaignService->show($identifier);
 
             return response()->json($result);
 

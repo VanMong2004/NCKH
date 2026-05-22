@@ -430,6 +430,8 @@ class CampaignService
 
                     'title' => $campaign->title,
 
+                    'slug' => $campaign->slug,
+
                     'description'
                         => $campaign->description,
 
@@ -448,14 +450,18 @@ class CampaignService
                     'status'
                         => $campaign->status,
 
+                    'countdown_seconds' => $campaign->end_date
+                        ? now()->diffInSeconds($campaign->end_date, false)
+                        : null,
+
                     'total_items'
                         => $campaign->items_count,
 
                     'registered_quantity'
-                        => $registeredQuantity,
+                        => (int) $registeredQuantity,
 
                     'remaining_quantity'
-                        => $limitQuantity - $registeredQuantity,
+                        => (int) ($limitQuantity - $registeredQuantity),
                 ];
             })->values();
 
@@ -556,12 +562,12 @@ class CampaignService
                         => $item->limit_quantity,
 
                     'registered_quantity'
-                        => $item->registered_quantity,
+                        => (int) $item->registered_quantity,
 
                     'remaining_quantity'
-                        => $item->limit_quantity
+                        => (int) ($item->limit_quantity
                             -
-                            $item->registered_quantity,
+                            $item->registered_quantity),
 
                     'product_variant' => [
 

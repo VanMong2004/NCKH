@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             UserCampaignItemSeeder::class,
             AddressSeeder::class,
             FaqSeeder::class,
+            BlogSeeder::class,
         ]);
     }
 }

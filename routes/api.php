@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\BlogController;
 
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
@@ -89,8 +90,16 @@ Route::post('/webhooks/notifications/create',[NotificationController::class,'cre
 // FAQ (PUBLIC)
 // =============================
 Route::prefix('faqs')->group(function () {
-    Route::get('/', [FaqController::class, 'index']);
-    Route::get('/categories', [FaqController::class, 'categories']);
+    Route::get('/', [FaqController::class, 'index']); // Lấy danh sách FAQ, có hỗ trợ filter theo category và keyword (tìm kiếm trong question và answer)
+    Route::get('/categories', [FaqController::class, 'categories']); // Lấy danh sách category của FAQ (chỉ lấy category của những FAQ đang active, có sắp xếp theo thứ tự alphabet)
+});
+
+// =============================
+// BLOG (PUBLIC)
+// =============================
+Route::prefix('blogs')->group(function () {
+    Route::get('/', [BlogController::class, 'index']); // Lấy danh sách bài viết, có hỗ trợ filter theo category và keyword (tìm kiếm trong title và content), có hỗ trợ pagination
+    Route::get('/categories', [BlogController::class, 'categories']); // Lấy danh sách category của blog (chỉ lấy category của những bài viết đang active, có sắp xếp theo thứ tự alphabet)
 });
 
 // =============================

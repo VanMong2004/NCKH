@@ -101,13 +101,17 @@ class PaymentService
 
         switch ($method) {
             case 'mock':
-                return $this->mockGateway->callback($data);
+                $result = $this->mockGateway->callback($data);
+                break;
 
             case 'vnpay':
-                return $this->vnpayGateway->callback($data);
+                $result = $this->vnpayGateway->callback($data);
+                break;
 
             default:
                 throw new \Exception('Callback không hợp lệ');
         }
+
+        return $result;
     }
 }

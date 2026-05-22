@@ -79,6 +79,11 @@ Route::prefix('campaigns')->group(function () {
 });
 
 // =============================
+// NOTIFICATIONS (PUBLIC) - DÙNG CHO VIỆC TEST GỬI NOTIFICATION QUA API, KHÔNG DÙNG CHO NGƯỜI DÙNG CUỐI
+// =============================
+Route::post('/webhooks/notifications/create',[NotificationController::class,'create']); // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
+
+// =============================
 // AUTHENTICATED USER
 // =============================
 Route::middleware('auth:sanctum')->group(function () {
@@ -201,9 +206,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::put('/{id}/read', [NotificationController::class, 'markRead']);
         Route::put('/read-all', [NotificationController::class, 'markAllRead']);
         Route::get('/{id}', [NotificationController::class, 'show']);
-        Route::put('/{id}/read', [NotificationController::class, 'markRead']);
     });
 
     // =============================

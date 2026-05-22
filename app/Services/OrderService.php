@@ -83,9 +83,7 @@ class OrderService
 
                         $address->province,
                     ]),
-            ]);
-
-            event(new \App\Events\OrderCreated($order));
+            ]);           
 
             $total = 0;
 
@@ -136,6 +134,10 @@ class OrderService
                 'total' => $total
             ]);
 
+            $order->refresh();
+
+            event(new \App\Events\OrderCreated($order));
+
             // close cart
             $cart->update([
                 'status' => 'checked_out'
@@ -165,6 +167,7 @@ class OrderService
         $paymentMethod = $data['payment_method'] ?? 'mock';
 
         return [
+            'user_id' => $order->user_id,
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,

@@ -19,6 +19,7 @@ class SendOrderCreatedWebhook
         $order = $event->order;
 
         $this->webhook->send('order_created', [
+            'user_id' => $order->user_id,
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'total' => $order->total

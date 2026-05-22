@@ -87,4 +87,50 @@ class NotificationController extends Controller
             'message' => 'Đã đánh dấu tất cả thông báo đã đọc',
         ]);
     }
+
+    // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
+    public function create(Request $request)
+    {
+        if ($request->header('X-N8N-SECRET') !== env('N8N_WEBHOOK_SECRET')) {
+            return response()->json([
+                'message' => 'Unauthorized webhook'
+            ], 401);
+        }
+
+        $data = $request->validate([
+
+            'user_id' => 'required|integer',
+
+            'type' => 'required|string',
+
+            'title' => 'required|string',
+
+            'message' => 'required|string',
+
+            'action_url' => 'nullable|string',
+
+            'meta' => 'nullable|array',
+        ]);
+
+        $notification =
+            $this->notificationService
+                ->createForUser(
+                    $data['user_id'],
+                    $data['type'],
+                    $data['title'],
+                    $data['message'],
+                    $data['action_url'] ?? null,
+                    $data['meta'] ?? null
+                );
+
+        return response()->json([
+
+            'success'=>true,
+
+            'message'=>
+            'Tạo notification thành công',
+
+            'data'=>$notification
+        ]);
+    }
 }

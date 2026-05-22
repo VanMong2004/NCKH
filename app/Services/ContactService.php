@@ -3,9 +3,14 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Services\WebhookService;
 
 class ContactService
 {
+    public function __construct(
+        protected WebhookService $webhook
+    ) {}
+
     public function info()
     {
         return [
@@ -27,6 +32,17 @@ class ContactService
             'subject' => $data['subject'],
             'message' => $data['message'],
             'status' => 'pending',
+        ]);
+
+        $this->webhook->send('contact_submitted', [
+            'contact_id' => $contact->id,
+            'full_name' => $contact->full_name,
+            'email' => $contact->email,
+            'phone' => $contact->phone,
+            'subject' => $contact->subject,
+            'message' => $contact->message,
+            'status' => $contact->status,
+            'created_at' => optional($contact->created_at)->format('d/m/Y H:i'),
         ]);
 
         return [

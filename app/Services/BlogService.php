@@ -37,6 +37,60 @@ class BlogService
         return $blogs;
     }
 
+    public function show($identifier)
+    {
+        $blog = Blog::query()
+            ->where('is_published', true)
+            ->when(
+                is_numeric($identifier),
+                fn ($q) => $q->where('id', $identifier),
+                fn ($q) => $q->where('slug', $identifier)
+            )
+            ->firstOrFail();
+
+        // tăng lượt xem
+        $blog->increment('view_count');
+
+        $related = Blog::query()
+            ->where('id', '!=', $blog->id)
+            ->where('category', $blog->category)
+            ->where('is_published', true)
+            ->limit(4)
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'title' => $item->title,
+                'slug' => $item->slug,
+                'thumbnail' => $item->thumbnail,
+            ]);
+
+        return [
+            'id' => $blog->id,
+
+            'title' => $blog->title,
+
+            'slug' => $blog->slug,
+
+            'excerpt' => $blog->excerpt,
+
+            'content' => $blog->content,
+
+            'thumbnail' => $blog->thumbnail,
+
+            'category' => $blog->category,
+
+            'author_name' => $blog->author_name,
+
+            'view_count' => (int) ($blog->view_count + 1),
+
+            'published_at' => optional(
+                $blog->published_at
+            )->format('d/m/Y H:i'),
+
+            'related_posts' => $related
+        ];
+    }
+
     public function categories()
     {
         return Blog::query()

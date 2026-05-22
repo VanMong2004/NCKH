@@ -30,6 +30,15 @@ class BlogController extends Controller
         ]);
     }
 
+    public function show($identifier)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy chi tiết blog thành công',
+            'data' => $this->blogService->show($identifier),
+        ]);
+    }
+
     public function categories()
     {
         return response()->json([

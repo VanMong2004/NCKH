@@ -100,6 +100,7 @@ Route::prefix('faqs')->group(function () {
 Route::prefix('blogs')->group(function () {
     Route::get('/', [BlogController::class, 'index']); // Lấy danh sách bài viết, có hỗ trợ filter theo category và keyword (tìm kiếm trong title và content), có hỗ trợ pagination
     Route::get('/categories', [BlogController::class, 'categories']); // Lấy danh sách category của blog (chỉ lấy category của những bài viết đang active, có sắp xếp theo thứ tự alphabet)
+    Route::get('/{identifier}', [BlogController::class, 'show']); // Lấy chi tiết bài viết, có thể tìm kiếm bằng id hoặc slug, trả về thông tin chi tiết của bài viết, bao gồm cả danh sách 4 bài viết liên quan (cùng category, không bao gồm bài viết hiện tại, có sắp xếp theo lượt xem giảm dần)
 });
 
 // =============================

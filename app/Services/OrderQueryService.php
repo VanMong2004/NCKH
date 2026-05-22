@@ -77,23 +77,31 @@ class OrderQueryService
 
                     'order_code' => $order->order_code,
 
+                    'title' => $order->type === 'campaign'
+                        ? optional($order->campaign)->title
+                        : optional($firstItem?->productVariant?->product)->name,
+
                     'type' => $order->type,
 
                     'status' => $order->status,
 
                     'payment_status' => $payment?->status ?? 'pending',
 
+                    'payment_method' => $payment?->method,
+
                     'thumbnail' => $thumbnail,
 
                     'item_count' => $order->items->sum('quantity'),
 
-                    'total' => $order->total,
+                    'total' => (int)$order->total,
+
+                    'qr_code' => $order->order_code,
 
                     'created_at' => optional(
                         $order->created_at
                     )->format('d/m/Y H:i'),
 
-                    'detail_url' => "/profile/orders/" . $order->id
+                    'detail_url' => "/profile/orders/".$order->id
                 ];
             })
 

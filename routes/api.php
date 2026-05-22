@@ -25,6 +25,8 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\FaqController;
+
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -82,6 +84,14 @@ Route::prefix('campaigns')->group(function () {
 // NOTIFICATIONS (PUBLIC) - DÙNG CHO VIỆC TEST GỬI NOTIFICATION QUA API, KHÔNG DÙNG CHO NGƯỜI DÙNG CUỐI
 // =============================
 Route::post('/webhooks/notifications/create',[NotificationController::class,'create']); // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
+
+// =============================
+// FAQ (PUBLIC)
+// =============================
+Route::prefix('faqs')->group(function () {
+    Route::get('/', [FaqController::class, 'index']);
+    Route::get('/categories', [FaqController::class, 'categories']);
+});
 
 // =============================
 // AUTHENTICATED USER

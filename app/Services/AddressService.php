@@ -7,6 +7,23 @@ use Illuminate\Support\Facades\DB;
 
 class AddressService
 {
+    // Format lại dữ liệu address trước khi trả về cho client, giúp đảm bảo tính nhất quán và dễ dàng thay đổi cấu trúc dữ liệu nếu cần
+    private function formatAddress($address)
+    {
+        return [
+            'id' => $address->id,
+            'full_name' => $address->full_name,
+            'phone' => $address->phone,
+            'province' => $address->province,
+            'district' => $address->district,
+            'ward' => $address->ward,
+            'address_line' => $address->address_line,
+            'postal_code' => $address->postal_code,
+            'is_default' => (bool) $address->is_default,
+            'created_at' => optional($address->created_at)->format('d/m/Y H:i'),
+        ];
+    }
+
     /*
     |--------------------------------------------------------------------------
     | LIST
@@ -27,7 +44,9 @@ class AddressService
                 => 'Lấy danh sách địa chỉ thành công',
 
             'data'
-                => $addresses,
+                => $addresses
+                ->map(fn ($address) => $this->formatAddress($address))
+                ->values(),
         ];
     }
 
@@ -107,7 +126,7 @@ class AddressService
                     => 'Tạo địa chỉ thành công',
 
                 'data'
-                    => $address,
+                    => $this->formatAddress($address),
             ];
         });
     }
@@ -179,7 +198,7 @@ class AddressService
                     => 'Cập nhật địa chỉ thành công',
 
                 'data'
-                    => $address,
+                    => $this->formatAddress($address),
             ];
         });
     }
@@ -268,7 +287,7 @@ class AddressService
                     => 'Đặt địa chỉ mặc định thành công',
 
                 'data'
-                    => $address,
+                    => $this->formatAddress($address),
             ];
         });
     }

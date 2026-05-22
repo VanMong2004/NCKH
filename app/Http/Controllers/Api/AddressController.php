@@ -9,7 +9,7 @@ use App\Http\Controllers\Controller;
 
 class AddressController extends Controller
 {
-    public function __construct(
+    public function __construct( 
         protected AddressService $addressService
     ) {}
 

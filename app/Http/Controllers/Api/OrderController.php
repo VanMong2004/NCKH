@@ -33,6 +33,7 @@ class OrderController extends Controller
             // ]);
             $request->validate([
                 'address_id' => 'required|exists:addresses,id',
+                'payment_method' => 'nullable|in:cod,bank_transfer,momo,vnpay,mock',
             ]);
 
             $result = $this->orderService->checkout(

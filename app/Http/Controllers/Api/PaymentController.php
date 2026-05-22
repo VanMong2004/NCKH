@@ -27,7 +27,7 @@ class PaymentController extends Controller
     public function pay(Request $request, $id)
     {
         $request->validate([
-            'method' => 'required|in:vnpay,mock'
+            'method' => 'required|in:cod,bank_transfer,momo,vnpay,mock'
         ]);
 
         $order = Order::findOrFail($id);

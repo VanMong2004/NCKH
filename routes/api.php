@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\PolicyController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\AboutController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -117,6 +118,11 @@ Route::prefix('policies')->group(function () {
 // =============================
 Route::get('/contact-info', [ContactController::class, 'info']); // Lấy thông tin liên hệ (địa chỉ, email, số điện thoại, v.v.)
 Route::post('/contact', [ContactController::class, 'submit']); // Gửi thông tin liên hệ (tên, email, subject, message), có thể dùng cho form contact trên website hoặc app, thông tin gửi lên sẽ được lưu vào database và gửi email thông báo cho admin
+
+// =============================
+// ABOUT (PUBLIC)
+// =============================
+Route::get('/about', [AboutController::class, 'show']); // Lấy thông tin về chúng tôi (có thể bao gồm cả sứ mệnh, tầm nhìn, giá trị cốt lõi, lịch sử hình thành, v.v.)
 
 // =============================
 // AUTHENTICATED USER

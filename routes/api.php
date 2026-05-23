@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\PolicyController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\AboutController;
+use App\Http\Controllers\Api\SystemController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -123,6 +124,11 @@ Route::post('/contact', [ContactController::class, 'submit']); // Gửi thông t
 // ABOUT (PUBLIC)
 // =============================
 Route::get('/about', [AboutController::class, 'show']); // Lấy thông tin về chúng tôi (có thể bao gồm cả sứ mệnh, tầm nhìn, giá trị cốt lõi, lịch sử hình thành, v.v.)
+
+// =============================
+// SYSTEM STATE (PUBLIC) - DÙNG CHO VIỆC CHECK TÌNH TRẠNG
+// =============================
+Route::get('/system/state',[SystemController::class,'state']);
 
 // =============================
 // AUTHENTICATED USER

@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             BlogSeeder::class,
             PolicySeeder::class,
             AboutSeeder::class,
+            SystemSettingSeeder::class,
         ]);
     }
 }

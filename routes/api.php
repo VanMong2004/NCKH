@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 // =============================
 // CONTROLLERS
 // =============================
+// use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
@@ -16,7 +17,6 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReviewController;
-// use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
@@ -60,9 +60,9 @@ Route::prefix('home')->group(function () {
 // =============================
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);// Lấy danh sách sản phẩm, có hỗ trợ filter, search, pagination
-    Route::get('/{slug}', [ProductController::class, 'show']);// Lấy chi tiết sản phẩm
     Route::get('/{id}/variants', [ProductController::class, 'variants']);// Lấy danh sách biến thể của sản phẩm
     Route::get('/{id}/reviews', [ReviewController::class, 'productReviews']);// Lấy danh sách đánh giá của sản phẩm
+    Route::get('/{slug}', [ProductController::class, 'show']);// Lấy chi tiết sản phẩm
 });
 
 // =============================
@@ -80,14 +80,39 @@ Route::prefix('categories')->group(function () {
 // =============================
 Route::prefix('campaigns')->group(function () {
     Route::get('/', [CampaignController::class, 'index']);// Lấy danh sách chiến dịch, có hỗ trợ filter, search, pagination
-    Route::get('/{identifier}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
     Route::get('/{id}/items', [CampaignController::class, 'items']);// Lấy danh sách sản phẩm thuộc chiến dịch, bao gồm cả thông tin biến thể, giá cả, số lượng đã đăng ký
+    Route::get('/{identifier}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
 });
+
+// =============================
+// PAYMENT CALLBACK PUBLIC (DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN, KHÔNG CẦN XÁC THỰC TOKEN VÌ CỔNG THANH TOÁN SẼ GỬI CALLBACK VÀO ĐÂY) - IGNORE
+// =============================
+Route::get('/payment/callback', [PaymentController::class, 'callback']); // Callback từ cổng thanh toán (có thể là GET hoặc POST tùy cổng thanh toán)
+Route::post('/payment/callback', [PaymentController::class, 'callback']); // Callback từ cổng thanh toán (có thể là GET hoặc POST tùy cổng thanh toán)
+
+// =============================
+// REVIEWS IMAGES (PUBLIC) - DÙNG CHO VIỆC LẤY ẢNH ĐÁNH GIÁ HIỂN THỊ TRÊN WEBSITE, KHÔNG DÙNG CHO VIỆC LẤY ẢNH SẢN PHẨM HOẶC CHIẾN DỊCH
+// =============================
+Route::get('/images/reviews/{path}', function ($path) {
+
+    $fullPath = resource_path(
+        'images/reviews/' . $path
+    );
+
+    if (!file_exists($fullPath)) {
+        abort(404);
+    }
+
+    return response()->file($fullPath);
+
+})->where('path', '.*'); // Lấy ảnh đánh giá (ảnh đánh giá được lưu trong resources/images/reviews)
+
 
 // =============================
 // NOTIFICATIONS (PUBLIC) - DÙNG CHO VIỆC TEST GỬI NOTIFICATION QUA API, KHÔNG DÙNG CHO NGƯỜI DÙNG CUỐI
 // =============================
-Route::post('/webhooks/notifications/create',[NotificationController::class,'create']); // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
+Route::middleware('throttle:20,1')
+->post('/webhooks/notifications/create',[NotificationController::class,'create']); // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
 
 // =============================
 // FAQ (PUBLIC)
@@ -191,12 +216,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/campaigns/{id}/register', [CampaignController::class, 'register']); // Đăng ký tham gia chiến dịch (tương tự như checkout nhưng có thêm logic kiểm tra số lượng đăng ký, thời gian chiến dịch, v.v.)
     
     // =============================
-    // PAYMENT CALLBACK
-    // =============================
-    Route::get('/payment/callback', [PaymentController::class, 'callback']); // Callback từ cổng thanh toán (có thể là GET hoặc POST tùy cổng thanh toán)
-    Route::post('/payment/callback', [PaymentController::class, 'callback']); // Callback từ cổng thanh toán (có thể là GET hoặc POST tùy cổng thanh toán)
-
-    // =============================
     // REVIEW
     // =============================
     Route::prefix('reviews')->group(function () {
@@ -204,19 +223,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [ReviewController::class,'update']); // Cập nhật đánh giá (chỉ cho phép cập nhật nội dung đánh giá, không cho phép thay đổi sản phẩm/chiến dịch đã đánh giá)
         Route::delete('/{id}', [ReviewController::class,'destroy']); // Xóa đánh giá (chỉ cho phép xóa đánh giá của chính mình)
     });
-    Route::get('/images/reviews/{path}', function ($path) {
-
-        $fullPath = resource_path(
-            'images/reviews/' . $path
-        );
-
-        if (!file_exists($fullPath)) {
-            abort(404);
-        }
-
-        return response()->file($fullPath);
-
-    })->where('path', '.*'); // Lấy ảnh đánh giá (ảnh đánh giá được lưu trong resources/images/reviews)
 
     // =============================
     // USER ANALYTICS

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Payment;
+use RuntimeException;
 
 class PaymentQueryService
 {
@@ -12,8 +13,16 @@ class PaymentQueryService
      */
     public function list($user, $orderId)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         $order = Order::where('user_id', $user->id)
-            ->findOrFail($orderId);
+            ->find($orderId);
+
+        if (!$order) {
+            throw new RuntimeException('Đơn hàng không tồn tại', 404);
+        }
 
         return Payment::where('order_id', $order->id)
             ->latest()
@@ -25,19 +34,35 @@ class PaymentQueryService
      */
     public function show($user, $id)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         $payment = Payment::with('order')
             ->whereHas('order', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
-            ->findOrFail($id);
+            ->find($id);
+
+        if (!$payment) {
+            throw new RuntimeException('Payment không tồn tại', 404);
+        }
 
         $order = $payment->order;
 
+        if (!$order) {
+            throw new RuntimeException('Đơn hàng không tồn tại', 404);
+        }
+
         return [
             'id' => $payment->id,
+
             'transaction_id' => $payment->transaction_id,
+
             'method' => $payment->method,
+
             'status' => $payment->status,
+
             'amount' => $payment->amount,
 
             'order' => [

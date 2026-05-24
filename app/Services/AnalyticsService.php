@@ -3,61 +3,49 @@
 namespace App\Services;
 
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\User;
-use Carbon\Carbon;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class AnalyticsService
 {
     public function overview($user)
     {
+        $this->ensureUser($user);
+
         $isAdmin = $user->role === 'admin';
 
         $orderQuery = Order::query();
 
         if (!$isAdmin) {
-            $orderQuery->where(
-                'user_id',
-                $user->id
-            );
+            $orderQuery->where('user_id', $user->id);
         }
 
         return [
+            'total_orders' => (clone $orderQuery)->count(),
 
-            'total_orders'=>
-            $orderQuery->count(),
-
-            'paid_orders'=>
-            (clone $orderQuery)
-                ->where(
-                    'status',
-                    'paid'
-                )
+            'paid_orders' => (clone $orderQuery)
+                ->where('status', 'paid')
                 ->count(),
 
-            'revenue'=>(float)
-            (clone $orderQuery)
-                ->where(
-                    'status',
-                    'paid'
-                )
-                ->sum(
-                    'total'
-                ),
+            'revenue' => (float) (clone $orderQuery)
+                ->where('status', 'paid')
+                ->sum('total'),
 
-            'total_users'=>
-            $isAdmin
+            'total_users' => $isAdmin
                 ? User::count()
-                : 1
+                : 1,
         ];
     }
 
     public function topProducts($user)
     {
+        $this->ensureUser($user);
+
         $isAdmin = $user->role === 'admin';
 
-        $query = \App\Models\OrderItem::query()
+        $query = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->leftJoin(
                 'product_variants',
@@ -104,48 +92,26 @@ class AnalyticsService
             });
     }
 
-    public function salesChart(
-        $user,
-        $days = 7
-    )
+    public function salesChart($user, int $days = 7)
     {
-        $isAdmin =
-            $user->role === 'admin';
+        $this->ensureUser($user);
+
+        $isAdmin = $user->role === 'admin';
 
         $query = Order::query()
-            ->where(
-                'status',
-                'paid'
-            );
+            ->where('status', 'paid');
 
         if (!$isAdmin) {
-
-            $query->where(
-                'user_id',
-                $user->id
-            );
+            $query->where('user_id', $user->id);
         }
 
         return $query
             ->select([
-                DB::raw(
-                    'DATE(created_at) as date'
-                ),
-
-                DB::raw(
-                    'SUM(total) as revenue'
-                )
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('SUM(total) as revenue'),
             ])
-            ->where(
-                'created_at',
-                '>=',
-                now()->subDays($days)
-            )
-            ->groupBy(
-                DB::raw(
-                    'DATE(created_at)'
-                )
-            )
+            ->where('created_at', '>=', now()->subDays($days))
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->get()
             ->map(function ($item) {
                 return [
@@ -157,19 +123,24 @@ class AnalyticsService
 
     public function exportData($user)
     {
+        $this->ensureUser($user);
+
         return [
+            'overview' => $this->overview($user),
 
-            'overview' =>
-            $this->overview($user),
+            'top_products' => $this->topProducts($user),
 
-            'top_products' =>
-            $this->topProducts($user),
-
-            'sales_chart' =>
-            $this->salesChart(
+            'sales_chart' => $this->salesChart(
                 $user,
                 30
-            )
+            ),
         ];
+    }
+
+    private function ensureUser($user): void
+    {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
     }
 }

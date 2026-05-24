@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Policy;
+use RuntimeException;
 
 class PolicyService
 {
@@ -16,7 +17,8 @@ class PolicyService
             $query->where('type', $filters['type']);
         }
 
-        return $query->get()
+        return $query
+            ->get()
             ->map(fn ($policy) => $this->formatCard($policy))
             ->values();
     }
@@ -26,7 +28,11 @@ class PolicyService
         $policy = Policy::query()
             ->where('is_active', true)
             ->where('slug', $slug)
-            ->firstOrFail();
+            ->first();
+
+        if (!$policy) {
+            throw new RuntimeException('Chính sách không tồn tại');
+        }
 
         return $this->formatDetail($policy);
     }

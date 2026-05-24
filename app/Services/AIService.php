@@ -4,36 +4,41 @@ namespace App\Services;
 
 use App\Models\ChatHistory;
 use App\Models\Product;
+use RuntimeException;
 
 class AIService
 {
     public function chat($user, string $question)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         $answer = $this->generateAnswer(
             $user,
             $question
         );
 
         ChatHistory::create([
-
             'user_id' => $user->id,
-
             'question' => $question,
-
             'answer' => $answer,
-
-            'source' => 'mock'
+            'source' => 'mock',
         ]);
 
         return [
             'question' => $question,
             'answer' => $answer,
-            'source' => 'mock'
+            'source' => 'mock',
         ];
     }
 
     public function history($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         return ChatHistory::query()
             ->where('user_id', $user->id)
             ->latest()

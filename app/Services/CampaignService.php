@@ -13,141 +13,120 @@ use App\Models\Address;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Jobs\CancelPendingOrderJob;
+use RuntimeException;
 
 class CampaignService
 {
-    public function checkout($user, $data)
+    public function checkout($user, array $data)
     {
-        $order = DB::transaction(function () use ($user, $data) {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
 
+        $order = DB::transaction(function () use ($user, $data) {
             $total = 0;
 
             $address = Address::query()
                 ->where('user_id', $user->id)
-                ->findOrFail($data['address_id']);
+                ->find($data['address_id']);
+
+            if (!$address) {
+                throw new RuntimeException('Địa chỉ giao hàng không tồn tại', 404);
+            }
 
             $order = Order::create([
-
                 'user_id' => $user->id,
 
                 'type' => 'campaign',
 
                 'status' => 'pending',
 
-                'order_code'
-                    => 'CP-' . strtoupper(Str::random(8)),
+                'order_code' => 'CP-' . strtoupper(Str::random(8)),
 
-                'shipping_name'
-                    => $address->full_name,
+                'shipping_name' => $address->full_name,
 
-                'shipping_phone'
-                    => $address->phone,
+                'shipping_phone' => $address->phone,
 
-                'shipping_address'
-                    => implode(', ', [
-
-                        $address->address_line,
-
-                        $address->ward,
-
-                        $address->district,
-
-                        $address->province,
-                    ]),
-
-                // 'shipping_name'
-                //     => $data['shipping_name'],
-
-                // 'shipping_phone'
-                //     => $data['shipping_phone'],
-
-                // 'shipping_address'
-                //     => $data['shipping_address'],
+                'shipping_address' => implode(', ', [
+                    $address->address_line,
+                    $address->ward,
+                    $address->district,
+                    $address->province,
+                ]),
 
                 'total' => 0,
 
                 'shipping_fee' => 0,
             ]);
 
-            // 🔥 event
             event(new \App\Events\OrderCreated($order));
 
             foreach ($data['items'] as $inputItem) {
-
                 $userCampaignItem = UserCampaignItem::with([
                     'campaignItem.productVariant.product',
-                    'userCampaign.campaign'
+                    'userCampaign.campaign',
                 ])
-                ->lockForUpdate()
-                ->findOrFail(
-                    $inputItem['user_campaign_item_id']
-                );
+                    ->lockForUpdate()
+                    ->find($inputItem['user_campaign_item_id']);
 
-                // ownership
-                if (
-                    $userCampaignItem->userCampaign->user_id
-                    !== $user->id
-                ) {
-                    throw new \Exception(
-                        'Không có quyền checkout item này'
-                    );
+                if (!$userCampaignItem) {
+                    throw new RuntimeException('Sản phẩm campaign không tồn tại', 404);
                 }
 
-                // approved
-                if (
-                    $userCampaignItem->status !== 'approved'
-                ) {
-                    throw new \Exception(
-                        'Item chưa được approve'
-                    );
+                if (!$userCampaignItem->userCampaign) {
+                    throw new RuntimeException('Thông tin đăng ký campaign không hợp lệ', 400);
                 }
 
-                // expire
+                if ((int) $userCampaignItem->userCampaign->user_id !== (int) $user->id) {
+                    throw new RuntimeException('Bạn không có quyền checkout sản phẩm này', 403);
+                }
+
+                if ($userCampaignItem->status !== 'approved') {
+                    throw new RuntimeException('Sản phẩm campaign chưa được duyệt', 400);
+                }
+
                 if (
                     $userCampaignItem->userCampaign->expires_at
-                    && now()->gt(
-                        $userCampaignItem->userCampaign->expires_at
-                    )
+                    && now()->gt($userCampaignItem->userCampaign->expires_at)
                 ) {
-                    throw new \Exception(
-                        'Campaign đã hết hạn checkout'
-                    );
+                    throw new RuntimeException('Campaign đã hết hạn checkout', 400);
                 }
 
-                // remain
                 $remain =
                     $userCampaignItem->approved_quantity
                     - $userCampaignItem->paid_quantity
                     - $userCampaignItem->reserved_quantity;
 
-                if (
-                    $inputItem['quantity'] > $remain
-                ) {
-                    throw new \Exception(
-                        "Chỉ còn {$remain} sản phẩm có thể checkout"
+                if ($inputItem['quantity'] > $remain) {
+                    throw new RuntimeException(
+                        "Chỉ còn {$remain} sản phẩm có thể checkout",
+                        400
                     );
                 }
 
-                $campaignItem =
-                    $userCampaignItem->campaignItem;
+                $campaignItem = $userCampaignItem->campaignItem;
 
-                $variant =
-                    $campaignItem->productVariant;
+                if (!$campaignItem) {
+                    throw new RuntimeException('Thông tin sản phẩm campaign không hợp lệ', 400);
+                }
 
-                // 🔥 reserve STOCK
-                $available =
-                    $variant->stock
-                    - $variant->reserved_stock;
+                $variant = $campaignItem->productVariant;
 
-                if (
-                    $available < $inputItem['quantity']
-                ) {
-                    throw new \Exception(
-                        "Sản phẩm {$variant->product->name} không đủ stock"
+                if (!$variant) {
+                    throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+                }
+
+                $available = $variant->stock - $variant->reserved_stock;
+
+                if ($available < $inputItem['quantity']) {
+                    $productName = $variant->product?->name ?? 'Sản phẩm';
+
+                    throw new RuntimeException(
+                        "Sản phẩm {$productName} không đủ tồn kho",
+                        400
                     );
                 }
 
-                // reserve stock
                 $variant->increment(
                     'reserved_stock',
                     $inputItem['quantity']
@@ -155,35 +134,26 @@ class CampaignService
 
                 $price = $campaignItem->price;
 
-                $lineTotal =
-                    $price * $inputItem['quantity'];
+                $lineTotal = $price * $inputItem['quantity'];
 
                 OrderItem::create([
-
                     'order_id' => $order->id,
 
-                    'product_variant_id'
-                        => $variant->id,
+                    'product_variant_id' => $variant->id,
 
-                    'campaign_item_id'
-                        => $campaignItem->id,
+                    'campaign_item_id' => $campaignItem->id,
 
-                    'user_campaign_item_id'
-                        => $userCampaignItem->id,
+                    'user_campaign_item_id' => $userCampaignItem->id,
 
                     'price' => $price,
 
-                    'quantity'
-                        => $inputItem['quantity'],
+                    'quantity' => $inputItem['quantity'],
 
-                    'product_name'
-                        => $variant->product->name,
+                    'product_name' => $variant->product?->name ?? 'Sản phẩm',
 
-                    'variant_snapshot'
-                        => "Size: {$variant->size}, Color: {$variant->color}",
+                    'variant_snapshot' => "Size: {$variant->size}, Color: {$variant->color}",
                 ]);
 
-                // 🔥 reserve campaign slot
                 $userCampaignItem->increment(
                     'reserved_quantity',
                     $inputItem['quantity']
@@ -193,13 +163,12 @@ class CampaignService
             }
 
             $order->update([
-                'total' => $total
+                'total' => $total,
             ]);
 
             return $order;
         });
 
-        // 🔥 auto cancel
         CancelPendingOrderJob::dispatch($order->id)
             ->delay(
                 now()->addMinutes(
@@ -210,43 +179,45 @@ class CampaignService
         return [
             'order_id' => $order->id,
             'order_code' => $order->order_code,
-            'total' => $order->total
+            'total' => $order->total,
         ];
     }
 
     public function register($user, $campaignId, array $data)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         return DB::transaction(function () use ($user, $campaignId, $data) {
-
             $campaign = Campaign::with('items')
-                ->findOrFail($campaignId);
+                ->find($campaignId);
 
-            // 🔥 active
-            if (!$campaign->isActive()) {
-                throw new \Exception('Campaign không hoạt động');
+            if (!$campaign) {
+                throw new RuntimeException('Campaign không tồn tại', 404);
             }
 
-            // 🔥 duplicate
+            if (!$campaign->isActive()) {
+                throw new RuntimeException('Campaign hiện không hoạt động', 400);
+            }
+
             $exists = UserCampaign::where('user_id', $user->id)
                 ->where('campaign_id', $campaignId)
                 ->exists();
 
             if ($exists) {
-                throw new \Exception('Bạn đã đăng ký campaign');
+                throw new RuntimeException('Bạn đã đăng ký campaign này', 409);
             }
 
-            // 🔥 global limit
             if ($campaign->limit) {
-
                 $count = UserCampaign::where('campaign_id', $campaignId)
                     ->count();
 
                 if ($count >= $campaign->limit) {
-                    throw new \Exception('Campaign đã đầy');
+                    throw new RuntimeException('Campaign đã đủ số lượng đăng ký', 400);
                 }
             }
 
-            // 🔥 create user_campaign
             $userCampaign = UserCampaign::create([
                 'user_id' => $user->id,
                 'campaign_id' => $campaignId,
@@ -254,34 +225,31 @@ class CampaignService
             ]);
 
             foreach ($data['items'] as $itemData) {
-
                 $campaignItem = CampaignItem::lockForUpdate()
-                    ->findOrFail($itemData['campaign_item_id']);
+                    ->find($itemData['campaign_item_id']);
 
-                // 🔥 validate item belongs campaign
-                if ($campaignItem->campaign_id != $campaignId) {
-                    throw new \Exception('Campaign item không hợp lệ');
+                if (!$campaignItem) {
+                    throw new RuntimeException('Sản phẩm campaign không tồn tại', 404);
                 }
 
-                // 🔥 validate quantity
+                if ((int) $campaignItem->campaign_id !== (int) $campaignId) {
+                    throw new RuntimeException('Sản phẩm không thuộc campaign này', 400);
+                }
+
                 if ($itemData['quantity'] <= 0) {
-                    throw new \Exception('Quantity không hợp lệ');
+                    throw new RuntimeException('Số lượng đăng ký không hợp lệ', 400);
                 }
 
-                // 🔥 item limit
                 if ($campaignItem->limit_quantity) {
-
                     $registered = UserCampaignItem::where(
                         'campaign_item_id',
                         $campaignItem->id
                     )->sum('quantity');
 
-                    if (
-                        ($registered + $itemData['quantity'])
-                        > $campaignItem->limit_quantity
-                    ) {
-                        throw new \Exception(
-                            "Sản phẩm {$campaignItem->id} đã hết slot"
+                    if (($registered + $itemData['quantity']) > $campaignItem->limit_quantity) {
+                        throw new RuntimeException(
+                            "Sản phẩm {$campaignItem->id} đã hết slot",
+                            400
                         );
                     }
                 }
@@ -296,7 +264,7 @@ class CampaignService
 
             return [
                 'message' => 'Đăng ký campaign thành công',
-                'data' => $userCampaign->load('items')
+                'data' => $userCampaign->load('items'),
             ];
         });
     }
@@ -307,7 +275,7 @@ class CampaignService
     |--------------------------------------------------------------------------
     */
 
-    public function index($request)
+    public function index(array $filters)
     {
         $query = Campaign::query()
             ->withCount('items')
@@ -320,15 +288,15 @@ class CampaignService
         |--------------------------------------------------------------------------
         */
 
-        if ($request->keyword) {
+        if (!empty($filters['keyword'])) {
+            $keyword = $filters['keyword'];
 
-            $query->where(function ($q) use ($request) {
-
-                $q->where('title', 'like', '%' . $request->keyword . '%')
+            $query->where(function ($q) use ($keyword) {
+                $q->where('title', 'like', '%' . $keyword . '%')
                     ->orWhere(
                         'description',
                         'like',
-                        '%' . $request->keyword . '%'
+                        '%' . $keyword . '%'
                     );
             });
         }
@@ -339,22 +307,17 @@ class CampaignService
         |--------------------------------------------------------------------------
         */
 
-        if ($request->status) {
-
-            switch ($request->status) {
-
+        if (!empty($filters['status'])) {
+            switch ($filters['status']) {
                 case 'upcoming':
-
                     $query->where(
                         'start_date',
                         '>',
                         now()
                     );
-
                     break;
 
                 case 'active':
-
                     $query->where(
                         'start_date',
                         '<=',
@@ -364,17 +327,14 @@ class CampaignService
                         '>=',
                         now()
                     );
-
                     break;
 
                 case 'ended':
-
                     $query->where(
                         'end_date',
                         '<',
                         now()
                     );
-
                     break;
             }
         }
@@ -385,29 +345,30 @@ class CampaignService
         |--------------------------------------------------------------------------
         */
 
-        switch ($request->sort) {
-
+        switch ($filters['sort'] ?? 'latest') {
             case 'ending_soon':
-
                 $query->orderBy('end_date');
-
                 break;
 
             case 'popular':
-
                 $query->orderByDesc(
                     'items_sum_registered_quantity'
                 );
-
                 break;
 
             default:
-
                 $query->latest();
+                break;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | PAGINATION
+        |--------------------------------------------------------------------------
+        */
+
         $campaigns = $query->paginate(
-            $request->per_page ?? 10
+            $filters['per_page'] ?? 10
         );
 
         /*
@@ -418,7 +379,6 @@ class CampaignService
 
         $data = collect($campaigns->items())
             ->map(function ($campaign) {
-
                 $registeredQuantity =
                     $campaign->items_sum_registered_quantity ?? 0;
 
@@ -432,61 +392,47 @@ class CampaignService
 
                     'slug' => $campaign->slug,
 
-                    'description'
-                        => $campaign->description,
+                    'description' => $campaign->description,
 
-                    'banner'
-                        => $campaign->banner,
+                    'banner' => $campaign->banner,
 
-                    'thumbnail'
-                        => $campaign->thumbnail,
+                    'thumbnail' => $campaign->thumbnail,
 
-                    'start_date'
-                        => $campaign->start_date,
+                    'start_date' => $campaign->start_date,
 
-                    'end_date'
-                        => $campaign->end_date,
+                    'end_date' => $campaign->end_date,
 
-                    'status'
-                        => $campaign->status,
+                    'status' => $campaign->status,
 
                     'countdown_seconds' => $campaign->end_date
                         ? now()->diffInSeconds($campaign->end_date, false)
                         : null,
 
-                    'total_items'
-                        => $campaign->items_count,
+                    'total_items' => $campaign->items_count,
 
-                    'registered_quantity'
-                        => (int) $registeredQuantity,
+                    'registered_quantity' => (int) $registeredQuantity,
 
-                    'remaining_quantity'
-                        => (int) ($limitQuantity - $registeredQuantity),
+                    'remaining_quantity' => (int) ($limitQuantity - $registeredQuantity),
                 ];
-            })->values();
+            })
+            ->values();
 
         return [
             'success' => true,
 
-            'message'
-                => 'Lấy danh sách campaign thành công',
+            'message' => 'Lấy danh sách campaign thành công',
 
-            'data'
-                => $data,
+            'data' => $data,
 
             'meta' => [
-                'current_page'
-                    => $campaigns->currentPage(),
+                'current_page' => $campaigns->currentPage(),
 
-                'last_page'
-                    => $campaigns->lastPage(),
+                'last_page' => $campaigns->lastPage(),
 
-                'per_page'
-                    => $campaigns->perPage(),
+                'per_page' => $campaigns->perPage(),
 
-                'total'
-                    => $campaigns->total(),
-            ]
+                'total' => $campaigns->total(),
+            ],
         ];
     }
 
@@ -495,7 +441,6 @@ class CampaignService
     | SHOW CAMPAIGN
     |--------------------------------------------------------------------------
     */
-
     public function show($identifier)
     {
         $campaign = Campaign::with([
@@ -507,7 +452,11 @@ class CampaignService
                 fn ($q) => $q->where('id', $identifier),
                 fn ($q) => $q->where('slug', $identifier)
             )
-            ->firstOrFail();
+            ->first();
+
+        if (!$campaign) {
+            throw new RuntimeException('Campaign không tồn tại', 404);
+        }
 
         $registeredQuantity = $campaign->items->sum('registered_quantity');
 
@@ -586,56 +535,52 @@ class CampaignService
     | CAMPAIGN ITEMS
     |--------------------------------------------------------------------------
     */
-
     public function items($id)
     {
         $campaign = Campaign::with([
-            'items.productVariant.product'
-        ])->findOrFail($id);
+            'items.productVariant.product',
+        ])->find($id);
+
+        if (!$campaign) {
+            throw new RuntimeException('Campaign không tồn tại', 404);
+        }
 
         $items = collect($campaign->items)->map(
             function ($item) {
+                $variant = $item->productVariant;
+
+                if (!$variant || !$variant->product) {
+                    throw new RuntimeException('Dữ liệu sản phẩm campaign không hợp lệ', 400);
+                }
 
                 return [
-
                     'id' => $item->id,
 
                     'price' => $item->price,
 
-                    'limit_quantity'
-                        => $item->limit_quantity,
+                    'limit_quantity' => $item->limit_quantity,
 
-                    'registered_quantity'
-                        => (int) $item->registered_quantity,
+                    'registered_quantity' => (int) $item->registered_quantity,
 
-                    'remaining_quantity'
-                        => (int) ($item->limit_quantity
-                            -
-                            $item->registered_quantity),
+                    'remaining_quantity' => (int) (
+                        $item->limit_quantity - $item->registered_quantity
+                    ),
 
                     'product_variant' => [
+                        'id' => $variant->id,
 
-                        'id'
-                            => $item->productVariant->id,
+                        'size' => $variant->size,
 
-                        'size'
-                            => $item->productVariant->size,
+                        'color' => $variant->color,
 
-                        'color'
-                            => $item->productVariant->color,
-
-                        'stock'
-                            => $item->productVariant->stock,
+                        'stock' => $variant->stock,
 
                         'product' => [
+                            'id' => $variant->product->id,
 
-                            'id'
-                                => $item->productVariant->product->id,
-
-                            'name'
-                                => $item->productVariant->product->name,
-                        ]
-                    ]
+                            'name' => $variant->product->name,
+                        ],
+                    ],
                 ];
             }
         );
@@ -643,14 +588,13 @@ class CampaignService
         return [
             'success' => true,
 
-            'message'
-                => 'Lấy campaign items thành công',
+            'message' => 'Lấy campaign items thành công',
 
             'data' => $items->values(),
 
             'meta' => [
-                'total' => $items->count()
-            ]
+                'total' => $items->count(),
+            ],
         ];
     }
 }

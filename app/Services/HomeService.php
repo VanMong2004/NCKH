@@ -16,7 +16,7 @@ class HomeService
     |--------------------------------------------------------------------------
     */
 
-    public function getHomeData()
+    public function getHomeData($user = null)
     {
         return [
             'featured_products' => $this->featuredProducts(),
@@ -29,8 +29,8 @@ class HomeService
 
             'categories' => $this->categories(),
 
-            'cart_count' => auth()->check()
-                ? app(CartService::class)->getCount(auth()->user())['data']
+            'cart_count' => $user
+                ? app(CartService::class)->getCount($user)['data']
                 : 0,
 
             'unread_notifications' => 0,

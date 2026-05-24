@@ -11,20 +11,14 @@ class SystemService
         $setting = SystemSetting::first();
 
         return [
-
             'maintenance' => [
-                'enabled' =>
-                    $setting?->maintenance_mode ?? false,
-
-                'message' =>
-                    $setting?->maintenance_message
-                    ?? null
+                'enabled' => $setting?->maintenance_mode ?? false,
+                'message' => $setting?->maintenance_message ?? null,
             ],
 
             'session' => [
-                'timeout_minutes' =>
-                    $setting?->session_timeout ?? 120
-            ]
+                'timeout_minutes' => $setting?->session_timeout ?? 120,
+            ],
         ];
     }
 }

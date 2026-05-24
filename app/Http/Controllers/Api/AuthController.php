@@ -6,6 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
+use Exception;
+use Throwable;
+use RuntimeException;
 
 class AuthController extends Controller
 {
@@ -21,14 +27,39 @@ class AuthController extends Controller
     // =========================
     public function login(Request $request)
     {
-        $data = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
+        try {
+            $data = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string',
+            ]);
 
-        $result = $this->authService->login($data);
+            $result = $this->authService->login($data);
 
-        return response()->json($result);
+            return response()->json($result);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu đăng nhập không hợp lệ',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+
+        } catch (Throwable $e) {
+            Log::error('Login system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+        }
     }
 
     // =========================
@@ -36,18 +67,63 @@ class AuthController extends Controller
     // =========================
     public function register(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6|confirmed',
-            'phone' => 'nullable|string|max:20',
-            'mssv' => 'nullable|string|max:50|unique:users,mssv',
-            'avatar' => 'nullable|string',
-        ]);
+        try {
+            $data = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|min:6|confirmed',
+                'phone' => 'nullable|string|max:20',
+                'mssv' => 'nullable|string|max:50|unique:users,mssv',
+                'avatar' => 'nullable|string',
+            ], [
+                'name.required' => 'Vui lòng nhập họ tên',
+                'name.max' => 'Họ tên không được vượt quá 255 ký tự',
 
-        $result = $this->authService->register($data);
+                'email.required' => 'Vui lòng nhập email',
+                'email.email' => 'Email không đúng định dạng',
+                'email.unique' => 'Email đã được sử dụng',
 
-        return response()->json($result);
+                'password.required' => 'Vui lòng nhập mật khẩu',
+                'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+                'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+
+                'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
+
+                'mssv.max' => 'Mã số sinh viên không được vượt quá 50 ký tự',
+                'mssv.unique' => 'Mã số sinh viên đã được sử dụng',
+            ]);
+
+            $result = $this->authService->register($data);
+
+            return response()->json($result);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu đăng ký không hợp lệ',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (QueryException $e) {
+            Log::error('Register database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+
+        } catch (Throwable $e) {
+            Log::error('Register system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+        }
     }
 
     // =========================
@@ -55,20 +131,27 @@ class AuthController extends Controller
     // =========================
     public function me(Request $request)
     {
-        $user = $request->user();
+        try {
+            $result = $this->authService->me($request->user());
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'mssv' => $user->mssv,
-                'role' => $user->role,
-                'avatar' => $user->avatar_url,
-            ],
-        ]);
+            return response()->json($result);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 401);
+
+        } catch (Throwable $e) {
+            Log::error('Get current user error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+        }
     }
 
     // =========================
@@ -76,12 +159,27 @@ class AuthController extends Controller
     // =========================
     public function logout(Request $request)
     {
-        $this->authService->logout($request->user());
+        try {
+            $result = $this->authService->logout($request->user());
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Đăng xuất thành công',
-        ]);
+            return response()->json($result);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 401);
+
+        } catch (Throwable $e) {
+            Log::error('Logout system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+        }
     }
 
     // =========================
@@ -89,30 +187,81 @@ class AuthController extends Controller
     // =========================
     public function update(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'nullable|string|max:255',
+        try {
+            $user = $request->user();
 
-            'email' => [
-                'nullable',
-                'email',
-                Rule::unique('users', 'email')->ignore($request->user()->id),
-            ],
+            if (!$user) {
+                throw new RuntimeException('Vui lòng đăng nhập');
+            }
 
-            'phone' => 'nullable|string|max:20',
+            $data = $request->validate([
+                'name' => 'nullable|string|max:255',
 
-            'mssv' => [
-                'nullable',
-                'string',
-                'max:50',
-                Rule::unique('users', 'mssv')->ignore($request->user()->id),
-            ],
+                'email' => [
+                    'nullable',
+                    'email',
+                    Rule::unique('users', 'email')->ignore($user->id),
+                ],
 
-            'avatar' => 'nullable|string',
-        ]);
+                'phone' => 'nullable|string|max:20',
 
-        return response()->json(
-            $this->authService->updateProfile($request->user(), $data)
-        );
+                'mssv' => [
+                    'nullable',
+                    'string',
+                    'max:50',
+                    Rule::unique('users', 'mssv')->ignore($user->id),
+                ],
+
+                'avatar' => 'nullable|string',
+            ], [
+                'name.max' => 'Họ tên không được vượt quá 255 ký tự',
+
+                'email.email' => 'Email không đúng định dạng',
+                'email.unique' => 'Email đã được sử dụng',
+
+                'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
+
+                'mssv.max' => 'Mã số sinh viên không được vượt quá 50 ký tự',
+                'mssv.unique' => 'Mã số sinh viên đã được sử dụng',
+            ]);
+
+            $result = $this->authService->updateProfile($user, $data);
+
+            return response()->json($result);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu cập nhật không hợp lệ',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 401);
+
+        } catch (QueryException $e) {
+            Log::error('Update profile database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+
+        } catch (Throwable $e) {
+            Log::error('Update profile system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+        }
     }
 
     // =========================
@@ -120,8 +269,36 @@ class AuthController extends Controller
     // =========================
     public function refresh(Request $request)
     {
-        return response()->json(
-            $this->authService->refreshToken($request->user())
-        );
+        try {
+            $result = $this->authService->refreshToken($request->user());
+
+            return response()->json($result);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 401);
+
+        } catch (QueryException $e) {
+            Log::error('Refresh token database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+
+        } catch (Throwable $e) {
+            Log::error('Refresh token system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+            ], 500);
+        }
     }
 }

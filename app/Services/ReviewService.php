@@ -9,6 +9,7 @@ use App\Models\ReviewImage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class ReviewService
 {
@@ -20,9 +21,16 @@ class ReviewService
 
     public function create($user, array $data)
     {
-        return DB::transaction(function () use ($user, $data) {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
 
-            $product = Product::findOrFail($data['product_id']);
+        return DB::transaction(function () use ($user, $data) {
+            $product = Product::find($data['product_id']);
+
+            if (!$product) {
+                throw new RuntimeException('Sản phẩm không tồn tại', 404);
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -43,9 +51,9 @@ class ReviewService
                 ->first();
 
             if (!$completedOrder) {
-
-                throw new \Exception(
-                    'Chỉ được đánh giá sản phẩm đã mua'
+                throw new RuntimeException(
+                    'Chỉ được đánh giá sản phẩm đã mua',
+                    403
                 );
             }
 
@@ -60,8 +68,9 @@ class ReviewService
                 ->exists();
 
             if ($exists) {
-                throw new \Exception(
-                    'Bạn đã review sản phẩm này'
+                throw new RuntimeException(
+                    'Bạn đã review sản phẩm này',
+                    409
                 );
             }
 
@@ -114,20 +123,30 @@ class ReviewService
     |--------------------------------------------------------------------------
     */
 
-    public function update($user, Review $review, array $data)
+    public function update($user, $reviewId, array $data)
     {
-        if ($review->user_id !== $user->id) {
-            throw new \Exception(
-                'Bạn không có quyền sửa review này'
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
+        $review = Review::with([
+            'images',
+            'user',
+            'product',
+        ])->find($reviewId);
+
+        if (!$review) {
+            throw new RuntimeException('Review không tồn tại', 404);
+        }
+
+        if ((int) $review->user_id !== (int) $user->id) {
+            throw new RuntimeException(
+                'Bạn không có quyền sửa review này',
+                403
             );
         }
 
-        return DB::transaction(function () use (
-            $review,
-            $data,
-            $user
-        ) {
-
+        return DB::transaction(function () use ($review, $data, $user) {
             $review->update([
                 'rating' => $data['rating'],
                 'comment' => $data['comment'],
@@ -140,7 +159,6 @@ class ReviewService
             */
 
             if (!empty($data['images'])) {
-
                 $this->deleteImages($review);
 
                 $this->uploadImages(
@@ -150,6 +168,12 @@ class ReviewService
                     $user
                 );
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | RECALCULATE PRODUCT RATING
+            |--------------------------------------------------------------------------
+            */
 
             $this->recalculateProductRating(
                 $review->product
@@ -167,16 +191,36 @@ class ReviewService
     |--------------------------------------------------------------------------
     */
 
-    public function delete($user, Review $review)
+    public function delete($user, $reviewId)
     {
-        if ($review->user_id !== $user->id) {
-            throw new \Exception(
-                'Bạn không có quyền xóa review này'
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
+        $review = Review::with([
+            'images',
+            'product',
+        ])->find($reviewId);
+
+        if (!$review) {
+            throw new RuntimeException('Review không tồn tại', 404);
+        }
+
+        if ((int) $review->user_id !== (int) $user->id) {
+            throw new RuntimeException(
+                'Bạn không có quyền xóa review này',
+                403
+            );
+        }
+
+        if (!$review->product) {
+            throw new RuntimeException(
+                'Sản phẩm của review không tồn tại',
+                404
             );
         }
 
         return DB::transaction(function () use ($review) {
-
             $product = $review->product;
 
             $this->deleteImages($review);
@@ -195,11 +239,17 @@ class ReviewService
     |--------------------------------------------------------------------------
     */
 
-    public function listByProduct(Product $product, array $filters)
+    public function listByProduct($productId, array $filters)
     {
+        $product = Product::find($productId);
+
+        if (!$product) {
+            throw new RuntimeException('Sản phẩm không tồn tại', 404);
+        }
+
         $query = Review::with([
                 'user',
-                'images'
+                'images',
             ])
             ->where('product_id', $product->id);
 
@@ -220,7 +270,6 @@ class ReviewService
         */
 
         switch ($filters['sort'] ?? 'latest') {
-
             case 'highest':
                 $query->orderByDesc('rating');
                 break;
@@ -251,8 +300,8 @@ class ReviewService
                 'product_id',
                 $product->id
             )
-            ->where('rating', $i)
-            ->count();
+                ->where('rating', $i)
+                ->count();
         }
 
         return [
@@ -272,18 +321,14 @@ class ReviewService
                 ->values(),
 
             'meta' => [
-                'current_page'
-                    => $reviews->currentPage(),
+                'current_page' => $reviews->currentPage(),
 
-                'last_page'
-                    => $reviews->lastPage(),
+                'last_page' => $reviews->lastPage(),
 
-                'per_page'
-                    => $reviews->perPage(),
+                'per_page' => $reviews->perPage(),
 
-                'total'
-                    => $reviews->total(),
-            ]
+                'total' => $reviews->total(),
+            ],
         ];
     }
 

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Contact;
-use App\Services\WebhookService;
 
 class ContactService
 {

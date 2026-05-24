@@ -10,6 +10,8 @@ use Carbon\Carbon;
 use App\Services\Gateways\MockPaymentGatewayService;
 use App\Services\Gateways\VNPayService;
 use App\Events\OrderPaid;
+use RuntimeException;
+
 
 class PaymentService
 {
@@ -27,45 +29,38 @@ class PaymentService
     /**
      * Create payment
      */
-    public function pay(Order $order, string $method)
+    public function pay($user, int $orderId, string $method)
     {
-        return DB::transaction(function () use ($order, $method) {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
 
-            $order = Order::lockForUpdate()->find($order->id);
+        return DB::transaction(function () use ($user, $orderId, $method) {
+            $order = Order::lockForUpdate()
+                ->where('user_id', $user->id)
+                ->find($orderId);
 
             if (!$order) {
-                throw new \Exception('Order không tồn tại');
+                throw new RuntimeException('Đơn hàng không tồn tại', 404);
             }
 
             if ($order->status !== 'pending') {
-                throw new \Exception('Order không hợp lệ để thanh toán');
+                throw new RuntimeException('Đơn hàng không hợp lệ để thanh toán', 400);
             }
 
-            // ❗ đã có payment success
             if ($order->payments()->where('status', 'success')->exists()) {
-                throw new \Exception('Order đã được thanh toán');
+                throw new RuntimeException('Đơn hàng đã được thanh toán', 409);
             }
 
-            $latestPayment = $order->payments()
-                ->where('status', 'pending')
-                ->latest()
-                ->first();
-
-            if ($latestPayment) {
-                throw new \Exception('Đơn hàng đang có payment đang xử lý');
-            }
-
-            // 🔥 check pending
             $pendingPayment = $order->payments()
                 ->where('status', 'pending')
                 ->latest()
                 ->first();
 
             if ($pendingPayment) {
-                return $this->resolveGateway($pendingPayment);
+                throw new RuntimeException('Đơn hàng đang có payment đang xử lý', 409);
             }
 
-            // 🔥 create mới
             $payment = Payment::create([
                 'order_id' => $order->id,
                 'method' => $method,
@@ -101,17 +96,13 @@ class PaymentService
 
         switch ($method) {
             case 'mock':
-                $result = $this->mockGateway->callback($data);
-                break;
+                return $this->mockGateway->callback($data);
 
             case 'vnpay':
-                $result = $this->vnpayGateway->callback($data);
-                break;
+                return $this->vnpayGateway->callback($data);
 
             default:
-                throw new \Exception('Callback không hợp lệ');
+                throw new RuntimeException('Callback không hợp lệ', 400);
         }
-
-        return $result;
     }
 }

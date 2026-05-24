@@ -7,9 +7,9 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\Address;
-
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Exception;
 use App\Jobs\CancelPendingOrderJob;
 
@@ -18,41 +18,51 @@ class OrderService
     // =========================
     // CHECKOUT
     // =========================
-    public function checkout($user, $data)
+    public function checkout($user, array $data)
     {
-        $order = DB::transaction(function () use ($user, $data) {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
 
+        $order = DB::transaction(function () use ($user, $data) {
             $cart = Cart::with('items.productVariant.product')
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
-                ->firstOrFail();
+                ->first();
 
-            if ($cart->items->isEmpty()) {
-                throw new Exception('Giỏ hàng trống');
+            if (!$cart || $cart->items->isEmpty()) {
+                throw new RuntimeException('Giỏ hàng trống', 400);
             }
 
-            // 🔥 validate stock
             foreach ($cart->items as $item) {
-
-                $variant = ProductVariant::lockForUpdate()
+                $variant = ProductVariant::with('product')
+                    ->lockForUpdate()
                     ->find($item->product_variant_id);
 
-                $available =
-                    $variant->stock - $variant->reserved_stock;
+                if (!$variant) {
+                    throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+                }
+
+                $available = $variant->stock - $variant->reserved_stock;
 
                 if ($available < $item->quantity) {
+                    $productName = $variant->product?->name ?? 'Sản phẩm';
 
-                    throw new Exception(
-                        "Sản phẩm {$variant->product->name} không đủ hàng"
+                    throw new RuntimeException(
+                        "Sản phẩm {$productName} không đủ hàng",
+                        400
                     );
                 }
             }
 
             $address = Address::query()
                 ->where('user_id', $user->id)
-                ->findOrFail($data['address_id']);
+                ->find($data['address_id']);
 
-            // 🔥 create order
+            if (!$address) {
+                throw new RuntimeException('Địa chỉ giao hàng không tồn tại', 404);
+            }
+
             $order = Order::create([
                 'user_id' => $user->id,
 
@@ -66,34 +76,29 @@ class OrderService
 
                 'shipping_fee' => 0,
 
-                'shipping_name'
-                    => $address->full_name,
+                'shipping_name' => $address->full_name,
 
-                'shipping_phone'
-                    => $address->phone,
+                'shipping_phone' => $address->phone,
 
-                'shipping_address'
-                    => implode(', ', [
-
-                        $address->address_line,
-
-                        $address->ward,
-
-                        $address->district,
-
-                        $address->province,
-                    ]),
-            ]);           
+                'shipping_address' => implode(', ', [
+                    $address->address_line,
+                    $address->ward,
+                    $address->district,
+                    $address->province,
+                ]),
+            ]);
 
             $total = 0;
 
-            // 🔥 create items
             foreach ($cart->items as $item) {
-
-                $variant = ProductVariant::lockForUpdate()
+                $variant = ProductVariant::with('product')
+                    ->lockForUpdate()
                     ->find($item->product_variant_id);
 
-                // reserve stock
+                if (!$variant) {
+                    throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+                }
+
                 $variant->increment(
                     'reserved_stock',
                     $item->quantity
@@ -104,20 +109,15 @@ class OrderService
                 $lineTotal = $price * $item->quantity;
 
                 OrderItem::create([
-
                     'order_id' => $order->id,
 
-                    'product_variant_id'
-                        => $variant->id,
-
-                    // ❌ KHÔNG có user_campaign_item_id
+                    'product_variant_id' => $variant->id,
 
                     'price' => $price,
 
                     'quantity' => $item->quantity,
 
-                    'product_name'
-                        => $variant->product->name,
+                    'product_name' => $variant->product?->name ?? 'Sản phẩm',
 
                     'variant_snapshot' => [
                         'size' => $variant->size,
@@ -129,24 +129,21 @@ class OrderService
                 $total += $lineTotal;
             }
 
-            // update total
             $order->update([
-                'total' => $total
+                'total' => $total,
             ]);
 
             $order->refresh();
 
             event(new \App\Events\OrderCreated($order));
 
-            // close cart
             $cart->update([
-                'status' => 'checked_out'
+                'status' => 'checked_out',
             ]);
 
             return $order;
         });
 
-        // 🔥 auto cancel
         CancelPendingOrderJob::dispatch($order->id)
             ->delay(
                 now()->addMinutes(
@@ -179,7 +176,7 @@ class OrderService
 
             'payment_method' => $paymentMethod,
 
-            'items' => $items->map(fn($item) => [
+            'items' => $items->map(fn ($item) => [
                 'product_name' => $item->product_name,
                 'price' => $item->price,
                 'quantity' => $item->quantity,

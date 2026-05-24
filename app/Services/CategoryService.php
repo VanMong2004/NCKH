@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Category;
+use RuntimeException;
 
 class CategoryService
 {
@@ -21,25 +22,19 @@ class CategoryService
             ->get();
 
         return [
-
             'success' => true,
 
-            'message'
-                => 'Lấy danh sách category thành công',
+            'message' => 'Lấy danh sách category thành công',
 
             'data' => $categories->map(function ($category) {
-
                 return [
-
                     'id' => $category->id,
 
                     'name' => $category->name,
 
-                    'parent_id'
-                        => $category->parent_id,
+                    'parent_id' => $category->parent_id,
 
-                    'products_count'
-                        => $category->products_count,
+                    'products_count' => $category->products_count,
                 ];
             }),
         ];
@@ -59,14 +54,11 @@ class CategoryService
             ->get();
 
         return [
-
             'success' => true,
 
-            'message'
-                => 'Lấy category tree thành công',
+            'message' => 'Lấy category tree thành công',
 
-            'data'
-                => $this->buildTree($categories),
+            'data' => $this->buildTree($categories),
         ];
     }
 
@@ -80,37 +72,32 @@ class CategoryService
     {
         $category = Category::with([
             'children',
-            'parent'
-        ])->findOrFail($id);
+            'parent',
+        ])->find($id);
+
+        if (!$category) {
+            throw new RuntimeException('Category không tồn tại', 404);
+        }
 
         return [
-
             'success' => true,
 
-            'message'
-                => 'Lấy category thành công',
+            'message' => 'Lấy category thành công',
 
             'data' => [
+                'id' => $category->id,
 
-                'id'
-                    => $category->id,
-
-                'name'
-                    => $category->name,
+                'name' => $category->name,
 
                 'parent' => $category->parent
                     ? [
-                        'id'
-                            => $category->parent->id,
-
-                        'name'
-                            => $category->parent->name,
+                        'id' => $category->parent->id,
+                        'name' => $category->parent->name,
                     ]
                     : null,
 
-                'children'
-                    => $category->children,
-            ]
+                'children' => $category->children,
+            ],
         ];
     }
 
@@ -120,9 +107,13 @@ class CategoryService
     |--------------------------------------------------------------------------
     */
 
-    public function products($request, $id)
+    public function products($id, array $filters)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::find($id);
+
+        if (!$category) {
+            throw new RuntimeException('Category không tồn tại', 404);
+        }
 
         $categoryIds = $this->getAllChildIds($id);
 
@@ -130,7 +121,7 @@ class CategoryService
             ->with([
                 'images',
                 'variants',
-                'category'
+                'category',
             ])
             ->whereIn(
                 'category_id',
@@ -138,64 +129,46 @@ class CategoryService
             )
             ->where('is_active', true)
             ->paginate(
-                $request->per_page ?? 10
+                $filters['per_page'] ?? 10
             );
 
         $data = collect($products->items())
             ->map(function ($product) {
-
                 return [
+                    'id' => $product->id,
 
-                    'id'
-                        => $product->id,
+                    'name' => $product->name,
 
-                    'name'
-                        => $product->name,
+                    'thumbnail' => $product->thumbnail,
 
-                    'thumbnail'
-                        => $product->thumbnail,
+                    'average_rating' => $product->average_rating,
 
-                    'average_rating'
-                        => $product->average_rating,
-
-                    'total_reviews'
-                        => $product->total_reviews,
+                    'total_reviews' => $product->total_reviews,
                 ];
             });
 
         return [
-
             'success' => true,
 
-            'message'
-                => 'Lấy sản phẩm category thành công',
+            'message' => 'Lấy sản phẩm category thành công',
 
             'category' => [
+                'id' => $category->id,
 
-                'id'
-                    => $category->id,
-
-                'name'
-                    => $category->name,
+                'name' => $category->name,
             ],
 
-            'data'
-                => $data,
+            'data' => $data,
 
             'meta' => [
+                'current_page' => $products->currentPage(),
 
-                'current_page'
-                    => $products->currentPage(),
+                'last_page' => $products->lastPage(),
 
-                'last_page'
-                    => $products->lastPage(),
+                'per_page' => $products->perPage(),
 
-                'per_page'
-                    => $products->perPage(),
-
-                'total'
-                    => $products->total(),
-            ]
+                'total' => $products->total(),
+            ],
         ];
     }
 

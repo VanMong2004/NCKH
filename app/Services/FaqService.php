@@ -18,13 +18,17 @@ class FaqService
         }
 
         if (!empty($filters['keyword'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('question', 'like', '%' . $filters['keyword'] . '%')
-                  ->orWhere('answer', 'like', '%' . $filters['keyword'] . '%');
+            $keyword = $filters['keyword'];
+
+            $query->where(function ($q) use ($keyword) {
+                $q->where('question', 'like', '%' . $keyword . '%')
+                    ->orWhere('answer', 'like', '%' . $keyword . '%');
             });
         }
 
-        return $query->get()->map(fn ($faq) => $this->format($faq));
+        return $query
+            ->get()
+            ->map(fn ($faq) => $this->format($faq));
     }
 
     public function categories()

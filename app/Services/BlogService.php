@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Blog;
+use RuntimeException;
 
 class BlogService
 {
@@ -18,10 +19,12 @@ class BlogService
         }
 
         if (!empty($filters['keyword'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('title', 'like', '%' . $filters['keyword'] . '%')
-                    ->orWhere('excerpt', 'like', '%' . $filters['keyword'] . '%')
-                    ->orWhere('content', 'like', '%' . $filters['keyword'] . '%');
+            $keyword = $filters['keyword'];
+
+            $query->where(function ($q) use ($keyword) {
+                $q->where('title', 'like', '%' . $keyword . '%')
+                    ->orWhere('excerpt', 'like', '%' . $keyword . '%')
+                    ->orWhere('content', 'like', '%' . $keyword . '%');
             });
         }
 
@@ -46,9 +49,12 @@ class BlogService
                 fn ($q) => $q->where('id', $identifier),
                 fn ($q) => $q->where('slug', $identifier)
             )
-            ->firstOrFail();
+            ->first();
 
-        // tăng lượt xem
+        if (!$blog) {
+            throw new RuntimeException('Blog không tồn tại');
+        }
+
         $blog->increment('view_count');
 
         $related = Blog::query()
@@ -66,28 +72,16 @@ class BlogService
 
         return [
             'id' => $blog->id,
-
             'title' => $blog->title,
-
             'slug' => $blog->slug,
-
             'excerpt' => $blog->excerpt,
-
             'content' => $blog->content,
-
             'thumbnail' => $blog->thumbnail,
-
             'category' => $blog->category,
-
             'author_name' => $blog->author_name,
-
             'view_count' => (int) ($blog->view_count + 1),
-
-            'published_at' => optional(
-                $blog->published_at
-            )->format('d/m/Y H:i'),
-
-            'related_posts' => $related
+            'published_at' => optional($blog->published_at)->format('d/m/Y H:i'),
+            'related_posts' => $related,
         ];
     }
 

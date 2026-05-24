@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Exception;
+use RuntimeException;
 
 class AuthService
 {
@@ -13,14 +15,12 @@ class AuthService
     // =========================
     // LOGIN
     // =========================
-    public function login($data)
+    public function login(array $data)
     {
         $user = User::where('email', $data['email'])->first();
 
         if (!$user || !Hash::check($data['password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Email hoặc mật khẩu không đúng'],
-            ]);
+            throw new Exception('Email hoặc mật khẩu không đúng');
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -46,9 +46,8 @@ class AuthService
     // =========================
     // REGISTER
     // =========================
-    public function register($data)
+    public function register(array $data)
     {
-        // 🔥 auto detect role (optional)
         $role = !empty($data['mssv']) ? 'sinhvien' : 'user';
 
         $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
@@ -84,10 +83,37 @@ class AuthService
     }
 
     // =========================
+    // ME
+    // =========================
+    public function me($user)
+    {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'mssv' => $user->mssv,
+                'role' => $user->role,
+                'avatar' => $user->avatar_url,
+            ],
+        ];
+    }
+
+    // =========================
     // UPDATE PROFILE
     // =========================
-    public function updateProfile($user, $data)
+    public function updateProfile($user, array $data)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         if (isset($data['name'])) {
             $user->name = $data['name'];
         }
@@ -130,7 +156,10 @@ class AuthService
     // =========================
     public function refreshToken($user)
     {
-        // xoá token cũ
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         $user->tokens()->delete();
 
         $newToken = $user->createToken('auth_token')->plainTextToken;
@@ -149,7 +178,16 @@ class AuthService
     // =========================
     public function logout($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         $user->tokens()->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Đăng xuất thành công',
+        ];
     }
 
     // =========================

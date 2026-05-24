@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use Exception;
+use RuntimeException;
 
 class CartService
 {
@@ -15,6 +16,10 @@ class CartService
     // =========================
     public function getCart($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         $cart = Cart::firstOrCreate([
             'user_id' => $user->id,
             'status' => 'active',
@@ -29,23 +34,31 @@ class CartService
 
         return [
             'success' => true,
-            'data' => $this->formatCart($cart)
+            'data' => $this->formatCart($cart),
         ];
     }
 
     // =========================
     // ADD TO CART
     // =========================
-    public function addToCart($user, $data)
+    public function addToCart($user, array $data)
     {
-        return DB::transaction(function () use ($user, $data) {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
 
-            $variant = ProductVariant::lockForUpdate()->findOrFail($data['product_variant_id']);
+        return DB::transaction(function () use ($user, $data) {
+            $variant = ProductVariant::lockForUpdate()
+                ->find($data['product_variant_id']);
+
+            if (!$variant) {
+                throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+            }
 
             $available = $variant->stock - $variant->reserved_stock;
 
             if ($available <= 0) {
-                throw new Exception('Sản phẩm đã hết hàng');
+                throw new RuntimeException('Sản phẩm đã hết hàng', 400);
             }
 
             $cart = Cart::firstOrCreate([
@@ -55,7 +68,7 @@ class CartService
 
             $item = CartItem::where([
                 'cart_id' => $cart->id,
-                'product_variant_id' => $variant->id
+                'product_variant_id' => $variant->id,
             ])->first();
 
             $newQty = $data['quantity'];
@@ -64,7 +77,6 @@ class CartService
                 $newQty = $item->quantity + $data['quantity'];
             }
 
-            // 🔥 clamp
             if ($newQty > $available) {
                 $newQty = $available;
 
@@ -98,7 +110,7 @@ class CartService
 
             return [
                 'success' => true,
-                'message' => 'Đã thêm vào giỏ hàng'
+                'message' => 'Đã thêm vào giỏ hàng',
             ];
         });
     }
@@ -108,28 +120,40 @@ class CartService
     // =========================
     public function updateItem($user, $cartItemId, $quantity)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         return DB::transaction(function () use ($user, $cartItemId, $quantity) {
+            $cart = Cart::where([
+                'user_id' => $user->id,
+                'status' => 'active',
+            ])->first();
 
-             $cart = Cart::where([
-            'user_id' => $user->id,
-            'status' => 'active', // phải có điều kiện status là active để tránh đọc lại cart cũ
-        ])->firstOrFail();
-
+            if (!$cart) {
+                throw new RuntimeException('Giỏ hàng không tồn tại', 404);
+            }
 
             $item = CartItem::where([
-                'cart_id'=>$cart->id,
-                'id'=>$cartItemId
-            ])->firstOrFail();
+                'cart_id' => $cart->id,
+                'id' => $cartItemId,
+            ])->first();
+
+            if (!$item) {
+                throw new RuntimeException('Sản phẩm không có trong giỏ hàng', 404);
+            }
 
             $variant = ProductVariant::lockForUpdate()
-            ->findOrFail(
-                $item->product_variant_id
-            );
+                ->find($item->product_variant_id);
+
+            if (!$variant) {
+                throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+            }
 
             $available = $variant->stock - $variant->reserved_stock;
 
             if ($available <= 0) {
-                throw new Exception('Sản phẩm đã hết hàng');
+                throw new RuntimeException('Sản phẩm đã hết hàng', 400);
             }
 
             $qty = min($quantity, $available);
@@ -137,16 +161,16 @@ class CartService
             $item->quantity = $qty;
             $item->save();
 
-            if($qty < $quantity) {
+            if ($qty < $quantity) {
                 return [
                     'success' => true,
-                    'warning' => 'Đã điều chỉnh theo tồn kho'
+                    'warning' => 'Đã điều chỉnh theo tồn kho',
                 ];
             }
 
             return [
                 'success' => true,
-                'message' => 'Cập nhật thành công'
+                'message' => 'Cập nhật thành công',
             ];
         });
     }
@@ -155,22 +179,36 @@ class CartService
     // REMOVE ITEM
     // =========================
     public function removeItem($user, $cartItemId)
-{
-    $cart = Cart::where([
-        'user_id' => $user->id,
-        'status' => 'active',   // phải có điều kiện status là active để tránh đọc lại cart cũ
-    ])->firstOrFail();
+    {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
 
-    CartItem::where([
-        'cart_id' => $cart->id,
-        'id' => $cartItemId
-    ])->delete();
+        $cart = Cart::where([
+            'user_id' => $user->id,
+            'status' => 'active',
+        ])->first();
 
-    return [
-        'success' => true,
-        'message' => 'Đã xoá sản phẩm'
-    ];
-}
+        if (!$cart) {
+            throw new RuntimeException('Giỏ hàng không tồn tại', 404);
+        }
+
+        $item = CartItem::where([
+            'cart_id' => $cart->id,
+            'id' => $cartItemId,
+        ])->first();
+
+        if (!$item) {
+            throw new RuntimeException('Sản phẩm không có trong giỏ hàng', 404);
+        }
+
+        $item->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Đã xoá sản phẩm',
+        ];
+    }
     // =========================
     // FORMAT CART (🔥 FE READY)
     // =========================
@@ -253,14 +291,18 @@ class CartService
     // =========================
     public function getCount($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         $count = CartItem::whereHas('cart', function ($q) use ($user) {
             $q->where('user_id', $user->id)
-               ->where('status', 'active'); // phải có điều kiện status là active để tránh đọc lại cart cũ
+                ->where('status', 'active');
         })->sum('quantity');
 
         return [
             'success' => true,
-            'data' => $count
+            'data' => $count,
         ];
     }
 }

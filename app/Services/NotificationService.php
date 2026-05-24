@@ -3,11 +3,16 @@
 namespace App\Services;
 
 use App\Models\Notification;
+use RuntimeException;
 
 class NotificationService
 {
     public function list($user, array $filters = [])
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         $perPage = min($filters['per_page'] ?? 10, 50);
 
         $query = Notification::query()
@@ -19,13 +24,18 @@ class NotificationService
         }
 
         if (isset($filters['is_read'])) {
-            $query->where('is_read', filter_var($filters['is_read'], FILTER_VALIDATE_BOOLEAN));
+            $query->where(
+                'is_read',
+                filter_var($filters['is_read'], FILTER_VALIDATE_BOOLEAN)
+            );
         }
 
         $notifications = $query->paginate($perPage);
 
         $notifications->setCollection(
-            $notifications->getCollection()->map(fn ($item) => $this->format($item))
+            $notifications->getCollection()->map(
+                fn ($item) => $this->format($item)
+            )
         );
 
         return $notifications;
@@ -33,8 +43,16 @@ class NotificationService
 
     public function show($user, $id)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         $notification = Notification::where('user_id', $user->id)
-            ->findOrFail($id);
+            ->find($id);
+
+        if (!$notification) {
+            throw new RuntimeException('Thông báo không tồn tại', 404);
+        }
 
         return $this->format($notification);
     }
@@ -48,8 +66,16 @@ class NotificationService
 
     public function markRead($user, $id)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         $notification = Notification::where('user_id', $user->id)
-            ->findOrFail($id);
+            ->find($id);
+
+        if (!$notification) {
+            throw new RuntimeException('Thông báo không tồn tại', 404);
+        }
 
         $notification->update([
             'is_read' => true,
@@ -61,6 +87,10 @@ class NotificationService
 
     public function markAllRead($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         Notification::where('user_id', $user->id)
             ->where('is_read', false)
             ->update([
@@ -71,8 +101,14 @@ class NotificationService
         return true;
     }
 
-    public function createForUser($userId, string $type, string $title, string $message, ?string $actionUrl = null, ?array $meta = null)
-    {
+    public function createForUser(
+        int $userId,
+        string $type,
+        string $title,
+        string $message,
+        ?string $actionUrl = null,
+        ?array $meta = null
+    ) {
         return Notification::create([
             'user_id' => $userId,
             'type' => $type,

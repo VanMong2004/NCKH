@@ -4,18 +4,19 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\SearchHistory;
+use RuntimeException;
 
 class SearchService
 {
     public function suggestions($user, string $keyword)
     {
-        // lưu history nếu đã login
-        if ($user && strlen(trim($keyword)) >= 2) {
+        $keyword = trim($keyword);
 
+        if ($user && strlen($keyword) >= 2) {
             SearchHistory::updateOrCreate(
                 [
                     'user_id' => $user->id,
-                    'keyword' => trim($keyword)
+                    'keyword' => $keyword,
                 ],
                 []
             );
@@ -31,9 +32,7 @@ class SearchService
             ->limit(8)
             ->get()
             ->map(function ($product) {
-
                 return [
-
                     'id' => $product->id,
 
                     'name' => $product->name,
@@ -55,14 +54,17 @@ class SearchService
                                 ?->first()
                         )->url,
 
-                    'average_rating' =>
-                    (float)$product->average_rating,
+                    'average_rating' => (float) $product->average_rating,
                 ];
             });
     }
 
     public function history($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập');
+        }
+
         return SearchHistory::query()
             ->where('user_id', $user->id)
             ->latest()
@@ -72,24 +74,31 @@ class SearchService
 
     public function deleteHistory($user, $id)
     {
-        SearchHistory::query()
-            ->where(
-                'user_id',
-                $user->id
-            )
-            ->findOrFail($id)
-            ->delete();
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
+        $history = SearchHistory::query()
+            ->where('user_id', $user->id)
+            ->find($id);
+
+        if (!$history) {
+            throw new RuntimeException('Lịch sử tìm kiếm không tồn tại', 404);
+        }
+
+        $history->delete();
 
         return true;
     }
 
     public function clearHistory($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         SearchHistory::query()
-            ->where(
-                'user_id',
-                $user->id
-            )
+            ->where('user_id', $user->id)
             ->delete();
 
         return true;

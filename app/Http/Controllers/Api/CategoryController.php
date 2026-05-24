@@ -7,6 +7,12 @@ use Illuminate\Http\Request;
 use App\Services\CategoryService;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
+
 
 class CategoryController extends Controller
 {
@@ -27,24 +33,37 @@ class CategoryController extends Controller
     public function index()
     {
         try {
-
-            $result = $this->categoryService
-                ->index();
+            $result = $this->categoryService->index();
 
             return response()->json($result);
 
-        } catch (Exception $e) {
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 400);
+
+        } catch (QueryException $e) {
+            Log::error('Get category list database error', [
+                'message' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
 
-                'message'
-                    => 'Lỗi khi lấy danh sách categories',
+        } catch (Throwable $e) {
+            Log::error('Get category list system error', [
+                'message' => $e->getMessage(),
+            ]);
 
-                'error'
-                    => app()->environment('local')
-                        ? $e->getMessage()
-                        : null,
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
             ], 500);
         }
     }
@@ -58,24 +77,37 @@ class CategoryController extends Controller
     public function tree()
     {
         try {
-
-            $result = $this->categoryService
-                ->tree();
+            $result = $this->categoryService->tree();
 
             return response()->json($result);
 
-        } catch (Exception $e) {
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], 400);
+
+        } catch (QueryException $e) {
+            Log::error('Get category tree database error', [
+                'message' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
 
-                'message'
-                    => 'Lỗi khi lấy category tree',
+        } catch (Throwable $e) {
+            Log::error('Get category tree system error', [
+                'message' => $e->getMessage(),
+            ]);
 
-                'error'
-                    => app()->environment('local')
-                        ? $e->getMessage()
-                        : null,
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
             ], 500);
         }
     }
@@ -86,36 +118,65 @@ class CategoryController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         try {
+            $request->merge([
+                'category_id' => $id,
+            ]);
 
-            $result = $this->categoryService
-                ->show($id);
+            $data = $request->validate([
+                'category_id' => 'required|integer|min:1',
+            ], [
+                'category_id.required' => 'Category không hợp lệ',
+                'category_id.integer' => 'Category không hợp lệ',
+                'category_id.min' => 'Category không hợp lệ',
+            ]);
+
+            $result = $this->categoryService->show(
+                $data['category_id']
+            );
 
             return response()->json($result);
 
-        } catch (ModelNotFoundException $e) {
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Category không hợp lệ',
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 404])
+                ? $e->getCode()
+                : 400;
 
             return response()->json([
                 'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
 
-                'message'
-                    => 'Category không tồn tại',
-            ], 404);
-
-        } catch (Exception $e) {
+        } catch (QueryException $e) {
+            Log::error('Get category detail database error', [
+                'message' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
 
-                'message'
-                    => 'Lỗi khi lấy category',
+        } catch (Throwable $e) {
+            Log::error('Get category detail system error', [
+                'message' => $e->getMessage(),
+            ]);
 
-                'error'
-                    => app()->environment('local')
-                        ? $e->getMessage()
-                        : null,
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
             ], 500);
         }
     }
@@ -129,33 +190,72 @@ class CategoryController extends Controller
     public function products(Request $request, $id)
     {
         try {
+            $request->merge([
+                'category_id' => $id,
+            ]);
 
-            $result = $this->categoryService
-                ->products($request, $id);
+            $data = $request->validate([
+                'category_id' => 'required|integer|min:1',
+                'page' => 'nullable|integer|min:1',
+                'per_page' => 'nullable|integer|min:1',
+            ], [
+                'category_id.required' => 'Category không hợp lệ',
+                'category_id.integer' => 'Category không hợp lệ',
+                'category_id.min' => 'Category không hợp lệ',
+
+                'page.integer' => 'Số trang không hợp lệ',
+                'page.min' => 'Số trang phải lớn hơn hoặc bằng 1',
+
+                'per_page.integer' => 'Số sản phẩm mỗi trang không hợp lệ',
+                'per_page.min' => 'Số sản phẩm mỗi trang phải lớn hơn hoặc bằng 1',
+            ]);
+
+            $result = $this->categoryService->products(
+                $data['category_id'],
+                $data
+            );
 
             return response()->json($result);
 
-        } catch (ModelNotFoundException $e) {
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu category không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 404])
+                ? $e->getCode()
+                : 400;
 
             return response()->json([
                 'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
 
-                'message'
-                    => 'Category không tồn tại',
-            ], 404);
-
-        } catch (Exception $e) {
+        } catch (QueryException $e) {
+            Log::error('Get category products database error', [
+                'message' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
 
-                'message'
-                    => 'Lỗi khi lấy sản phẩm category',
+        } catch (Throwable $e) {
+            Log::error('Get category products system error', [
+                'message' => $e->getMessage(),
+            ]);
 
-                'error'
-                    => app()->environment('local')
-                        ? $e->getMessage()
-                        : null,
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
             ], 500);
         }
     }

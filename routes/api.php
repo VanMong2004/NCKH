@@ -24,7 +24,7 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\SearchController;
-use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\UserAnalyticsController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\PolicyController;
@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 // use App\Http\Controllers\Api\Admin\AdminRevenueController;
 use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
+use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 
 
 // =============================
@@ -283,14 +284,27 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // =============================
-    // ANALYTICS
+    // ADMIN ANALYTICS
     // =============================
-    Route::prefix('analytics')->group(function(){
-        Route::get('/overview',[AnalyticsController::class,'overview']);
-        Route::get('/top-products',[AnalyticsController::class,'topProducts']);
-        Route::get('/sales-chart',[AnalyticsController::class,'salesChart']);
-        Route::get('/export/pdf',[AnalyticsController::class,'exportPdf']);
-        Route::get('/export/excel',[AnalyticsController::class,'exportExcel']);
+    Route::prefix('admin/analytics')->middleware('admin')->group(function () {
+        Route::get('/overview', [AdminAnalyticsController::class, 'overview']);
+        Route::get('/top-products', [AdminAnalyticsController::class, 'topProducts']);
+        Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);
+        Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);
+        Route::get('/export/excel', [AdminAnalyticsController::class, 'exportExcel']);
+    });
+    // =============================
+    // USER ANALYTICS
+    // =============================
+    Route::prefix('user/analytics')->group(function () {
+        Route::get('/overview', [UserAnalyticsController::class, 'overview']);
+        Route::get('/orders', [UserAnalyticsController::class, 'orders']);
+        Route::get('/campaigns', [UserAnalyticsController::class, 'campaigns']);
+        Route::get('/spending', [UserAnalyticsController::class, 'spending']);
+        Route::get('/interests', [UserAnalyticsController::class, 'interests']);
+        Route::get('/order-tracking', [UserAnalyticsController::class, 'orderTracking']);
+        Route::get('/export/pdf', [UserAnalyticsController::class, 'exportPdf']);
+        Route::get('/export/excel', [UserAnalyticsController::class, 'exportExcel']);
     });
 });
 

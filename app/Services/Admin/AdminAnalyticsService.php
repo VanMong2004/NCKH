@@ -8,19 +8,13 @@ use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-class AnalyticsService
+class AdminAnalyticsService
 {
     public function overview($user)
     {
-        $this->ensureUser($user);
-
-        $isAdmin = $user->role === 'admin';
+        $this->ensureAdmin($user);
 
         $orderQuery = Order::query();
-
-        if (!$isAdmin) {
-            $orderQuery->where('user_id', $user->id);
-        }
 
         return [
             'total_orders' => (clone $orderQuery)->count(),
@@ -33,19 +27,15 @@ class AnalyticsService
                 ->where('status', 'paid')
                 ->sum('total'),
 
-            'total_users' => $isAdmin
-                ? User::count()
-                : 1,
+            'total_users' => User::count(),
         ];
     }
 
     public function topProducts($user)
     {
-        $this->ensureUser($user);
+        $this->ensureAdmin($user);
 
-        $isAdmin = $user->role === 'admin';
-
-        $query = OrderItem::query()
+        return OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->leftJoin(
                 'product_variants',
@@ -59,13 +49,7 @@ class AnalyticsService
                 '=',
                 'product_variants.product_id'
             )
-            ->where('orders.status', 'paid');
-
-        if (!$isAdmin) {
-            $query->where('orders.user_id', $user->id);
-        }
-
-        return $query
+            ->where('orders.status', 'paid')
             ->selectRaw('
                 products.id as product_id,
                 products.name as name,
@@ -94,18 +78,10 @@ class AnalyticsService
 
     public function salesChart($user, int $days = 7)
     {
-        $this->ensureUser($user);
+        $this->ensureAdmin($user);
 
-        $isAdmin = $user->role === 'admin';
-
-        $query = Order::query()
-            ->where('status', 'paid');
-
-        if (!$isAdmin) {
-            $query->where('user_id', $user->id);
-        }
-
-        return $query
+        return Order::query()
+            ->where('status', 'paid')
             ->select([
                 DB::raw('DATE(created_at) as date'),
                 DB::raw('SUM(total) as revenue'),
@@ -123,24 +99,23 @@ class AnalyticsService
 
     public function exportData($user)
     {
-        $this->ensureUser($user);
+        $this->ensureAdmin($user);
 
         return [
             'overview' => $this->overview($user),
-
             'top_products' => $this->topProducts($user),
-
-            'sales_chart' => $this->salesChart(
-                $user,
-                30
-            ),
+            'sales_chart' => $this->salesChart($user, 30),
         ];
     }
 
-    private function ensureUser($user): void
+    private function ensureAdmin($user): void
     {
         if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập');
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
+        if ($user->role !== 'admin') {
+            throw new RuntimeException('Bạn không có quyền truy cập thống kê quản trị', 403);
         }
     }
 }

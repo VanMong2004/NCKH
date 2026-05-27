@@ -37,7 +37,12 @@ class VNPayService
             $payment = Payment::lockForUpdate()->findOrFail($data['vnp_TxnRef']);
 
             if ($payment->status === 'success') {
-                return ['message' => 'Payment đã xử lý'];
+                return [
+                    'message' => 'Payment đã xử lý',
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order_id,
+                    'status' => 'success',
+                ];
             }
 
             $order = Order::lockForUpdate()->findOrFail($payment->order_id);
@@ -88,7 +93,12 @@ class VNPayService
                     }
                 }
 
-            return ['message' => 'VNPay callback handled'];
+            return [
+                'message' => 'VNPay callback handled',
+                'payment_id' => $payment->id,
+                'order_id' => $order->id,
+                'status' => $status,
+            ];
         });
     }
 }

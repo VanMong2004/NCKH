@@ -28,7 +28,12 @@ class MockPaymentGatewayService
 
             // 🔥 chống double callback
             if ($payment->status === 'success') {
-                return ['message' => 'Payment đã xử lý'];
+                return [
+                    'message' => 'Payment đã xử lý',
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order_id,
+                    'status' => 'success',
+                ];
             }
 
             $order = Order::lockForUpdate()->findOrFail($payment->order_id);
@@ -81,7 +86,10 @@ class MockPaymentGatewayService
             }
 
             return [
-                'message' => 'Callback xử lý thành công'
+                'message' => 'Callback xử lý thành công',
+                'payment_id' => $payment->id,
+                'order_id' => $order->id,
+                'status' => $status,
             ];
         });
     }

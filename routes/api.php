@@ -289,16 +289,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // =============================
-    // ADMIN ANALYTICS
-    // =============================
-    Route::prefix('admin/analytics')->middleware('admin')->group(function () {
-        Route::get('/overview', [AdminAnalyticsController::class, 'overview']);
-        Route::get('/top-products', [AdminAnalyticsController::class, 'topProducts']);
-        Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);
-        Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);
-        Route::get('/export/excel', [AdminAnalyticsController::class, 'exportExcel']);
-    });
-    // =============================
     // USER ANALYTICS
     // =============================
     Route::prefix('user/analytics')->group(function () {
@@ -382,6 +372,17 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
         return Response::file($path);
 
+    });
+
+    // =============================
+    // ADMIN ANALYTICS
+    // =============================
+    Route::prefix('admin/analytics')->middleware('admin')->group(function () {
+        Route::get('/overview', [AdminAnalyticsController::class, 'overview']);
+        Route::get('/top-products', [AdminAnalyticsController::class, 'topProducts']);
+        Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);
+        Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);
+        Route::get('/export/excel', [AdminAnalyticsController::class, 'exportExcel']);
     });
 });
 

@@ -186,4 +186,6 @@ return [
     ])->toArray(),
 
     'order_auto_cancel_minutes' => env('ORDER_AUTO_CANCEL_MINUTES', 15),
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 ];

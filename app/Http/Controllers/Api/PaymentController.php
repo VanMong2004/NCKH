@@ -56,6 +56,7 @@ class PaymentController extends Controller
             );
 
             return response()->json([
+                'success' => true,
                 'message' => 'Tạo payment thành công',
                 'data' => $result,
             ]);
@@ -115,11 +116,27 @@ class PaymentController extends Controller
                 'method.in' => 'Callback không hợp lệ',
             ]);
 
+            // $result = $this->paymentService->handleCallback(
+            //     $request->all()
+            // );
+
+            // return response()->json($result);
+
             $result = $this->paymentService->handleCallback(
                 $request->all()
             );
 
-            return response()->json($result);
+            $paymentId = $result['payment_id'] ?? $request->payment_id ?? $request->vnp_TxnRef ?? null;
+            $status = $result['status'] ?? $request->status ?? 'unknown';
+
+            $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+
+            return redirect()->away(
+                $frontendUrl . '/payment/result?' . http_build_query([
+                    'payment_id' => $paymentId,
+                    'status' => $status,
+                ])
+            );
 
         } catch (ValidationException $e) {
             return response()->json([

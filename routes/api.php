@@ -133,6 +133,12 @@ Route::prefix('blogs')->group(function () {
 });
 
 // =============================
+// SEARCH SUGGESTIONS
+// =============================
+Route::get('/suggestions',[SearchController::class,'suggestions']);
+
+
+// =============================
 // POLICIES (PUBLIC)
 // =============================
 Route::prefix('policies')->group(function () {
@@ -194,7 +200,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // =============================
-    // ORDERS (NORMAL)
+    // ORDERS (NORMAL)  
     // =============================
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'myOrders']); // Lấy danh sách đơn hàng của người dùng
@@ -277,7 +283,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // SEARCH
     // =============================
     Route::prefix('search')->group(function(){
-        Route::get('/suggestions',[SearchController::class,'suggestions']);
         Route::get('/history',[SearchController::class,'history']);
         Route::delete('/history/{id}',[SearchController::class,'deleteHistory']);
         Route::delete('/history',[SearchController::class,'clearHistory']);

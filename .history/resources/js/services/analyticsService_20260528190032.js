@@ -15,6 +15,7 @@ function downloadBlob(blob, filename) {
 
     link.href = url;
     link.download = filename;
+
     document.body.appendChild(link);
     link.click();
 
@@ -24,47 +25,43 @@ function downloadBlob(blob, filename) {
 
 const userAnalyticsService = {
     async overview() {
-        const res = await api.get('/user-analytics/overview');
+        const res = await api.get('/user/analytics/overview');
         return mapUserAnalyticsOverviewResponse(res.data);
     },
 
     async orders(months = 12) {
-        const res = await api.get('/user-analytics/orders', {
-            params: {
-                months,
-            },
+        const res = await api.get('/user/analytics/orders', {
+            params: { months },
         });
 
         return mapOrdersAnalyticsResponse(res.data);
     },
 
     async campaigns() {
-        const res = await api.get('/user-analytics/campaigns');
+        const res = await api.get('/user/analytics/campaigns');
         return mapCampaignsAnalyticsResponse(res.data);
     },
 
     async spending(months = 12) {
-        const res = await api.get('/user-analytics/spending', {
-            params: {
-                months,
-            },
+        const res = await api.get('/user/analytics/spending', {
+            params: { months },
         });
 
         return mapSpendingAnalyticsResponse(res.data);
     },
 
     async interests() {
-        const res = await api.get('/user-analytics/interests');
+        const res = await api.get('/user/analytics/interests');
         return mapInterestsAnalyticsResponse(res.data);
     },
 
     async tracking() {
-        const res = await api.get('/user-analytics/order-tracking');
+        const res = await api.get('/user/analytics/order-tracking');
         return mapTrackingAnalyticsResponse(res.data);
     },
 
     async exportPdf() {
-        const res = await api.get('/user-analytics/export/pdf', {
+        const res = await api.get('/user/analytics/export/pdf', {
             responseType: 'blob',
         });
 
@@ -72,7 +69,7 @@ const userAnalyticsService = {
     },
 
     async exportExcel() {
-        const res = await api.get('/user-analytics/export/excel', {
+        const res = await api.get('/user/analytics/export/excel', {
             responseType: 'blob',
         });
 

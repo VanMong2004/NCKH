@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 use Throwable;
 
@@ -28,18 +29,18 @@ class SearchController extends Controller
                 'keyword.max' => 'Từ khóa tìm kiếm không được vượt quá 255 ký tự',
             ]);
 
-            $result = $this->searchService->suggestions(
-                $request->user(),
-                $data['keyword']
-            );
+            $user = Auth::guard('sanctum')->user();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Gợi ý tìm kiếm',
-                'data' => $result,
+                'data' => $this->searchService->suggestions(
+                    $user,
+                    $data['keyword']
+                ),
             ]);
 
-        } catch (ValidationException $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Dữ liệu tìm kiếm không hợp lệ',
@@ -47,19 +48,8 @@ class SearchController extends Controller
                 'data' => null,
             ], 422);
 
-        } catch (QueryException $e) {
-            Log::error('Search suggestions database error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-
-        } catch (Throwable $e) {
-            Log::error('Search suggestions system error', [
+        } catch (\Throwable $e) {
+            Log::error('Search suggestions error', [
                 'message' => $e->getMessage(),
             ]);
 

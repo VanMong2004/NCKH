@@ -135,8 +135,9 @@ Route::prefix('blogs')->group(function () {
 // =============================
 // SEARCH SUGGESTIONS
 // =============================
-Route::get('/suggestions',[SearchController::class,'suggestions']);
-
+Route::prefix('search')->group(function () {
+    Route::get('/suggestions', [SearchController::class, 'suggestions']);
+});
 
 // =============================
 // POLICIES (PUBLIC)

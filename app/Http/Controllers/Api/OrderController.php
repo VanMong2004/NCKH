@@ -31,13 +31,15 @@ class OrderController extends Controller
         try {
             $data = $request->validate([
                 'address_id' => 'required|integer|exists:addresses,id',
-                'payment_method' => 'nullable|in:cod,bank_transfer,momo,vnpay,mock',
-            ], [
-                'address_id.required' => 'Vui lòng chọn địa chỉ giao hàng',
-                'address_id.integer' => 'Địa chỉ giao hàng không hợp lệ',
-                'address_id.exists' => 'Địa chỉ giao hàng không tồn tại',
 
-                'payment_method.in' => 'Phương thức thanh toán không hợp lệ',
+                'payment_method' => 'nullable|in:cod,bank_transfer,momo,vnpay,mock',
+
+                'cart_item_ids' => 'required|array|min:1',
+                'cart_item_ids.*' => 'integer|exists:cart_items,id',
+            ], [
+                'cart_item_ids.required' => 'Vui lòng chọn sản phẩm cần thanh toán',
+                'cart_item_ids.array' => 'Danh sách sản phẩm không hợp lệ',
+                'cart_item_ids.min' => 'Vui lòng chọn ít nhất một sản phẩm',
             ]);
 
             $result = $this->orderService->checkout(

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
@@ -25,16 +26,39 @@ class OrderService
         }
 
         $order = DB::transaction(function () use ($user, $data) {
-            $cart = Cart::with('items.productVariant.product')
-                ->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->first();
+            // $cart = Cart::where('user_id', $user->id)
+            //     ->where('status', 'active')
+            //     ->first();
 
-            if (!$cart || $cart->items->isEmpty()) {
-                throw new RuntimeException('Giỏ hàng trống', 400);
+            // if (!$cart) {
+            //     throw new RuntimeException('Giỏ hàng trống', 400);
+            // }
+
+            // $selectedItems = CartItem::with('productVariant.product')
+            //     ->where('cart_id', $cart->id)
+            //     ->whereIn('id', $data['cart_item_ids'])
+            //     ->get();
+
+            $cart = Cart::with([
+                'items' => function ($query) use ($data) {
+                    $query->whereIn('id', $data['cart_item_ids']);
+                },
+                'items.productVariant.product'
+            ])
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+            $selectedItems = $cart->items;
+
+            if ($selectedItems->isEmpty()) {
+                throw new RuntimeException(
+                    'Không có sản phẩm nào được chọn',
+                    400
+                );
             }
 
-            foreach ($cart->items as $item) {
+            foreach ($selectedItems as $item) {
                 $variant = ProductVariant::with('product')
                     ->lockForUpdate()
                     ->find($item->product_variant_id);
@@ -90,7 +114,7 @@ class OrderService
 
             $total = 0;
 
-            foreach ($cart->items as $item) {
+            foreach ($selectedItems as $item) {
                 $variant = ProductVariant::with('product')
                     ->lockForUpdate()
                     ->find($item->product_variant_id);
@@ -137,9 +161,13 @@ class OrderService
 
             event(new \App\Events\OrderCreated($order));
 
-            $cart->update([
-                'status' => 'checked_out',
-            ]);
+            // $cart->update([
+            //     'status' => 'checked_out',
+            // ]);
+            CartItem::whereIn(
+                'id',
+                $selectedItems->pluck('id')
+            )->delete();
 
             return $order;
         });

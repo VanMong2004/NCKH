@@ -323,4 +323,128 @@ class PaymentController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Lịch sử payments của người dùng, có thể dùng cho trang lịch sử đơn hàng hoặc trang cá nhân
+     */
+    public function history(Request $request)
+    {
+        try {
+
+            $filters = $request->validate([
+                'status' => 'nullable|in:pending,processing,success,failed,refunded',
+                'method' => 'nullable|in:vnpay,momo,banking,baokim,mock',
+            ]);
+
+            $payments = $this->paymentQueryService->history(
+                $request->user(),
+                $filters
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy lịch sử giao dịch thành công',
+                'data' => $payments,
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu lọc không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 401, 404])
+                ? $e->getCode()
+                : 400;
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
+
+        } catch (QueryException $e) {
+            Log::error('Get payment history database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+
+        } catch (Throwable $e) {
+            Log::error('Get payment history system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Tổng quan về payment của người dùng, có thể dùng cho trang cá nhân hoặc dashboard (nếu có)
+     */
+    public function summary(Request $request)
+    {
+        try {
+
+            $summary = $this->paymentQueryService->summary(
+                $request->user()
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy thống kê giao dịch thành công',
+                'data' => $summary,
+            ]);
+
+        } catch (RuntimeException $e) {
+
+            $statusCode = in_array(
+                $e->getCode(),
+                [400, 401, 404]
+            )
+                ? $e->getCode()
+                : 400;
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
+
+        } catch (QueryException $e) {
+
+            Log::error('Get payment summary database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+
+        } catch (Throwable $e) {
+
+            Log::error('Get payment summary system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
 }

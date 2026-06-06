@@ -211,10 +211,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']); // Hủy đơn hàng (nếu chưa thanh toán)
         Route::post('/{id}/confirm', [OrderController::class, 'confirm']); // Xác nhận đơn hàng
     
-        // 🔥 PAYMENT (moved here)
+        // 🔥 PAYMENT 
         Route::post('/{id}/pay', [PaymentController::class, 'pay']); // Thanh toán đơn hàng (tạo payment, redirect sang cổng thanh toán)
         Route::get('/{id}/payments', [PaymentController::class, 'list']); // Lấy danh sách payment của đơn hàng (có hỗ trợ filter theo status)
-        Route::get('/payments/{id}', [PaymentController::class, 'show']); // Lấy chi tiết payment (bao gồm cả thông tin transaction từ cổng thanh toán)
+        // Route::get('/payments/{id}', [PaymentController::class, 'show']); // Lấy chi tiết payment (bao gồm cả thông tin transaction từ cổng thanh toán)
+    });
+
+    // =============================
+    // PAYMENTS (NORMAL) - DÙNG CHO VIỆC TẠO PAYMENT CHO ĐƠN HÀNG, KHÔNG DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN
+    // =============================
+    Route::prefix('payments')->group(function () {
+        Route::get('/', [PaymentController::class, 'history']); // Lấy lịch sử payment của người dùng (có hỗ trợ filter theo status, date range, v.v.)
+        Route::get('/summary', [PaymentController::class, 'summary']); // Lấy tổng quan về payment của người dùng (tổng số tiền đã thanh toán, số lượng đơn hàng đã thanh toán, v.v.)
+        Route::get('/{id}', [PaymentController::class, 'show']); // Lấy chi tiết payment, bao gồm cả thông tin transaction từ cổng thanh toán (có thể dùng cho trang lịch sử đơn hàng hoặc trang chi tiết đơn hàng)
     });
 
     // =============================

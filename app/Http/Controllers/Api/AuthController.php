@@ -73,7 +73,7 @@ class AuthController extends Controller
                 'email' => 'required|email|unique:users,email',
                 'password' => 'required|min:6|confirmed',
                 'phone' => 'nullable|string|max:20',
-                'mssv' => 'nullable|string|max:50|unique:users,mssv',
+                // 'mssv' => 'nullable|string|max:50|unique:users,mssv',
                 'avatar' => 'nullable|string',
             ], [
                 'name.required' => 'Vui lòng nhập họ tên',
@@ -89,8 +89,8 @@ class AuthController extends Controller
 
                 'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
 
-                'mssv.max' => 'Mã số sinh viên không được vượt quá 50 ký tự',
-                'mssv.unique' => 'Mã số sinh viên đã được sử dụng',
+                // 'mssv.max' => 'Mã số sinh viên không được vượt quá 50 ký tự',
+                // 'mssv.unique' => 'Mã số sinh viên đã được sử dụng',
             ]);
 
             $result = $this->authService->register($data);

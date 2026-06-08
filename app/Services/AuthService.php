@@ -48,7 +48,13 @@ class AuthService
     // =========================
     public function register(array $data)
     {
-        $role = !empty($data['mssv']) ? 'sinhvien' : 'user';
+        // $role = !empty($data['mssv']) ? 'sinhvien' : 'user';
+
+        $email = strtolower($data['email']);
+
+        $role = preg_match('/\.edu(\.[a-z]+)?$/', $email)
+            ? 'sinhvien'
+            : 'user';
 
         $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
 
@@ -57,7 +63,7 @@ class AuthService
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'phone' => $data['phone'] ?? null,
-            'mssv' => $data['mssv'] ?? null,
+            // 'mssv' => $data['mssv'] ?? null,
             'role' => $role,
             'avatar' => $avatar,
         ]);
@@ -73,7 +79,7 @@ class AuthService
                     'name' => $user->name,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    'mssv' => $user->mssv,
+                    // 'mssv' => $user->mssv,
                     'role' => $user->role,
                     'avatar' => $user->avatar_url,
                 ],

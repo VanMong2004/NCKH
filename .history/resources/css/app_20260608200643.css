@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.swiper-button-next,
+.swiper-button-prev {
+    width: 28px !important;
+    height: 28px !important;
+    padding: ;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+    font-size: 10px !important;
+    font-weight: 600;
+}

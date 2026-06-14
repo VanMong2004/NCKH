@@ -25,7 +25,11 @@ return new class extends Migration
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
 
+            $table->unsignedBigInteger('department_id')->nullable();
+
             $table->text('description')->nullable();
+
+            $table->string('author')->nullable();
 
             $table->boolean('is_active')->default(true);
 

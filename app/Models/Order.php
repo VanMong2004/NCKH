@@ -17,10 +17,17 @@ class Order extends Model
         'status',
         'cancel_reason',
         'total',
+        'guest_token',
+        'guest_name',
+        'guest_email',
+        'guest_phone',
         'shipping_fee',
         'shipping_name',
         'shipping_phone',
         'shipping_address',
+        'sub_total',
+        'discount_total',
+        'grand_total',
     ];
 
     protected $casts = [
@@ -28,6 +35,9 @@ class Order extends Model
         'shipping_fee' => 'float',
         'created_at' => 'datetime',
         'cancel_reason' => 'string',
+        'sub_total' => 'float',
+        'discount_total' => 'float',
+        'grand_total' => 'float',
     ];
 
     // ========================

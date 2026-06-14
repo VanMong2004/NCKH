@@ -19,35 +19,32 @@ class OrderService
     // =========================
     // CHECKOUT
     // =========================
-    public function checkout($user, array $data)
+    public function checkout($user, ?string $guestToken, array $data)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        if (!$user && !$guestToken) {
+            throw new RuntimeException('Thiếu mã giỏ hàng khách', 400);
         }
 
-        $order = DB::transaction(function () use ($user, $data) {
-            // $cart = Cart::where('user_id', $user->id)
-            //     ->where('status', 'active')
-            //     ->first();
-
-            // if (!$cart) {
-            //     throw new RuntimeException('Giỏ hàng trống', 400);
-            // }
-
-            // $selectedItems = CartItem::with('productVariant.product')
-            //     ->where('cart_id', $cart->id)
-            //     ->whereIn('id', $data['cart_item_ids'])
-            //     ->get();
-
-            $cart = Cart::with([
+        $order = DB::transaction(function () use ($user, $guestToken, $data) {
+            $cartQuery = Cart::with([
                 'items' => function ($query) use ($data) {
                     $query->whereIn('id', $data['cart_item_ids']);
                 },
-                'items.productVariant.product'
+                'items.productVariant.product',
             ])
-            ->where('user_id', $user->id)
-            ->where('status', 'active')
-            ->first();
+            ->where('status', 'active');
+
+            if ($user) {
+                $cartQuery->where('user_id', $user->id);
+            } else {
+                $cartQuery->where('guest_token', $guestToken);
+            }
+
+            $cart = $cartQuery->first();
+
+            if (!$cart) {
+                throw new RuntimeException('Giỏ hàng trống', 400);
+            }
 
             $selectedItems = $cart->items;
 
@@ -79,37 +76,29 @@ class OrderService
                 }
             }
 
-            $address = Address::query()
-                ->where('user_id', $user->id)
-                ->find($data['address_id']);
-
-            if (!$address) {
-                throw new RuntimeException('Địa chỉ giao hàng không tồn tại', 404);
-            }
+            $shipping = $this->resolveShippingInfo(
+                $user,
+                $data
+            );
 
             $order = Order::create([
-                'user_id' => $user->id,
+                'user_id' => $user?->id,
+                'guest_token' => $user ? null : $guestToken,
+
+                'guest_name' => $shipping['guest_name'],
+                'guest_email' => $shipping['guest_email'],
+                'guest_phone' => $shipping['guest_phone'],
 
                 'type' => 'normal',
-
                 'order_code' => $this->generateOrderCode(),
-
                 'status' => 'pending',
 
                 'total' => 0,
-
                 'shipping_fee' => 0,
 
-                'shipping_name' => $address->full_name,
-
-                'shipping_phone' => $address->phone,
-
-                'shipping_address' => implode(', ', [
-                    $address->address_line,
-                    $address->ward,
-                    $address->district,
-                    $address->province,
-                ]),
+                'shipping_name' => $shipping['name'],
+                'shipping_phone' => $shipping['phone'],
+                'shipping_address' => $shipping['address'],
             ]);
 
             $total = 0;
@@ -128,32 +117,48 @@ class OrderService
                     $item->quantity
                 );
 
-                $price = $variant->price;
+                $originalPrice = $variant->price;
 
-                $lineTotal = $price * $item->quantity;
+                $discountAmount = 0;
+
+                $finalPrice = $originalPrice - $discountAmount;
+
+                $lineTotal = $finalPrice * $item->quantity;
 
                 OrderItem::create([
                     'order_id' => $order->id,
 
                     'product_variant_id' => $variant->id,
 
-                    'price' => $price,
+                    // giữ tương thích code cũ
+                    'price' => $finalPrice,
+
+                    'original_price' => $originalPrice,
+                    'discount_amount' => $discountAmount,
+                    'final_price' => $finalPrice,
 
                     'quantity' => $item->quantity,
 
                     'product_name' => $variant->product?->name ?? 'Sản phẩm',
 
                     'variant_snapshot' => [
+                        'sku' => $variant->sku,
                         'size' => $variant->size,
                         'color' => $variant->color,
-                        'sku' => $variant->sku,
+                        'attributes' => $variant->attributes ?? [],
                     ],
+
+                    'promotion_id' => null,
+                    'promotion_snapshot' => null,
                 ]);
 
                 $total += $lineTotal;
             }
 
             $order->update([
+                'sub_total' => $total,
+                'discount_total' => 0,
+                'grand_total' => $total,
                 'total' => $total,
             ]);
 
@@ -223,5 +228,135 @@ class OrderService
         $count = Order::whereDate('created_at', now())->count() + 1;
 
         return 'ORD-' . $date . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    // =========================
+    // RESOLVE SHIPPING INFO
+    // =========================
+    private function resolveShippingInfo($user, array $data): array
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | User đăng nhập
+        |--------------------------------------------------------------------------
+        */
+        if ($user) {
+
+            if (empty($data['address_id'])) {
+                throw new RuntimeException(
+                    'Vui lòng chọn địa chỉ giao hàng',
+                    422
+                );
+            }
+
+            $address = Address::query()
+                ->where('user_id', $user->id)
+                ->whereKey($data['address_id'])
+                ->first();
+
+            if (!$address) {
+                throw new RuntimeException(
+                    'Địa chỉ giao hàng không tồn tại',
+                    404
+                );
+            }
+
+            return [
+                'name' => $address->full_name,
+
+                'phone' => $address->phone,
+
+                'address' => implode(', ', [
+                    $address->address_line,
+                    $address->ward,
+                    $address->district,
+                    $address->province,
+                ]),
+
+                'guest_name' => null,
+                'guest_email' => null,
+                'guest_phone' => null,
+            ];
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Guest checkout
+        |--------------------------------------------------------------------------
+        */
+        if (empty($data['guest_name'])) {
+            throw new RuntimeException(
+                'Vui lòng nhập tên người nhận',
+                422
+            );
+        }
+
+        if (empty($data['guest_email'])) {
+            throw new RuntimeException(
+                'Vui lòng nhập email',
+                422
+            );
+        }
+
+        if (!filter_var($data['guest_email'], FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException(
+                'Email không đúng định dạng',
+                422
+            );
+        }
+
+        if (empty($data['guest_phone'])) {
+            throw new RuntimeException(
+                'Vui lòng nhập số điện thoại người nhận',
+                422
+            );
+        }
+
+        if (empty($data['address_line'])) {
+            throw new RuntimeException(
+                'Vui lòng nhập địa chỉ giao hàng',
+                422
+            );
+        }
+
+        if (empty($data['ward'])) {
+            throw new RuntimeException(
+                'Vui lòng chọn phường/xã',
+                422
+            );
+        }
+
+        if (empty($data['district'])) {
+            throw new RuntimeException(
+                'Vui lòng chọn quận/huyện',
+                422
+            );
+        }
+
+        if (empty($data['province'])) {
+            throw new RuntimeException(
+                'Vui lòng chọn tỉnh/thành phố',
+                422
+            );
+        }
+
+        return [
+            'name' => $data['guest_name'],
+
+            'phone' => $data['guest_phone'],
+
+            'address' => implode(', ', [
+                $data['address_line'],
+                $data['ward'],
+                $data['district'],
+                $data['province'],
+            ]),
+
+            'guest_name' => $data['guest_name'],
+
+            'guest_email' => $data['guest_email'],
+
+            'guest_phone' => $data['guest_phone'],
+        ];
     }
 }

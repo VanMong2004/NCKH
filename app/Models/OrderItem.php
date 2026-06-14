@@ -18,12 +18,21 @@ class OrderItem extends Model
         'variant_snapshot',
         'price',
         'quantity',
+        'original_price',
+        'discount_amount',
+        'final_price',
+        'promotion_id',
+        'promotion_snapshot',
     ];
 
     protected $casts = [
         'price' => 'float',
         'quantity' => 'integer',
         'variant_snapshot' => 'array',
+        'original_price' => 'float',
+        'discount_amount' => 'float',
+        'final_price' => 'float',
+        'promotion_snapshot' => 'array',
     ];
 
     // ========================
@@ -49,4 +58,8 @@ class OrderItem extends Model
     {
         return $this->belongsTo(UserCampaignItem::class);
     }
+    // public function promotion()
+    // {
+    //     return $this->belongsTo(Promotion::class);
+    // }
 }

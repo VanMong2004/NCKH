@@ -24,8 +24,10 @@ class CartController extends Controller
     public function index(Request $request)
     {
         try {
+            $user = auth('sanctum')->user();
             $result = $this->cartService->getCart(
-                $request->user()
+                $user,
+                $request->header('X-Guest-Token')
             );
 
             return response()->json($result);
@@ -65,6 +67,7 @@ class CartController extends Controller
     public function store(Request $request)
     {
         try {
+            $user = auth('sanctum')->user();
             $data = $request->validate([
                 'product_variant_id' => 'required|integer|exists:product_variants,id',
                 'quantity' => 'required|integer|min:1',
@@ -79,7 +82,8 @@ class CartController extends Controller
             ]);
 
             $result = $this->cartService->addToCart(
-                $request->user(),
+                $user,
+                $request->header('X-Guest-Token'),
                 $data
             );
 
@@ -128,6 +132,7 @@ class CartController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            $user = auth('sanctum')->user();
             $request->merge([
                 'cart_item_id' => $id,
             ]);
@@ -146,7 +151,8 @@ class CartController extends Controller
             ]);
 
             $result = $this->cartService->updateItem(
-                $request->user(),
+                $user,
+                $request->header('X-Guest-Token'),
                 $data['cart_item_id'],
                 $data['quantity']
             );
@@ -196,6 +202,7 @@ class CartController extends Controller
     public function destroy(Request $request, $id)
     {
         try {
+            $user = auth('sanctum')->user();
             $request->merge([
                 'cart_item_id' => $id,
             ]);
@@ -209,7 +216,8 @@ class CartController extends Controller
             ]);
 
             $result = $this->cartService->removeItem(
-                $request->user(),
+                $user,
+                $request->header('X-Guest-Token'),
                 $data['cart_item_id']
             );
 
@@ -258,8 +266,10 @@ class CartController extends Controller
     public function count(Request $request)
     {
         try {
+            $user = auth('sanctum')->user();
             $result = $this->cartService->getCount(
-                $request->user()
+                $user,
+                $request->header('X-Guest-Token')
             );
 
             return response()->json($result);

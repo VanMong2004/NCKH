@@ -23,6 +23,7 @@ return new class extends Migration
 
             $table->string('size')->nullable();
             $table->string('color')->nullable();
+            $table->json('attributes')->nullable();
 
             $table->string('sku')->nullable()->unique();
 

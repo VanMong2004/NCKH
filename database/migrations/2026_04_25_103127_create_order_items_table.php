@@ -48,6 +48,13 @@ return new class extends Migration
             $table->string('product_name')->nullable();
             $table->json('variant_snapshot')->nullable();
 
+            $table->decimal('original_price', 10, 2)->default(0);
+            $table->decimal('discount_amount', 10, 2)->default(0);
+            $table->decimal('final_price', 10, 2)->default(0);
+
+            $table->unsignedBigInteger('promotion_id')->nullable();
+            $table->json('promotion_snapshot')->nullable();
+
             $table->timestamps();
 
             $table->index('order_id');

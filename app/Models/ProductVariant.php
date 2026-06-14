@@ -14,6 +14,7 @@ class ProductVariant extends Model
         'product_id',
         'size',
         'color',
+        'attributes',
         'sku',
         'price',
         'stock',
@@ -26,6 +27,7 @@ class ProductVariant extends Model
         'stock' => 'integer',
         'reserved_stock' => 'integer',
         'sold_stock' => 'integer',
+        'attributes' => 'array',
     ];
 
     public function product()

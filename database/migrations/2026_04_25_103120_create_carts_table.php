@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('carts', function (Blueprint $table) {
             $table->id();
 
+            $table->index('user_id');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->foreign('user_id')
                 ->references('id')
@@ -21,13 +22,15 @@ return new class extends Migration
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
 
+            $table->index('guest_token');
+            $table->string('guest_token')->nullable();
+
             $table->enum('status', ['active', 'checked_out', 'abandoned'])
                     ->default('active');
             // active | checked_out | abandoned
 
-            $table->timestamps();
-
-            $table->index('user_id');
+            $table->timestamps();     
+           
         });
     }
 

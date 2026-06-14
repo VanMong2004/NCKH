@@ -29,23 +29,26 @@ class PaymentService
     /**
      * Create payment
      */
-    public function pay($user, int $orderId, string $method)
+    public function pay($user, ?string $guestToken, int $orderId, string $method)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        if (!$user && !$guestToken) {
+            throw new RuntimeException('Thiếu mã đơn hàng khách', 400);
         }
 
-        return DB::transaction(function () use ($user, $orderId, $method) {
-            $order = Order::lockForUpdate()
-                ->where('user_id', $user->id)
-                ->find($orderId);
+        return DB::transaction(function () use ($user, $guestToken, $orderId, $method) {
+            $orderQuery = Order::lockForUpdate()
+                ->where('status', 'pending');
+
+            if ($user) {
+                $orderQuery->where('user_id', $user->id);
+            } else {
+                $orderQuery->where('guest_token', $guestToken);
+            }
+
+            $order = $orderQuery->find($orderId);
 
             if (!$order) {
                 throw new RuntimeException('Đơn hàng không tồn tại', 404);
-            }
-
-            if ($order->status !== 'pending') {
-                throw new RuntimeException('Đơn hàng không hợp lệ để thanh toán', 400);
             }
 
             if ($order->payments()->where('status', 'success')->exists()) {

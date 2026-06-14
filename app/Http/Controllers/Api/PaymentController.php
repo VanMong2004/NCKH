@@ -37,6 +37,8 @@ class PaymentController extends Controller
                 'order_id' => $id,
             ]);
 
+            $user = auth('sanctum')->user();
+
             $data = $request->validate([
                 'order_id' => 'required|integer|min:1',
                 'method' => 'required|in:cod,bank_transfer,momo,vnpay,mock',
@@ -50,7 +52,8 @@ class PaymentController extends Controller
             ]);
 
             $result = $this->paymentService->pay(
-                $request->user(),
+                $user,
+                $request->header('X-Guest-Token'),
                 $data['order_id'],
                 $data['method']
             );

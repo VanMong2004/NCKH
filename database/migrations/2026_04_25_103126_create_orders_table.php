@@ -22,7 +22,13 @@ return new class extends Migration
                 ->on('users')
                 ->cascadeOnDelete()
                 ->cascadeOnUpdate();
-
+            
+            $table->string('guest_token')->nullable();
+            $table->string('guest_name')->nullable();
+            $table->string('guest_email')->nullable();
+            $table->string('guest_phone')->nullable();
+            $table->index('guest_token');
+            
             $table->foreignId('campaign_id')
                 ->nullable()
                 ->constrained()
@@ -32,6 +38,10 @@ return new class extends Migration
             $table->string('shipping_name');
             $table->string('shipping_phone');
             $table->text('shipping_address');
+
+            $table->decimal('sub_total', 10, 2)->default(0);
+            $table->decimal('discount_total', 10, 2)->default(0);
+            $table->decimal('grand_total', 10, 2)->default(0);
 
             // financial
             $table->decimal('total', 10, 2);

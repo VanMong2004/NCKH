@@ -12,67 +12,56 @@ class ProductSeeder extends Seeder
     public function run(): void
     {
         $products = [
-
             [
-                'name' => 'Áo CTU K2026',
+                'name' => 'Áo CTUT K2026',
                 'category' => 'Áo thun',
-                'featured' => true
+                'featured' => true,
             ],
-
             [
-                'name' => 'Hoodie CTU Premium',
+                'name' => 'Hoodie CTUT Premium',
                 'category' => 'Hoodie',
-                'featured' => true
+                'featured' => true,
             ],
-
             [
                 'name' => 'Áo khoa CNTT',
                 'category' => 'Áo thun',
-                'featured' => true
+                'featured' => true,
             ],
-
             [
-                'name' => 'Ly giữ nhiệt CTU',
+                'name' => 'Ly giữ nhiệt CTUT',
                 'category' => 'Ly giữ nhiệt',
-                'featured' => false
+                'featured' => false,
             ],
-
             [
-                'name' => 'Móc khóa CTU',
+                'name' => 'Móc khóa CTUT',
                 'category' => 'Móc khóa',
-                'featured' => false
+                'featured' => false,
             ],
-
             [
-                'name' => 'Túi tote CTU',
+                'name' => 'Túi tote CTUT',
                 'category' => 'Túi tote',
-                'featured' => true
+                'featured' => true,
             ],
-
             [
-                'name' => 'Nón CTU',
+                'name' => 'Nón CTUT',
                 'category' => 'Nón',
-                'featured' => false
+                'featured' => false,
             ],
-
             [
-                'name' => 'Bảng tên sinh viên',
+                'name' => 'Bảng tên sinh viên CTUT',
                 'category' => 'Bảng tên',
-                'featured' => false
+                'featured' => false,
             ],
-
             [
-                'name' => 'Sticker CTU',
+                'name' => 'Sticker CTUT',
                 'category' => 'Phụ kiện',
-                'featured' => false
+                'featured' => false,
             ],
-
             [
-                'name' => 'Áo Freshman Week',
+                'name' => 'Áo Freshman Week CTUT',
                 'category' => 'Áo thun',
-                'featured' => true
-            ]
-
+                'featured' => true,
+            ],
         ];
 
         foreach ($products as $item) {
@@ -84,32 +73,26 @@ class ProductSeeder extends Seeder
 
             Product::updateOrCreate(
                 [
-                    'slug' => Str::slug(
-                        $item['name']
-                    )
+                    'slug' => Str::slug($item['name']),
                 ],
                 [
+                    'name' => $item['name'],
+                    'slug' => Str::slug($item['name']),
                     'category_id' => $category?->id,
 
-                    'name' => $item['name'],
-
-                    'slug' => Str::slug(
-                        $item['name']
-                    ),
-
                     'description' =>
-                    'Sản phẩm chính thức của trường dành cho sinh viên.',
+                        'Sản phẩm chính thức mang thương hiệu CTUT dành cho sinh viên và giảng viên.',
 
-                    'is_featured' =>
-                    $item['featured'],
+                    'author' => 'CTUT',
 
                     'is_active' => true,
+                    'is_featured' => $item['featured'],
 
-                    'average_rating' =>
-                    rand(35,50)/10,
+                    'average_rating' => rand(40, 50) / 10,
+                    'total_reviews' => rand(5, 120),
 
-                    'total_reviews' =>
-                    rand(5,120)
+                    'sold_count' => rand(10, 500),
+                    'view_count' => rand(100, 5000),
                 ]
             );
         }

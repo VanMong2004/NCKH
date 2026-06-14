@@ -30,20 +30,69 @@ class OrderController extends Controller
     {
         try {
             $data = $request->validate([
-                'address_id' => 'required|integer|exists:addresses,id',
+                'address_id' => 'nullable|integer|exists:addresses,id',
+
+                // Guest checkout
+                'guest_name' => 'required_without:address_id|string|max:255',
+
+                'guest_email' => [
+                    'required_without:address_id',
+                    'email',
+                    'max:255',
+                ],
+
+                'guest_phone' => 'required_without:address_id|string|max:20',
+
+                'province' => 'required_without:address_id|string|max:255',
+                'district' => 'required_without:address_id|string|max:255',
+                'ward' => 'required_without:address_id|string|max:255',
+                'address_line' => 'required_without:address_id|string|max:500',
 
                 'payment_method' => 'nullable|in:cod,bank_transfer,momo,vnpay,mock',
 
                 'cart_item_ids' => 'required|array|min:1',
-                'cart_item_ids.*' => 'integer|exists:cart_items,id',
+                'cart_item_ids.*' => 'required|integer|exists:cart_items,id',
             ], [
-                'cart_item_ids.required' => 'Vui lòng chọn sản phẩm cần thanh toán',
-                'cart_item_ids.array' => 'Danh sách sản phẩm không hợp lệ',
-                'cart_item_ids.min' => 'Vui lòng chọn ít nhất một sản phẩm',
+                // Address
+                'address_id.exists' => 'Địa chỉ giao hàng không tồn tại.',
+                'address_id.integer' => 'Địa chỉ giao hàng không hợp lệ.',
+
+                // Guest info
+                'guest_name.required_without' => 'Vui lòng nhập tên người nhận.',
+                'guest_name.max' => 'Tên người nhận không được vượt quá 255 ký tự.',
+
+                'guest_email.required_without' => 'Vui lòng nhập email.',
+                'guest_email.email' => 'Email không đúng định dạng.',
+                'guest_email.max' => 'Email không được vượt quá 255 ký tự.',
+
+                'guest_phone.required_without' => 'Vui lòng nhập số điện thoại người nhận.',
+                'guest_phone.max' => 'Số điện thoại không được vượt quá 20 ký tự.',
+
+                // Guest address
+                'province.required_without' => 'Vui lòng nhập tỉnh/thành phố.',
+                'district.required_without' => 'Vui lòng nhập quận/huyện.',
+                'ward.required_without' => 'Vui lòng nhập phường/xã.',
+                'address_line.required_without' => 'Vui lòng nhập địa chỉ giao hàng.',
+                'address_line.max' => 'Địa chỉ không được vượt quá 500 ký tự.',
+
+                // Payment
+                'payment_method.in' => 'Phương thức thanh toán không hợp lệ.',
+
+                // Cart
+                'cart_item_ids.required' => 'Vui lòng chọn sản phẩm cần thanh toán.',
+                'cart_item_ids.array' => 'Danh sách sản phẩm không hợp lệ.',
+                'cart_item_ids.min' => 'Vui lòng chọn ít nhất một sản phẩm.',
+
+                'cart_item_ids.*.required' => 'Sản phẩm trong giỏ hàng không hợp lệ.',
+                'cart_item_ids.*.integer' => 'Sản phẩm trong giỏ hàng không hợp lệ.',
+                'cart_item_ids.*.exists' => 'Có sản phẩm không tồn tại trong giỏ hàng.',
             ]);
 
+            $user = auth('sanctum')->user();
+
             $result = $this->orderService->checkout(
-                $request->user(),
+                $user,
+                $request->header('X-Guest-Token'),
                 $data
             );
 

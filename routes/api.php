@@ -86,6 +86,27 @@ Route::prefix('campaigns')->group(function () {
 });
 
 // =============================
+// CART - GUEST + USER
+// =============================
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'index']); // Lấy danh sách sản phẩm trong giỏ hàng
+    Route::post('/', [CartController::class, 'store']); // Thêm sản phẩm vào giỏ hàng
+    Route::put('/{id}', [CartController::class, 'update']); // Cập nhật số lượng sản phẩm trong giỏ hàng
+    Route::delete('/{id}', [CartController::class, 'destroy']); // Xóa sản phẩm khỏi giỏ hàng
+    Route::get('/count', [CartController::class, 'count']); // Lấy số lượng sản phẩm trong giỏ hàng
+});
+
+// =============================
+// CHECKOUT - GUEST + USER
+// =============================
+Route::prefix('orders')->group(function () {
+    Route::post('/checkout', [OrderController::class, 'checkout']);
+
+    // Guest/user đều có thể thanh toán nếu có order_id + quyền hợp lệ
+    Route::post('/{id}/pay', [PaymentController::class, 'pay']);
+});
+
+// =============================
 // PAYMENT CALLBACK PUBLIC (DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN, KHÔNG CẦN XÁC THỰC TOKEN VÌ CỔNG THANH TOÁN SẼ GỬI CALLBACK VÀO ĐÂY) - IGNORE
 // =============================
 Route::get('/payment/callback', [PaymentController::class, 'callback']); // Callback từ cổng thanh toán (có thể là GET hoặc POST tùy cổng thanh toán)
@@ -167,17 +188,6 @@ Route::get('/system/state',[SystemController::class,'state']);
 // AUTHENTICATED USER
 // =============================
 Route::middleware('auth:sanctum')->group(function () {
-
-    // Route::get('/test-queue', function () {
-    //     dispatch(function () {
-    //         Log::info('DELAY WORKS - ' . now());
-    //     })->delay(now()->addSeconds(10));
-
-    //     return response()->json([
-    //         'message' => 'Job đã được dispatch, chờ 10s...'
-    //     ]);
-    // });
-
     // =============================
     // USER PROFILE
     // =============================
@@ -186,20 +196,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/refresh-token', [AuthController::class, 'refresh']); // Làm mới token (nếu có refresh token, hoặc chỉ đơn giản là tạo token mới)
     Route::post('/logout', [AuthController::class, 'logout']); // Đăng xuất
 
-    // Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)
-    // Route::post('/reset-password', [PasswordResetController::class, 'reset']); // Đặt lại mật khẩu (xử lý link reset password, cập nhật mật khẩu mới) 
-
-    // =============================
-    // CART
-    // =============================
-    Route::prefix('cart')->group(function () {
-        Route::get('/', [CartController::class, 'index']); // Lấy danh sách sản phẩm trong giỏ hàng
-        Route::post('/', [CartController::class, 'store']); // Thêm sản phẩm vào giỏ hàng
-        Route::put('/{id}', [CartController::class, 'update']); // Cập nhật số lượng sản phẩm trong giỏ hàng
-        Route::delete('/{id}', [CartController::class, 'destroy']); // Xóa sản phẩm khỏi giỏ hàng
-        Route::get('/count', [CartController::class, 'count']); // Lấy số lượng sản phẩm trong giỏ hàng
-    });
-
     // =============================
     // ORDERS (NORMAL)  
     // =============================
@@ -207,15 +203,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [OrderController::class, 'myOrders']); // Lấy danh sách đơn hàng của người dùng
         Route::get('/{id}', [OrderController::class, 'show']); // Lấy chi tiết đơn hàng
 
-        Route::post('/checkout', [OrderController::class, 'checkout']); // Thanh toán đơn hàng từ giỏ hàng (checkout)
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']); // Hủy đơn hàng (nếu chưa thanh toán)
         Route::post('/{id}/confirm', [OrderController::class, 'confirm']); // Xác nhận đơn hàng
     
-        // 🔥 PAYMENT 
-        Route::post('/{id}/pay', [PaymentController::class, 'pay']); // Thanh toán đơn hàng (tạo payment, redirect sang cổng thanh toán)
         Route::get('/{id}/payments', [PaymentController::class, 'list']); // Lấy danh sách payment của đơn hàng (có hỗ trợ filter theo status)
-        // Route::get('/payments/{id}', [PaymentController::class, 'show']); // Lấy chi tiết payment (bao gồm cả thông tin transaction từ cổng thanh toán)
-    });
+   });
 
     // =============================
     // PAYMENTS (NORMAL) - DÙNG CHO VIỆC TẠO PAYMENT CHO ĐƠN HÀNG, KHÔNG DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN
@@ -240,11 +232,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [ReviewController::class,'update']); // Cập nhật đánh giá (chỉ cho phép cập nhật nội dung đánh giá, không cho phép thay đổi sản phẩm/chiến dịch đã đánh giá)
         Route::delete('/{id}', [ReviewController::class,'destroy']); // Xóa đánh giá (chỉ cho phép xóa đánh giá của chính mình)
     });
-
-    // =============================
-    // USER ANALYTICS
-    // =============================
-    // Route::get('/analytics', [RevenueController::class, 'userAnalytics']); // Lấy dữ liệu phân tích cho người dùng (doanh thu theo tháng, sản phẩm bán chạy, v.v.)
 
     // =============================
     // MY CAMPAIGNS

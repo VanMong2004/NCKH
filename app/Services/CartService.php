@@ -14,16 +14,15 @@ class CartService
     // =========================
     // GET CART
     // =========================
-    public function getCart($user)
+    public function getCart($user, ?string $guestToken)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập');
-        }
+        // if (!$user) {
+        //     throw new RuntimeException('Vui lòng đăng nhập');
+        // }
 
-        $cart = Cart::firstOrCreate([
-            'user_id' => $user->id,
-            'status' => 'active',
-        ]);
+        $cart = Cart::firstOrCreate(
+            $this->getCartOwnerCondition($user, $guestToken)
+        );
 
         $cart->load([
             'items',
@@ -34,6 +33,7 @@ class CartService
 
         return [
             'success' => true,
+            'message' => 'Lấy danh sách sản phẩm trong giỏ hàng thành công',
             'data' => $this->formatCart($cart),
         ];
     }
@@ -41,13 +41,13 @@ class CartService
     // =========================
     // ADD TO CART
     // =========================
-    public function addToCart($user, array $data)
+    public function addToCart($user, ?string $guestToken, array $data)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
+        // if (!$user) {
+        //     throw new RuntimeException('Vui lòng đăng nhập', 401);
+        // }
 
-        return DB::transaction(function () use ($user, $data) {
+        return DB::transaction(function () use ($user, $guestToken, $data) {
             $variant = ProductVariant::lockForUpdate()
                 ->find($data['product_variant_id']);
 
@@ -61,10 +61,9 @@ class CartService
                 throw new RuntimeException('Sản phẩm đã hết hàng', 400);
             }
 
-            $cart = Cart::firstOrCreate([
-                'user_id' => $user->id,
-                'status' => 'active',
-            ]);
+            $cart = Cart::firstOrCreate(
+                $this->getCartOwnerCondition($user, $guestToken)
+            );
 
             $item = CartItem::where([
                 'cart_id' => $cart->id,
@@ -110,7 +109,7 @@ class CartService
 
             return [
                 'success' => true,
-                'message' => 'Đã thêm vào giỏ hàng',
+                'message' => 'Đã thêm sản phẩm vào giỏ hàng',
             ];
         });
     }
@@ -118,17 +117,16 @@ class CartService
     // =========================
     // UPDATE ITEM
     // =========================
-    public function updateItem($user, $cartItemId, $quantity)
+    public function updateItem($user, ?string $guestToken, $cartItemId, $quantity)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
+        // if (!$user) {
+        //     throw new RuntimeException('Vui lòng đăng nhập', 401);
+        // }
 
-        return DB::transaction(function () use ($user, $cartItemId, $quantity) {
-            $cart = Cart::where([
-                'user_id' => $user->id,
-                'status' => 'active',
-            ])->first();
+        return DB::transaction(function () use ($user, $guestToken, $cartItemId, $quantity) {
+            $cart = Cart::where(
+                $this->getCartOwnerCondition($user, $guestToken)
+            )->first();
 
             if (!$cart) {
                 throw new RuntimeException('Giỏ hàng không tồn tại', 404);
@@ -178,16 +176,15 @@ class CartService
     // =========================
     // REMOVE ITEM
     // =========================
-    public function removeItem($user, $cartItemId)
+    public function removeItem($user, ?string $guestToken, $cartItemId)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
+        // if (!$user) {
+        //     throw new RuntimeException('Vui lòng đăng nhập', 401);
+        // }
 
-        $cart = Cart::where([
-            'user_id' => $user->id,
-            'status' => 'active',
-        ])->first();
+        $cart = Cart::where(
+            $this->getCartOwnerCondition($user, $guestToken)
+        )->first();
 
         if (!$cart) {
             throw new RuntimeException('Giỏ hàng không tồn tại', 404);
@@ -244,6 +241,12 @@ class CartService
 
                 'color' => $variant->color,
 
+                'attributes' => $variant->attributes ?? [],
+
+                'original_price' => $variant->price,
+                'discount_amount' => 0,
+                'final_price' => $variant->price,
+
                 'stock' => $variant->stock,
 
                 'available_stock'
@@ -289,11 +292,11 @@ class CartService
     // =========================
     // COUNT CART 
     // =========================
-    public function getCount($user)
+    public function getCount($user, ?string $guestToken)
     {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập');
-        }
+        // if (!$user) {
+        //     throw new RuntimeException('Vui lòng đăng nhập');
+        // }
 
         $count = CartItem::whereHas('cart', function ($q) use ($user) {
             $q->where('user_id', $user->id)
@@ -303,6 +306,28 @@ class CartService
         return [
             'success' => true,
             'data' => $count,
+        ];
+    }
+
+    // =========================
+    // PRIVATE: GET CART OWNER CONDITION
+    // =========================
+    private function getCartOwnerCondition($user, ?string $guestToken): array
+    {
+        if ($user) {
+            return [
+                'user_id' => $user->id,
+                'status' => 'active',
+            ];
+        }
+
+        if (!$guestToken) {
+            throw new RuntimeException('Thiếu mã giỏ hàng khách', 400);
+        }
+
+        return [
+            'guest_token' => $guestToken,
+            'status' => 'active',
         ];
     }
 }

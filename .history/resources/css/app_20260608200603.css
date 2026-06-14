@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* =========================
+     1. BACKGROUND SYSTEM
+     ========================= */
+     .swiper-button-next,
+.swiper-button-prev {
+    width: 28px !important;
+    height: 28px !important;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+    font-size: 10px !important;
+    font-weight: 600;
+}
+
+    /* Nền tổng thể của trang */
+    .bg-page {
+        @apply bg-gray-50 dark:bg-gray-900;
+    }
+
+    /* Nền cho card / box / panel */
+    .bg-surface {
+        @apply bg-white dark:bg-gray-800;
+    }
+
+    /* =========================
+     2. TEXT SYSTEM
+     ========================= */
+
+    /* Tiêu đề chính */
+    .text-title {
+        @apply text-gray-900 dark:text-gray-100;
+    }
+
+    /* Nội dung chính */
+    .text-body {
+        @apply text-gray-700 dark:text-gray-300;
+    }
+
+    /* Chữ phụ, mô tả */
+    .text-muted {
+        @apply text-gray-500 dark:text-gray-400;
+    }
+
+    /* Text trạng thái */
+    .text-error {
+        @apply text-red-600 dark:text-red-400;
+    }
+
+    .text-success {
+        @apply text-green-600 dark:text-green-400;
+    }
+
+    .text-warning {
+        @apply text-yellow-600 dark:text-yellow-400;
+    }
+
+    /* =========================
+     3. BORDER & CARD
+     ========================= */
+
+    /* Border mặc định */
+    .border-default {
+        @apply border border-gray-200 dark:border-gray-700;
+    }
+
+    /* Card chuẩn */
+    .card {
+        @apply bg-surface border-default rounded-lg shadow-sm 
+               hover:shadow-md transition-shadow;
+    }
+
+    /* Card interactive (clickable) */
+    .card-interactive {
+        @apply card cursor-pointer 
+               hover:border-gray-300 dark:hover:border-gray-600
+               active:scale-[0.99];
+    }
+
+    /* =========================
+     4. BUTTON SYSTEM
+     ========================= */
+
+    /* Primary button – CTA chính */
+    .btn-primary {
+        @apply bg-blue-600 text-white font-semibold
+               px-4 py-2 rounded-lg
+               hover:bg-blue-700 
+               active:bg-blue-800
+               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+               disabled:opacity-50 disabled:cursor-not-allowed
+               transition-colors;
+    }
+
+    /* Secondary / outline button */
+    .btn-secondary {
+        @apply border border-gray-200 dark:border-gray-700
+               text-gray-700 dark:text-gray-300
+               px-4 py-2 rounded-lg
+               hover:bg-gray-100 dark:hover:bg-gray-800
+               active:bg-gray-200 dark:active:bg-gray-700
+               focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2
+               disabled:opacity-50 disabled:cursor-not-allowed
+               transition-colors;
+    }
+
+    /* Danger button */
+    .btn-danger {
+        @apply bg-red-600 text-white font-semibold
+               px-4 py-2 rounded-lg
+               hover:bg-red-700
+               active:bg-red-800
+               focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+               disabled:opacity-50 disabled:cursor-not-allowed
+               transition-colors;
+    }
+
+    /* Toggle button – grid/list, size */
+    .btn-toggle {
+        @apply rounded-lg px-3 py-2
+               bg-gray-200 text-gray-700
+               hover:bg-gray-300
+               active:bg-gray-400
+               dark:bg-gray-700 dark:text-gray-200
+               dark:hover:bg-gray-600
+               dark:active:bg-gray-500
+               focus:outline-none focus:ring-2 focus:ring-gray-400
+               disabled:opacity-50 disabled:cursor-not-allowed
+               transition-colors;
+    }
+
+    /* Toggle active */
+    .btn-toggle-active {
+        @apply bg-blue-600 text-white
+               hover:bg-blue-700
+               dark:bg-blue-600 dark:hover:bg-blue-700;
+    }
+
+    /* Text button / link */
+    .btn-link {
+        @apply text-blue-500 hover:text-blue-600
+               active:text-blue-700
+               font-medium 
+               focus:outline-none focus:ring-2 focus:ring-blue-300 rounded
+               disabled:opacity-50 disabled:cursor-not-allowed
+               transition-colors;
+    }
+
+    /* Loading state */
+    .btn-loading {
+        @apply opacity-70 cursor-wait pointer-events-none;
+    }
+
+    /* =========================
+     5. INPUT & FORM
+     ========================= */
+
+    /* Input chuẩn */
+    .input-base {
+        @apply border border-gray-300 dark:border-gray-700
+               bg-white dark:bg-gray-800
+               text-gray-900 dark:text-gray-100
+               rounded outline-none px-3 py-2
+               focus:ring-2 focus:ring-blue-200 focus:border-blue-500
+               dark:focus:ring-blue-800 dark:focus:border-blue-500
+               disabled:bg-gray-100 dark:disabled:bg-gray-900
+               disabled:cursor-not-allowed disabled:opacity-60
+               placeholder:text-gray-400 dark:placeholder:text-gray-500
+               transition-colors;
+    }
+
+    /* Input error */
+    .input-error {
+        @apply border-red-500 dark:border-red-500
+               focus:ring-red-200 focus:border-red-500
+               dark:focus:ring-red-800;
+    }
+
+    /* Input success */
+    .input-success {
+        @apply border-green-500 dark:border-green-500
+               focus:ring-green-200 focus:border-green-500
+               dark:focus:ring-green-800;
+    }
+
+    /* Label */
+    .label {
+        @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+    }
+
+    /* Helper text */
+    .helper-text {
+        @apply text-sm text-muted mt-1;
+    }
+
+    /* Error text */
+    .error-text {
+        @apply text-sm text-error mt-1;
+    }
+
+    /* =========================
+     6. BADGE & TAG
+     ========================= */
+
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+
+    .badge-primary {
+        @apply badge bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200;
+    }
+
+    .badge-success {
+        @apply badge bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+    }
+
+    .badge-warning {
+        @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+    }
+
+    .badge-error {
+        @apply badge bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+    }
+
+    /* =========================
+     7. LOADING & SKELETON
+     ========================= */
+
+    .skeleton {
+        @apply bg-gray-200 dark:bg-gray-700 animate-pulse rounded;
+    }
+
+    .spinner {
+        @apply inline-block h-4 w-4 animate-spin rounded-full 
+               border-2 border-solid border-current border-r-transparent;
+    }
+}

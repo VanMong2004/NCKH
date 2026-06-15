@@ -14,7 +14,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
-use App\Http\Controllers\Api\CampaignController;
+// use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\CategoryController;
@@ -31,11 +31,12 @@ use App\Http\Controllers\Api\PolicyController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\AboutController;
 use App\Http\Controllers\Api\SystemController;
+use App\Http\Controllers\Api\GuestOrderController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 // use App\Http\Controllers\Api\Admin\AdminRevenueController;
-use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
+// use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
 use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 
 
@@ -79,11 +80,11 @@ Route::prefix('categories')->group(function () {
 // =============================
 // CAMPAIGNS (PUBLIC VIEW)
 // =============================
-Route::prefix('campaigns')->group(function () {
-    Route::get('/', [CampaignController::class, 'index']);// Lấy danh sách chiến dịch, có hỗ trợ filter, search, pagination
-    Route::get('/{id}/items', [CampaignController::class, 'items']);// Lấy danh sách sản phẩm thuộc chiến dịch, bao gồm cả thông tin biến thể, giá cả, số lượng đã đăng ký
-    Route::get('/{identifier}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
-});
+// Route::prefix('campaigns')->group(function () {
+//     Route::get('/', [CampaignController::class, 'index']);// Lấy danh sách chiến dịch, có hỗ trợ filter, search, pagination
+//     Route::get('/{id}/items', [CampaignController::class, 'items']);// Lấy danh sách sản phẩm thuộc chiến dịch, bao gồm cả thông tin biến thể, giá cả, số lượng đã đăng ký
+//     Route::get('/{identifier}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
+// });
 
 // =============================
 // CART - GUEST + USER
@@ -104,6 +105,13 @@ Route::prefix('orders')->group(function () {
 
     // Guest/user đều có thể thanh toán nếu có order_id + quyền hợp lệ
     Route::post('/{id}/pay', [PaymentController::class, 'pay']);
+});
+
+// =============================
+// GUEST ORDER LOOKUP (DÙNG CHO VIỆC KHÁCH HÀNG KIỂM TRA TÌNH TRẠNG ĐƠN HÀNG MÀ KHÔNG CẦN ĐĂNG NHẬP, CHỈ CẦN CÓ ORDER CODE VÀ SĐT LIÊN KẾT VỚI ĐƠN HÀNG) - PUBLIC
+// =============================
+Route::prefix('guest/orders')->group(function () {
+    Route::post('/lookup', [GuestOrderController::class,'lookup']);
 });
 
 // =============================
@@ -221,8 +229,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // =============================
     // CAMPAIGN CHECKOUT, REGISTER
     // =============================
-    Route::post('/campaigns/checkout', [CampaignController::class, 'checkout']); // Thanh toán đơn hàng từ chiến dịch (checkout)
-    Route::post('/campaigns/{id}/register', [CampaignController::class, 'register']); // Đăng ký tham gia chiến dịch (tương tự như checkout nhưng có thêm logic kiểm tra số lượng đăng ký, thời gian chiến dịch, v.v.)
+    // Route::post('/campaigns/checkout', [CampaignController::class, 'checkout']); // Thanh toán đơn hàng từ chiến dịch (checkout)
+    // Route::post('/campaigns/{id}/register', [CampaignController::class, 'register']); // Đăng ký tham gia chiến dịch (tương tự như checkout nhưng có thêm logic kiểm tra số lượng đăng ký, thời gian chiến dịch, v.v.)
     
     // =============================
     // REVIEW
@@ -236,10 +244,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // =============================
     // MY CAMPAIGNS
     // =============================
-    Route::prefix('my-campaigns')->group(function () {
-        Route::get('/', [CampaignController::class,'myCampaigns']); // Lấy danh sách chiến dịch mà người dùng đã tham gia đăng ký (có hỗ trợ filter theo trạng thái chiến dịch: đang diễn ra, đã kết thúc, v.v.)
-        Route::get('/{id}', [CampaignController::class,'myCampaignDetail']); // Lấy chi tiết chiến dịch mà người dùng đã tham gia đăng ký (bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại, v.v.)
-    });
+    // Route::prefix('my-campaigns')->group(function () {
+    //     Route::get('/', [CampaignController::class,'myCampaigns']); // Lấy danh sách chiến dịch mà người dùng đã tham gia đăng ký (có hỗ trợ filter theo trạng thái chiến dịch: đang diễn ra, đã kết thúc, v.v.)
+    //     Route::get('/{id}', [CampaignController::class,'myCampaignDetail']); // Lấy chi tiết chiến dịch mà người dùng đã tham gia đăng ký (bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại, v.v.)
+    // });
 
     // =============================
     // RECENTLY VIEWED PRODUCTS

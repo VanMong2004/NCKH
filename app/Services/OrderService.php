@@ -13,9 +13,13 @@ use Illuminate\Support\Str;
 use RuntimeException;
 use Exception;
 use App\Jobs\CancelPendingOrderJob;
+use App\Services\PromotionPriceService;
 
 class OrderService
 {
+    public function __construct(
+        protected PromotionPriceService $promotionPriceService
+    ) {}
     // =========================
     // CHECKOUT
     // =========================
@@ -102,6 +106,7 @@ class OrderService
             ]);
 
             $total = 0;
+            $totalDiscount = 0;
 
             foreach ($selectedItems as $item) {
                 $variant = ProductVariant::with('product')
@@ -117,13 +122,25 @@ class OrderService
                     $item->quantity
                 );
 
-                $originalPrice = $variant->price;
+                $priceData = $this->promotionPriceService
+                    ->calculateForVariant(
+                        $variant,
+                        $user
+                    );
 
-                $discountAmount = 0;
+                $originalPrice = $priceData['original_price'];
 
-                $finalPrice = $originalPrice - $discountAmount;
+                $discountAmount = $priceData['discount_amount'];
+
+                $finalPrice = $priceData['final_price'];
 
                 $lineTotal = $finalPrice * $item->quantity;
+
+                $totalDiscount += (
+                    $discountAmount
+                    *
+                    $item->quantity
+                );
 
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -148,17 +165,25 @@ class OrderService
                         'attributes' => $variant->attributes ?? [],
                     ],
 
-                    'promotion_id' => null,
-                    'promotion_snapshot' => null,
+                    'promotion_id' => $user
+                        ? ($priceData['promotion']['id'] ?? null)
+                        : null,
+
+                    'promotion_snapshot' => $user
+                        ? ($priceData['promotion'] ?? null)
+                        : null,
                 ]);
 
                 $total += $lineTotal;
             }
 
             $order->update([
-                'sub_total' => $total,
-                'discount_total' => 0,
+                'sub_total' => $total + $totalDiscount,
+
+                'discount_total' => $totalDiscount,
+
                 'grand_total' => $total,
+
                 'total' => $total,
             ]);
 
@@ -188,9 +213,10 @@ class OrderService
 
         $items = $order->items;
 
-        $subTotal = $items->sum(function ($item) {
-            return $item->price * $item->quantity;
-        });
+        $subTotal = $items->sum(
+            fn ($item) =>
+                $item->original_price * $item->quantity
+        );
 
         $shippingFee = $order->shipping_fee ?? 0;
 
@@ -204,16 +230,30 @@ class OrderService
 
             'sub_total' => $subTotal,
             'shipping_fee' => $shippingFee,
-            'discount' => 0,
+            'discount' => $order->discount_total,
             'grand_total' => $order->total,
 
             'payment_method' => $paymentMethod,
 
             'items' => $items->map(fn ($item) => [
                 'product_name' => $item->product_name,
-                'price' => $item->price,
+
+                'original_price' => $item->original_price,
+
+                'discount_amount' => $item->discount_amount,
+
+                'final_price' => $item->final_price,
+
                 'quantity' => $item->quantity,
-                'total' => $item->price * $item->quantity,
+
+                'total' => $item->final_price * $item->quantity,
+
+                'promotion' => $item->promotion_id
+                    ? $item->promotion_snapshot
+                    : null,
+
+                'promotion_login_required' => !$order->user_id
+                    && !empty($item->promotion_snapshot),
             ]),
         ];
     }

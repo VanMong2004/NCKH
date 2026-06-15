@@ -11,8 +11,6 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
-        'campaign_id',
-        'type',
         'order_code',
         'status',
         'cancel_reason',
@@ -49,11 +47,6 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function campaign()
-    {
-        return $this->belongsTo(Campaign::class);
-    }
-
     public function items()
     {
         return $this->hasMany(OrderItem::class);
@@ -86,13 +79,4 @@ class Order extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function isCampaign()
-    {
-        return $this->type === 'campaign';
-    }
-
-    public function isNormal()
-    {
-        return $this->type === 'normal';
-    }
 }

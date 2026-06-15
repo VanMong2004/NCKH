@@ -25,19 +25,7 @@ return new class extends Migration
                 ->references('id')
                 ->on('product_variants')
                 ->cascadeOnDelete()
-                ->cascadeOnUpdate();
-
-            $table->foreignId('campaign_item_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->index('campaign_item_id');
-
-            $table->foreignId('user_campaign_item_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            
+                ->cascadeOnUpdate();          
 
             // snapshot pricing
             $table->decimal('price', 10, 2);

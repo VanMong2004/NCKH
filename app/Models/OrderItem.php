@@ -12,8 +12,6 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_variant_id',
-        'campaign_item_id',
-        'user_campaign_item_id',
         'product_name',
         'variant_snapshot',
         'price',
@@ -49,17 +47,4 @@ class OrderItem extends Model
         return $this->belongsTo(ProductVariant::class);
     }
 
-    public function campaignItem()
-    {
-        return $this->belongsTo(CampaignItem::class);
-    }
-
-    public function userCampaignItem()
-    {
-        return $this->belongsTo(UserCampaignItem::class);
-    }
-    // public function promotion()
-    // {
-    //     return $this->belongsTo(Promotion::class);
-    // }
 }

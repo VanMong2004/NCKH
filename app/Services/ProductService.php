@@ -8,17 +8,22 @@ use App\Models\ProductVariant;
 use App\Models\RecentlyViewedProduct;
 use App\Models\Review;
 use RuntimeException;
+use App\Services\PromotionPriceService;
 
 
 class ProductService
 {
+    public function __construct(
+        protected PromotionPriceService $promotionPriceService
+    ) {}
+
     private const MAX_PAGE_SIZE = 50;
     private const RELATED_PRODUCTS_LIMIT = 8;
 
     // =========================
     // LIST + FILTER
     // =========================
-    public function getList(array $filters)
+    public function getList(array $filters = [], $user = null)
     {
         $perPage = min(
             $filters['per_page'] ?? 10,
@@ -185,63 +190,10 @@ class ProductService
         */
 
         $data = collect($products->items())
-            ->map(function ($product) {
-                $prices = $product->variants->pluck('price');
-
-                $availableStock = $product->variants
-                    ->sum(function ($variant) {
-                        return max(
-                            0,
-                            $variant->stock - $variant->reserved_stock
-                        );
-                    });
-
-                $sold = $product->variants->sum('sold_stock');
-
-                return [
-                    'id' => $product->id,
-
-                    'name' => $product->name,
-
-                    'slug' => $product->slug,
-
-                    'description' => $product->description,
-
-                    'thumbnail' => optional(
-                        $product->images->where('type', 'thumbnail')->first()
-                    )->url
-                        ?? optional($product->images->first())->url
-                        ?? 'https://placehold.co/600x600?text=CTU',
-
-                    'category' => [
-                        'id' => $product->category?->id,
-                        'name' => $product->category?->name,
-                        'slug' => $product->category?->slug,
-
-                        'parent' => $product->category?->parent
-                            ? [
-                                'id' => $product->category->parent->id,
-                                'name' => $product->category->parent->name,
-                                'slug' => $product->category->parent->slug,
-                            ]
-                            : null,
-                    ],
-
-                    'min_price' => $prices->min(),
-
-                    'max_price' => $prices->max(),
-
-                    'average_rating' => (float) $product->average_rating,
-
-                    'total_reviews' => $product->total_reviews,
-
-                    'sold' => $sold,
-
-                    'in_stock' => $availableStock > 0,
-
-                    'available_stock' => $availableStock,
-                ];
-            });
+            ->map(function ($product) use ($user) {
+                return $this->formatProduct($product, $user);
+            })
+            ->values();
 
         /*
         |--------------------------------------------------------------------------
@@ -412,7 +364,13 @@ class ProductService
             ->latest()
             ->limit(self::RELATED_PRODUCTS_LIMIT)
             ->get()
-            ->map(fn ($item) => $this->formatProduct($item));
+            ->map(
+                fn ($item)
+                => $this->formatProduct(
+                    $item,
+                    $user
+                )
+            );
 
         return [
             'success' => true,
@@ -420,7 +378,10 @@ class ProductService
             'message' => 'Lấy chi tiết sản phẩm thành công',
 
             'data' => [
-                ...$this->formatProduct($product),
+                ...$this->formatProduct(
+                        $product,
+                        $user
+                    ),
 
                 'description' => $product->description,
 
@@ -429,21 +390,61 @@ class ProductService
                     'type' => $image->type,
                 ]),
 
-                'variants' => $product->variants->map(fn ($variant) => [
-                    'id' => $variant->id,
-                    'size' => $variant->size,
-                    'color' => $variant->color,
-                    'attributes' => $variant->attributes ?? [],
-                    'original_price' => $variant->price,
-                    'sale_price' => $variant->price,
-                    'discount_amount' => 0,
-                    'promotion' => null,
-                    'sku' => $variant->sku,
-                    'price' => $variant->price,
-                    'stock' => $variant->stock,
-                    'reserved_stock' => $variant->reserved_stock,
-                    'sold_stock' => $variant->sold_stock,
-                ]),
+                'variants' => $product->variants
+                    ->map(function ($variant) use ($user) {
+
+                        $priceData =
+                            $this->promotionPriceService
+                                ->calculateForVariant(
+                                    $variant,
+                                    $user
+                                );
+
+                        return [
+
+                            'id'
+                                => $variant->id,
+
+                            'size'
+                                => $variant->size,
+
+                            'color'
+                                => $variant->color,
+
+                            'sku'
+                                => $variant->sku,
+
+                            'price'
+                                => $priceData['final_price'],
+
+                            'original_price'
+                                => $priceData['original_price'],
+
+                            'discount_amount'
+                                => $priceData['discount_amount'],
+
+                            'promotion_price'
+                                => $priceData['promotion_price'],
+
+                            'has_promotion'
+                                => $priceData['has_promotion'],
+
+                            'promotion_login_required'
+                                => $priceData['promotion_login_required'],
+
+                            'promotion'
+                                => $priceData['promotion'],
+
+                            'stock'
+                                => $variant->stock,
+
+                            'reserved_stock'
+                                => $variant->reserved_stock,
+
+                            'sold_stock'
+                                => $variant->sold_stock,
+                        ];
+                    }),
 
                 'available_sizes' => $sizes,
 
@@ -514,9 +515,9 @@ class ProductService
     }
 
     // =========================
-    // FORMAT PRODUCT (🔥 FE READY)
+    // FORMAT PRODUCT
     // =========================
-    public function formatProduct($product)
+    public function formatProduct($product, $user = null)
     {
         $availableStock = $product->variants->sum(function ($variant) {
             return max(0, $variant->stock - $variant->reserved_stock);
@@ -524,27 +525,63 @@ class ProductService
 
         $sold = $product->variants->sum('sold_stock');
 
+        $variantPrices = $product->variants
+            ->map(function ($variant) use ($user) {
+                return $this->promotionPriceService
+                    ->calculateForVariant($variant, $user);
+            });
+
+        $minPrice = $variantPrices->min('final_price');
+        $maxPrice = $variantPrices->max('final_price');
+
+        $originalMinPrice = $variantPrices->min('original_price');
+        $originalMaxPrice = $variantPrices->max('original_price');
+
+        $promotionPrices = $variantPrices
+            ->filter(fn ($item) => !is_null($item['promotion_price']));
+
+        $promotionMinPrice = $promotionPrices->min('promotion_price');
+        $promotionMaxPrice = $promotionPrices->max('promotion_price');
+
+        $hasPromotion = $variantPrices->contains(
+            fn ($item) => $item['has_promotion']
+        );
+
+        $promotionLoginRequired = $variantPrices->contains(
+            fn ($item) => $item['promotion_login_required']
+        );
+
         return [
             'id' => $product->id,
             'name' => $product->name,
             'slug' => $product->slug,
 
-            'price_min' => $product->variants->min('price'),
-            'price_max' => $product->variants->max('price'),
+            // Key cũ FE đang dùng
+            'min_price' => $minPrice,
+            'max_price' => $maxPrice,
+
+            // Key mới nếu FE muốn dùng rõ hơn
+            // 'price_min' => $minPrice,
+            // 'price_max' => $maxPrice,
+
+            'original_min_price' => $originalMinPrice,
+            'original_max_price' => $originalMaxPrice,
+
+            'promotion_min_price' => $promotionMinPrice,
+            'promotion_max_price' => $promotionMaxPrice,
+
+            'has_promotion' => $hasPromotion,
+            'promotion_login_required' => $promotionLoginRequired,
 
             'thumbnail' => optional(
                 $product->images
-                    ->where('type','thumbnail')
+                    ->where('type', 'thumbnail')
                     ->first()
             )->url
+                ?? optional($product->images->first())->url
+                ?? 'https://placehold.co/600x600?text=CTU',
 
-            ?? optional(
-                $product->images->first()
-            )->url
-
-            ?? 'https://placehold.co/600x600?text=CTU',
-
-            'images' => $product->images->map(fn($image) => [
+            'images' => $product->images->map(fn ($image) => [
                 'url' => $image->url,
                 'type' => $image->type,
             ]),
@@ -552,18 +589,20 @@ class ProductService
             'rating' => (float) $product->average_rating,
             'average_rating' => (float) $product->average_rating,
             'review_count' => $product->total_reviews,
+            'total_reviews' => $product->total_reviews,
 
             'sold' => $sold,
             'stock' => $availableStock,
+            'available_stock' => $availableStock,
             'in_stock' => $availableStock > 0,
 
             'is_featured' => (bool) $product->is_featured,
             'is_active' => (bool) $product->is_active,
 
             'category' => [
-                'id'=>$product->category?->id,
-                'name'=>$product->category?->name,
-                'slug'=>$product->category?->slug,
+                'id' => $product->category?->id,
+                'name' => $product->category?->name,
+                'slug' => $product->category?->slug,
                 'parent' => $product->category?->parent
                     ? [
                         'id' => $product->category->parent->id,
@@ -643,9 +682,10 @@ class ProductService
 
             'data' => $items
                 ->filter(fn ($item) => $item->product)
-                ->map(function ($item) {
+                ->map(function ($item, $user) {
                     return $this->formatProduct(
-                        $item->product
+                        $item->product,
+                        $user
                     );
                 })
                 ->values(),

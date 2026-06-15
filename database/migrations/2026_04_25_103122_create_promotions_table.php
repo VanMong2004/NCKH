@@ -11,39 +11,43 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('campaigns', function (Blueprint $table) {
+        Schema::create('promotions', function (Blueprint $table) {
             $table->id();
 
             $table->string('title');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
 
-            $table->string('banner')
-                ->nullable();
+            $table->string('banner')->nullable();
+            $table->string('thumbnail')->nullable();
 
-            $table->string('thumbnail')
-                ->nullable();
+            $table->enum('discount_type', [
+                'percent',
+                'fixed',
+            ]);
 
-            $table->unsignedInteger('limit')
-                ->nullable();
+            $table->decimal('discount_value', 12, 2);
 
             $table->timestamp('start_date');
             $table->timestamp('end_date');
+
+            $table->enum('status', [
+                'draft',
+                'active',
+                'inactive',
+            ])->default('draft');
 
             $table->boolean('is_active')->default(true);
 
             $table->timestamps();
 
-            // 🔥 index
             $table->index(['start_date', 'end_date']);
+            $table->index(['status', 'is_active']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('campaigns');
+        Schema::dropIfExists('promotions');
     }
 };

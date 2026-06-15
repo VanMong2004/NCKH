@@ -8,18 +8,19 @@ use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use RuntimeException;
+use App\Services\PromotionPriceService;
 
 class CartService
 {
+    public function __construct(
+        protected PromotionPriceService $promotionPriceService
+    ) {}
+
     // =========================
     // GET CART
     // =========================
     public function getCart($user, ?string $guestToken)
     {
-        // if (!$user) {
-        //     throw new RuntimeException('Vui lòng đăng nhập');
-        // }
-
         $cart = Cart::firstOrCreate(
             $this->getCartOwnerCondition($user, $guestToken)
         );
@@ -34,7 +35,7 @@ class CartService
         return [
             'success' => true,
             'message' => 'Lấy danh sách sản phẩm trong giỏ hàng thành công',
-            'data' => $this->formatCart($cart),
+            'data' => $this->formatCart($cart, $user),
         ];
     }
 
@@ -207,14 +208,24 @@ class CartService
         ];
     }
     // =========================
-    // FORMAT CART (🔥 FE READY)
+    // FORMAT CART
     // =========================
-    private function formatCart($cart)
+    private function formatCart($cart, $user = null)
     {
-        $items = $cart->items->map(function ($item) {
-
+        $items = $cart->items->map(function ($item) use ($user) {
             $variant = $item->productVariant;
-            $product = $variant->product;
+            $product = $variant?->product;
+
+            if (!$variant || !$product) {
+                return null;
+            }
+
+            $priceData = $this->promotionPriceService
+                ->calculateForVariant($variant, $user);
+
+            $originalPrice = (float) $priceData['original_price'];
+            $discountAmount = (float) $priceData['discount_amount'];
+            $finalPrice = (float) $priceData['final_price'];
 
             return [
                 'cart_item_id' => $item->id,
@@ -229,11 +240,14 @@ class CartService
 
                 'thumbnail' => optional(
                     $product->images
-                    ->where('type','thumbnail')
-                    ->first()
+                        ->where('type', 'thumbnail')
+                        ->first()
+                )->url ?? optional(
+                    $product->images->first()
                 )->url,
 
-                'price' => $variant->price,
+                // Giữ tương thích FE cũ
+                'price' => $finalPrice,
 
                 'quantity' => $item->quantity,
 
@@ -243,34 +257,45 @@ class CartService
 
                 'attributes' => $variant->attributes ?? [],
 
-                'original_price' => $variant->price,
-                'discount_amount' => 0,
-                'final_price' => $variant->price,
+                // Giá chuẩn mới
+                'original_price' => $originalPrice,
+
+                'discount_amount' => $discountAmount,
+
+                'final_price' => $finalPrice,
+
+                'promotion_price' => $priceData['promotion_price'],
+
+                'promotion' => $priceData['promotion'],
+
+                'has_promotion' => $priceData['has_promotion'],
+
+                'promotion_login_required' => $priceData['promotion_login_required'],
 
                 'stock' => $variant->stock,
 
-                'available_stock'
-                => max(
+                'available_stock' => max(
                     0,
-                    $variant->stock
-                    -
-                    $variant->reserved_stock
+                    $variant->stock - $variant->reserved_stock
                 ),
 
                 'selected' => (bool) $item->is_selected,
 
-                'total'
-                => $variant->price
-                *
-                $item->quantity
-            ];
-        });
+                'total' => $finalPrice * $item->quantity,
 
-        $subTotal = $items->sum('total');
+                'original_total' => $originalPrice * $item->quantity,
+
+                'discount_total' => $discountAmount * $item->quantity,
+            ];
+        })
+        ->filter()
+        ->values();
+
+        $subTotal = $items->sum('original_total');
 
         $shipping = 0;
 
-        $discount = 0;
+        $discount = $items->sum('discount_total');
 
         $grandTotal = $subTotal + $shipping - $discount;
 
@@ -286,6 +311,10 @@ class CartService
             'discount' => $discount,
 
             'grand_total' => $grandTotal,
+
+            'has_login_required_promotion' => $items->contains(function ($item) {
+                return $item['promotion_login_required'] === true;
+            }),
         ];
     }
 
@@ -294,13 +323,19 @@ class CartService
     // =========================
     public function getCount($user, ?string $guestToken)
     {
-        // if (!$user) {
-        //     throw new RuntimeException('Vui lòng đăng nhập');
-        // }
+        $count = CartItem::whereHas('cart', function ($q) use ($user, $guestToken) {
+            $q->where('status', 'active');
 
-        $count = CartItem::whereHas('cart', function ($q) use ($user) {
-            $q->where('user_id', $user->id)
-                ->where('status', 'active');
+            if ($user) {
+                $q->where('user_id', $user->id);
+                return;
+            }
+
+            if (!$guestToken) {
+                throw new RuntimeException('Thiếu mã giỏ hàng khách', 400);
+            }
+
+            $q->where('guest_token', $guestToken);
         })->sum('quantity');
 
         return [

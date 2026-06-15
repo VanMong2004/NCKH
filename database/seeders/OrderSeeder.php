@@ -42,8 +42,6 @@ class OrderSeeder extends Seeder
             $order = Order::create([
                 'user_id' => 2,
 
-                'type' => 'normal',
-
                 'order_code' =>
                     'ORD-' . strtoupper(Str::random(8)),
 

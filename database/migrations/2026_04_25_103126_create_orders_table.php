@@ -14,8 +14,6 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
 
-            $table->enum('type', ['normal', 'campaign'])->default('normal');
-
             $table->unsignedBigInteger('user_id')->nullable();
             $table->foreign('user_id')
                 ->references('id')
@@ -28,11 +26,6 @@ return new class extends Migration
             $table->string('guest_email')->nullable();
             $table->string('guest_phone')->nullable();
             $table->index('guest_token');
-            
-            $table->foreignId('campaign_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
 
             // snapshot address
             $table->string('shipping_name');
@@ -62,8 +55,6 @@ return new class extends Migration
             $table->string('order_code')->unique();
 
             $table->timestamps();
-
-            $table->index(['type']);
         });
     }
 

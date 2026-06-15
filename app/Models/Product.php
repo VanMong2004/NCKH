@@ -48,4 +48,10 @@ class Product extends Model
     {
         return $this->hasMany(Review::class);
     }
+
+    // promotion items
+    public function promotionItems()
+    {
+        return $this->hasMany(PromotionItem::class);
+    }
 }

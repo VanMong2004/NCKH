@@ -18,13 +18,12 @@ class OrderQueryService
             throw new RuntimeException('Vui lòng đăng nhập', 401);
         }
 
-        $query = Order::query()
-            ->with([
-                'items.productVariant.product.images',
-                'payments',
-                'campaign',
-            ])
-            ->where('user_id', $user->id);
+        $order = Order::with([
+            'items.productVariant.product.images',
+            'payments',
+        ])
+            ->where('user_id', $user->id)
+            ->findOrFail($id);
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -117,10 +116,9 @@ class OrderQueryService
         $order = Order::with([
             'items.productVariant.product.images',
             'payments',
-            'campaign',
         ])
             ->where('user_id', $user->id)
-            ->find($id);
+            ->findOrFail($id);
 
         if (!$order) {
             throw new RuntimeException('Đơn hàng không tồn tại', 404);
@@ -156,10 +154,13 @@ class OrderQueryService
             ] : null,
 
             'summary' => [
-                'sub_total' => $order->total - $order->shipping_fee,
-                'shipping_fee' => $order->shipping_fee,
-                'discount' => 0,
-                'grand_total' => $order->total,
+                'sub_total' => (float) ($order->sub_total ?? 0),
+
+                'shipping_fee' => (float) ($order->shipping_fee ?? 0),
+
+                'discount' => (float) ($order->discount_total ?? 0),
+
+                'grand_total' => (float) ($order->grand_total ?? $order->total),
             ],
 
             'items' => $order->items->map(function ($item) {
@@ -179,11 +180,21 @@ class OrderQueryService
 
                     'variant' => $item->variant_snapshot,
 
-                    'price' => $item->price,
+                    'price' => (float) ($item->final_price ?? $item->price),
 
-                    'quantity' => $item->quantity,
+                    'original_price' => (float) ($item->original_price ?? $item->price),
 
-                    'total' => $item->price * $item->quantity,
+                    'discount_amount' => (float) ($item->discount_amount ?? 0),
+
+                    'final_price' => (float) ($item->final_price ?? $item->price),
+
+                    'quantity' => (int) $item->quantity,
+
+                    'total' => (float) (($item->final_price ?? $item->price) * $item->quantity),
+
+                    'promotion' => $item->promotion_id
+                        ? $item->promotion_snapshot
+                        : null,
                 ];
             }),
 
@@ -229,11 +240,11 @@ class OrderQueryService
 
         return DB::transaction(function () use ($user, $id) {
             $order = Order::with([
-                'items.productVariant',
-                'items.userCampaignItem',
+                'items.productVariant.product.images',
+                'payments',
             ])
                 ->where('user_id', $user->id)
-                ->find($id);
+                ->findOrFail($id);
 
             if (!$order) {
                 throw new RuntimeException('Đơn hàng không tồn tại', 404);

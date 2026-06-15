@@ -34,4 +34,9 @@ class ProductVariant extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function promotionItems()
+    {
+        return $this->hasMany(PromotionItem::class);
+    }
 }

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Campaign extends Model
+class Promotion extends Model
 {
     use HasFactory;
 
@@ -15,56 +15,50 @@ class Campaign extends Model
         'description',
         'banner',
         'thumbnail',
-        'limit',
+        'discount_type',
+        'discount_value',
         'start_date',
         'end_date',
+        'status',
         'is_active',
     ];
 
     protected $casts = [
+        'discount_value' => 'float',
         'start_date' => 'datetime',
         'end_date' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     protected $appends = [
-        'status',
+        'computed_status',
     ];
 
-    // 🔥 relations
     public function items()
     {
-        return $this->hasMany(CampaignItem::class);
+        return $this->hasMany(PromotionItem::class);
     }
 
-    public function orders()
+    public function activeItems()
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(PromotionItem::class)
+            ->where('is_active', true);
     }
 
-    public function userCampaigns()
+    public function isRunning(): bool
     {
-        return $this->hasMany(UserCampaign::class);
+        return $this->is_active
+            && $this->status === 'active'
+            && now()->between($this->start_date, $this->end_date);
     }
 
-    // 🔥 helpers
-    public function isActive()
-    {
-        return now()->between($this->start_date, $this->end_date);
-    }
-
-    // 🔥 accessor
-    public function getStatusAttribute()
+    public function getComputedStatusAttribute(): string
     {
         if (now()->lt($this->start_date)) {
             return 'upcoming';
         }
 
-        if (
-            now()->between(
-                $this->start_date,
-                $this->end_date
-            )
-        ) {
+        if (now()->between($this->start_date, $this->end_date)) {
             return 'active';
         }
 

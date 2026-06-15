@@ -14,7 +14,6 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
-// use App\Http\Controllers\Api\CampaignController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\CategoryController;
@@ -35,8 +34,6 @@ use App\Http\Controllers\Api\GuestOrderController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
-// use App\Http\Controllers\Api\Admin\AdminRevenueController;
-// use App\Http\Controllers\Api\Admin\UserCampaignApprovalController;
 use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 
 
@@ -76,15 +73,6 @@ Route::prefix('categories')->group(function () {
     Route::get('/{id}', [CategoryController::class,'show']); // Lấy chi tiết category, bao gồm cả thông tin parent và children
     Route::get('/{id}/products', [CategoryController::class,'products']); // Lấy danh sách sản phẩm thuộc category (có phân trang)
 });
-
-// =============================
-// CAMPAIGNS (PUBLIC VIEW)
-// =============================
-// Route::prefix('campaigns')->group(function () {
-//     Route::get('/', [CampaignController::class, 'index']);// Lấy danh sách chiến dịch, có hỗ trợ filter, search, pagination
-//     Route::get('/{id}/items', [CampaignController::class, 'items']);// Lấy danh sách sản phẩm thuộc chiến dịch, bao gồm cả thông tin biến thể, giá cả, số lượng đã đăng ký
-//     Route::get('/{identifier}', [CampaignController::class, 'show']);// Lấy chi tiết chiến dịch, bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại
-// });
 
 // =============================
 // CART - GUEST + USER
@@ -242,14 +230,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // =============================
-    // MY CAMPAIGNS
-    // =============================
-    // Route::prefix('my-campaigns')->group(function () {
-    //     Route::get('/', [CampaignController::class,'myCampaigns']); // Lấy danh sách chiến dịch mà người dùng đã tham gia đăng ký (có hỗ trợ filter theo trạng thái chiến dịch: đang diễn ra, đã kết thúc, v.v.)
-    //     Route::get('/{id}', [CampaignController::class,'myCampaignDetail']); // Lấy chi tiết chiến dịch mà người dùng đã tham gia đăng ký (bao gồm cả thông tin sản phẩm, số lượng đã đăng ký, thời gian còn lại, v.v.)
-    // });
-
-    // =============================
     // RECENTLY VIEWED PRODUCTS
     // =============================
     Route::get('/recently-viewed', [ProductController::class, 'recentlyViewed']); // Lấy danh sách sản phẩm đã xem gần đây (dựa trên cookie hoặc database, có hỗ trợ pagination)
@@ -320,33 +300,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/', [AdminOrderController::class, 'index']);
         Route::get('/{id}', [AdminOrderController::class, 'show']);
         Route::patch('/{id}/status', [AdminOrderController::class, 'updateStatus']);
-    });
-
-    // =============================
-    // ADMIN REVENUE
-    // =============================
-    // Route::prefix('revenue')->group(function () {
-    //     Route::get('/overview', [AdminRevenueController::class, 'overview']);
-    //     Route::get('/daily', [AdminRevenueController::class, 'daily']);
-    //     Route::get('/products', [AdminRevenueController::class, 'byProduct']);
-    //     Route::get('/chart', [AdminRevenueController::class, 'chart']);
-    //     Route::get('/top-products', [AdminRevenueController::class, 'topProducts']);
-    // });
-
-    // =============================
-    // ADMIN USER CAMPAIGN APPROVAL
-    // =============================
-    Route::prefix('user-campaign-items')->group(function () {
-        Route::post('/{id}/approve', [
-            UserCampaignApprovalController::class,
-            'approve'
-        ]);
-        Route::post('/{id}/reject', [
-            UserCampaignApprovalController::class,
-            'reject'
-        ]);
-    });
-    
+    });  
 
     // =============================
     // ADMIN PRODUCTS

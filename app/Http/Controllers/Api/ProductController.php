@@ -71,7 +71,12 @@ class ProductController extends Controller
                 'per_page.min' => 'Số sản phẩm mỗi trang phải lớn hơn hoặc bằng 1',
             ]);
 
-            $result = $this->productService->getList($filters);
+            $user = auth('sanctum')->user();
+
+            $result = $this->productService->getList(
+                $filters,
+                $user
+            );
 
             return response()->json($result);
 

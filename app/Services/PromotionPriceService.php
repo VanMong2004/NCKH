@@ -86,7 +86,12 @@ class PromotionPriceService
 
     public function findActivePromotionItem(ProductVariant $variant): ?PromotionItem
     {
-        return PromotionItem::query()
+        //thứ tự:
+        // 1. Promotion có giá sau giảm thấp nhất
+        // 2. Promotion áp dụng trực tiếp cho variant
+        // 3. Nếu bằng nhau, promotion kết thúc sớm hơn
+        // 4. Nếu vẫn bằng nhau, promotion mới hơn
+        $items = PromotionItem::query()
             ->with('promotion')
             ->where('is_active', true)
             ->where(function ($q) use ($variant) {
@@ -106,7 +111,44 @@ class PromotionPriceService
                 $q->whereNull('limit_quantity')
                     ->orWhereColumn('sold_quantity', '<', 'limit_quantity');
             })
-            ->latest()
+            ->get();
+
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        $originalPrice = (float) $variant->price;
+
+        return $items
+            ->sortBy(function ($item) use ($variant, $originalPrice) {
+                $discountType = $item->discount_type
+                    ?: $item->promotion->discount_type;
+
+                $discountValue = $item->discount_value
+                    ?? $item->promotion->discount_value;
+
+                $discountAmount = $this->calculateDiscount(
+                    $originalPrice,
+                    $discountType,
+                    (float) $discountValue
+                );
+
+                $finalPrice = max(
+                    $originalPrice - $discountAmount,
+                    0
+                );
+
+                $variantPriority = $item->product_variant_id === $variant->id
+                    ? 0
+                    : 1;
+
+                return [
+                    $finalPrice,
+                    $variantPriority,
+                    optional($item->promotion->end_date)->timestamp ?? PHP_INT_MAX,
+                    -$item->id,
+                ];
+            })
             ->first();
     }
 

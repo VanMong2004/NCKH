@@ -20,7 +20,7 @@ class AuthService
         $user = User::where('email', $data['email'])->first();
 
         if (!$user || !Hash::check($data['password'], $user->password)) {
-            throw new Exception('Email hoặc mật khẩu không đúng');
+            throw new RuntimeException('Email hoặc mật khẩu không đúng', 401);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -48,14 +48,7 @@ class AuthService
     // =========================
     public function register(array $data)
     {
-        // $role = !empty($data['mssv']) ? 'sinhvien' : 'user';
-
-        $email = strtolower($data['email']);
-
-        $role = preg_match('/\.edu(\.[a-z]+)?$/', $email)
-            ? 'sinhvien'
-            : 'user';
-
+ 
         $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
 
         $user = User::create([
@@ -63,8 +56,7 @@ class AuthService
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'phone' => $data['phone'] ?? null,
-            // 'mssv' => $data['mssv'] ?? null,
-            'role' => $role,
+            'role' => 'user',
             'avatar' => $avatar,
         ]);
 
@@ -79,7 +71,6 @@ class AuthService
                     'name' => $user->name,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    // 'mssv' => $user->mssv,
                     'role' => $user->role,
                     'avatar' => $user->avatar_url,
                 ],

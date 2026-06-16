@@ -31,10 +31,12 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\AboutController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\GuestOrderController;
+use App\Http\Controllers\Api\PromotionController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
+use App\Http\Controllers\Api\Admin\AdminPromotionController;
 
 
 // =============================
@@ -62,6 +64,15 @@ Route::prefix('products')->group(function () {
     Route::get('/{id}/variants', [ProductController::class, 'variants']);// Lấy danh sách biến thể của sản phẩm
     Route::get('/{id}/reviews', [ReviewController::class, 'productReviews']);// Lấy danh sách đánh giá của sản phẩm
     Route::get('/{slug}', [ProductController::class, 'show']);// Lấy chi tiết sản phẩm
+});
+
+// =============================
+// PROMOTIONS (PUBLIC)
+// =============================
+Route::prefix('promotions')->group(function () {
+    Route::get('/', [PromotionController::class, 'index']);
+    Route::get('/{slug}/products', [PromotionController::class, 'products']);
+    Route::get('/{slug}', [PromotionController::class, 'show']);
 });
 
 // =============================
@@ -334,9 +345,26 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     });
 
     // =============================
+    // ADMIN PROMOTIONS
+    // =============================
+    Route::prefix('promotions')->group(function () {
+        Route::get('/', [AdminPromotionController::class, 'index']);
+        Route::post('/', [AdminPromotionController::class, 'store']);
+        Route::get('/{id}', [AdminPromotionController::class, 'show']);
+        Route::put('/{id}', [AdminPromotionController::class, 'update']);
+        Route::delete('/{id}', [AdminPromotionController::class, 'destroy']);
+
+        Route::get('/{id}/items', [AdminPromotionController::class, 'items']);
+        Route::post('/{id}/items/bulk', [AdminPromotionController::class,'storeItemsBulk']); // thêm nhiều item cùng lúc vào promotion
+        Route::post('/{id}/items', [AdminPromotionController::class, 'storeItem']); // thêm 1 item vào promotion
+        Route::put('/items/{itemId}', [AdminPromotionController::class, 'updateItem']);
+        Route::delete('/items/{itemId}', [AdminPromotionController::class, 'destroyItem']);
+    });
+
+    // =============================
     // ADMIN ANALYTICS
     // =============================
-    Route::prefix('admin/analytics')->middleware('admin')->group(function () {
+    Route::prefix('analytics')->middleware('admin')->group(function () {
         Route::get('/overview', [AdminAnalyticsController::class, 'overview']);
         Route::get('/top-products', [AdminAnalyticsController::class, 'topProducts']);
         Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);

@@ -8,16 +8,25 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AdminMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user() || $request->user()->role !== 'admin') {
+        $user = $request->user();
+
+        if (!$user) {
             return response()->json([
-                'message' => 'Không có quyền truy cập'
+                'success' => false,
+                'message' => 'Vui lòng đăng nhập',
+                'error_code' => 'UNAUTHENTICATED',
+                'data' => null,
+            ], 401);
+        }
+
+        if ($user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền truy cập chức năng này',
+                'error_code' => 'FORBIDDEN',
+                'data' => null,
             ], 403);
         }
 

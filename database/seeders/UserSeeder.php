@@ -16,7 +16,7 @@ class UserSeeder extends Seeder
                 'password' => '123456',
                 'phone' => '0901000001',
                 'mssv' => 'B2200001',
-                'role' => 'sinhvien',
+                'role' => 'user',
                 'avatar' => 'https://i.pravatar.cc/300?img=12',
             ]
         );

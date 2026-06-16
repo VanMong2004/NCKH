@@ -1,0 +1,456 @@
+<?php
+
+namespace App\Services\Admin;
+
+use RuntimeException;
+use App\Models\ProductVariant;
+use App\Models\Promotion;
+use App\Models\PromotionItem;
+use Illuminate\Support\Facades\DB;
+
+class AdminPromotionService
+{
+    public function index(array $filters = []): array
+    {
+        $query = Promotion::query()
+            ->withCount('items');
+
+        if (!empty($filters['keyword'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('title', 'like', '%' . $filters['keyword'] . '%')
+                    ->orWhere('slug', 'like', '%' . $filters['keyword'] . '%');
+            });
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'upcoming') {
+                $query->where('start_date', '>', now());
+            } elseif ($filters['status'] === 'ended') {
+                $query->where('end_date', '<', now());
+            } else {
+                $query->where('status', $filters['status']);
+            }
+        }
+
+        $promotions = $query
+            ->latest()
+            ->paginate($filters['per_page'] ?? 10);
+
+        $promotions->setCollection(
+            $promotions->getCollection()
+                ->map(fn ($promotion) => $this->formatPromotion($promotion))
+        );
+
+        return [
+            'success' => true,
+            'message' => 'Lấy danh sách khuyến mãi thành công',
+            'data' => $promotions,
+        ];
+    }
+
+    public function storeItemsBulk($promotionId, array $items): array
+    {
+        return DB::transaction(function () use ($promotionId, $items) {
+            $promotion = Promotion::find($promotionId);
+
+            if (!$promotion) {
+                throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+            }
+
+            $created = [];
+            $skipped = [];
+
+            foreach ($items as $index => $data) {
+                try {
+                    $this->validateVariantBelongsToProduct($data);
+
+                    $exists = PromotionItem::where('promotion_id', $promotion->id)
+                        ->where('product_id', $data['product_id'])
+                        ->where(
+                            'product_variant_id',
+                            $data['product_variant_id'] ?? null
+                        )
+                        ->exists();
+
+                    if ($exists) {
+                        $skipped[] = [
+                            'index' => $index,
+                            'product_id' => $data['product_id'],
+                            'product_variant_id' => $data['product_variant_id'] ?? null,
+                            'reason' => 'Sản phẩm/biến thể đã có trong khuyến mãi',
+                        ];
+
+                        continue;
+                    }
+
+                    $item = PromotionItem::create([
+                        'promotion_id' => $promotion->id,
+                        'product_id' => $data['product_id'],
+                        'product_variant_id' => $data['product_variant_id'] ?? null,
+                        'discount_type' => $data['discount_type'] ?? null,
+                        'discount_value' => $data['discount_value'] ?? null,
+                        'limit_quantity' => $data['limit_quantity'] ?? null,
+                        'sold_quantity' => 0,
+                        'is_active' => $data['is_active'] ?? true,
+                    ]);
+
+                    $created[] = $this->formatItem(
+                        $item->load([
+                            'product.images',
+                            'productVariant',
+                        ])
+                    );
+
+                } catch (RuntimeException $e) {
+                    $skipped[] = [
+                        'index' => $index,
+                        'product_id' => $data['product_id'] ?? null,
+                        'product_variant_id' => $data['product_variant_id'] ?? null,
+                        'reason' => $e->getMessage(),
+                    ];
+                }
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Thêm danh sách sản phẩm khuyến mãi hoàn tất',
+                'data' => [
+                    'created_count' => count($created),
+                    'skipped_count' => count($skipped),
+                    'created' => $created,
+                    'skipped' => $skipped,
+                ],
+            ];
+        });
+    }
+
+    public function store(array $data): array
+    {
+        $promotion = Promotion::create([
+            'title' => $data['title'],
+            'slug' => $data['slug'],
+            'description' => $data['description'] ?? null,
+            'banner' => $data['banner'] ?? null,
+            'thumbnail' => $data['thumbnail'] ?? null,
+            'discount_type' => $data['discount_type'],
+            'discount_value' => $data['discount_value'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'status' => $data['status'],
+            'is_active' => $data['is_active'] ?? true,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Tạo khuyến mãi thành công',
+            'data' => $this->formatPromotion($promotion),
+        ];
+    }
+
+    public function show($id): array
+    {
+        $promotion = Promotion::with([
+            'items.product.images',
+            'items.productVariant',
+        ])->find($id);
+
+        if (!$promotion) {
+            throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+        }
+
+        return $this->formatPromotionDetail($promotion);
+    }
+
+    public function update($id, array $data): array
+    {
+        $promotion = Promotion::find($id);
+
+        if (!$promotion) {
+            throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+        }
+
+        $promotion->update([
+            'title' => $data['title'],
+            'slug' => $data['slug'],
+            'description' => $data['description'] ?? null,
+            'banner' => $data['banner'] ?? null,
+            'thumbnail' => $data['thumbnail'] ?? null,
+            'discount_type' => $data['discount_type'],
+            'discount_value' => $data['discount_value'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'status' => $data['status'],
+            'is_active' => $data['is_active'] ?? true,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Cập nhật khuyến mãi thành công',
+            'data' => $this->formatPromotion($promotion->fresh()),
+        ];
+    }
+
+    public function destroy($id): array
+    {
+        $promotion = Promotion::find($id);
+
+        if (!$promotion) {
+            throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+        }
+
+        if ($promotion->items()->where('sold_quantity', '>', 0)->exists()) {
+            $promotion->update([
+                'is_active' => false,
+                'status' => 'inactive',
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Khuyến mãi đã có phát sinh bán hàng nên hệ thống đã tắt khuyến mãi thay vì xóa',
+                'data' => $this->formatPromotion($promotion->fresh()),
+            ];
+        }
+
+        $promotion->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Xóa khuyến mãi thành công',
+            'data' => null,
+        ];
+    }
+
+    public function items($promotionId): array
+    {
+        $promotion = Promotion::find($promotionId);
+
+        if (!$promotion) {
+            throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+        }
+
+        $items = PromotionItem::with([
+            'product.images',
+            'productVariant',
+        ])
+            ->where('promotion_id', $promotion->id)
+            ->latest()
+            ->get()
+            ->map(fn ($item) => $this->formatItem($item))
+            ->values();
+
+        return [
+            'success' => true,
+            'message' => 'Lấy danh sách sản phẩm khuyến mãi thành công',
+            'data' => $items,
+        ];
+    }
+
+    public function storeItem($promotionId, array $data): array
+    {
+        return DB::transaction(function () use ($promotionId, $data) {
+            $promotion = Promotion::find($promotionId);
+
+            if (!$promotion) {
+                throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+            }
+
+            $this->validateVariantBelongsToProduct($data);
+
+            $exists = PromotionItem::where('promotion_id', $promotion->id)
+                ->where('product_id', $data['product_id'])
+                ->where('product_variant_id', $data['product_variant_id'] ?? null)
+                ->exists();
+
+            if ($exists) {
+                throw new RuntimeException('Sản phẩm này đã có trong khuyến mãi', 409);
+            }
+
+            $item = PromotionItem::create([
+                'promotion_id' => $promotion->id,
+                'product_id' => $data['product_id'],
+                'product_variant_id' => $data['product_variant_id'] ?? null,
+                'discount_type' => $data['discount_type'] ?? null,
+                'discount_value' => $data['discount_value'] ?? null,
+                'limit_quantity' => $data['limit_quantity'] ?? null,
+                'sold_quantity' => 0,
+                'is_active' => $data['is_active'] ?? true,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Thêm sản phẩm vào khuyến mãi thành công',
+                'data' => $this->formatItem($item->load([
+                    'product.images',
+                    'productVariant',
+                ])),
+            ];
+        });
+    }
+
+    public function updateItem($itemId, array $data): array
+    {
+        return DB::transaction(function () use ($itemId, $data) {
+            $item = PromotionItem::find($itemId);
+
+            if (!$item) {
+                throw new RuntimeException('Sản phẩm khuyến mãi không tồn tại', 404);
+            }
+
+            if (!empty($data['product_id']) || array_key_exists('product_variant_id', $data)) {
+                $this->validateVariantBelongsToProduct([
+                    'product_id' => $data['product_id'] ?? $item->product_id,
+                    'product_variant_id' => $data['product_variant_id'] ?? $item->product_variant_id,
+                ]);
+            }
+
+            if (isset($data['limit_quantity'])
+                && $data['limit_quantity'] !== null
+                && $data['limit_quantity'] < $item->sold_quantity) {
+                throw new RuntimeException('Giới hạn mới không được nhỏ hơn số lượng đã bán', 400);
+            }
+
+            $item->update([
+                'product_id' => $data['product_id'] ?? $item->product_id,
+                'product_variant_id' => array_key_exists('product_variant_id', $data)
+                    ? $data['product_variant_id']
+                    : $item->product_variant_id,
+                'discount_type' => array_key_exists('discount_type', $data)
+                    ? $data['discount_type']
+                    : $item->discount_type,
+                'discount_value' => array_key_exists('discount_value', $data)
+                    ? $data['discount_value']
+                    : $item->discount_value,
+                'limit_quantity' => array_key_exists('limit_quantity', $data)
+                    ? $data['limit_quantity']
+                    : $item->limit_quantity,
+                'is_active' => $data['is_active'] ?? $item->is_active,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Cập nhật sản phẩm khuyến mãi thành công',
+                'data' => $this->formatItem($item->fresh()->load([
+                    'product.images',
+                    'productVariant',
+                ])),
+            ];
+        });
+    }
+
+    public function destroyItem($itemId): array
+    {
+        $item = PromotionItem::find($itemId);
+
+        if (!$item) {
+            throw new RuntimeException('Sản phẩm khuyến mãi không tồn tại', 404);
+        }
+
+        if ($item->sold_quantity > 0) {
+            $item->update([
+                'is_active' => false,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Sản phẩm khuyến mãi đã phát sinh bán hàng nên hệ thống đã tắt thay vì xóa',
+                'data' => $this->formatItem($item->fresh()->load([
+                    'product.images',
+                    'productVariant',
+                ])),
+            ];
+        }
+
+        $item->delete();
+
+        return [
+            'success' => true,
+            'message' => 'Xóa sản phẩm khỏi khuyến mãi thành công',
+            'data' => null,
+        ];
+    }
+
+    private function validateVariantBelongsToProduct(array $data): void
+    {
+        if (empty($data['product_variant_id'])) {
+            return;
+        }
+
+        $variant = ProductVariant::where('id', $data['product_variant_id'])
+            ->where('product_id', $data['product_id'])
+            ->first();
+
+        if (!$variant) {
+            throw new RuntimeException('Biến thể không thuộc sản phẩm đã chọn', 400);
+        }
+    }
+
+    private function formatPromotion(Promotion $promotion): array
+    {
+        return [
+            'id' => $promotion->id,
+            'title' => $promotion->title,
+            'slug' => $promotion->slug,
+            'description' => $promotion->description,
+            'banner' => $promotion->banner,
+            'thumbnail' => $promotion->thumbnail,
+            'discount_type' => $promotion->discount_type,
+            'discount_value' => (float) $promotion->discount_value,
+            'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
+            'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
+            'status' => $promotion->status,
+            'computed_status' => $promotion->computed_status,
+            'is_active' => (bool) $promotion->is_active,
+            'items_count' => $promotion->items_count ?? $promotion->items()->count(),
+            'created_at' => optional($promotion->created_at)->format('d/m/Y H:i'),
+        ];
+    }
+
+    private function formatPromotionDetail(Promotion $promotion): array
+    {
+        return [
+            ...$this->formatPromotion($promotion),
+            'items' => $promotion->items
+                ->map(fn ($item) => $this->formatItem($item))
+                ->values(),
+        ];
+    }
+
+    private function formatItem(PromotionItem $item): array
+    {
+        $product = $item->product;
+        $variant = $item->productVariant;
+
+        return [
+            'id' => $item->id,
+            'promotion_id' => $item->promotion_id,
+
+            'product' => $product ? [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'thumbnail' => optional(
+                    $product->images?->where('type', 'thumbnail')->first()
+                )->url ?? optional($product->images?->first())->url,
+            ] : null,
+
+            'variant' => $variant ? [
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'size' => $variant->size,
+                'color' => $variant->color,
+                'attributes' => $variant->attributes,
+                'price' => (float) $variant->price,
+            ] : null,
+
+            'discount_type' => $item->discount_type,
+            'discount_value' => $item->discount_value,
+            'limit_quantity' => $item->limit_quantity,
+            'sold_quantity' => $item->sold_quantity,
+            'remaining_quantity' => is_null($item->limit_quantity)
+                ? null
+                : max(0, $item->limit_quantity - $item->sold_quantity),
+            'is_active' => (bool) $item->is_active,
+            'created_at' => optional($item->created_at)->format('d/m/Y H:i'),
+        ];
+    }
+}

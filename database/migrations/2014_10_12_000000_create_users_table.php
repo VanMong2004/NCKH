@@ -25,7 +25,7 @@ return new class extends Migration
 
             $table->string('mssv')->nullable()->unique();
 
-            $table->enum('role', ['user', 'admin', 'sinhvien'])->default('user');
+            $table->enum('role', ['user', 'admin'])->default('user');
 
             $table->longText('avatar')->nullable();
 

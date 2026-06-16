@@ -78,11 +78,6 @@ class User extends Authenticatable
         return $this->hasMany(Review::class);
     }
 
-    public function campaignRegistrations()
-    {
-        return $this->hasMany(UserCampaign::class);
-    }
-
     public function notifications()
     {
         return $this->hasMany(

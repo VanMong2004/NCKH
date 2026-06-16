@@ -221,7 +221,11 @@ class CartService
             }
 
             $priceData = $this->promotionPriceService
-                ->calculateForVariant($variant, $user);
+                ->calculateForVariant(
+                    $variant,
+                    $user,
+                    (int) $item->quantity
+                );
 
             $originalPrice = (float) $priceData['original_price'];
             $discountAmount = (float) $priceData['discount_amount'];

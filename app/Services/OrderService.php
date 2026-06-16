@@ -125,7 +125,8 @@ class OrderService
                 $priceData = $this->promotionPriceService
                     ->calculateForVariant(
                         $variant,
-                        $user
+                        $user,
+                        (int) $item->quantity
                     );
 
                 $originalPrice = $priceData['original_price'];

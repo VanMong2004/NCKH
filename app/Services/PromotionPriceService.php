@@ -7,11 +7,11 @@ use App\Models\PromotionItem;
 
 class PromotionPriceService
 {
-    public function calculateForVariant(ProductVariant $variant, $user = null): array
+    public function calculateForVariant(ProductVariant $variant, $user = null, int $quantity = 1): array
     {
         $originalPrice = (float) $variant->price;
 
-        $promotionItem = $this->findActivePromotionItem($variant);
+        $promotionItem = $this->findActivePromotionItem($variant, $quantity);
 
         if (!$promotionItem) {
 
@@ -84,7 +84,7 @@ class PromotionPriceService
         ];
     }
 
-    public function findActivePromotionItem(ProductVariant $variant): ?PromotionItem
+    public function findActivePromotionItem(ProductVariant $variant, int $quantity = 1): ?PromotionItem
     {
         //thứ tự:
         // 1. Promotion có giá sau giảm thấp nhất
@@ -107,9 +107,12 @@ class PromotionPriceService
                     ->where('start_date', '<=', now())
                     ->where('end_date', '>=', now());
             })
-            ->where(function ($q) {
+            ->where(function ($q) use ($quantity) {
                 $q->whereNull('limit_quantity')
-                    ->orWhereColumn('sold_quantity', '<', 'limit_quantity');
+                    ->orWhereRaw(
+                        '(sold_quantity + ?) <= limit_quantity',
+                        [$quantity]
+                    );
             })
             ->get();
 

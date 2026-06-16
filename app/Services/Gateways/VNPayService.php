@@ -7,11 +7,13 @@ use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
+use App\Services\PromotionReserveService;
 
 class VNPayService
 {
     public function __construct(
-        protected PromotionSoldService $promotionSoldService
+        protected PromotionSoldService $promotionSoldService,
+        protected PromotionReserveService $promotionReserveService
     ) {}
 
     public function create(Payment $payment)
@@ -75,6 +77,10 @@ class VNPayService
 
                 event(new OrderPaid($order));
             } else {
+
+                $this->promotionReserveService
+                    ->release($order->load('items'));
+
                 $order->update([
                     'status' => 'pending',
                 ]);

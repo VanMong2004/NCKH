@@ -31,6 +31,8 @@ class AuthController extends Controller
             $data = $request->validate([
                 'email' => 'required|email',
                 'password' => 'required|string',
+
+                'guest_token' => 'nullable|string|max:255',
             ]);
 
             $result = $this->authService->login($data);

@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Models\Cart;
+use App\Models\CartItem;
+use Illuminate\Support\Facades\DB;
 use Exception;
 use RuntimeException;
 
@@ -22,6 +25,11 @@ class AuthService
         if (!$user || !Hash::check($data['password'], $user->password)) {
             throw new RuntimeException('Email hoặc mật khẩu không đúng', 401);
         }
+
+        $this->mergeGuestCart(
+            $user,
+            $data['guest_token'] ?? null
+        );
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -185,6 +193,56 @@ class AuthService
             'success' => true,
             'message' => 'Đăng xuất thành công',
         ];
+    }
+
+    private function mergeGuestCart(User $user, ?string $guestToken): void {
+        if (!$guestToken) {
+            return;
+        }
+
+        DB::transaction(function () use ($user, $guestToken) {
+
+            $guestCart = Cart::with('items')
+                ->where('guest_token', $guestToken)
+                ->where('status', 'active')
+                ->first();
+
+            if (!$guestCart) {
+                return;
+            }
+
+            $userCart = Cart::firstOrCreate([
+                'user_id' => $user->id,
+                'status' => 'active',
+            ]);
+
+            foreach ($guestCart->items as $guestItem) {
+
+                $userItem = CartItem::where([
+                    'cart_id' => $userCart->id,
+                    'product_variant_id' => $guestItem->product_variant_id,
+                ])->first();
+
+                if ($userItem) {
+
+                    $userItem->quantity += $guestItem->quantity;
+                    $userItem->save();
+
+                } else {
+
+                    CartItem::create([
+                        'cart_id' => $userCart->id,
+                        'product_variant_id' => $guestItem->product_variant_id,
+                        'quantity' => $guestItem->quantity,
+                    ]);
+                }
+            }
+
+            CartItem::where('cart_id', $guestCart->id)
+                ->delete();
+
+            $guestCart->delete();
+        });
     }
 
     // =========================

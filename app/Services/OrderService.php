@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\Address;
+use App\Models\PromotionItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -130,10 +131,44 @@ class OrderService
                     );
 
                 $originalPrice = $priceData['original_price'];
-
                 $discountAmount = $priceData['discount_amount'];
-
                 $finalPrice = $priceData['final_price'];
+
+                $promotionId = $user
+                    ? ($priceData['promotion']['id'] ?? null)
+                    : null;
+
+                $promotionItemId = $user
+                    ? ($priceData['promotion']['promotion_item_id'] ?? null)
+                    : null;
+
+                $promotionSnapshot = $user
+                    ? ($priceData['promotion'] ?? null)
+                    : null;
+
+                if ($promotionItemId) {
+                    $promotionItem = PromotionItem::lockForUpdate()
+                        ->find($promotionItemId);
+
+                    if (!$promotionItem || !$promotionItem->is_active) {
+                        throw new RuntimeException('Khuyến mãi không còn hiệu lực', 400);
+                    }
+
+                    if (!is_null($promotionItem->limit_quantity)) {
+                        $remaining = $promotionItem->limit_quantity
+                            - $promotionItem->sold_quantity
+                            - $promotionItem->reserved_quantity;
+
+                        if ($remaining < $item->quantity) {
+                            throw new RuntimeException('Khuyến mãi không đủ lượt áp dụng', 400);
+                        }
+                    }
+
+                    $promotionItem->increment(
+                        'reserved_quantity',
+                        $item->quantity
+                    );
+                }
 
                 $lineTotal = $finalPrice * $item->quantity;
 
@@ -166,13 +201,9 @@ class OrderService
                         'attributes' => $variant->attributes ?? [],
                     ],
 
-                    'promotion_id' => $user
-                        ? ($priceData['promotion']['id'] ?? null)
-                        : null,
+                    'promotion_id' => $promotionId,
 
-                    'promotion_snapshot' => $user
-                        ? ($priceData['promotion'] ?? null)
-                        : null,
+                    'promotion_snapshot' => $promotionSnapshot,
                 ]);
 
                 $total += $lineTotal;

@@ -41,6 +41,9 @@ return new class extends Migration
             $table->unsignedInteger('sold_quantity')
                 ->default(0);
 
+            $table->unsignedInteger('reserved_quantity')
+                ->default(0);
+
             $table->boolean('is_active')
                 ->default(true);
 

@@ -127,9 +127,15 @@ class PromotionService
                     'product_variant_id' => $item->product_variant_id,
                     'limit_quantity' => $item->limit_quantity,
                     'sold_quantity' => $item->sold_quantity,
+                    'reserved_quantity' => $item->reserved_quantity,
                     'remaining_quantity' => is_null($item->limit_quantity)
                         ? null
-                        : max(0, $item->limit_quantity - $item->sold_quantity),
+                        : max(
+                                0,
+                                $item->limit_quantity
+                                - $item->sold_quantity
+                                - $item->reserved_quantity
+                            ),
                 ])
                 ->values(),
 
@@ -200,9 +206,15 @@ class PromotionService
                         'discount_value' => $item->discount_value,
                         'limit_quantity' => $item->limit_quantity,
                         'sold_quantity' => $item->sold_quantity,
+                        'reserved_quantity' => $item->reserved_quantity,
                         'remaining_quantity' => is_null($item->limit_quantity)
                             ? null
-                            : max(0, $item->limit_quantity - $item->sold_quantity),
+                            : max(
+                                    0,
+                                    $item->limit_quantity
+                                    - $item->sold_quantity
+                                    - $item->reserved_quantity
+                                ),                        
                         'is_active' => $item->is_active,
                     ];
                 })

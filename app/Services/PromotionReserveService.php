@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\PromotionItem;
 
-class PromotionSoldService
+class PromotionReserveService
 {
-    public function increase(Order $order): void
+    public function release(Order $order): void
     {
         $order->loadMissing('items');
 
@@ -31,11 +31,6 @@ class PromotionSoldService
             if (!$promotionItem) {
                 continue;
             }
-
-            $promotionItem->increment(
-                'sold_quantity',
-                $item->quantity
-            );
 
             $promotionItem->decrement(
                 'reserved_quantity',

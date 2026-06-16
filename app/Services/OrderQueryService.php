@@ -244,6 +244,7 @@ class OrderQueryService
                 'payments',
             ])
                 ->where('user_id', $user->id)
+                ->lockForUpdate()
                 ->findOrFail($id);
 
             if (!$order) {
@@ -254,17 +255,13 @@ class OrderQueryService
                 throw new RuntimeException('Chỉ được hủy đơn hàng đang chờ xử lý', 400);
             }
 
+            app(\App\Services\PromotionReserveService::class)
+                ->release($order->load('items'));
+
             foreach ($order->items as $item) {
                 if ($item->productVariant) {
                     $item->productVariant->decrement(
                         'reserved_stock',
-                        $item->quantity
-                    );
-                }
-
-                if ($item->userCampaignItem) {
-                    $item->userCampaignItem->decrement(
-                        'reserved_quantity',
                         $item->quantity
                     );
                 }

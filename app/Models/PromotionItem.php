@@ -17,6 +17,7 @@ class PromotionItem extends Model
         'discount_value',
         'limit_quantity',
         'sold_quantity',
+        'reserved_quantity',
         'is_active',
     ];
 
@@ -24,6 +25,7 @@ class PromotionItem extends Model
         'discount_value' => 'float',
         'limit_quantity' => 'integer',
         'sold_quantity' => 'integer',
+        'reserved_quantity' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -51,5 +53,20 @@ class PromotionItem extends Model
     {
         return $this->hasLimit()
             && $this->sold_quantity >= $this->limit_quantity;
+    }
+
+    // Số lượng còn lại có thể bán (chưa bao gồm reserved)
+    public function getRemainingQuantityAttribute()
+    {
+        if (is_null($this->limit_quantity)) {
+            return null;
+        }
+
+        return max(
+            0,
+            $this->limit_quantity
+            - $this->sold_quantity
+            - $this->reserved_quantity
+        );
     }
 }

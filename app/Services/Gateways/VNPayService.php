@@ -6,9 +6,14 @@ use App\Models\Payment;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use App\Events\OrderPaid;
+use App\Services\PromotionSoldService;
 
 class VNPayService
 {
+    public function __construct(
+        protected PromotionSoldService $promotionSoldService
+    ) {}
+
     public function create(Payment $payment)
     {
         $vnpUrl = config('services.vnpay.url');
@@ -56,45 +61,27 @@ class VNPayService
 
             if ($status === 'success') {
 
+                $wasPaid = $order->status === 'paid';
+
                 $order->update([
                     'status' => 'paid'
                 ]);
 
                 $order->load('items.productVariant');
-                event(new OrderPaid($order));
-            } else {
 
-                foreach ($order->items as $item) {
-
-                    if (
-                        $order->type === 'campaign'
-                        && $item->campaign_item_id
-                    ) {
-
-                        $userCampaignItem =
-                            \App\Models\UserCampaignItem::where(
-                                'campaign_item_id',
-                                $item->campaign_item_id
-                            )
-                            ->whereHas('userCampaign', function ($q) use ($order) {
-
-                                $q->where('user_id', $order->user_id);
-                            })
-                            ->first();
-
-                            if ($userCampaignItem) {
-
-                                $userCampaignItem->decrement(
-                                    'reserved_quantity',
-                                    $item->quantity
-                                );
-                            }
-                        }
-                    }
+                if (!$wasPaid) {
+                    $this->promotionSoldService->increase($order);
                 }
 
+                event(new OrderPaid($order));
+            } else {
+                $order->update([
+                    'status' => 'pending',
+                ]);
+            }
+
             return [
-                'message' => 'VNPay callback handled',
+                'message' => 'Callback xử lý thành công',
                 'payment_id' => $payment->id,
                 'order_id' => $order->id,
                 'status' => $status,

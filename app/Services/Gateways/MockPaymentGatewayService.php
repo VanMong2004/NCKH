@@ -7,9 +7,14 @@ use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use App\Events\OrderPaid;
+use App\Services\PromotionSoldService;
 
 class MockPaymentGatewayService
 {
+    public function __construct(
+        protected PromotionSoldService $promotionSoldService
+    ) {}
+
     public function create(Payment $payment)
     {
         // giả lập trả URL
@@ -47,42 +52,23 @@ class MockPaymentGatewayService
 
             if ($status === 'success') {
 
+                $wasPaid = $order->status === 'paid';
+
                 $order->update([
                     'status' => 'paid'
                 ]);
 
-                // 🔥 FIRE EVENT
                 $order->load('items.productVariant');
+
+                if (!$wasPaid) {
+                    $this->promotionSoldService->increase($order);
+                }
+
                 event(new OrderPaid($order));
             } else {
-
-                foreach ($order->items as $item) {
-
-                    if (
-                        $order->type === 'campaign'
-                        && $item->campaign_item_id
-                    ) {
-
-                        $userCampaignItem =
-                            \App\Models\UserCampaignItem::where(
-                                'campaign_item_id',
-                                $item->campaign_item_id
-                            )
-                            ->whereHas('userCampaign', function ($q) use ($order) {
-
-                                $q->where('user_id', $order->user_id);
-                            })
-                            ->first();
-
-                        if ($userCampaignItem) {
-
-                            $userCampaignItem->decrement(
-                                'reserved_quantity',
-                                $item->quantity
-                            );
-                        }
-                    }
-                }
+                $order->update([
+                    'status' => 'pending',
+                ]);
             }
 
             return [

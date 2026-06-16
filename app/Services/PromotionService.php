@@ -117,6 +117,22 @@ class PromotionService
             'success' => true,
             'message' => 'Lấy sản phẩm khuyến mãi thành công',
             'promotion' => $this->formatCard($promotion),
+
+            'promotion_items' => $promotion->items()
+                ->where('is_active', true)
+                ->get()
+                ->map(fn ($item) => [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'limit_quantity' => $item->limit_quantity,
+                    'sold_quantity' => $item->sold_quantity,
+                    'remaining_quantity' => is_null($item->limit_quantity)
+                        ? null
+                        : max(0, $item->limit_quantity - $item->sold_quantity),
+                ])
+                ->values(),
+
             'data' => $products->items(),
             'meta' => [
                 'current_page' => $products->currentPage(),

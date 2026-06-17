@@ -33,6 +33,7 @@ class Order extends Model
         'total' => 'float',
         'shipping_fee' => 'float',
         'created_at' => 'datetime',
+        'expired_at' => 'datetime',
         'cancel_reason' => 'string',
         'sub_total' => 'float',
         'discount_total' => 'float',
@@ -62,22 +63,4 @@ class Order extends Model
     {
         return $this->hasMany(Review::class);
     }
-
-    // 🔥 scopes
-    public function scopeNormal($query)
-    {
-        return $query->where('type', 'normal');
-    }
-
-    public function scopeCampaign($query)
-    {
-        return $query->where('type', 'campaign');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | HELPERS
-    |--------------------------------------------------------------------------
-    */
-
 }

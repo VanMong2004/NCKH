@@ -243,54 +243,25 @@ class AdminProductService
     public function store($request)
     {
         validator($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category_id' => 'required|exists:categories,id',
+            'is_active' => 'required|boolean',
+            'is_featured' => 'required|boolean',
+            'department_id' => 'nullable|integer',
+            'author' => 'nullable|string|max:255',
 
-            'name'
-                => 'required|string|max:255',
-
-            'description'
-                => 'nullable|string',
-
-            'category_id'
-                => 'required|exists:categories,id',
-
-            'is_active'
-                => 'required|boolean',
-
-            'is_featured'
-                => 'required|boolean',
-
-            /*
-            |--------------------------------------------------------------------------
-            | IMAGES
-            |--------------------------------------------------------------------------
-            */
-
-            'images'
-                => 'required|array|min:1|max:10',
-
-            'images.*'
-                => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
-
-            /*
-            |--------------------------------------------------------------------------
-            | VARIANTS
-            |--------------------------------------------------------------------------
-            */
-
-            'variants'
-                => 'required|array|min:1',
-
-            'variants.*.size'
-                => 'nullable|string|max:50',
-
-            'variants.*.color'
-                => 'nullable|string|max:50',
-
-            'variants.*.price'
-                => 'required|numeric|min:0',
-
-            'variants.*.stock'
-                => 'required|integer|min:0',
+            'images' => 'required|array|min:1|max:10',
+            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            
+            'variants' => 'required|array|min:1',
+            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
+            'variants.*.sku' => 'nullable|string|max:100',
+            'variants.*.attributes' => 'nullable|array',
+            'variants.*.size' => 'nullable|string|max:50',
+            'variants.*.color' => 'nullable|string|max:50',
+            'variants.*.price' => 'required|numeric|min:0',
+            'variants.*.stock' => 'required|integer|min:0',
 
         ])->validate();
 
@@ -311,6 +282,12 @@ class AdminProductService
 
                 'description'
                     => $request->description,
+
+                'department_id' 
+                    => $request->department_id,
+                
+                'author' 
+                    => $request->author,
 
                 'is_active'
                     => $request->is_active,
@@ -368,67 +345,32 @@ class AdminProductService
         $product = Product::findOrFail($id);
 
         validator($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'department_id' => 'nullable|integer',
+            'author' => 'nullable|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'is_active' => 'required|boolean',
+            'is_featured' => 'required|boolean',
 
-            'name'
-                => 'required|string|max:255',
-
-            'description'
-                => 'nullable|string',
-
-            'category_id'
-                => 'required|exists:categories,id',
-
-            'is_active'
-                => 'required|boolean',
-
-            'is_featured'
-                => 'required|boolean',
-
-            /*
-            |--------------------------------------------------------------------------
-            | IMAGES
-            |--------------------------------------------------------------------------
-            */
-
-            'images'
-                => 'nullable|array|min:1|max:10',
-
-            'images.*'
-                => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
-
-            /*
-            |--------------------------------------------------------------------------
-            | VARIANTS
-            |--------------------------------------------------------------------------
-            */
-
-            'variants'
-                => 'nullable|array|min:1',
-
-            'variants.*.size'
-                => 'nullable|string|max:50',
-
-            'variants.*.color'
-                => 'nullable|string|max:50',
-
-            'variants.*.price'
-                => 'required|numeric|min:0',
-
-            'variants.*.stock'
-                => 'required|integer|min:0',
-
+            'images' => 'nullable|array|min:1|max:10',
+            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            
+            'variants' => 'nullable|array|min:1',
+            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
+            'variants.*.sku' => 'nullable|string|max:100',
+            'variants.*.attributes' => 'nullable|array',
+            'variants.*.size' => 'nullable|string|max:50',
+            'variants.*.color' => 'nullable|string|max:50',
+            'variants.*.price' => 'nullable|numeric|min:0',
+            'variants.*.stock' => 'nullable|integer|min:0',
+            
         ])->validate();
 
         return DB::transaction(function () use (
             $request,
             $product
         ) {
-
-            /*
-            |--------------------------------------------------------------------------
-            | UPDATE PRODUCT
-            |--------------------------------------------------------------------------
-            */
 
             $product->update([
 
@@ -444,18 +386,18 @@ class AdminProductService
                 'description'
                     => $request->description,
 
+                'department_id'
+                    => $request->department_id,
+
+                'author'
+                    => $request->author,
+
                 'is_active'
                     => $request->is_active,
 
                 'is_featured'
                     => $request->is_featured,
             ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | REPLACE IMAGES
-            |--------------------------------------------------------------------------
-            */
 
             if ($request->hasFile('images')) {
 
@@ -465,15 +407,8 @@ class AdminProductService
                 );
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | REPLACE VARIANTS
-            |--------------------------------------------------------------------------
-            */
-
             if ($request->filled('variants')) {
-
-                $this->replaceVariants(
+                $this->syncVariantsForUpdate(
                     $product,
                     $request->variants
                 );
@@ -532,7 +467,7 @@ class AdminProductService
 
         $folderName = Str::slug($product->name);
 
-        $folderPath = resource_path(
+        $folderPath = public_path(
             'images/products/' . $folderName
         );
 
@@ -626,31 +561,18 @@ class AdminProductService
                 continue;
             }
 
+            $this->ensureSkuAvailable($variant['sku'] ?? null);
+
             ProductVariant::create([
-
-                'product_id'
-                    => $product->id,
-
-                'size'
-                    => $variant['size'] ?? null,
-
-                'color'
-                    => $variant['color'] ?? null,
-
-                'sku'
-                    => $this->generateSku(),
-
-                'price'
-                    => $variant['price'] ?? 0,
-
-                'stock'
-                    => $variant['stock'] ?? 0,
-
-                'reserved_stock'
-                    => 0,
-
-                'sold_stock'
-                    => 0,
+                'product_id' => $product->id,
+                'size' => $variant['size'] ?? null,
+                'color' => $variant['color'] ?? null,
+                'attributes' => $variant['attributes'] ?? [],
+                'sku' => $variant['sku'] ?? $this->generateSku(),
+                'price' => $variant['price'] ?? 0,
+                'stock' => $variant['stock'] ?? 0,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
             ]);
         }
     }
@@ -711,16 +633,79 @@ class AdminProductService
             $images
         );
     }
-    private function replaceVariants($product, $variants)
-    {
-        ProductVariant::where(
-            'product_id',
-            $product->id
-        )->delete();
 
-        $this->syncVariants(
-            $product,
-            $variants
-        );
+    private function syncVariantsForUpdate($product, $variants)
+    {
+        foreach ($variants as $variantData) {
+            if (!is_array($variantData)) {
+                continue;
+            }
+
+            if (!empty($variantData['id'])) {
+                $variant = ProductVariant::where('product_id', $product->id)
+                    ->where('id', $variantData['id'])
+                    ->first();
+
+                if (!$variant) {
+                    throw new Exception('Biến thể sản phẩm không tồn tại');
+                }
+
+                if (($variantData['stock'] ?? 0) < $variant->reserved_stock) {
+                    throw new Exception('Tồn kho mới không được nhỏ hơn số lượng đang giữ chỗ');
+                }
+
+                if (($variantData['stock'] ?? 0) < $variant->sold_stock) {
+                    throw new Exception('Tồn kho mới không được nhỏ hơn số lượng đã bán');
+                }
+
+                $this->ensureSkuAvailable(
+                    $variantData['sku'] ?? null,
+                    $variant->id
+                );
+
+                $variant->update([
+                    'size' => $variantData['size'] ?? null,
+                    'color' => $variantData['color'] ?? null,
+                    'attributes' => $variantData['attributes'] ?? [],
+                    'sku' => $variantData['sku'] ?? $variant->sku,
+                    'price' => $variantData['price'] ?? $variant->price,
+                    'stock' => $variantData['stock'] ?? $variant->stock,
+                ]);
+
+                continue;
+            }
+
+            $this->ensureSkuAvailable($variantData['sku'] ?? null);
+
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'size' => $variantData['size'] ?? null,
+                'color' => $variantData['color'] ?? null,
+                'attributes' => $variantData['attributes'] ?? [],
+                'sku' => $variantData['sku'] ?? $this->generateSku(),
+                'price' => $variantData['price'] ?? 0,
+                'stock' => $variantData['stock'] ?? 0,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
+
+    private function ensureSkuAvailable(?string $sku, ?int $ignoreVariantId = null): void
+    {
+        if (!$sku) {
+            return;
+        }
+
+        $exists = ProductVariant::query()
+            ->where('sku', $sku)
+            ->when($ignoreVariantId, function ($q) use ($ignoreVariantId) {
+                $q->where('id', '!=', $ignoreVariantId);
+            })
+            ->exists();
+
+        if ($exists) {
+            throw new Exception("SKU {$sku} đã tồn tại");
+        }
     }
 }

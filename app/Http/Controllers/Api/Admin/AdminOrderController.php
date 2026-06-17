@@ -2,101 +2,100 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Http\Controllers\Controller;
+use Throwable;
+use RuntimeException;
 use Illuminate\Http\Request;
-use App\Services\OrderService;
-use App\Services\CartService;
-use App\Models\Order;
+use App\Http\Controllers\Controller;
+use App\Services\Admin\AdminOrderService;
+use Illuminate\Validation\ValidationException;
 
 class AdminOrderController extends Controller
 {
-    protected $orderService;
-    protected $cartService;
+    public function __construct(
+        protected AdminOrderService $service
+    ) {}
 
-    public function __construct(OrderService $orderService, CartService $cartService)
-    {
-        $this->orderService = $orderService;
-        $this->cartService = $cartService;
-    }
-
-    public function updateStatus(Request $request, $id) // Dành cho admin
+    public function index(Request $request)
     {
         try {
-            $request->validate([
-                'status' => 'required|in:processing,shipped,completed'
+            $filters = $request->validate([
+                'status' => 'nullable|string|max:50',
+                'payment_status' => 'nullable|string|max:50',
+                'keyword' => 'nullable|string|max:255',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date',
+                'per_page' => 'nullable|integer|min:1|max:100',
+                'sort' => 'nullable|string|max:50',
             ]);
 
-            $order = Order::with('items.productVariant')
-                ->findOrFail($id);
-
-            $result = app(OrderService::class)
-                ->updateStatus($order, $request->status);
-
+            return response()->json(
+                $this->service->index($filters)
+            );
+        } catch (ValidationException $e) {
             return response()->json([
-                'message' => 'Cập nhật trạng thái thành công',
-                'data' => $result
-            ]);
-
-        } catch (\Exception $e) {
-
+                'success' => false,
+                'message' => 'Bộ lọc đơn hàng không hợp lệ',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (Throwable $e) {
             return response()->json([
-                'message' => $e->getMessage()
-            ], 400);
+                'success' => false,
+                'message' => 'Lỗi khi lấy danh sách đơn hàng',
+                'data' => null,
+            ], 500);
         }
     }
 
-    public function adminOrders(Request $request)
+    public function show($id)
     {
-        $query = Order::query();
-
-        // 🔥 FILTER STATUS
-        if ($request->status) {
-            $query->where('status', $request->status);
+        try {
+            return response()->json(
+                $this->service->show((int) $id)
+            );
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $e->getCode() ?: 400);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi lấy chi tiết đơn hàng',
+                'data' => null,
+            ], 500);
         }
-
-        // 🔥 FILTER USER
-        if ($request->user_id) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        // 🔥 FILTER DATE
-        if ($request->from_date && $request->to_date) {
-            $query->whereBetween('created_at', [
-                $request->from_date,
-                $request->to_date
-            ]);
-        }
-
-        // 🔥 SEARCH
-        if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('order_code', 'like', "%{$request->search}%")
-                ->orWhere('shipping_phone', 'like', "%{$request->search}%");
-            });
-        }
-
-        // 🔥 SORT
-        $sort = $request->sort ?? 'desc';
-
-        $orders = $query->orderBy('id', $sort)
-            ->paginate(10);
-
-        return response()->json($orders);
     }
 
-    public function adminShow($id)
+    public function updateStatus(Request $request, $id)
     {
-        $order = Order::with('items.productVariant', 'user')
-            ->findOrFail($id);
+        try {
+            $data = $request->validate([
+                'status' => 'required|string|in:processing,shipped,completed,cancelled',
+                'cancel_reason' => 'nullable|string|max:255',
+            ]);
 
-        return response()->json([
-            'order' => $order,
-            'user' => [
-                'id' => $order->user->id,
-                'name' => $order->user->name,
-                'email' => $order->user->email,
-            ],
-            'items' => $order->items
-        ]);
+            return response()->json(
+                $this->service->updateStatus((int) $id, $data)
+            );
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trạng thái đơn hàng không hợp lệ',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $e->getCode() ?: 400);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi cập nhật trạng thái đơn hàng',
+                'data' => null,
+            ], 500);
+        }
     }
 }

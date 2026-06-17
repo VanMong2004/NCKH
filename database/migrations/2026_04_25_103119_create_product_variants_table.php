@@ -33,9 +33,6 @@ return new class extends Migration
             $table->integer('reserved_stock')->default(0);
             $table->integer('sold_stock')->default(0);
 
-            // constraint BEFORE timestamps (best practice)
-            $table->unique(['product_id', 'size', 'color']);
-
             $table->timestamps();
         });
     }

@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Api\Admin\AdminPromotionController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
 
 
 // =============================
@@ -304,6 +305,17 @@ Route::middleware('auth:sanctum')->group(function () {
 // ADMIN
 // =============================
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    // =============================
+    // ADMIN USERS
+    // =============================
+    Route::prefix('users')->group(function () {
+        Route::get('/', [AdminUserController::class, 'index']);
+        Route::get('/{id}', [AdminUserController::class, 'show']);
+        Route::patch('/{id}/role', [AdminUserController::class, 'updateRole']);
+        Route::patch('/{id}/restore', [AdminUserController::class, 'restore']);
+        Route::delete('/{id}', [AdminUserController::class, 'destroy']);
+    });
+
     // =============================
     // ADMIN ORDERS
     // =============================

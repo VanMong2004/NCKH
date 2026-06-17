@@ -67,6 +67,9 @@ class PromotionService
     public function show(string $slug): array
     {
         $promotion = Promotion::with([
+            'items' => function ($query) {
+                $query->where('is_active', true);
+            },
             'items.product.images',
             'items.productVariant',
         ])
@@ -86,6 +89,9 @@ class PromotionService
         $promotion = Promotion::query()
             ->where('slug', $slug)
             ->where('is_active', true)
+            ->where('status', 'active')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
             ->first();
 
         if (!$promotion) {

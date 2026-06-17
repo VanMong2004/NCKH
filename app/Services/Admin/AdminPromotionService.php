@@ -199,7 +199,14 @@ class AdminPromotionService
             throw new RuntimeException('Khuyến mãi không tồn tại', 404);
         }
 
-        if ($promotion->items()->where('sold_quantity', '>', 0)->exists()) {
+        if (
+            $promotion->items()
+                ->where(function ($q) {
+                    $q->where('sold_quantity', '>', 0)
+                    ->orWhere('reserved_quantity', '>', 0);
+                })
+                ->exists()
+        ) {
             $promotion->update([
                 'is_active' => false,
                 'status' => 'inactive',
@@ -207,7 +214,7 @@ class AdminPromotionService
 
             return [
                 'success' => true,
-                'message' => 'Khuyến mãi đã có phát sinh bán hàng nên hệ thống đã tắt khuyến mãi thay vì xóa',
+                'message' => 'Khuyến mãi đã có phát sinh bán hàng hoặc đang có đơn giữ chỗ nên hệ thống đã tắt khuyến mãi thay vì xóa',
                 'data' => $this->formatPromotion($promotion->fresh()),
             ];
         }

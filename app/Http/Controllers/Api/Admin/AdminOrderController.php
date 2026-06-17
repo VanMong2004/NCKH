@@ -73,10 +73,15 @@ class AdminOrderController extends Controller
             $data = $request->validate([
                 'status' => 'required|string|in:processing,shipped,completed,cancelled',
                 'cancel_reason' => 'nullable|string|max:255',
+                'note' => 'nullable|string|max:500',
             ]);
 
             return response()->json(
-                $this->service->updateStatus((int) $id, $data)
+                $this->service->updateStatus(
+                    (int) $id,
+                    $data,
+                    $request->user()
+                )
             );
         } catch (ValidationException $e) {
             return response()->json([

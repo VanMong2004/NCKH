@@ -123,19 +123,19 @@ Route::post('/payment/callback', [PaymentController::class, 'callback']); // Cal
 // =============================
 // REVIEWS IMAGES (PUBLIC) - DÙNG CHO VIỆC LẤY ẢNH ĐÁNH GIÁ HIỂN THỊ TRÊN WEBSITE, KHÔNG DÙNG CHO VIỆC LẤY ẢNH SẢN PHẨM HOẶC CHIẾN DỊCH
 // =============================
-Route::get('/images/reviews/{path}', function ($path) {
+// Route::get('/images/reviews/{path}', function ($path) {
 
-    $fullPath = resource_path(
-        'images/reviews/' . $path
-    );
+//     $fullPath = resource_path(
+//         'images/reviews/' . $path
+//     );
 
-    if (!file_exists($fullPath)) {
-        abort(404);
-    }
+//     if (!file_exists($fullPath)) {
+//         abort(404);
+//     }
 
-    return response()->file($fullPath);
+//     return response()->file($fullPath);
 
-})->where('path', '.*'); // Lấy ảnh đánh giá (ảnh đánh giá được lưu trong resources/images/reviews)
+// })->where('path', '.*'); // Lấy ảnh đánh giá (ảnh đánh giá được lưu trong resources/images/reviews)
 
 
 // =============================
@@ -237,7 +237,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // =============================
     Route::prefix('reviews')->group(function () {
         Route::post('/', [ReviewController::class,'store']); // Tạo đánh giá mới (có thể là đánh giá sản phẩm hoặc chiến dịch, tùy vào payload gửi lên)
-        Route::put('/{id}', [ReviewController::class,'update']); // Cập nhật đánh giá (chỉ cho phép cập nhật nội dung đánh giá, không cho phép thay đổi sản phẩm/chiến dịch đã đánh giá)
+        Route::post('/{id}', [ReviewController::class,'update']); // Cập nhật đánh giá (chỉ cho phép cập nhật nội dung đánh giá, không cho phép thay đổi sản phẩm/chiến dịch đã đánh giá)
         Route::delete('/{id}', [ReviewController::class,'destroy']); // Xóa đánh giá (chỉ cho phép xóa đánh giá của chính mình)
     });
 
@@ -341,7 +341,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         $file
     ) {
 
-        $path = resource_path(
+        $path = public_path(
             'images/products/'
             . $folder
             . '/'

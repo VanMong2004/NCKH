@@ -15,10 +15,12 @@ class Review extends Model
         'order_id',
         'rating',
         'comment',
+        'is_active',
     ];
 
     protected $casts = [
         'rating' => 'integer',
+        'is_active' => 'boolean',
     ];
 
     /*

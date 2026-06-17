@@ -39,15 +39,12 @@ class ReviewService
             */
 
             $completedOrder = Order::query()
+                ->where('id', $data['order_id'])
                 ->where('user_id', $user->id)
-                ->where('status', 'paid')
+                ->where('status', 'completed')
                 ->whereHas('items.productVariant', function ($q) use ($data) {
-                    $q->where(
-                        'product_id',
-                        $data['product_id']
-                    );
+                    $q->where('product_id', $data['product_id']);
                 })
-                ->latest()
                 ->first();
 
             if (!$completedOrder) {
@@ -63,13 +60,14 @@ class ReviewService
             |--------------------------------------------------------------------------
             */
 
-            $exists = Review::where('user_id', $user->id)
+            $exists = Review::where('order_id', $completedOrder->id)
                 ->where('product_id', $product->id)
+                ->where('is_active', true)
                 ->exists();
 
             if ($exists) {
                 throw new RuntimeException(
-                    'Bạn đã review sản phẩm này',
+                    'Bạn đã review sản phẩm này trong đơn hàng này',
                     409
                 );
             }
@@ -86,6 +84,7 @@ class ReviewService
                 'order_id' => $completedOrder->id,
                 'rating' => $data['rating'],
                 'comment' => $data['comment'],
+                'is_active' => true,
             ]);
 
             /*
@@ -127,12 +126,13 @@ class ReviewService
     {
         if (!$user) {
             throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
+        }        
 
         $review = Review::with([
             'images',
             'user',
             'product',
+            'order',
         ])->find($reviewId);
 
         if (!$review) {
@@ -142,6 +142,13 @@ class ReviewService
         if ((int) $review->user_id !== (int) $user->id) {
             throw new RuntimeException(
                 'Bạn không có quyền sửa review này',
+                403
+            );
+        }
+
+        if (!$review->order || $review->order->status !== 'completed') {
+            throw new RuntimeException(
+                'Chỉ được cập nhật review của đơn hàng đã hoàn tất',
                 403
             );
         }
@@ -180,7 +187,7 @@ class ReviewService
             );
 
             return $this->formatReview(
-                $review->load('images', 'user', 'product')
+                $review->load('images', 'user', 'product', 'order')
             );
         });
     }
@@ -225,6 +232,10 @@ class ReviewService
 
             $this->deleteImages($review);
 
+            $review->update([
+                'is_active' => false,
+            ]);
+
             $review->delete();
 
             $this->recalculateProductRating($product);
@@ -248,10 +259,11 @@ class ReviewService
         }
 
         $query = Review::with([
-                'user',
-                'images',
-            ])
-            ->where('product_id', $product->id);
+            'user',
+            'images',
+        ])
+        ->where('product_id', $product->id)
+        ->where('is_active', true);
 
         /*
         |--------------------------------------------------------------------------
@@ -300,6 +312,7 @@ class ReviewService
                 'product_id',
                 $product->id
             )
+                ->where('is_active', true)
                 ->where('rating', $i)
                 ->count();
         }
@@ -341,9 +354,11 @@ class ReviewService
     protected function recalculateProductRating(Product $product)
     {
         $average = Review::where('product_id', $product->id)
+            ->where('is_active', true)
             ->avg('rating');
 
         $total = Review::where('product_id', $product->id)
+            ->where('is_active', true)
             ->count();
 
         $product->update([
@@ -367,7 +382,7 @@ class ReviewService
 
         $productSlug = Str::slug($product->name);
 
-        $directory = resource_path(
+        $directory = public_path(
             'images/reviews/'
             . $productSlug
             . '/user-' . $user->id
@@ -401,11 +416,9 @@ class ReviewService
             ReviewImage::create([
                 'review_id' => $review->id,
 
-                'image_url'
-                    => url(
-                        '/api/images/reviews/'
-                        . $relativePath
-                    ),
+                'image_url' => url(
+                    '/images/reviews/' . $relativePath
+                ),
             ]);
         }
     }
@@ -421,12 +434,12 @@ class ReviewService
         foreach ($review->images as $image) {
 
             $relative = str_replace(
-                url('/api/images/reviews/') . '/',
+                url('/images/reviews/') . '/',
                 '',
                 $image->image_url
             );
 
-            $fullPath = resource_path(
+            $fullPath = public_path(
                 'images/reviews/' . $relative
             );
 
@@ -442,27 +455,22 @@ class ReviewService
     {
         return [
             'id' => $review->id,
-
+            'order_id' => $review->order_id,
             'rating' => (int) $review->rating,
-
             'comment' => $review->comment,
-
             'product' => [
                 'id' => $review->product?->id,
                 'name' => $review->product?->name,
                 'slug' => $review->product?->slug,
             ],
-
             'user' => [
                 'id' => $review->user?->id,
                 'name' => $review->user?->name,
                 'avatar' => $review->user?->avatar_url,
             ],
-
             'images' => $review->images
                 ->pluck('image_url')
                 ->values(),
-
             'created_at' => optional($review->created_at)
                 ->format('d/m/Y H:i'),
         ];

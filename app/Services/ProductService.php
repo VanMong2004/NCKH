@@ -276,6 +276,7 @@ class ProductService
                 'reviews.user',
             ])
             ->where('slug', $slug)
+            ->where('is_active', true)
             ->first();
 
         if (!$product) {

@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use Exception;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\OrderItem;
 use Illuminate\Support\Str;
 use App\Models\ProductImage;
 use Illuminate\Support\Facades\DB;
@@ -434,11 +435,25 @@ class AdminProductService
     {
         $product = Product::findOrFail($id);
 
-        /*
-        |--------------------------------------------------------------------------
-        | SOFT DELETE
-        |--------------------------------------------------------------------------
-        */
+        $hasActiveOrders = OrderItem::query()
+            ->whereHas('productVariant', function ($q) use ($product) {
+                $q->where('product_id', $product->id);
+            })
+            ->whereHas('order', function ($q) {
+                $q->whereIn('status', [
+                    'pending',
+                    'paid',
+                    'processing',
+                    'shipped',
+                ]);
+            })
+            ->exists();
+
+        if ($hasActiveOrders) {
+            throw new Exception(
+                'Sản phẩm đang có đơn hàng chưa hoàn tất, không thể xóa'
+            );
+        }
 
         $product->delete();
 
@@ -650,8 +665,16 @@ class AdminProductService
                     throw new Exception('Biến thể sản phẩm không tồn tại');
                 }
 
-                if (($variantData['stock'] ?? 0) < $variant->reserved_stock) {
+                $newStock = array_key_exists('stock', $variantData)
+                    ? (int) $variantData['stock']
+                    : (int) $variant->stock;
+
+                if ($newStock < $variant->reserved_stock) {
                     throw new Exception('Tồn kho mới không được nhỏ hơn số lượng đang giữ chỗ');
+                }
+
+                if ($newStock < $variant->sold_stock) {
+                    throw new Exception('Tồn kho mới không được nhỏ hơn số lượng đã bán');
                 }
 
                 if (($variantData['stock'] ?? 0) < $variant->sold_stock) {
@@ -664,12 +687,18 @@ class AdminProductService
                 );
 
                 $variant->update([
-                    'size' => $variantData['size'] ?? null,
-                    'color' => $variantData['color'] ?? null,
-                    'attributes' => $variantData['attributes'] ?? [],
+                    'size' => array_key_exists('size', $variantData)
+                        ? $variantData['size']
+                        : $variant->size,
+                    'color' => array_key_exists('color', $variantData)
+                        ? $variantData['color']
+                        : $variant->color,
+                    'attributes' => array_key_exists('attributes', $variantData)
+                        ? $variantData['attributes']
+                        : $variant->attributes,
                     'sku' => $variantData['sku'] ?? $variant->sku,
                     'price' => $variantData['price'] ?? $variant->price,
-                    'stock' => $variantData['stock'] ?? $variant->stock,
+                    'stock' => $newStock,
                 ]);
 
                 continue;

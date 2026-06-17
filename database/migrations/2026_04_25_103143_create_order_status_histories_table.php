@@ -11,31 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reviews', function (Blueprint $table) {
-
+        Schema::create('order_status_histories', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
-            $table->foreignId('product_id')
-                ->constrained()
-                ->cascadeOnDelete();
 
             $table->foreignId('order_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->tinyInteger('rating');
+            $table->unsignedBigInteger('changed_by')->nullable();
 
-            $table->text('comment');
+            $table->string('old_status')->nullable();
+            $table->string('new_status');
 
-            $table->boolean('is_active')->default(true);
+            $table->string('note')->nullable();
 
             $table->timestamps();
 
-            $table->softDeletes();
+            $table->index('order_id');
+            $table->index('changed_by');
         });
     }
 
@@ -44,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('reviews');
+        Schema::dropIfExists('order_status_histories');
     }
 };

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\AdminAnalyticsService;
+use App\Services\Admin\AdminAnalyticsService;
 use App\Exports\AdminAnalyticsExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;

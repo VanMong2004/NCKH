@@ -34,18 +34,19 @@ class ReviewController extends Controller
         try {
             $data = $request->validate([
                 'product_id' => 'required|integer|exists:products,id',
-
+                'order_id' => 'required|integer|exists:orders,id',
                 'rating' => 'required|integer|min:1|max:5',
-
                 'comment' => 'required|string|min:10|max:1000',
-
                 'images' => 'nullable|array|max:5',
-
                 'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
             ], [
                 'product_id.required' => 'Vui lòng chọn sản phẩm cần đánh giá',
                 'product_id.integer' => 'Sản phẩm không hợp lệ',
                 'product_id.exists' => 'Sản phẩm không tồn tại',
+
+                'order_id.required' => 'Vui lòng chọn đơn hàng cần đánh giá',
+                'order_id.integer' => 'Đơn hàng không hợp lệ',
+                'order_id.exists' => 'Đơn hàng không tồn tại',
 
                 'rating.required' => 'Vui lòng chọn số sao đánh giá',
                 'rating.integer' => 'Số sao đánh giá không hợp lệ',

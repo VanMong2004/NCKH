@@ -3,119 +3,135 @@
 namespace App\Services\Admin;
 
 use App\Models\Order;
-use App\Models\User;
 use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class AdminAnalyticsService
 {
-    public function overview($user)
+    public function overview($user): array
     {
-        $this->ensureAdmin($user);
-
-        $orderQuery = Order::query();
-
         return [
-            'total_orders' => (clone $orderQuery)->count(),
+            'total_orders' => Order::count(),
 
-            'paid_orders' => (clone $orderQuery)
-                ->where('status', 'paid')
-                ->count(),
+            'pending_orders' => Order::where('status', 'pending')->count(),
 
-            'revenue' => (float) (clone $orderQuery)
-                ->where('status', 'paid')
+            'paid_orders' => Order::whereIn('status', [
+                'paid',
+                'processing',
+                'shipped',
+                'completed',
+            ])->count(),
+
+            'cancelled_orders' => Order::where('status', 'cancelled')->count(),
+
+            'completed_orders' => Order::where('status', 'completed')->count(),
+
+            'revenue' => (float) Order::whereIn('status', [
+                'paid',
+                'processing',
+                'shipped',
+                'completed',
+            ])->sum('total'),
+
+            'completed_revenue' => (float) Order::where('status', 'completed')
                 ->sum('total'),
 
             'total_users' => User::count(),
+
+            'total_products' => Product::count(),
+
+            'active_products' => Product::where('is_active', true)->count(),
         ];
     }
 
-    public function topProducts($user)
+    public function topProducts($user, int $limit = 10): array
     {
-        $this->ensureAdmin($user);
-
         return OrderItem::query()
-            ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->leftJoin(
-                'product_variants',
-                'product_variants.id',
-                '=',
-                'order_items.product_variant_id'
-            )
-            ->leftJoin(
-                'products',
-                'products.id',
-                '=',
-                'product_variants.product_id'
-            )
-            ->where('orders.status', 'paid')
-            ->selectRaw('
-                products.id as product_id,
-                products.name as name,
-                products.slug as slug,
-                SUM(order_items.quantity) as sold,
-                SUM(order_items.price * order_items.quantity) as revenue
-            ')
-            ->groupBy(
+            ->select([
                 'products.id',
                 'products.name',
-                'products.slug'
-            )
-            ->orderByDesc('sold')
-            ->limit(10)
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'product_id' => $item->product_id,
-                    'name' => $item->name,
-                    'slug' => $item->slug,
-                    'sold' => (int) $item->sold,
-                    'revenue' => (float) $item->revenue,
-                ];
-            });
-    }
-
-    public function salesChart($user, int $days = 7)
-    {
-        $this->ensureAdmin($user);
-
-        return Order::query()
-            ->where('status', 'paid')
-            ->select([
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(total) as revenue'),
+                'products.slug',
+                DB::raw('SUM(order_items.quantity) AS sold'),
+                DB::raw('SUM(order_items.final_price * order_items.quantity) AS revenue'),
             ])
-            ->where('created_at', '>=', now()->subDays($days))
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->whereIn('orders.status', [
+                'paid',
+                'processing',
+                'shipped',
+                'completed',
+            ])
+            ->groupBy([
+                'products.id',
+                'products.name',
+                'products.slug',
+            ])
+            ->orderByDesc('sold')
+            ->limit($limit)
             ->get()
-            ->map(function ($item) {
-                return [
-                    'date' => $item->date,
-                    'revenue' => (float) $item->revenue,
-                ];
-            });
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'slug' => $item->slug,
+                'sold' => (int) $item->sold,
+                'revenue' => (float) $item->revenue,
+            ])
+            ->values()
+            ->toArray();
     }
 
-    public function exportData($user)
+    public function salesChart($user, int $days = 7): array
     {
-        $this->ensureAdmin($user);
+        $from = Carbon::today()
+            ->subDays($days - 1);
 
+        $rows = Order::query()
+            ->select([
+                DB::raw('DATE(created_at) AS date'),
+                DB::raw('SUM(total) AS revenue'),
+                DB::raw('COUNT(*) AS orders_count'),
+            ])
+            ->whereIn('status', [
+                'paid',
+                'processing',
+                'shipped',
+                'completed',
+            ])
+            ->whereDate('created_at', '>=', $from)
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        $data = [];
+
+        for ($i = 0; $i < $days; $i++) {
+            $date = $from->copy()->addDays($i)->format('Y-m-d');
+
+            $row = $rows->get($date);
+
+            $data[] = [
+                'date' => $date,
+                'revenue' => (float) ($row->revenue ?? 0),
+                'orders_count' => (int) ($row->orders_count ?? 0),
+            ];
+        }
+
+        return $data;
+    }
+
+    public function exportData($user): array
+    {
         return [
             'overview' => $this->overview($user),
             'top_products' => $this->topProducts($user),
             'sales_chart' => $this->salesChart($user, 30),
+            'generated_at' => now()->format('d/m/Y H:i'),
         ];
-    }
-
-    private function ensureAdmin($user): void
-    {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
-
-        if ($user->role !== 'admin') {
-            throw new RuntimeException('Bạn không có quyền truy cập thống kê quản trị', 403);
-        }
     }
 }

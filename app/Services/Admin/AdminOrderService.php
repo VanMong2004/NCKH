@@ -72,6 +72,7 @@ class AdminOrderService
             'user:id,name,email,phone',
             'items.productVariant.product.images',
             'payments',
+            'statusHistories.changer:id,name,email',
         ])->find($id);
 
         if (!$order) {
@@ -85,9 +86,9 @@ class AdminOrderService
         ];
     }
 
-    public function updateStatus(int $id, array $data): array
+    public function updateStatus(int $id, array $data, $admin = null): array
     {
-        return DB::transaction(function () use ($id, $data) {
+        return DB::transaction(function () use ($id, $data, $admin) {
             $order = Order::with([
                 'items.productVariant',
                 'payments',
@@ -99,6 +100,7 @@ class AdminOrderService
                 throw new RuntimeException('Đơn hàng không tồn tại', 404);
             }
 
+            $oldStatus = $order->status;
             $newStatus = $data['status'];
 
             $this->validateStatusTransition($order->status, $newStatus);
@@ -112,6 +114,14 @@ class AdminOrderService
                     'status' => $newStatus,
                 ]);
             }
+
+            $this->createStatusHistory(
+                $order,
+                $oldStatus,
+                $newStatus,
+                $admin?->id,
+                $data['note'] ?? ($data['cancel_reason'] ?? null)
+            );
 
             return [
                 'success' => true,
@@ -239,6 +249,21 @@ class AdminOrderService
             'id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
+            'status_histories' => $order->statusHistories
+                ->sortBy('created_at')
+                ->map(fn ($history) => [
+                    'id' => $history->id,
+                    'old_status' => $history->old_status,
+                    'new_status' => $history->new_status,
+                    'note' => $history->note,
+                    'changed_by' => $history->changer ? [
+                        'id' => $history->changer->id,
+                        'name' => $history->changer->name,
+                        'email' => $history->changer->email,
+                    ] : null,
+                    'created_at' => optional($history->created_at)->format('d/m/Y H:i'),
+                ])
+                ->values(),
             'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
             'cancel_reason' => $order->cancel_reason,
 
@@ -295,5 +320,21 @@ class AdminOrderService
                 ];
             })->values(),
         ];
+    }
+
+    private function createStatusHistory(
+        Order $order,
+        ?string $oldStatus,
+        string $newStatus,
+        ?int $changedBy = null,
+        ?string $note = null
+    ): void {
+        \App\Models\OrderStatusHistory::create([
+            'order_id' => $order->id,
+            'changed_by' => $changedBy,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'note' => $note,
+        ]);
     }
 }

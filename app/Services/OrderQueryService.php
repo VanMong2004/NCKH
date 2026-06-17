@@ -13,96 +13,72 @@ class OrderQueryService
      * My orders
      */
     public function myOrders($user, array $filters)
-    {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
-
-        $order = Order::with([
-            'items.productVariant.product.images',
-            'payments',
-        ])
-            ->where('user_id', $user->id)
-            ->findOrFail($id);
-
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (!empty($filters['type'])) {
-            $query->where('type', $filters['type']);
-        }
-
-        if (!empty($filters['keyword'])) {
-            $query->where('order_code', 'like', '%' . $filters['keyword'] . '%');
-        }
-
-        $sort = $filters['sort'] ?? 'latest';
-
-        if ($sort === 'oldest') {
-            $query->oldest();
-        } else {
-            $query->latest();
-        }
-
-        $perPage = $filters['per_page'] ?? 10;
-
-        $orders = $query->paginate($perPage);
-
-        $orders->setCollection(
-            $orders->getCollection()->map(function ($order) {
-                $payment = $order->payments
-                    ->sortByDesc('created_at')
-                    ->first();
-
-                $firstItem = $order->items->first();
-
-                $thumbnail = optional(
-                    $firstItem?->productVariant?->product?->images
-                        ?->where('type', 'thumbnail')
-                        ->first()
-                )->url
-                ?? optional(
-                    $firstItem?->productVariant?->product?->images
-                        ?->first()
-                )->url;
-
-                return [
-                    'id' => $order->id,
-
-                    'order_code' => $order->order_code,
-
-                    'title' => $order->type === 'campaign'
-                        ? optional($order->campaign)->title
-                        : optional($firstItem?->productVariant?->product)->name,
-
-                    'type' => $order->type,
-
-                    'status' => $order->status,
-
-                    'payment_status' => $payment?->status ?? 'pending',
-
-                    'payment_method' => $payment?->method,
-
-                    'thumbnail' => $thumbnail,
-
-                    'item_count' => $order->items->sum('quantity'),
-
-                    'total' => (int) $order->total,
-
-                    'qr_code' => $order->order_code,
-
-                    'created_at' => optional(
-                        $order->created_at
-                    )->format('d/m/Y H:i'),
-
-                    'detail_url' => "/profile/orders/" . $order->id,
-                ];
-            })
-        );
-
-        return $orders;
+{
+    if (!$user) {
+        throw new RuntimeException('Vui lòng đăng nhập', 401);
     }
+
+    $query = Order::with([
+        'items.productVariant.product.images',
+        'payments',
+    ])
+        ->where('user_id', $user->id);
+
+    if (!empty($filters['status'])) {
+        $query->where('status', $filters['status']);
+    }
+
+    if (!empty($filters['keyword'])) {
+        $query->where('order_code', 'like', '%' . $filters['keyword'] . '%');
+    }
+
+    $sort = $filters['sort'] ?? 'latest';
+
+    $sort === 'oldest'
+        ? $query->oldest()
+        : $query->latest();
+
+    $orders = $query->paginate($filters['per_page'] ?? 10);
+
+    $orders->setCollection(
+        $orders->getCollection()->map(function ($order) {
+            $payment = $order->payments
+                ->sortByDesc('created_at')
+                ->first();
+
+            $firstItem = $order->items->first();
+
+            $thumbnail = optional(
+                $firstItem?->productVariant?->product?->images
+                    ?->where('type', 'thumbnail')
+                    ->first()
+            )->url
+            ?? optional(
+                $firstItem?->productVariant?->product?->images
+                    ?->first()
+            )->url;
+
+            return [
+                'id' => $order->id,
+                'order_code' => $order->order_code,
+                'title' => optional($firstItem?->productVariant?->product)->name,
+                'status' => $order->status,
+                'payment_status' => $payment?->status ?? 'pending',
+                'payment_method' => $payment?->method,
+                'thumbnail' => $thumbnail,
+                'item_count' => $order->items->sum('quantity'),
+                'total' => (float) $order->total,
+                'qr_code' => $order->order_code,
+                'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
+                'cancel_reason' => $order->cancel_reason,
+                'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
+                'detail_url' => "/profile/orders/" . $order->id,
+            ];
+        })
+    );
+
+    return $orders;
+}
 
     /**
      * Show order detail
@@ -255,8 +231,8 @@ class OrderQueryService
                 throw new RuntimeException('Chỉ được hủy đơn hàng đang chờ xử lý', 400);
             }
 
-            app(\App\Services\PromotionReserveService::class)
-                ->release($order->load('items'));
+            app(\App\Services\Admin\OrderReleaseService::class)
+                ->release($order);
 
             foreach ($order->items as $item) {
                 if ($item->productVariant) {

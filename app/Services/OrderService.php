@@ -15,6 +15,8 @@ use RuntimeException;
 use Exception;
 use App\Jobs\CancelPendingOrderJob;
 use App\Services\PromotionPriceService;
+use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
@@ -30,7 +32,9 @@ class OrderService
             throw new RuntimeException('Thiếu mã giỏ hàng khách', 400);
         }
 
-        $order = DB::transaction(function () use ($user, $guestToken, $data) {
+        $autoCancelMinutes = $this->getOrderAutoCancelMinutes();
+
+        $order = DB::transaction(function () use ($user, $guestToken, $data, $autoCancelMinutes) {
             $cartQuery = Cart::with([
                 'items' => function ($query) use ($data) {
                     $query->whereIn('id', $data['cart_item_ids']);
@@ -45,7 +49,9 @@ class OrderService
                 $cartQuery->where('guest_token', $guestToken);
             }
 
-            $cart = $cartQuery->first();
+            $cart = $cartQuery
+                ->lockForUpdate()
+                ->first();
 
             if (!$cart) {
                 throw new RuntimeException('Giỏ hàng trống', 400);
@@ -95,8 +101,11 @@ class OrderService
                 'guest_phone' => $shipping['guest_phone'],
 
                 'type' => 'normal',
-                'order_code' => $this->generateOrderCode(),
+                'order_code' => 'TEMP-' . uniqid(),
                 'status' => 'pending',
+                'expired_at' => now()->addMinutes(
+                    $autoCancelMinutes
+                ),
 
                 'total' => 0,
                 'shipping_fee' => 0,
@@ -104,6 +113,10 @@ class OrderService
                 'shipping_name' => $shipping['name'],
                 'shipping_phone' => $shipping['phone'],
                 'shipping_address' => $shipping['address'],
+            ]);
+
+            $order->update([
+                'order_code' => $this->generateOrderCode($order->id),
             ]);
 
             $total = 0;
@@ -234,12 +247,15 @@ class OrderService
             return $order;
         });
 
-        CancelPendingOrderJob::dispatch($order->id)
-            ->delay(
-                now()->addMinutes(
-                    config('app.order_auto_cancel_minutes')
-                )
-            );
+        try {
+            CancelPendingOrderJob::dispatch($order->id)
+                ->delay($order->expired_at ?? now()->addMinutes($autoCancelMinutes));
+        } catch (\Throwable $e) {
+            Log::error('Dispatch cancel pending order job failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $order->load('items');
 
@@ -293,13 +309,12 @@ class OrderService
     // =========================
     // GENERATE ORDER CODE
     // =========================
-    private function generateOrderCode()
+    private function generateOrderCode(int $orderId): string
     {
-        $date = now()->format('Ymd');
-
-        $count = Order::whereDate('created_at', now())->count() + 1;
-
-        return 'ORD-' . $date . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+        return 'ORD-'
+            . now()->format('Ymd')
+            . '-'
+            . str_pad($orderId, 6, '0', STR_PAD_LEFT);
     }
 
     // =========================
@@ -430,5 +445,14 @@ class OrderService
 
             'guest_phone' => $data['guest_phone'],
         ];
+    }
+
+    private function getOrderAutoCancelMinutes(): int
+    {
+        return (int) (
+            SystemSetting::query()
+                ->value('order_auto_cancel_minutes')
+            ?? 15
+        );
     }
 }

@@ -13,6 +13,7 @@ class Order extends Model
         'user_id',
         'order_code',
         'status',
+        'expired_at',
         'cancel_reason',
         'total',
         'guest_token',

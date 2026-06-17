@@ -63,6 +63,7 @@ class AdminPromotionService
             foreach ($items as $index => $data) {
                 try {
                     $this->validateVariantBelongsToProduct($data);
+                    $this->validateLimitQuantity($data);
 
                     $exists = PromotionItem::where('promotion_id', $promotion->id)
                         ->where('product_id', $data['product_id'])
@@ -255,6 +256,7 @@ class AdminPromotionService
             }
 
             $this->validateVariantBelongsToProduct($data);
+            $this->validateLimitQuantity($data);
 
             $exists = PromotionItem::where('promotion_id', $promotion->id)
                 ->where('product_id', $data['product_id'])
@@ -303,10 +305,27 @@ class AdminPromotionService
                 ]);
             }
 
-            if (isset($data['limit_quantity'])
+            $this->validateLimitQuantity([
+                'product_variant_id' =>
+                    $data['product_variant_id']
+                    ?? $item->product_variant_id,
+
+                'limit_quantity' =>
+                    $data['limit_quantity']
+                    ?? $item->limit_quantity,
+            ], $item->id);
+
+            if (
+                isset($data['limit_quantity'])
                 && $data['limit_quantity'] !== null
-                && $data['limit_quantity'] < $item->sold_quantity) {
-                throw new RuntimeException('Giới hạn mới không được nhỏ hơn số lượng đã bán', 400);
+                && $data['limit_quantity'] < (
+                    $item->sold_quantity + $item->reserved_quantity
+                )
+            ) {
+                throw new RuntimeException(
+                    'Giới hạn mới không được nhỏ hơn số lượng đã bán hoặc đang giữ chỗ',
+                    400
+                );
             }
 
             $item->update([
@@ -345,7 +364,7 @@ class AdminPromotionService
             throw new RuntimeException('Sản phẩm khuyến mãi không tồn tại', 404);
         }
 
-        if ($item->sold_quantity > 0) {
+        if ($item->sold_quantity > 0 || $item->reserved_quantity > 0) {
             $item->update([
                 'is_active' => false,
             ]);
@@ -446,11 +465,63 @@ class AdminPromotionService
             'discount_value' => $item->discount_value,
             'limit_quantity' => $item->limit_quantity,
             'sold_quantity' => $item->sold_quantity,
+            'reserved_quantity' => (int) $item->reserved_quantity,
             'remaining_quantity' => is_null($item->limit_quantity)
                 ? null
-                : max(0, $item->limit_quantity - $item->sold_quantity),
+                : max(
+                    0,
+                    $item->limit_quantity
+                    - $item->sold_quantity
+                    - $item->reserved_quantity
+                ),
             'is_active' => (bool) $item->is_active,
             'created_at' => optional($item->created_at)->format('d/m/Y H:i'),
         ];
+    }
+
+    private function validateLimitQuantity(array $data, ?int $ignoreItemId = null): void
+    {
+        if (
+            empty($data['product_variant_id'])
+            || empty($data['limit_quantity'])
+        ) {
+            return;
+        }
+
+        $variant = ProductVariant::find($data['product_variant_id']);
+
+        if (!$variant) {
+            throw new RuntimeException(
+                'Biến thể sản phẩm không tồn tại',
+                404
+            );
+        }
+
+        $availableStock = max(
+            0,
+            $variant->stock - $variant->reserved_stock
+        );
+
+        $usedLimit = PromotionItem::query()
+            ->join('promotions', 'promotions.id', '=', 'promotion_items.promotion_id')
+            ->where('promotion_items.product_variant_id', $variant->id)
+            ->whereNotNull('promotion_items.limit_quantity')
+            ->where('promotion_items.is_active', true)
+            ->where('promotions.is_active', true)
+            ->where('promotions.status', 'active')
+            ->where('promotions.end_date', '>=', now())
+            ->when($ignoreItemId, function ($q) use ($ignoreItemId) {
+                $q->where('promotion_items.id', '!=', $ignoreItemId);
+            })
+            ->sum('promotion_items.limit_quantity');
+
+        $maxAllowed = max(0, $availableStock - $usedLimit);
+
+        if ((int) $data['limit_quantity'] > $maxAllowed) {
+            throw new RuntimeException(
+                "Số lượng khuyến mãi tối đa còn có thể áp dụng cho biến thể này là {$maxAllowed}",
+                400
+            );
+        }
     }
 }

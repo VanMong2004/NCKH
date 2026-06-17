@@ -9,6 +9,12 @@ class SystemSetting extends Model
     protected $fillable = [
         'maintenance_mode',
         'maintenance_message',
-        'session_timeout'
+        'session_timeout',
+        'order_auto_cancel_minutes',
+    ];
+
+    protected $casts = [
+        'viewed_at' => 'datetime',
+        'order_auto_cancel_minutes' => 'integer',
     ];
 }

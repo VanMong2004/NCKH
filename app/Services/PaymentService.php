@@ -51,6 +51,10 @@ class PaymentService
                 throw new RuntimeException('Đơn hàng không tồn tại', 404);
             }
 
+            if ($order->expired_at && now()->greaterThan($order->expired_at)) {
+                throw new RuntimeException('Đơn hàng đã hết hạn thanh toán', 400);
+            }
+
             if ($order->payments()->where('status', 'success')->exists()) {
                 throw new RuntimeException('Đơn hàng đã được thanh toán', 409);
             }

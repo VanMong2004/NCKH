@@ -110,7 +110,7 @@ class PromotionPriceService
             ->where(function ($q) use ($quantity) {
                 $q->whereNull('limit_quantity')
                     ->orWhereRaw(
-                        '(sold_quantity + ?) <= limit_quantity',
+                        '(sold_quantity + reserved_quantity + ?) <= limit_quantity',
                         [$quantity]
                     );
             })

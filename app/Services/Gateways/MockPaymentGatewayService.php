@@ -8,13 +8,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
-use App\Services\PromotionReserveService;
+use App\Services\Admin\OrderReleaseService;
 
 class MockPaymentGatewayService
 {
     public function __construct(
         protected PromotionSoldService $promotionSoldService,
-        protected PromotionReserveService $promotionReserveService
     ) {}
 
     public function create(Payment $payment)
@@ -45,6 +44,20 @@ class MockPaymentGatewayService
 
             $order = Order::lockForUpdate()->findOrFail($payment->order_id);
 
+            if ($order->status === 'cancelled') {
+                $payment->update([
+                    'status' => 'failed',
+                    'response_data' => $data,
+                ]);
+
+                return [
+                    'message' => 'Đơn hàng đã bị hủy, không thể thanh toán',
+                    'payment_id' => $payment->id,
+                    'order_id' => $order->id,
+                    'status' => 'failed',
+                ];
+            }
+
             $status = $data['status'] === 'success' ? 'success' : 'failed';
 
             $payment->update([
@@ -69,11 +82,12 @@ class MockPaymentGatewayService
                 event(new OrderPaid($order));
             } else {
 
-                $this->promotionReserveService
-                    ->release($order->load('items'));
+                app(OrderReleaseService::class)
+                    ->release($order->load('items.productVariant'));
 
                 $order->update([
-                    'status' => 'pending',
+                    'status' => 'cancelled',
+                    'cancel_reason' => 'payment_failed',
                 ]);
             }
 

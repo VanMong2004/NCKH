@@ -7,13 +7,12 @@ use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
-use App\Services\PromotionReserveService;
+use App\Services\Admin\OrderReleaseService;
 
 class VNPayService
 {
     public function __construct(
         protected PromotionSoldService $promotionSoldService,
-        protected PromotionReserveService $promotionReserveService
     ) {}
 
     public function create(Payment $payment)
@@ -54,6 +53,20 @@ class VNPayService
 
             $order = Order::lockForUpdate()->findOrFail($payment->order_id);
 
+            if ($order->status === 'cancelled') {
+                $payment->update([
+                    'status' => 'failed',
+                    'response_data' => $data,
+                ]);
+
+                return [
+                    'message' => 'Đơn hàng đã bị hủy, không thể thanh toán',
+                    'payment_id' => $payment->id,
+                    'order_id' => $order->id,
+                    'status' => 'failed',
+                ];
+            }
+
             $status = ($data['vnp_ResponseCode'] === '00') ? 'success' : 'failed';
 
             $payment->update([
@@ -78,11 +91,12 @@ class VNPayService
                 event(new OrderPaid($order));
             } else {
 
-                $this->promotionReserveService
-                    ->release($order->load('items'));
+                app(OrderReleaseService::class)
+                    ->release($order->load('items.productVariant'));
 
                 $order->update([
-                    'status' => 'pending',
+                    'status' => 'cancelled',
+                    'cancel_reason' => 'payment_failed',
                 ]);
             }
 

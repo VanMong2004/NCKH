@@ -21,9 +21,12 @@ class CartService
     // =========================
     public function getCart($user, ?string $guestToken)
     {
-        $cart = Cart::firstOrCreate(
-            $this->getCartOwnerCondition($user, $guestToken)
-        );
+        $cart = Cart::where(
+            $this->getCartOwnerCondition(
+                $user,
+                $guestToken
+            )
+        )->first();
 
         $cart->load([
             'items',
@@ -51,6 +54,10 @@ class CartService
         return DB::transaction(function () use ($user, $guestToken, $data) {
             $variant = ProductVariant::lockForUpdate()
                 ->find($data['product_variant_id']);
+
+            if (($data['quantity'] ?? 0) <= 0) {
+                throw new RuntimeException('Số lượng phải lớn hơn 0', 400);
+            }
 
             if (!$variant) {
                 throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
@@ -149,6 +156,10 @@ class CartService
                 throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
             }
 
+            if ($quantity <= 0) {
+                throw new RuntimeException('Số lượng phải lớn hơn 0', 400);
+            }
+
             $available = $variant->stock - $variant->reserved_stock;
 
             if ($available <= 0) {
@@ -191,10 +202,12 @@ class CartService
             throw new RuntimeException('Giỏ hàng không tồn tại', 404);
         }
 
-        $item = CartItem::where([
-            'cart_id' => $cart->id,
-            'id' => $cartItemId,
-        ])->first();
+        $item = CartItem::lockForUpdate()
+            ->where([
+                'cart_id' => $cart->id,
+                'id' => $cartItemId,
+            ])
+            ->first();
 
         if (!$item) {
             throw new RuntimeException('Sản phẩm không có trong giỏ hàng', 404);

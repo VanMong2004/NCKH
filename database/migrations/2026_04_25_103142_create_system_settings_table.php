@@ -21,7 +21,12 @@ return new class extends Migration
                 ->nullable();
 
             $table->unsignedInteger('session_timeout')
+                ->nullable()
                 ->default(120);
+
+            $table->unsignedInteger('order_auto_cancel_minutes')
+                ->nullable()
+                ->default(15);
 
             $table->timestamps();
         });

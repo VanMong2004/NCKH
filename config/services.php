@@ -34,4 +34,8 @@ return [
     'n8n' => [
         'webhook' => env('N8N_WEBHOOK_URL'),
     ],
+    
+    // 'order' => [
+    //     'auto_cancel_minutes' => env('ORDER_AUTO_CANCEL_MINUTES', 15),
+    // ],
 ];

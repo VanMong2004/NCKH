@@ -49,6 +49,8 @@ return new class extends Migration
                 'completed',
                 'cancelled'
             ])->default('pending');
+            
+            $table->timestamp('expired_at')->nullable();
 
             $table->string('cancel_reason')->nullable();
 

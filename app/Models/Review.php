@@ -21,6 +21,7 @@ class Review extends Model
     protected $casts = [
         'rating' => 'integer',
         'is_active' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     /*

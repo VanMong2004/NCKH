@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Api\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AdminReviewController;
 
 
 // =============================
@@ -382,6 +383,18 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);
         Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);
         Route::get('/export/excel', [AdminAnalyticsController::class, 'exportExcel']);
+    });
+
+    // =============================
+    // ADMIN REVIEWS
+    // =============================
+    Route::prefix('reviews')->group(function () {
+        Route::get('/', [AdminReviewController::class, 'index']);
+        Route::get('/statistics', [AdminReviewController::class, 'statistics']);
+        Route::get('/{id}', [AdminReviewController::class, 'show']);
+        Route::patch('/{id}/hide', [AdminReviewController::class, 'hide']);
+        Route::patch('/{id}/show', [AdminReviewController::class, 'showReview']);
+        Route::delete('/{id}', [AdminReviewController::class, 'destroy']);
     });
 });
 

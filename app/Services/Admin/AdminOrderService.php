@@ -130,6 +130,7 @@ class AdminOrderService
                     'user:id,name,email,phone',
                     'items.productVariant.product.images',
                     'payments',
+                    'statusHistories.changer:id,name,email',
                 ])),
             ];
         });
@@ -189,11 +190,25 @@ class AdminOrderService
                 (int) $item->quantity
             );
 
+            $before = clone $variant;
+
             if ($releaseQuantity > 0) {
                 $variant->decrement('reserved_stock', $releaseQuantity);
             }
 
             $variant->increment('sold_stock', $item->quantity);
+
+            $after = $variant->fresh();
+
+            app(\App\Services\Admin\InventoryHistoryService::class)->record(
+                $before,
+                $after,
+                'order_completed',
+                (int) $item->quantity,
+                $order->id,
+                auth()->id(),
+                'Hoàn tất đơn hàng, chuyển giữ chỗ sang đã bán'
+            );
         }
 
         $order->update([

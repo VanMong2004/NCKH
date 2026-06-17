@@ -131,9 +131,20 @@ class OrderService
                     throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
                 }
 
-                $variant->increment(
-                    'reserved_stock',
-                    $item->quantity
+                $before = clone $variant;
+
+                $variant->increment('reserved_stock', $item->quantity);
+
+                $after = $variant->fresh();
+
+                app(\App\Services\Admin\InventoryHistoryService::class)->record(
+                    $before,
+                    $after,
+                    'checkout_reserve',
+                    (int) $item->quantity,
+                    $order->id,
+                    $user?->id,
+                    'Checkout giữ hàng'
                 );
 
                 $priceData = $this->promotionPriceService

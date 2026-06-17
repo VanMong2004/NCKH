@@ -677,14 +677,12 @@ class AdminProductService
                     throw new Exception('Tồn kho mới không được nhỏ hơn số lượng đã bán');
                 }
 
-                if (($variantData['stock'] ?? 0) < $variant->sold_stock) {
-                    throw new Exception('Tồn kho mới không được nhỏ hơn số lượng đã bán');
-                }
-
                 $this->ensureSkuAvailable(
                     $variantData['sku'] ?? null,
                     $variant->id
                 );
+
+                $before = clone $variant;
 
                 $variant->update([
                     'size' => array_key_exists('size', $variantData)
@@ -700,6 +698,20 @@ class AdminProductService
                     'price' => $variantData['price'] ?? $variant->price,
                     'stock' => $newStock,
                 ]);
+
+                $after = $variant->fresh();
+
+                if ((int) $before->stock !== (int) $after->stock) {
+                    app(\App\Services\Admin\InventoryHistoryService::class)->record(
+                        $before,
+                        $after,
+                        'admin_adjust',
+                        abs((int) $after->stock - (int) $before->stock),
+                        null,
+                        auth()->id(),
+                        'Admin cập nhật tồn kho sản phẩm'
+                    );
+                }
 
                 continue;
             }

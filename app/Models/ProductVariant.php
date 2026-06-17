@@ -39,4 +39,9 @@ class ProductVariant extends Model
     {
         return $this->hasMany(PromotionItem::class);
     }
+
+    public function inventoryHistories()
+    {
+        return $this->hasMany(InventoryHistory::class);
+    }
 }

@@ -33,9 +33,23 @@ class OrderReleaseService
                 continue;
             }
 
+            $before = clone $variant;
+
             $variant->decrement(
                 'reserved_stock',
                 $releaseQuantity
+            );
+
+            $after = $variant->fresh();
+
+            app(\App\Services\Admin\InventoryHistoryService::class)->record(
+                $before,
+                $after,
+                'order_release',
+                $releaseQuantity,
+                $order->id,
+                null,
+                'Trả hàng giữ chỗ do hủy/thanh toán thất bại'
             );
         }
 

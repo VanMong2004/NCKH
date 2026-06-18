@@ -53,22 +53,7 @@ class UserAnalyticsController extends Controller
         } catch (Throwable $e) {
             return $this->systemError($e, 'User order analytics error');
         }
-    }
-
-    public function campaigns(Request $request)
-    {
-        try {
-            return response()->json([
-                'success' => true,
-                'message' => 'Lấy thống kê campaign cá nhân thành công',
-                'data' => $this->service->campaigns($request->user()),
-            ]);
-        } catch (RuntimeException $e) {
-            return $this->businessError($e);
-        } catch (Throwable $e) {
-            return $this->systemError($e, 'User campaign analytics error');
-        }
-    }
+    }   
 
     public function spending(Request $request)
     {

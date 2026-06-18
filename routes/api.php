@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\AboutController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\GuestOrderController;
 use App\Http\Controllers\Api\PromotionController;
+use App\Http\Controllers\Api\ChatController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminSiteContentController;
 use App\Http\Controllers\Api\Admin\AdminUploadController;
+use App\Http\Controllers\Api\Admin\ChatKnowledgeController;
 
 // PUBLIC ROUTES
 Route::prefix('auth')->group(function () {
@@ -142,6 +144,13 @@ Route::get('/about', [AboutController::class, 'show']); // Lấy thông tin về
 // SYSTEM STATE (PUBLIC) - DÙNG CHO VIỆC CHECK TÌNH TRẠNG
 Route::get('/system/state',[SystemController::class,'state']);
 
+// AI CHATBOT
+Route::prefix('chat')->group(function () {
+    Route::post('/send', [ChatController::class, 'send']);
+    Route::get('/conversations', [ChatController::class, 'conversations']);
+    Route::get('/conversations/{id}', [ChatController::class, 'show']);
+});
+
 // AUTHENTICATED USER
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -231,9 +240,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // ADMIN
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
 
-    // =============================
     // ADMIN SITE CONTENT
-    // =============================
     Route::prefix('site-components')->group(function () {
         Route::get('/', [AdminSiteContentController::class, 'index']);
         Route::post('/', [AdminSiteContentController::class, 'store']);
@@ -338,5 +345,24 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::patch('/{id}/show', [AdminReviewController::class, 'showReview']);
         Route::delete('/{id}', [AdminReviewController::class, 'destroy']);
     });
+
+    // ADMIN AI KNOWLEDGE
+    Route::prefix('chat/knowledge')->group(function () {
+        Route::get('/', [ChatKnowledgeController::class, 'index']);
+        Route::post('/upload', [ChatKnowledgeController::class, 'upload']);
+        Route::get('/{id}', [ChatKnowledgeController::class, 'show']);
+        Route::patch('/{id}/toggle', [ChatKnowledgeController::class, 'toggle']);
+    });
+});
+
+Route::get('/dev/php-ssl-check', function () {
+    return response()->json([
+        'php_version' => PHP_VERSION,
+        'loaded_ini' => php_ini_loaded_file(),
+        'curl_cainfo' => ini_get('curl.cainfo'),
+        'openssl_cafile' => ini_get('openssl.cafile'),
+        'curl_cainfo_exists' => file_exists(ini_get('curl.cainfo')),
+        'openssl_cafile_exists' => file_exists(ini_get('openssl.cafile')),
+    ]);
 });
 

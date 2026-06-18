@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Api\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
+use App\Http\Controllers\Api\Admin\AdminSiteContentController;
 
 
 // PUBLIC ROUTES
@@ -230,6 +231,28 @@ Route::middleware('auth:sanctum')->group(function () {
 // ADMIN
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
 
+    // =============================
+    // ADMIN SITE CONTENT
+    // =============================
+    Route::prefix('site-components')->group(function () {
+        Route::get('/', [AdminSiteContentController::class, 'index']);
+        Route::post('/', [AdminSiteContentController::class, 'store']);
+
+        Route::get('/{id}', [AdminSiteContentController::class, 'show']);
+        Route::put('/{id}', [AdminSiteContentController::class, 'update']);
+        Route::delete('/{id}', [AdminSiteContentController::class, 'destroy']);
+        Route::patch('/{id}/toggle', [AdminSiteContentController::class, 'toggle']);
+
+        Route::post('/{id}/items', [AdminSiteContentController::class, 'storeItem']);
+        Route::patch('/{id}/items/reorder', [AdminSiteContentController::class, 'reorderItems']);
+    });
+
+    Route::prefix('site-component-items')->group(function () {
+        Route::put('/{itemId}', [AdminSiteContentController::class, 'updateItem']);
+        Route::delete('/{itemId}', [AdminSiteContentController::class, 'destroyItem']);
+        Route::patch('/{itemId}/toggle', [AdminSiteContentController::class, 'toggleItem']);
+    });
+
     // ADMIN USERS
     Route::prefix('users')->group(function () {
         Route::get('/', [AdminUserController::class, 'index']);
@@ -277,7 +300,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     });
 
-
     // ADMIN PROMOTIONS
     Route::prefix('promotions')->group(function () {
         Route::get('/', [AdminPromotionController::class, 'index']);
@@ -293,7 +315,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::delete('/items/{itemId}', [AdminPromotionController::class, 'destroyItem']);
     });
 
-
     // ADMIN ANALYTICS
     Route::prefix('analytics')->middleware('admin')->group(function () {
         Route::get('/overview', [AdminAnalyticsController::class, 'overview']);
@@ -302,7 +323,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);
         Route::get('/export/excel', [AdminAnalyticsController::class, 'exportExcel']);
     });
-
 
     // ADMIN REVIEWS
     Route::prefix('reviews')->group(function () {

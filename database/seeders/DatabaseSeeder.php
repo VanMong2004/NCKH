@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             PolicySeeder::class,
             AboutSeeder::class,
             SystemSettingSeeder::class,
+            SiteContentSeeder::class,
         ]);
     }
 }

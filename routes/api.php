@@ -38,7 +38,7 @@ use App\Http\Controllers\Api\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminSiteContentController;
-
+use App\Http\Controllers\Api\Admin\AdminUploadController;
 
 // PUBLIC ROUTES
 Route::prefix('auth')->group(function () {
@@ -251,6 +251,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::put('/{itemId}', [AdminSiteContentController::class, 'updateItem']);
         Route::delete('/{itemId}', [AdminSiteContentController::class, 'destroyItem']);
         Route::patch('/{itemId}/toggle', [AdminSiteContentController::class, 'toggleItem']);
+    });
+
+    // ADMIN UPLOADS
+    Route::prefix('uploads')->group(function () {
+        Route::post('/image', [AdminUploadController::class, 'image']);
     });
 
     // ADMIN USERS

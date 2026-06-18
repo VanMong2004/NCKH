@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\ProductService;
 use App\Services\PromotionPriceService;
+use Illuminate\Support\Str;
 
 class ProductChatToolService
 {
@@ -99,24 +100,83 @@ class ProductChatToolService
             ];
         }
 
+        $keywords = $this->extractProductSearchKeywords($query);
+
         $products = Product::query()
             ->with(['images', 'variants', 'category'])
             ->where('is_active', true)
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('slug', 'like', "%{$query}%")
-                    ->orWhere('description', 'like', "%{$query}%");
-            })
             ->latest()
-            ->limit($limit)
+            ->limit(300)
             ->get();
 
-        return [
-            'found' => $products->isNotEmpty(),
-            'products' => $products
-                ->map(fn ($product) => $this->formatProduct($product, $user))
+        $matchedProducts = $products
+            ->map(function ($product) use ($keywords, $query, $user) {
+                $score = $this->calculateProductSearchScore($product, $keywords, $query);
+
+                if ($score <= 0) {
+                    return null;
+                }
+
+                $formatted = $this->formatProduct($product, $user);
+
+                $formatted['search_score'] = $score;
+                $formatted['matched_keywords'] = $keywords;
+                $formatted['available_sizes'] = $product->variants
+                    ->pluck('size')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                $formatted['available_colors'] = $product->variants
+                    ->pluck('color')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                return $formatted;
+            })
+            ->filter()
+            ->sortByDesc('search_score')
+            ->take($limit)
+            ->values()
+            ->toArray();
+
+        if (empty($matchedProducts) && $this->isGenericProductSuggestionQuery($query)) {
+            $matchedProducts = $products
+                ->take($limit)
+                ->map(function ($product) use ($user) {
+                    $formatted = $this->formatProduct($product, $user);
+
+                    $formatted['search_score'] = 1;
+                    $formatted['matched_keywords'] = [];
+                    $formatted['available_sizes'] = $product->variants
+                        ->pluck('size')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+
+                    $formatted['available_colors'] = $product->variants
+                        ->pluck('color')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+
+                    return $formatted;
+                })
                 ->values()
-                ->toArray(),
+                ->toArray();
+        }
+
+        return [
+            'found' => !empty($matchedProducts),
+            'query' => $query,
+            'normalized_query' => $this->normalizeSearchText($query),
+            'keywords' => $keywords,
+            'products' => $matchedProducts,
         ];
     }
 
@@ -140,7 +200,20 @@ class ProductChatToolService
                 'product' => [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'slug' => $product->slug,
                 ],
+                'available_sizes' => $product->variants
+                    ->pluck('size')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray(),
+                'available_colors' => $product->variants
+                    ->pluck('color')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray(),
             ];
         }
 
@@ -178,7 +251,20 @@ class ProductChatToolService
                 'product' => [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'slug' => $product->slug,
                 ],
+                'available_sizes' => $product->variants
+                    ->pluck('size')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray(),
+                'available_colors' => $product->variants
+                    ->pluck('color')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray(),
             ];
         }
 
@@ -246,20 +332,65 @@ class ProductChatToolService
     {
         return $variants
             ->filter(function ($variant) use ($size, $color) {
-                $sizeMatched = true;
-                $colorMatched = true;
-
-                if ($size !== null && trim($size) !== '') {
-                    $sizeMatched = mb_strtolower((string) $variant->size) === mb_strtolower(trim($size));
-                }
-
-                if ($color !== null && trim($color) !== '') {
-                    $colorMatched = mb_strtolower((string) $variant->color) === mb_strtolower(trim($color));
-                }
-
-                return $sizeMatched && $colorMatched;
+                return $this->sizeMatches($variant->size, $size)
+                    && $this->colorMatches($variant->color, $color);
             })
             ->values();
+    }
+
+    private function sizeMatches(?string $variantSize, ?string $requestedSize): bool
+    {
+        $requestedSize = trim((string) $requestedSize);
+
+        if ($requestedSize === '') {
+            return true;
+        }
+
+        return $this->normalizeSearchText((string) $variantSize)
+            === $this->normalizeSearchText($requestedSize);
+    }
+
+    private function colorMatches(?string $variantColor, ?string $requestedColor): bool
+    {
+        $requestedColor = trim((string) $requestedColor);
+
+        if ($requestedColor === '') {
+            return true;
+        }
+
+        $variantColor = $this->normalizeSearchText((string) $variantColor);
+        $requestedColor = $this->normalizeSearchText($requestedColor);
+
+        $requestedColor = $this->removeColorWords($requestedColor);
+
+        if ($requestedColor === '') {
+            return true;
+        }
+
+        return str_contains($variantColor, $requestedColor);
+    }
+
+    private function normalizeSearchText(string $value): string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        $value = Str::ascii($value);
+        $value = mb_strtolower($value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value);
+    }
+
+    private function removeColorWords(string $value): string
+    {
+        $value = preg_replace('/\b(mau|color|tone|tong)\b/u', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value);
     }
 
     private function formatProduct(Product $product, $user = null): array
@@ -317,5 +448,182 @@ class ProductChatToolService
             'sold_stock' => (int) ($variant->sold_stock ?? 0),
             'in_stock' => $available > 0,
         ];
+    }
+
+    private function extractProductSearchKeywords(string $query): array
+    {
+        $normalized = $this->normalizeSearchText($query);
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        $normalized = $this->normalizeCommonVietnameseTypos($normalized);
+
+        $tokens = preg_split('/\s+/', $normalized) ?: [];
+
+        $tokens = array_map(
+            fn ($token) => trim($token),
+            $tokens
+        );
+
+        $tokens = array_filter($tokens, function ($token) {
+            if ($token === '') {
+                return false;
+            }
+
+            if (mb_strlen($token) <= 1) {
+                return false;
+            }
+
+            return !in_array($token, $this->productSearchStopWords(), true);
+        });
+
+        $keywords = [];
+
+        foreach ($tokens as $token) {
+            $keywords[] = $token;
+
+            foreach ($this->productSynonyms($token) as $synonym) {
+                $keywords[] = $synonym;
+            }
+        }
+
+        return array_values(array_unique($keywords));
+    }
+
+    private function calculateProductSearchScore(Product $product, array $keywords, string $originalQuery): int
+    {
+        $searchText = $this->normalizeSearchText(implode(' ', array_filter([
+            $product->name ?? '',
+            $product->slug ?? '',
+            $product->description ?? '',
+            $product->short_description ?? '',
+            data_get($product, 'category.name', ''),
+            data_get($product, 'category.title', ''),
+        ])));
+
+        if ($searchText === '') {
+            return 0;
+        }
+
+        $score = 0;
+
+        foreach ($keywords as $keyword) {
+            if ($keyword === '') {
+                continue;
+            }
+
+            if (str_contains($searchText, $keyword)) {
+                $score += 10;
+            }
+
+            if (str_contains($this->normalizeSearchText((string) $product->name), $keyword)) {
+                $score += 20;
+            }
+
+            if (str_contains($this->normalizeSearchText((string) data_get($product, 'category.name', '')), $keyword)) {
+                $score += 8;
+            }
+        }
+
+        $normalizedQuery = $this->normalizeSearchText($originalQuery);
+
+        if ($normalizedQuery !== '' && str_contains($searchText, $normalizedQuery)) {
+            $score += 30;
+        }
+
+        return $score;
+    }
+
+    private function normalizeCommonVietnameseTypos(string $value): string
+    {
+        $replaces = [
+            ' loa ' => ' loai ',
+            ' cac loa ' => ' cac loai ',
+            ' cac loai ' => ' ',
+            ' loai ' => ' ',
+        ];
+
+        $value = ' ' . $value . ' ';
+
+        foreach ($replaces as $from => $to) {
+            $value = str_replace($from, $to, $value);
+        }
+
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value);
+    }
+
+    private function productSearchStopWords(): array
+    {
+        return [
+            'shop',
+            'store',
+            'ctut',
+            'ban',
+            'co',
+            'khong',
+            'cac',
+            'nhung',
+            'loai',
+            'loa',
+            'nao',
+            'gi',
+            'hang',
+            'san',
+            'pham',
+            'minh',
+            'toi',
+            'em',
+            'anh',
+            'chi',
+            'can',
+            'muon',
+            'mua',
+            'tim',
+            'kiem',
+            'xem',
+            'cho',
+            'hoi',
+            'nhe',
+            'nha',
+        ];
+    }
+
+    private function productSynonyms(string $token): array
+    {
+        return match ($token) {
+            'ao' => ['thun', 'polo', 'khoac', 'dong phuc'],
+            'non' => ['mu', 'cap'],
+            'balo' => ['ba lo', 'tui'],
+            'binh' => ['ly', 'giu nhiet'],
+            'qua', 'tang' => ['luu niem', 'phu kien'],
+            default => [],
+        };
+    }
+
+    private function isGenericProductSuggestionQuery(string $query): bool
+    {
+        $normalized = $this->normalizeSearchText($query);
+
+        $genericPhrases = [
+            'goi y',
+            'tu van',
+            'san pham phu hop',
+            'qua tang',
+            'mua gi',
+            'co san pham nao',
+            'shop co gi',
+        ];
+
+        foreach ($genericPhrases as $phrase) {
+            if (str_contains($normalized, $phrase)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

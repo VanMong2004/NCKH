@@ -41,7 +41,7 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-        'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-5.4-mini'),
+        'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-5-mini'),
         'vector_store_id' => env('OPENAI_VECTOR_STORE_ID'),
         'chat_max_history' => (int) env('OPENAI_CHAT_MAX_HISTORY', 12),
     ],

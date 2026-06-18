@@ -41,7 +41,7 @@ class PaymentController extends Controller
 
             $data = $request->validate([
                 'order_id' => 'required|integer|min:1',
-                'method' => 'required|in:cod,bank_transfer,momo,vnpay,mock',
+                'method' => 'required|in:vnpay,mock',
             ], [
                 'order_id.required' => 'Đơn hàng không hợp lệ',
                 'order_id.integer' => 'Đơn hàng không hợp lệ',

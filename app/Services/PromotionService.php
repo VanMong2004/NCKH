@@ -17,7 +17,8 @@ class PromotionService
     {
         $query = Promotion::query()
             ->withCount('items')
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->where('status', 'active');
 
         if (!empty($filters['keyword'])) {
             $query->where(function ($q) use ($filters) {
@@ -30,11 +31,15 @@ class PromotionService
             match ($filters['status']) {
                 'upcoming' => $query->where('start_date', '>', now()),
                 'active' => $query
-                    ->where('status', 'active')
                     ->where('start_date', '<=', now())
                     ->where('end_date', '>=', now()),
                 'ended' => $query->where('end_date', '<', now()),
+                default => null,
             };
+        } else {
+            $query
+                ->where('start_date', '<=', now())
+                ->where('end_date', '>=', now());
         }
 
         match ($filters['sort'] ?? 'latest') {
@@ -75,6 +80,9 @@ class PromotionService
         ])
             ->where('slug', $slug)
             ->where('is_active', true)
+            ->where('status', 'active')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
             ->first();
 
         if (!$promotion) {

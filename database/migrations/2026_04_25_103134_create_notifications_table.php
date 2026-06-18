@@ -17,11 +17,9 @@ return new class extends Migration
             $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
-
-            // order | campaign | payment | system
+            
             $table->enum('type', [
                 'order',
-                'campaign',
                 'payment',
                 'system'
             ]);

@@ -54,6 +54,18 @@ class Promotion extends Model
 
     public function getComputedStatusAttribute(): string
     {
+        if (!$this->is_active) {
+            return 'inactive';
+        }
+
+        if ($this->status === 'draft') {
+            return 'draft';
+        }
+
+        if ($this->status === 'inactive') {
+            return 'inactive';
+        }
+
         if (now()->lt($this->start_date)) {
             return 'upcoming';
         }

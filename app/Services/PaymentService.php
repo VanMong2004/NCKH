@@ -52,6 +52,14 @@ class PaymentService
             }
 
             if ($order->expired_at && now()->greaterThan($order->expired_at)) {
+                app(\App\Services\Admin\OrderReleaseService::class)
+                    ->release($order);
+
+                $order->update([
+                    'status' => 'cancelled',
+                    'cancel_reason' => 'expired',
+                ]);
+
                 throw new RuntimeException('Đơn hàng đã hết hạn thanh toán', 400);
             }
 
@@ -94,11 +102,12 @@ class PaymentService
         }
     }
 
-    /**
-     * Handle callback
-     */
     public function handleCallback(array $data)
     {
+        if (isset($data['vnp_TxnRef'])) {
+            return $this->vnpayGateway->callback($data);
+        }
+
         $method = $data['method'] ?? 'mock';
 
         switch ($method) {

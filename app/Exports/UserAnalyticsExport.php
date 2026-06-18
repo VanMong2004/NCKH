@@ -13,7 +13,6 @@ class UserAnalyticsExport implements WithMultipleSheets
     public function sheets(): array
     {
         $orders = $this->toArray($this->data['orders'] ?? []);
-        $campaigns = $this->toArray($this->data['campaigns'] ?? []);
         $spending = $this->toArray($this->data['spending'] ?? []);
         $interests = $this->toArray($this->data['interests'] ?? []);
         $tracking = $this->toArray($this->data['tracking'] ?? []);
@@ -22,7 +21,7 @@ class UserAnalyticsExport implements WithMultipleSheets
             new AnalyticsTableSheet(
                 'Tổng quan',
                 ['Chỉ số', 'Giá trị'],
-                $this->overviewRows($orders, $campaigns, $spending, $interests, $tracking)
+                $this->overviewRows($orders, $spending, $interests, $tracking)
             ),
 
             new AnalyticsTableSheet(
@@ -41,18 +40,6 @@ class UserAnalyticsExport implements WithMultipleSheets
                 'Trạng thái đơn hàng',
                 ['STT', 'Trạng thái', 'Số lượng'],
                 $this->orderStatusRows($orders)
-            ),
-
-            new AnalyticsTableSheet(
-                'Campaign',
-                ['STT', 'Sản phẩm', 'SKU', 'Size', 'Màu', 'Số lượng', 'Đã duyệt', 'Đã thanh toán', 'Trạng thái'],
-                $this->campaignProductRows($campaigns)
-            ),
-
-            new AnalyticsTableSheet(
-                'Lịch sử campaign',
-                ['STT', 'Tên campaign', 'Trạng thái đăng ký', 'Ngày tham gia'],
-                $this->campaignHistoryRows($campaigns)
             ),
 
             new AnalyticsTableSheet(
@@ -87,14 +74,11 @@ class UserAnalyticsExport implements WithMultipleSheets
         ];
     }
 
-    private function overviewRows(array $orders, array $campaigns, array $spending, array $interests, array $tracking): array
+    private function overviewRows(array $orders, array $spending, array $interests, array $tracking): array
     {
         return [
             ['Tổng số đơn hàng', $orders['total_orders'] ?? 0],
             ['Tổng tiền đã chi', $this->money($spending['total_spent'] ?? 0)],
-            ['Số campaign đã tham gia', $campaigns['total_campaigns'] ?? 0],
-            ['Campaign đang diễn ra', $campaigns['active_campaigns'] ?? 0],
-            ['Campaign đã hoàn thành', $campaigns['completed_campaigns'] ?? 0],
             ['Sản phẩm đã mua', count($interests['most_purchased_products'] ?? [])],
             ['Sản phẩm đã xem gần đây', count($interests['most_viewed_products'] ?? [])],
             ['Sản phẩm đã đánh giá', count($interests['reviewed_products'] ?? [])],
@@ -134,35 +118,6 @@ class UserAnalyticsExport implements WithMultipleSheets
                 $index + 1,
                 $this->orderStatusLabel($item['status'] ?? ''),
                 $item['total'] ?? 0,
-            ];
-        });
-    }
-
-    private function campaignProductRows(array $campaigns): array
-    {
-        return $this->mapRows($campaigns['registered_products'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['product_name'] ?? '',
-                $item['sku'] ?? '',
-                $item['size'] ?? '',
-                $item['color'] ?? '',
-                $item['quantity'] ?? 0,
-                $item['approved_quantity'] ?? 0,
-                $item['paid_quantity'] ?? 0,
-                $item['status'] ?? '',
-            ];
-        });
-    }
-
-    private function campaignHistoryRows(array $campaigns): array
-    {
-        return $this->mapRows($campaigns['history'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['title'] ?? '',
-                $item['registration_status'] ?? '',
-                $item['created_at'] ?? '',
             ];
         });
     }
@@ -264,8 +219,7 @@ class UserAnalyticsExport implements WithMultipleSheets
             'pending' => 'Chờ xử lý',
             'paid' => 'Đã thanh toán',
             'processing' => 'Đang xử lý',
-            'ready_to_pickup' => 'Sẵn sàng nhận hàng',
-            'delivered' => 'Đã giao',
+            'shipped' => 'Đang giao hàng',
             'completed' => 'Hoàn thành',
             'cancelled' => 'Đã hủy',
             default => $status ?? '',

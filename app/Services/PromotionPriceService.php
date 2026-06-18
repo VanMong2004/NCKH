@@ -9,6 +9,8 @@ class PromotionPriceService
 {
     public function calculateForVariant(ProductVariant $variant, $user = null, int $quantity = 1): array
     {
+        $quantity = max(1, $quantity);
+
         $originalPrice = (float) $variant->price;
 
         $promotionItem = $this->findActivePromotionItem($variant, $quantity);
@@ -28,11 +30,10 @@ class PromotionPriceService
             ];
         }
 
-        $discountType = $promotionItem->discount_type
-            ?: $promotionItem->promotion->discount_type;
+        $discount = $this->resolveDiscount($promotionItem);
 
-        $discountValue = $promotionItem->discount_value
-            ?? $promotionItem->promotion->discount_value;
+        $discountType = $discount['type'];
+        $discountValue = $discount['value'];
 
         $discountAmount = $this->calculateDiscount(
             $originalPrice,
@@ -91,6 +92,9 @@ class PromotionPriceService
         // 2. Promotion áp dụng trực tiếp cho variant
         // 3. Nếu bằng nhau, promotion kết thúc sớm hơn
         // 4. Nếu vẫn bằng nhau, promotion mới hơn
+        
+        $quantity = max(1, $quantity);
+
         $items = PromotionItem::query()
             ->with('promotion')
             ->where('is_active', true)
@@ -124,11 +128,10 @@ class PromotionPriceService
 
         return $items
             ->sortBy(function ($item) use ($variant, $originalPrice) {
-                $discountType = $item->discount_type
-                    ?: $item->promotion->discount_type;
+                $discount = $this->resolveDiscount($item);
 
-                $discountValue = $item->discount_value
-                    ?? $item->promotion->discount_value;
+                $discountType = $discount['type'];
+                $discountValue = $discount['value'];
 
                 $discountAmount = $this->calculateDiscount(
                     $originalPrice,
@@ -155,13 +158,36 @@ class PromotionPriceService
             ->first();
     }
 
+    private function resolveDiscount(PromotionItem $promotionItem): array
+    {
+        if (
+            !empty($promotionItem->discount_type)
+            && $promotionItem->discount_value !== null
+        ) {
+            return [
+                'type' => $promotionItem->discount_type,
+                'value' => (float) $promotionItem->discount_value,
+            ];
+        }
+
+        return [
+            'type' => $promotionItem->promotion->discount_type,
+            'value' => (float) $promotionItem->promotion->discount_value,
+        ];
+    }
+
     private function calculateDiscount(
         float $price,
         string $discountType,
         float $discountValue
     ): float {
+        $price = max(0, $price);
+        $discountValue = max(0, $discountValue);
+
         if ($discountType === 'percent') {
-            return round($price * ($discountValue / 100), 2);
+            $amount = round($price * ($discountValue / 100), 2);
+
+            return min($amount, $price);
         }
 
         return min($discountValue, $price);

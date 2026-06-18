@@ -36,20 +36,6 @@ class NotificationSeeder extends Seeder
             ],
             [
                 'user_id' => $user->id,
-                'type' => 'campaign',
-                'title' => 'Đăng ký campaign được duyệt',
-                'message' => 'Đăng ký đồng phục K2026 đã được duyệt.',
-                'action_url' => '/profile/campaigns/1',
-                'meta' => json_encode([
-                    'campaign_id' => 1,
-                ]),
-                'is_read' => false,
-                'read_at' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'user_id' => $user->id,
                 'type' => 'payment',
                 'title' => 'Thanh toán thành công',
                 'message' => 'Thanh toán PAY-000006 thành công.',

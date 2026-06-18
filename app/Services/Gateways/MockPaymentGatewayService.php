@@ -44,6 +44,32 @@ class MockPaymentGatewayService
 
             $order = Order::lockForUpdate()->findOrFail($payment->order_id);
 
+            if (
+                $order->status === 'pending'
+                && $order->expired_at
+                && now()->greaterThan($order->expired_at)
+            ) {
+                app(OrderReleaseService::class)
+                    ->release($order->load('items.productVariant'));
+
+                $payment->update([
+                    'status' => 'failed',
+                    'response_data' => $data,
+                ]);
+
+                $order->update([
+                    'status' => 'cancelled',
+                    'cancel_reason' => 'payment_timeout',
+                ]);
+
+                return [
+                    'message' => 'Đơn hàng đã hết hạn thanh toán',
+                    'payment_id' => $payment->id,
+                    'order_id' => $order->id,
+                    'status' => 'failed',
+                ];
+            }
+
             if ($order->status === 'cancelled') {
                 $payment->update([
                     'status' => 'failed',

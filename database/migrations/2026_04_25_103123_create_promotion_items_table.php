@@ -27,6 +27,8 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
+            $table->unsignedBigInteger('variant_unique_key')->default(0);
+
             $table->enum('discount_type', [
                 'percent',
                 'fixed',
@@ -52,8 +54,11 @@ return new class extends Migration
             $table->unique([
                 'promotion_id',
                 'product_id',
-                'product_variant_id',
+                'variant_unique_key',
             ], 'promotion_product_variant_unique');
+
+            $table->index(['promotion_id', 'is_active']);
+            $table->index(['product_id', 'product_variant_id']);
         });
     }
 

@@ -65,12 +65,12 @@ class AdminPromotionService
                     $this->validateVariantBelongsToProduct($data);
                     $this->validateLimitQuantity($data);
 
+                    $productVariantId = $data['product_variant_id'] ?? null;
+                    $variantUniqueKey = $productVariantId ? (int) $productVariantId : 0;
+
                     $exists = PromotionItem::where('promotion_id', $promotion->id)
                         ->where('product_id', $data['product_id'])
-                        ->where(
-                            'product_variant_id',
-                            $data['product_variant_id'] ?? null
-                        )
+                        ->where('variant_unique_key', $variantUniqueKey)
                         ->exists();
 
                     if ($exists) {
@@ -87,11 +87,13 @@ class AdminPromotionService
                     $item = PromotionItem::create([
                         'promotion_id' => $promotion->id,
                         'product_id' => $data['product_id'],
-                        'product_variant_id' => $data['product_variant_id'] ?? null,
+                        'product_variant_id' => $productVariantId,
+                        'variant_unique_key' => $variantUniqueKey,
                         'discount_type' => $data['discount_type'] ?? null,
                         'discount_value' => $data['discount_value'] ?? null,
                         'limit_quantity' => $data['limit_quantity'] ?? null,
                         'sold_quantity' => 0,
+                        'reserved_quantity' => 0,
                         'is_active' => $data['is_active'] ?? true,
                     ]);
 
@@ -265,9 +267,12 @@ class AdminPromotionService
             $this->validateVariantBelongsToProduct($data);
             $this->validateLimitQuantity($data);
 
+            $$productVariantId = $data['product_variant_id'] ?? null;
+            $variantUniqueKey = $productVariantId ? (int) $productVariantId : 0;
+
             $exists = PromotionItem::where('promotion_id', $promotion->id)
                 ->where('product_id', $data['product_id'])
-                ->where('product_variant_id', $data['product_variant_id'] ?? null)
+                ->where('variant_unique_key', $variantUniqueKey)
                 ->exists();
 
             if ($exists) {
@@ -277,11 +282,13 @@ class AdminPromotionService
             $item = PromotionItem::create([
                 'promotion_id' => $promotion->id,
                 'product_id' => $data['product_id'],
-                'product_variant_id' => $data['product_variant_id'] ?? null,
+                'product_variant_id' => $productVariantId,
+                'variant_unique_key' => $variantUniqueKey,
                 'discount_type' => $data['discount_type'] ?? null,
                 'discount_value' => $data['discount_value'] ?? null,
                 'limit_quantity' => $data['limit_quantity'] ?? null,
                 'sold_quantity' => 0,
+                'reserved_quantity' => 0,
                 'is_active' => $data['is_active'] ?? true,
             ]);
 
@@ -305,28 +312,61 @@ class AdminPromotionService
                 throw new RuntimeException('Sản phẩm khuyến mãi không tồn tại', 404);
             }
 
+            $finalProductId = $data['product_id'] ?? $item->product_id;
+
+            $finalVariantId = array_key_exists('product_variant_id', $data)
+                ? $data['product_variant_id']
+                : $item->product_variant_id;
+
+            $finalVariantUniqueKey = $finalVariantId ? (int) $finalVariantId : 0;
+
+            $isChangingProductOrVariant =
+                (int) $finalProductId !== (int) $item->product_id
+                || (int) ($finalVariantId ?? 0) !== (int) ($item->product_variant_id ?? 0);
+
+            if (
+                $isChangingProductOrVariant
+                && ($item->sold_quantity > 0 || $item->reserved_quantity > 0)
+            ) {
+                throw new RuntimeException(
+                    'Sản phẩm khuyến mãi đã phát sinh bán hàng hoặc đang giữ chỗ nên không được đổi sản phẩm/biến thể',
+                    400
+                );
+            }
+
             if (!empty($data['product_id']) || array_key_exists('product_variant_id', $data)) {
                 $this->validateVariantBelongsToProduct([
-                    'product_id' => $data['product_id'] ?? $item->product_id,
-                    'product_variant_id' => $data['product_variant_id'] ?? $item->product_variant_id,
+                    'product_id' => $finalProductId,
+                    'product_variant_id' => $finalVariantId,
                 ]);
             }
 
-            $this->validateLimitQuantity([
-                'product_variant_id' =>
-                    $data['product_variant_id']
-                    ?? $item->product_variant_id,
+            $exists = PromotionItem::where('promotion_id', $item->promotion_id)
+                ->where('product_id', $finalProductId)
+                ->where('variant_unique_key', $finalVariantUniqueKey)
+                ->where('id', '!=', $item->id)
+                ->exists();
 
-                'limit_quantity' =>
-                    $data['limit_quantity']
-                    ?? $item->limit_quantity,
+            if ($exists) {
+                throw new RuntimeException(
+                    'Sản phẩm/biến thể này đã tồn tại trong chương trình khuyến mãi',
+                    409
+                );
+            }
+
+            $finalLimitQuantity = array_key_exists('limit_quantity', $data)
+                ? $data['limit_quantity']
+                : $item->limit_quantity;
+
+            $this->validateLimitQuantity([
+                'product_variant_id' => $finalVariantId,
+                'limit_quantity' => $finalLimitQuantity,
             ], $item->id);
 
             if (
-                isset($data['limit_quantity'])
-                && $data['limit_quantity'] !== null
-                && $data['limit_quantity'] < (
-                    $item->sold_quantity + $item->reserved_quantity
+                $finalLimitQuantity !== null
+                && (int) $finalLimitQuantity < (
+                    (int) $item->sold_quantity + (int) $item->reserved_quantity
                 )
             ) {
                 throw new RuntimeException(
@@ -336,20 +376,23 @@ class AdminPromotionService
             }
 
             $item->update([
-                'product_id' => $data['product_id'] ?? $item->product_id,
-                'product_variant_id' => array_key_exists('product_variant_id', $data)
-                    ? $data['product_variant_id']
-                    : $item->product_variant_id,
+                'product_id' => $finalProductId,
+                'product_variant_id' => $finalVariantId,
+                'variant_unique_key' => $finalVariantUniqueKey,
+
                 'discount_type' => array_key_exists('discount_type', $data)
                     ? $data['discount_type']
                     : $item->discount_type,
+
                 'discount_value' => array_key_exists('discount_value', $data)
                     ? $data['discount_value']
                     : $item->discount_value,
-                'limit_quantity' => array_key_exists('limit_quantity', $data)
-                    ? $data['limit_quantity']
-                    : $item->limit_quantity,
-                'is_active' => $data['is_active'] ?? $item->is_active,
+
+                'limit_quantity' => $finalLimitQuantity,
+
+                'is_active' => array_key_exists('is_active', $data)
+                    ? $data['is_active']
+                    : $item->is_active,
             ]);
 
             return [

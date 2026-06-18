@@ -444,6 +444,9 @@ class ProductService
 
                             'sold_stock'
                                 => $variant->sold_stock,
+
+                            'available_stock'
+                                => max(0, $variant->stock - $variant->reserved_stock),
                         ];
                     }),
 
@@ -683,7 +686,7 @@ class ProductService
 
             'data' => $items
                 ->filter(fn ($item) => $item->product)
-                ->map(function ($item, $user) {
+                ->map(function ($item) use ($user) {
                     return $this->formatProduct(
                         $item->product,
                         $user

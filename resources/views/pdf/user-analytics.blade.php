@@ -25,22 +25,6 @@
         </tr>
     </table>
 
-    <h2>Campaign</h2>
-    <table>
-        <tr>
-            <th>Số campaign đã tham gia</th>
-            <td>{{ data_get($campaigns, 'total_campaigns', 0) }}</td>
-        </tr>
-        <tr>
-            <th>Campaign đang diễn ra</th>
-            <td>{{ data_get($campaigns, 'active_campaigns', 0) }}</td>
-        </tr>
-        <tr>
-            <th>Campaign đã hoàn thành</th>
-            <td>{{ data_get($campaigns, 'completed_campaigns', 0) }}</td>
-        </tr>
-    </table>
-
     <h2>Đơn hàng gần đây</h2>
     <table>
         <thead>

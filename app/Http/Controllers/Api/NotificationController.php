@@ -162,16 +162,59 @@ class NotificationController extends Controller
     }
 
     public function unreadCount(Request $request)
-    {
-        return response()->json([
-            'success' => true,
-            'message' => 'Lấy số thông báo chưa đọc thành công',
-            'data' => [
-                'unread_count' => $this->notificationService->unreadCount(
-                    $request->user()
-                ),
-            ],
-        ]);
+    {        
+        try {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy số thông báo chưa đọc thành công',
+                'data' => [
+                    'unread_count' => $this->notificationService->unreadCount(
+                        $request->user()
+                    ),
+                ],
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lấy số thông báo chưa đọc không thành công',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 401, 404])
+                ? $e->getCode()
+                : 400;
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
+
+        } catch (QueryException $e) {
+            Log::error('Get notification detail database error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+
+        } catch (Throwable $e) {
+            Log::error('Get notification detail system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
     }
 
     public function markRead(Request $request, $id)
@@ -290,7 +333,12 @@ class NotificationController extends Controller
     public function create(Request $request)
     {
         try {
-            if ($request->header('X-N8N-SECRET') !== env('N8N_WEBHOOK_SECRET')) {
+            if (
+                !hash_equals(
+                    (string) config('services.n8n.secret'),
+                    (string) $request->header('X-N8N-SECRET')
+                )
+            ) {
                 return response()->json([
                     'message' => 'Unauthorized webhook',
                 ], 401);

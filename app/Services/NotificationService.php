@@ -59,6 +59,10 @@ class NotificationService
 
     public function unreadCount($user)
     {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
         return Notification::where('user_id', $user->id)
             ->where('is_read', false)
             ->count();

@@ -109,8 +109,6 @@ class OrderQueryService
 
             'order_code' => $order->order_code,
 
-            'type' => $order->type,
-
             'status' => $order->status,
 
             'qr_code' => $order->order_code,
@@ -195,8 +193,7 @@ class OrderQueryService
                     'status' => in_array($order->status, [
                         'paid',
                         'processing',
-                        'ready_to_pickup',
-                        'delivered',
+                        'shipped',
                         'completed',
                     ]),
                     'time' => null,
@@ -233,16 +230,7 @@ class OrderQueryService
 
             app(\App\Services\Admin\OrderReleaseService::class)
                 ->release($order);
-
-            foreach ($order->items as $item) {
-                if ($item->productVariant) {
-                    $item->productVariant->decrement(
-                        'reserved_stock',
-                        $item->quantity
-                    );
-                }
-            }
-
+            
             $order->update([
                 'status' => 'cancelled',
                 'cancel_reason' => 'user_cancelled',
@@ -250,32 +238,5 @@ class OrderQueryService
 
             return $order->fresh();
         });
-    }
-
-    /**
-     * Confirm order
-     */
-    public function confirm($user, $id)
-    {
-        if (!$user) {
-            throw new RuntimeException('Vui lòng đăng nhập', 401);
-        }
-
-        $order = Order::where('user_id', $user->id)
-            ->find($id);
-
-        if (!$order) {
-            throw new RuntimeException('Đơn hàng không tồn tại', 404);
-        }
-
-        if ($order->status !== 'shipped') {
-            throw new RuntimeException('Chỉ được xác nhận khi đơn hàng đã giao', 400);
-        }
-
-        $order->update([
-            'status' => 'completed',
-        ]);
-
-        return $order->fresh();
-    }
+    }   
 }

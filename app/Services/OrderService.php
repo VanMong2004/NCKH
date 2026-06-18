@@ -100,7 +100,6 @@ class OrderService
                 'guest_email' => $shipping['guest_email'],
                 'guest_phone' => $shipping['guest_phone'],
 
-                'type' => 'normal',
                 'order_code' => 'TEMP-' . uniqid(),
                 'status' => 'pending',
                 'expired_at' => now()->addMinutes(

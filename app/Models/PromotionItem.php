@@ -12,6 +12,7 @@ class PromotionItem extends Model
     protected $fillable = [
         'promotion_id',
         'product_id',
+        'variant_unique_key',
         'product_variant_id',
         'discount_type',
         'discount_value',
@@ -27,6 +28,7 @@ class PromotionItem extends Model
         'sold_quantity' => 'integer',
         'reserved_quantity' => 'integer',
         'is_active' => 'boolean',
+        'variant_unique_key' => 'integer',
     ];
 
     public function promotion()
@@ -55,7 +57,7 @@ class PromotionItem extends Model
             && $this->sold_quantity >= $this->limit_quantity;
     }
 
-    // Số lượng còn lại có thể bán (chưa bao gồm reserved)
+    // Số lượng còn lại có thể reserve, đã trừ sold và reserved
     public function getRemainingQuantityAttribute()
     {
         if (is_null($this->limit_quantity)) {
@@ -68,5 +70,15 @@ class PromotionItem extends Model
             - $this->sold_quantity
             - $this->reserved_quantity
         );
+    }
+
+    public function canReserve(int $quantity): bool
+    {
+        if (!$this->hasLimit()) {
+            return true;
+        }
+
+        return ($this->sold_quantity + $this->reserved_quantity + $quantity)
+            <= $this->limit_quantity;
     }
 }

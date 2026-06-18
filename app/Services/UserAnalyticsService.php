@@ -5,8 +5,6 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Review;
-use App\Models\UserCampaign;
-use App\Models\UserCampaignItem;
 use App\Models\RecentlyViewedProduct;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -19,7 +17,6 @@ class UserAnalyticsService
 
         return [
             'orders' => $this->orders($user),
-            'campaigns' => $this->campaigns($user),
             'spending' => $this->spending($user),
             'interests' => $this->interests($user),
             'tracking' => $this->orderTracking($user),
@@ -70,76 +67,7 @@ class UserAnalyticsService
                     'total' => (int) $item->total,
                 ]),
         ];
-    }
-
-    public function campaigns($user)
-    {
-        $this->ensureUser($user);
-
-        $query = UserCampaign::query()
-            ->with([
-                'campaign',
-                'items.campaignItem.productVariant.product',
-            ])
-            ->where('user_id', $user->id);
-
-        return [
-            'total_campaigns' => (clone $query)->count(),
-
-            'active_campaigns' => (clone $query)
-                ->whereHas('campaign', function ($q) {
-                    $q->where('start_date', '<=', now())
-                        ->where('end_date', '>=', now());
-                })
-                ->count(),
-
-            'completed_campaigns' => (clone $query)
-                ->whereIn('status', ['paid', 'completed'])
-                ->count(),
-
-            'registered_products' => UserCampaignItem::query()
-                ->with('campaignItem.productVariant.product')
-                ->whereHas('userCampaign', function ($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                })
-                ->latest()
-                ->limit(10)
-                ->get()
-                ->map(function ($item) {
-                    $campaignItem = $item->campaignItem;
-                    $variant = $campaignItem?->productVariant;
-                    $product = $variant?->product;
-
-                    return [
-                        'user_campaign_item_id' => $item->id,
-                        'product_id' => $product?->id,
-                        'product_name' => $product?->name,
-                        'sku' => $variant?->sku,
-                        'size' => $variant?->size,
-                        'color' => $variant?->color,
-                        'quantity' => (int) $item->quantity,
-                        'approved_quantity' => (int) $item->approved_quantity,
-                        'paid_quantity' => (int) $item->paid_quantity,
-                        'status' => $item->status,
-                    ];
-                }),
-
-            'history' => (clone $query)
-                ->latest()
-                ->limit(10)
-                ->get()
-                ->map(function ($userCampaign) {
-                    return [
-                        'id' => $userCampaign->id,
-                        'campaign_id' => $userCampaign->campaign?->id,
-                        'title' => $userCampaign->campaign?->title,
-                        'slug' => $userCampaign->campaign?->slug,
-                        'registration_status' => $userCampaign->status,
-                        'created_at' => optional($userCampaign->created_at)->format('d/m/Y H:i'),
-                    ];
-                }),
-        ];
-    }
+    }   
 
     public function spending($user, int $months = 12)
     {
@@ -180,7 +108,7 @@ class UserAnalyticsService
                 ->selectRaw('
                     categories.id as category_id,
                     categories.name as category_name,
-                    SUM(order_items.price * order_items.quantity) as total
+                    SUM(order_items.final_price * order_items.quantity) as total
                 ')
                 ->groupBy('categories.id', 'categories.name')
                 ->orderByDesc('total')
@@ -274,8 +202,7 @@ class UserAnalyticsService
                     'pending',
                     'paid',
                     'processing',
-                    'ready_to_pickup',
-                    'delivered',
+                    'shipped',
                 ])
                 ->latest('updated_at')
                 ->limit(10)
@@ -295,7 +222,6 @@ class UserAnalyticsService
         return [
             'overview' => $this->overview($user),
             'orders' => $this->orders($user, 12),
-            'campaigns' => $this->campaigns($user),
             'spending' => $this->spending($user, 12),
             'interests' => $this->interests($user),
             'tracking' => $this->orderTracking($user),
@@ -307,8 +233,7 @@ class UserAnalyticsService
         return [
             'paid',
             'processing',
-            'ready_to_pickup',
-            'delivered',
+            'shipped',
             'completed',
         ];
     }
@@ -331,8 +256,7 @@ class UserAnalyticsService
             'pending' => 'Đã tạo đơn',
             'paid' => 'Đã thanh toán',
             'processing' => 'Đang xử lý',
-            'ready_to_pickup' => 'Sẵn sàng nhận hàng',
-            'delivered' => 'Đã giao',
+            'shipped' => 'Đang giao hàng',
             'completed' => 'Hoàn thành',
         ];
 

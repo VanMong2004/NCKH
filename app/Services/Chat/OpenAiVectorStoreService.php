@@ -152,6 +152,8 @@ class OpenAiVectorStoreService
             'completed' => 'completed',
             'failed' => 'failed',
             'cancelled' => 'cancelled',
+            'in_progress' => 'processing',
+            'processing' => 'processing',
             default => 'processing',
         };
     }
@@ -179,5 +181,122 @@ class OpenAiVectorStoreService
             'created_at' => optional($file->created_at)->format('d/m/Y H:i'),
             'updated_at' => optional($file->updated_at)->format('d/m/Y H:i'),
         ];
+    }
+
+    public function syncKnowledgeFileStatus(int $id): array
+    {
+        $file = ChatKnowledgeFile::query()->find($id);
+
+        if (!$file) {
+            throw new RuntimeException('Không tìm thấy tài liệu tri thức', 404);
+        }
+
+        if (!$file->vector_store_id || !$file->openai_file_id) {
+            throw new RuntimeException('Tài liệu chưa có thông tin OpenAI File', 400);
+        }
+
+        $response = $this->retrieveOpenAiVectorStoreFile(
+            $file->vector_store_id,
+            $file->openai_file_id
+        );
+
+        $file->update([
+            'status' => $this->normalizeOpenAiStatus($response['status'] ?? 'processing'),
+            'error_message' => null,
+            'metadata' => array_merge($file->metadata ?? [], [
+                'last_status_check' => now()->toDateTimeString(),
+                'vector_store_file_status' => $response,
+            ]),
+        ]);
+
+        return $this->formatKnowledgeFile($file->fresh());
+    }
+
+    public function syncProcessingKnowledgeFiles(?int $limit = null): array
+    {
+        $limit = $limit ?: (int) config('services.n8n.ai_sync_limit', 20);
+        $limit = max(1, min($limit, 100));
+
+        $files = ChatKnowledgeFile::query()
+            ->whereIn('status', ['pending', 'processing'])
+            ->whereNotNull('openai_file_id')
+            ->whereNotNull('vector_store_id')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get();
+
+        $result = [
+            'total_candidates' => $files->count(),
+            'synced_count' => 0,
+            'completed_count' => 0,
+            'processing_count' => 0,
+            'failed_count' => 0,
+            'cancelled_count' => 0,
+            'error_count' => 0,
+            'items' => [],
+        ];
+
+        foreach ($files as $file) {
+            try {
+                $synced = $this->syncKnowledgeFileStatus($file->id);
+
+                $result['synced_count']++;
+
+                if (($synced['status'] ?? null) === 'completed') {
+                    $result['completed_count']++;
+                } elseif (($synced['status'] ?? null) === 'failed') {
+                    $result['failed_count']++;
+                } elseif (($synced['status'] ?? null) === 'cancelled') {
+                    $result['cancelled_count']++;
+                } else {
+                    $result['processing_count']++;
+                }
+
+                $result['items'][] = [
+                    'id' => $synced['id'],
+                    'title' => $synced['title'],
+                    'openai_file_id' => $synced['openai_file_id'],
+                    'status' => $synced['status'],
+                    'error_message' => $synced['error_message'],
+                ];
+            } catch (Throwable $e) {
+                $result['error_count']++;
+
+                $result['items'][] = [
+                    'id' => $file->id,
+                    'title' => $file->title,
+                    'openai_file_id' => $file->openai_file_id,
+                    'status' => $file->status,
+                    'error_message' => $e->getMessage(),
+                ];
+
+                $file->update([
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $result;
+    }
+
+    private function retrieveOpenAiVectorStoreFile(string $vectorStoreId, string $openaiFileId): array
+    {
+        $apiKey = config('services.openai.api_key');
+        $baseUrl = rtrim(config('services.openai.base_url'), '/');
+
+        if (!$apiKey) {
+            throw new RuntimeException('Chưa cấu hình OPENAI_API_KEY', 500);
+        }
+
+        try {
+            return Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(60)
+                ->get($baseUrl . "/vector_stores/{$vectorStoreId}/files/{$openaiFileId}")
+                ->throw()
+                ->json();
+        } catch (Throwable $e) {
+            throw new RuntimeException('Không thể kiểm tra trạng thái file trên OpenAI: ' . $e->getMessage(), 500);
+        }
     }
 }

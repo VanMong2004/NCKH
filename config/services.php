@@ -34,6 +34,8 @@ return [
     'n8n' => [
         'webhook' => env('N8N_WEBHOOK_URL'),
         'secret' => env('N8N_WEBHOOK_SECRET'),
+        'ai_sync_secret' => env('N8N_AI_SYNC_SECRET'),
+        'ai_sync_limit' => (int) env('N8N_AI_SYNC_LIMIT', 20),
     ],
 
     'openai' => [

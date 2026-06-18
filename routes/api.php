@@ -42,6 +42,13 @@ use App\Http\Controllers\Api\Admin\AdminSiteContentController;
 use App\Http\Controllers\Api\Admin\AdminUploadController;
 use App\Http\Controllers\Api\Admin\ChatKnowledgeController;
 
+use App\Http\Controllers\Api\N8n\N8nChatKnowledgeController;
+
+
+
+
+
+
 // PUBLIC ROUTES
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']); // Đăng nhập
@@ -237,6 +244,13 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+// =============================
+// N8N AI KNOWLEDGE SYNC
+// =============================
+Route::prefix('n8n/chat/knowledge')->group(function () {
+    Route::post('/sync-status', [N8nChatKnowledgeController::class, 'syncStatus']);
+});
+
 // ADMIN
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
 
@@ -355,14 +369,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     });
 });
 
-Route::get('/dev/php-ssl-check', function () {
-    return response()->json([
-        'php_version' => PHP_VERSION,
-        'loaded_ini' => php_ini_loaded_file(),
-        'curl_cainfo' => ini_get('curl.cainfo'),
-        'openssl_cafile' => ini_get('openssl.cafile'),
-        'curl_cainfo_exists' => file_exists(ini_get('curl.cainfo')),
-        'openssl_cafile_exists' => file_exists(ini_get('openssl.cafile')),
-    ]);
-});
+// Route::get('/dev/php-ssl-check', function () {
+//     return response()->json([
+//         'php_version' => PHP_VERSION,
+//         'loaded_ini' => php_ini_loaded_file(),
+//         'curl_cainfo' => ini_get('curl.cainfo'),
+//         'openssl_cafile' => ini_get('openssl.cafile'),
+//         'curl_cainfo_exists' => file_exists(ini_get('curl.cainfo')),
+//         'openssl_cafile_exists' => file_exists(ini_get('openssl.cafile')),
+//     ]);
+// });
 

@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\File;
 
 // CONTROLLERS
-// use App\Http\Controllers\Api\RevenueController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
@@ -19,7 +18,6 @@ use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
-// use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserAnalyticsController;
 use App\Http\Controllers\Api\FaqController;
@@ -168,7 +166,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/refresh-token', [AuthController::class, 'refresh']); // Làm mới token (nếu có refresh token, hoặc chỉ đơn giản là tạo token mới)
     Route::post('/logout', [AuthController::class, 'logout']); // Đăng xuất
 
-
     // ORDERS (NORMAL)
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'myOrders']); // Lấy danh sách đơn hàng của người dùng
@@ -176,7 +173,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']); // Hủy đơn hàng (nếu chưa thanh toán)
         Route::get('/{id}/payments', [PaymentController::class, 'list']); // Lấy danh sách payment của đơn hàng (có hỗ trợ filter theo status)
     });
-
 
     // PAYMENTS (NORMAL) - DÙNG CHO VIỆC TẠO PAYMENT CHO ĐƠN HÀNG, KHÔNG DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN
     Route::prefix('payments')->group(function () {
@@ -196,7 +192,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // RECENTLY VIEWED PRODUCTS
     Route::get('/recently-viewed', [ProductController::class, 'recentlyViewed']); // Lấy danh sách sản phẩm đã xem gần đây (dựa trên cookie hoặc database, có hỗ trợ pagination)
 
-
     // USER ADDRESSES
     Route::prefix('addresses')->group(function () {
         Route::get('/', [AddressController::class, 'index']);// Lấy danh sách địa chỉ của người dùng
@@ -206,7 +201,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/default', [AddressController::class,'setDefault']);// Đặt địa chỉ làm mặc định
     });
 
-
     // NOTIFICATIONS
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
@@ -215,14 +209,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/read-all', [NotificationController::class, 'markAllRead']);
         Route::get('/{id}', [NotificationController::class, 'show']);
     });
-
-
-    // AI ASSISTANT
-    // Route::prefix('ai')->group(function () {
-    //     Route::post('/chat',[AIController::class,'chat']);
-    //     Route::get('/history',[AIController::class,'history']);
-    // });
-
 
     // SEARCH
     Route::prefix('search')->group(function(){

@@ -3,6 +3,7 @@
 namespace App\Services\Social;
 
 use App\Models\Product;
+use App\Models\Promotion;
 use App\Models\SocialAutomationLog;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -220,6 +221,101 @@ class N8nSocialAutomationService
             ?? $image->image
             ?? null;
 
+        if (!$path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return url($path);
+    }
+
+    public function createPromotionCreatedLog(Promotion $promotion): SocialAutomationLog
+    {
+        $payload = $this->buildPromotionCreatedPayload($promotion);
+
+        return SocialAutomationLog::create([
+            'trigger_type' => 'promotion_created',
+            'entity_type' => 'promotion',
+            'entity_id' => $promotion->id,
+            'platform' => 'facebook',
+            'status' => 'pending',
+            'payload' => $payload,
+        ]);
+    }
+
+    private function buildPromotionCreatedPayload(Promotion $promotion): array
+    {
+        $promotion->loadMissing([
+            'items.product',
+            'items.productVariant',
+        ]);
+
+        $products = $promotion->items
+            ->take(8)
+            ->map(function ($item) {
+                $product = $item->product;
+                $variant = $item->productVariant;
+
+                if (!$product) {
+                    return null;
+                }
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'variant' => $variant ? [
+                        'id' => $variant->id,
+                        'sku' => $variant->sku,
+                        'size' => $variant->size,
+                        'color' => $variant->color,
+                        'price' => $variant->price ? (float) $variant->price : null,
+                    ] : null,
+                    'discount_type' => $item->discount_type ?? $promotion->discount_type,
+                    'discount_value' => $item->discount_value ?? $promotion->discount_value,
+                    'limit_quantity' => $item->limit_quantity,
+                    'sold_quantity' => $item->sold_quantity,
+                    'reserved_quantity' => $item->reserved_quantity,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+
+        return [
+            'promotion' => [
+                'id' => $promotion->id,
+                'title' => $promotion->title,
+                'slug' => $promotion->slug,
+                'description' => $promotion->description,
+                'banner' => $this->normalizePublicUrl($promotion->banner ?? null),
+                'thumbnail' => $this->normalizePublicUrl($promotion->thumbnail ?? null),
+                'discount_type' => $promotion->discount_type,
+                'discount_value' => $promotion->discount_value ? (float) $promotion->discount_value : null,
+                'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
+                'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
+                'status' => $promotion->status,
+                'is_active' => (bool) $promotion->is_active,
+                'url' => url('/promotions/' . $promotion->slug),
+                'products' => $products,
+                'products_count' => $promotion->items->count(),
+            ],
+            'caption_template' => [
+                'title' => 'Khuyến mãi mới tại CTUT Store',
+                'hashtags' => [
+                    '#CTUTStore',
+                    '#CTUT',
+                    '#KhuyenMai',
+                ],
+            ],
+        ];
+    }
+
+    private function normalizePublicUrl(?string $path): ?string
+    {
         if (!$path) {
             return null;
         }

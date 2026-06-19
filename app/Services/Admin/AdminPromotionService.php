@@ -7,6 +7,8 @@ use App\Models\ProductVariant;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\SendPromotionSocialAutomationJob;
+use App\Services\Social\N8nSocialAutomationService;
 
 class AdminPromotionService
 {
@@ -142,6 +144,11 @@ class AdminPromotionService
             'status' => $data['status'],
             'is_active' => $data['is_active'] ?? true,
         ]);
+
+        $socialLog = app(N8nSocialAutomationService::class)
+            ->createPromotionCreatedLog($promotion);
+
+        SendPromotionSocialAutomationJob::dispatch($socialLog->id);
 
         return [
             'success' => true,

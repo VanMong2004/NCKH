@@ -122,7 +122,6 @@ Route::prefix('faqs')->group(function () {
 });
 
 // BLOG (PUBLIC)
-
 Route::prefix('blogs')->group(function () {
     Route::get('/', [BlogController::class, 'index']); // Lấy danh sách bài viết, có hỗ trợ filter theo category và keyword (tìm kiếm trong title và content), có hỗ trợ pagination
     Route::get('/categories', [BlogController::class, 'categories']); // Lấy danh sách category của blog (chỉ lấy category của những bài viết đang active, có sắp xếp theo thứ tự alphabet)

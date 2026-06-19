@@ -14,19 +14,10 @@ class HomeService
     /*
     | HOME
     */
-
     public function getHomeData($user = null)
     {
         return [
-            /*
-                    | DỮ LIỆU ĐỘNG GIAO DIỆN
-                    */
-
             'site_content' => $this->siteContent('home'),
-
-            /*
-                    | DỮ LIỆU CŨ CHO FE
-                    */
 
             'featured_products' => $this->featuredProducts($user),
             'new_products' => $this->newProducts($user),
@@ -372,18 +363,10 @@ class HomeService
         ];
     }
 
-    /*
-    | FEATURED PRODUCTS
-    */
-
     protected function featuredProducts($user = null)
     {
         $products = Product::query()
-            ->with([
-                'images',
-                'variants',
-                'category',
-            ])
+            ->with($this->productRelations())
             ->where('is_active', true)
             ->where('is_featured', true)
             ->latest()
@@ -396,18 +379,10 @@ class HomeService
         );
     }
 
-    /*
-    | NEW PRODUCTS
-    */
-
     protected function newProducts($user = null)
     {
         $products = Product::query()
-            ->with([
-                'images',
-                'variants',
-                'category',
-            ])
+            ->with($this->productRelations())
             ->where('is_active', true)
             ->latest()
             ->limit(self::HOME_PRODUCT_LIMIT)
@@ -419,18 +394,10 @@ class HomeService
         );
     }
 
-    /*
-    | BEST SELLING
-    */
-
     protected function bestSellingProducts($user = null)
     {
         $products = Product::query()
-            ->with([
-                'images',
-                'variants',
-                'category',
-            ])
+            ->with($this->productRelations())
             ->where('is_active', true)
             ->withSum('variants', 'sold_stock')
             ->orderByDesc('variants_sum_sold_stock')
@@ -443,18 +410,10 @@ class HomeService
         );
     }
 
-    /*
-    | TOP RATED
-    */
-
     protected function topRatedProducts($user = null)
     {
         $products = Product::query()
-            ->with([
-                'images',
-                'variants',
-                'category',
-            ])
+            ->with($this->productRelations())
             ->where('is_active', true)
             ->orderByDesc('average_rating')
             ->orderByDesc('total_reviews')
@@ -466,10 +425,6 @@ class HomeService
                 ->formatProduct($product, $user)
         );
     }
-
-    /*
-    | ROOT CATEGORIES
-    */
 
     protected function categories()
     {
@@ -491,5 +446,13 @@ class HomeService
             });
     }
 
-    
+    protected function productRelations(): array
+    {
+        return [
+            'images',
+            'variants',
+            'category.parent',
+            'department',
+        ];
+    }
 }

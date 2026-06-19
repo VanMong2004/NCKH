@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductVariant;
+use App\Models\Department;
 use App\Models\RecentlyViewedProduct;
 use App\Models\Review;
 use RuntimeException;
@@ -35,14 +36,9 @@ class ProductService
                 'images',
                 'variants',
                 'category.parent',
+                'department',
             ])
             ->where('is_active', true);
-
-        /*
-        |--------------------------------------------------------------------------
-        | KEYWORD
-        |--------------------------------------------------------------------------
-        */
 
         if (!empty($filters['keyword'])) {
             $keyword = $filters['keyword'];
@@ -53,23 +49,15 @@ class ProductService
             });
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | CATEGORY TREE
-        |--------------------------------------------------------------------------
-        */
-
         if (!empty($filters['category_id'])) {
             $categoryIds = $this->getAllChildCategoryIds($filters['category_id']);
 
             $query->whereIn('category_id', $categoryIds);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | PRICE FILTER
-        |--------------------------------------------------------------------------
-        */
+        if (!empty($filters['department_id'])) {
+            $query->where('department_id', $filters['department_id']);
+        }
 
         if (!empty($filters['min_price']) || !empty($filters['max_price'])) {
             $query->whereHas('variants', function ($q) use ($filters) {
@@ -83,12 +71,6 @@ class ProductService
             });
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | SIZE FILTER
-        |--------------------------------------------------------------------------
-        */
-
         if (!empty($filters['sizes'])) {
             $sizes = is_array($filters['sizes'])
                 ? $filters['sizes']
@@ -98,12 +80,6 @@ class ProductService
                 $q->whereIn('size', $sizes);
             });
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | COLOR FILTER
-        |--------------------------------------------------------------------------
-        */
 
         if (!empty($filters['colors'])) {
             $colors = is_array($filters['colors'])
@@ -115,33 +91,15 @@ class ProductService
             });
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | RATING FILTER
-        |--------------------------------------------------------------------------
-        */
-
         if (!empty($filters['rating'])) {
             $query->where('average_rating', '>=', $filters['rating']);
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | IN STOCK
-        |--------------------------------------------------------------------------
-        */
 
         if (!empty($filters['in_stock'])) {
             $query->whereHas('variants', function ($q) {
                 $q->whereRaw('(stock - reserved_stock) > 0');
             });
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SORT
-        |--------------------------------------------------------------------------
-        */
 
         switch ($filters['sort'] ?? 'newest') {
             case 'oldest':
@@ -175,31 +133,13 @@ class ProductService
                 break;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | PAGINATION
-        |--------------------------------------------------------------------------
-        */
-
         $products = $query->paginate($perPage);
-
-        /*
-        |--------------------------------------------------------------------------
-        | TRANSFORM
-        |--------------------------------------------------------------------------
-        */
 
         $data = collect($products->items())
             ->map(function ($product) use ($user) {
                 return $this->formatProduct($product, $user);
             })
             ->values();
-
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER METADATA
-        |--------------------------------------------------------------------------
-        */
 
         $allVariants = ProductVariant::query();
 
@@ -218,6 +158,18 @@ class ProductService
                 'min' => ProductVariant::min('price'),
                 'max' => ProductVariant::max('price'),
             ],
+
+            'departments' => Department::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($department) => [
+                    'id' => $department->id,
+                    'name' => $department->name,
+                    'slug' => $department->slug,
+                    'code' => $department->code,
+                ]),
 
             'categories' => Category::query()
                 ->whereNull('parent_id')
@@ -273,6 +225,7 @@ class ProductService
                 'images',
                 'variants',
                 'category.parent',
+                'department',
                 'reviews.user',
             ])
             ->where('slug', $slug)
@@ -344,17 +297,12 @@ class ProductService
                 ->count();
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | RELATED PRODUCTS
-        |--------------------------------------------------------------------------
-        */
-
         $relatedProducts = Product::query()
             ->with([
                 'images',
                 'variants',
                 'category.parent',
+                'department',
             ])
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
@@ -560,13 +508,8 @@ class ProductService
             'name' => $product->name,
             'slug' => $product->slug,
 
-            // Key cũ FE đang dùng
             'min_price' => $minPrice,
             'max_price' => $maxPrice,
-
-            // Key mới nếu FE muốn dùng rõ hơn
-            // 'price_min' => $minPrice,
-            // 'price_max' => $maxPrice,
 
             'original_min_price' => $originalMinPrice,
             'original_max_price' => $originalMaxPrice,
@@ -615,6 +558,15 @@ class ProductService
                     ]
                     : null,
             ],
+
+            'department' => $product->department
+                ? [
+                    'id' => $product->department->id,
+                    'name' => $product->department->name,
+                    'slug' => $product->department->slug,
+                    'code' => $product->department->code,
+                ]
+                : null,
         ];
     }
 
@@ -659,9 +611,7 @@ class ProductService
         return $ids;
     }
 
-    // =========================
     // RECENTLY VIEWED PRODUCTS
-    // =========================
     public function recentlyViewed($user)
     {
         if (!$user) {
@@ -673,6 +623,7 @@ class ProductService
                 'product.images',
                 'product.variants',
                 'product.category.parent',
+                'product.department',
             ])
             ->where('user_id', $user->id)
             ->orderByDesc('viewed_at')

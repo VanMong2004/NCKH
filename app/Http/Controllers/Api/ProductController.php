@@ -30,7 +30,7 @@ class ProductController extends Controller
         try {
             $filters = $request->validate([
                 'keyword' => 'nullable|string|max:255',
-
+                'department_id' => 'nullable|integer|exists:departments,id',
                 'category_id' => 'nullable|integer',
 
                 'min_price' => 'nullable|numeric|min:0',
@@ -49,7 +49,8 @@ class ProductController extends Controller
                 'per_page' => 'nullable|integer|min:1',
             ], [
                 'keyword.max' => 'Từ khóa tìm kiếm không được vượt quá 255 ký tự',
-
+                'department_id.integer' => 'Khoa không hợp lệ',
+                'department_id.exists' => 'Khoa không tồn tại',
                 'category_id.integer' => 'Danh mục sản phẩm không hợp lệ',
 
                 'min_price.numeric' => 'Giá thấp nhất không hợp lệ',

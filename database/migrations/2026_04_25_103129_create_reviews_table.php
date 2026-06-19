@@ -27,6 +27,11 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
+            $table->foreignId('order_item_id')
+                ->nullable()
+                ->constrained()
+                ->cascadeOnDelete();
+
             $table->tinyInteger('rating');
 
             $table->text('comment');

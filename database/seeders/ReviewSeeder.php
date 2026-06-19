@@ -10,7 +10,11 @@ class ReviewSeeder extends Seeder
 {
     public function run(): void
     {
-        $orders = Order::where('status', 'completed')->get();
+        $orders = Order::with([
+            'items.productVariant'
+        ])
+        ->where('status', 'completed')
+        ->get();
 
         foreach ($orders as $order) {
 
@@ -18,8 +22,9 @@ class ReviewSeeder extends Seeder
 
                 Review::create([
                     'user_id' => $order->user_id,
-                    'product_id' => $item->product_variant_id,
-                    'order_id' => $item->id,
+                    'product_id' => $item->productVariant->product_id,
+                    'order_id' => $order->id,
+                    'order_item_id' => $item->id,
                     'rating' => rand(4, 5),
                     'comment' => 'Sản phẩm rất tốt!',
                 ]);

@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\File;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use App\Jobs\SendProductSocialAutomationJob;
+use App\Services\Social\N8nSocialAutomationService;
 
 class AdminProductService
 {
-    // =========================
     // LẤY DANH SÁCH SẢN PHẨM
-    // =========================
     public function index($request)
     {
         $query = Product::query()
@@ -26,12 +26,6 @@ class AdminProductService
                 'images',
                 'variants',
             ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | SEARCH
-        |--------------------------------------------------------------------------
-        */
 
         if ($request->filled('keyword')) {
 
@@ -51,12 +45,6 @@ class AdminProductService
             });
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | CATEGORY FILTER
-        |--------------------------------------------------------------------------
-        */
-
         if ($request->filled('category_id')) {
 
             $query->where(
@@ -64,12 +52,6 @@ class AdminProductService
                 $request->category_id
             );
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | ACTIVE FILTER
-        |--------------------------------------------------------------------------
-        */
 
         if ($request->has('is_active')) {
 
@@ -79,12 +61,6 @@ class AdminProductService
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FEATURED FILTER
-        |--------------------------------------------------------------------------
-        */
-
         if ($request->has('is_featured')) {
 
             $query->where(
@@ -92,12 +68,6 @@ class AdminProductService
                 $request->is_featured
             );
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SORTING
-        |--------------------------------------------------------------------------
-        */
 
         switch ($request->sort_by) {
 
@@ -124,22 +94,10 @@ class AdminProductService
                 $query->latest();
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | PAGINATION
-        |--------------------------------------------------------------------------
-        */
-
         $perPage = $request->per_page ?? 10;
 
         $products = $query
             ->paginate($perPage);
-
-        /*
-        |--------------------------------------------------------------------------
-        | FORMAT RESPONSE
-        |--------------------------------------------------------------------------
-        */
 
         $productCollection = collect(
             $products->items()
@@ -214,9 +172,7 @@ class AdminProductService
         ];
     }
 
-    // =========================
     // LẤY CHI TIẾT SẢN PHẨM
-    // =========================
     public function show($id)
     {
         $product = Product::query()
@@ -238,36 +194,9 @@ class AdminProductService
         ];
     }
 
-    // =========================
     // TẠO SẢN PHẨM MỚI
-    // =========================
     public function store($request)
-    {
-        validator($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category_id' => 'required|exists:categories,id',
-            'is_active' => 'required|boolean',
-            'is_featured' => 'required|boolean',
-            'department_id' => 'nullable|integer',
-            'author' => 'nullable|string|max:255',
-
-            'images' => 'required|array|min:1|max:10',
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
-            
-            'variants' => 'required|array|min:1',
-            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
-            'variants.*.sku' => 'nullable|string|max:100',
-            'variants.*.attributes' => 'nullable|array',
-            'variants.*.size' => 'nullable|string|max:50',
-            'variants.*.color' => 'nullable|string|max:50',
-            'variants.*.price' => 'required|numeric|min:0',
-            'variants.*.stock' => 'required|integer|min:0',
-
-        ])->validate();
-
-        // dd($request->all());
-
+    {           
         return DB::transaction(function () use ($request) {
 
             $product = Product::create([
@@ -303,27 +232,20 @@ class AdminProductService
                     => 0,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | UPLOAD IMAGES
-            |--------------------------------------------------------------------------
-            */
-
             $this->uploadImages(
                 $product,
                 $request->file('images')
             );
 
-            /*
-            |--------------------------------------------------------------------------
-            | CREATE VARIANTS
-            |--------------------------------------------------------------------------
-            */
-
             $this->syncVariants(
                 $product,
                 $request->variants
             );
+
+            $socialLog = app(N8nSocialAutomationService::class)
+                ->createProductCreatedLog($product);
+
+            SendProductSocialAutomationJob::dispatch($socialLog->id)->afterCommit();
 
             return [
 
@@ -338,9 +260,7 @@ class AdminProductService
         });
     }
 
-    // =========================
     // CẬP NHẬT SẢN PHẨM
-    // =========================
     public function update($request, $id)
     {
         $product = Product::findOrFail($id);
@@ -428,9 +348,7 @@ class AdminProductService
         });
     }
 
-    // =========================
     // XÓA SẢN PHẨM
-    // =========================
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
@@ -469,9 +387,7 @@ class AdminProductService
         ];
     }
 
-    // =========================
     // IMAGE UPLOADING
-    // =========================
     private function uploadImages($product, $images)
     {
         /*
@@ -565,9 +481,7 @@ class AdminProductService
         }
     }
 
-    // =========================
     // VARIANT MANAGEMENT
-    // =========================
     private function syncVariants($product, $variants)
     {
         foreach ($variants as $variant) {
@@ -599,9 +513,7 @@ class AdminProductService
         );
     }
 
-    // =========================
     // REPLACE IMAGES & VARIANTS
-    // =========================
     private function replaceImages($product, $images)
     {
         /*

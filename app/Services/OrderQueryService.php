@@ -90,11 +90,12 @@ class OrderQueryService
         }
 
         $order = Order::with([
+            'items.review',
             'items.productVariant.product.images',
             'payments',
         ])
-            ->where('user_id', $user->id)
-            ->findOrFail($id);
+        ->where('user_id', $user->id)
+        ->findOrFail($id);
 
         if (!$order) {
             throw new RuntimeException('Đơn hàng không tồn tại', 404);
@@ -137,16 +138,28 @@ class OrderQueryService
                 'grand_total' => (float) ($order->grand_total ?? $order->total),
             ],
 
-            'items' => $order->items->map(function ($item) {
+            'items' => $order->items->map(function ($item) use ($order) {
                 /** @var \App\Models\OrderItem $item */
 
                 $variant = $item->productVariant;
                 $product = $variant?->product;
+                $review = $item->review;
 
                 return [
                     'id' => $item->id,
 
+                    'product_id' => $product?->id,
                     'product_name' => $item->product_name,
+                    'product_slug' => $product?->slug,
+                    'product_variant_id' => $variant?->id,
+
+                    'is_reviewed' => !is_null($review),
+                    'review_id' => $review?->id,
+
+                    'can_review' => (
+                        $order->status === 'completed'
+                        && is_null($review)
+                    ),                    
 
                     'thumbnail' => optional(
                         $product?->images?->where('type', 'thumbnail')->first()

@@ -13,6 +13,7 @@ class Review extends Model
         'user_id',
         'product_id',
         'order_id',
+        'order_item_id',
         'rating',
         'comment',
         'is_active',
@@ -48,6 +49,11 @@ class Review extends Model
     public function images()
     {
         return $this->hasMany(ReviewImage::class);
+    }
+
+    public function orderItem()
+    {
+        return $this->belongsTo(OrderItem::class);
     }
 
     /*

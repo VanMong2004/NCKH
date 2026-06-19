@@ -34,8 +34,14 @@ return [
     'n8n' => [
         'webhook' => env('N8N_WEBHOOK_URL'),
         'secret' => env('N8N_WEBHOOK_SECRET'),
+
         'ai_sync_secret' => env('N8N_AI_SYNC_SECRET'),
         'ai_sync_limit' => (int) env('N8N_AI_SYNC_LIMIT', 20),
+
+        'social_enabled' => filter_var(env('N8N_SOCIAL_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        'social_webhook_url' => env('N8N_SOCIAL_WEBHOOK_URL'),
+        'social_webhook_secret' => env('N8N_SOCIAL_WEBHOOK_SECRET'),
+        'social_callback_secret' => env('N8N_SOCIAL_CALLBACK_SECRET'),
     ],
 
     'openai' => [

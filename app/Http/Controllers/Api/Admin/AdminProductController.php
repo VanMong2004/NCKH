@@ -87,6 +87,31 @@ class AdminProductController extends Controller
     {
         try {
 
+            validator($request->all(), [
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'category_id' => 'required|exists:categories,id',
+                'is_active' => 'required|boolean',
+                'is_featured' => 'required|boolean',
+                'department_id' => 'nullable|integer',
+                'author' => 'nullable|string|max:255',
+
+                'images' => 'required|array|min:1|max:10',
+                'images.*' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+                
+                'variants' => 'required|array|min:1',
+                'variants.*.id' => 'nullable|integer|exists:product_variants,id',
+                'variants.*.sku' => 'nullable|string|max:100',
+                'variants.*.attributes' => 'nullable|array',
+                'variants.*.size' => 'nullable|string|max:50',
+                'variants.*.color' => 'nullable|string|max:50',
+                'variants.*.price' => 'required|numeric|min:0',
+                'variants.*.stock' => 'required|integer|min:0',
+
+            ])->validate();
+
+            // dd($request->all());
+
             return response()->json(
                 $this->adminProductService->store($request)
             );

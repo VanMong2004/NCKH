@@ -19,7 +19,7 @@ use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\AIController;
+// use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserAnalyticsController;
 use App\Http\Controllers\Api\FaqController;
@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\Admin\AdminUploadController;
 use App\Http\Controllers\Api\Admin\ChatKnowledgeController;
 
 use App\Http\Controllers\Api\N8n\N8nChatKnowledgeController;
+use App\Http\Controllers\Api\N8n\N8nSocialCallbackController;
 
 
 
@@ -174,7 +175,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [OrderController::class, 'show']); // Lấy chi tiết đơn hàng
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']); // Hủy đơn hàng (nếu chưa thanh toán)
         Route::get('/{id}/payments', [PaymentController::class, 'list']); // Lấy danh sách payment của đơn hàng (có hỗ trợ filter theo status)
-   });
+    });
 
 
     // PAYMENTS (NORMAL) - DÙNG CHO VIỆC TẠO PAYMENT CHO ĐƠN HÀNG, KHÔNG DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN
@@ -217,10 +218,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // AI ASSISTANT
-    Route::prefix('ai')->group(function () {
-        Route::post('/chat',[AIController::class,'chat']);
-        Route::get('/history',[AIController::class,'history']);
-    });
+    // Route::prefix('ai')->group(function () {
+    //     Route::post('/chat',[AIController::class,'chat']);
+    //     Route::get('/history',[AIController::class,'history']);
+    // });
 
 
     // SEARCH
@@ -244,12 +245,13 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// =============================
 // N8N AI KNOWLEDGE SYNC
-// =============================
 Route::prefix('n8n/chat/knowledge')->group(function () {
     Route::post('/sync-status', [N8nChatKnowledgeController::class, 'syncStatus']);
 });
+
+// N8N SOCIAL CALLBACK
+Route::post('/n8n/social/callback', [N8nSocialCallbackController::class, 'handle']);
 
 // ADMIN
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
@@ -368,6 +370,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::patch('/{id}/toggle', [ChatKnowledgeController::class, 'toggle']);
         Route::delete('/{id}', [ChatKnowledgeController::class, 'destroy']);
     });
+
+    
 });
 
 // Route::get('/dev/php-ssl-check', function () {

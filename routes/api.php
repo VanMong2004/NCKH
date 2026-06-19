@@ -366,6 +366,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::post('/upload', [ChatKnowledgeController::class, 'upload']);
         Route::get('/{id}', [ChatKnowledgeController::class, 'show']);
         Route::patch('/{id}/toggle', [ChatKnowledgeController::class, 'toggle']);
+        Route::delete('/{id}', [ChatKnowledgeController::class, 'destroy']);
     });
 });
 

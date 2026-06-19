@@ -129,4 +129,19 @@ class ChatKnowledgeController extends Controller
             'data' => null,
         ], 500);
     }
+
+    public function destroy($id)
+    {
+        try {
+            return response()->json([
+                'success' => true,
+                'message' => 'Xóa tài liệu tri thức thành công',
+                'data' => $this->service->deleteKnowledgeFile((int) $id),
+            ]);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'Chat knowledge delete error');
+        }
+    }
 }

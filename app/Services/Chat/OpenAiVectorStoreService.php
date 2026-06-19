@@ -299,4 +299,89 @@ class OpenAiVectorStoreService
             throw new RuntimeException('Không thể kiểm tra trạng thái file trên OpenAI: ' . $e->getMessage(), 500);
         }
     }
+
+    public function deleteKnowledgeFile(int $id): array
+    {
+        $file = ChatKnowledgeFile::query()->find($id);
+
+        if (!$file) {
+            throw new RuntimeException('Không tìm thấy tài liệu tri thức', 404);
+        }
+
+        $metadata = $file->metadata ?? [];
+
+        $removeVectorResult = null;
+        $deleteFileResult = null;
+
+        if ($file->vector_store_id && $file->openai_file_id) {
+            $removeVectorResult = $this->deleteOpenAiVectorStoreFile(
+                $file->vector_store_id,
+                $file->openai_file_id
+            );
+        }
+
+        if ($file->openai_file_id) {
+            $deleteFileResult = $this->deleteOpenAiFile($file->openai_file_id);
+        }
+
+        $file->update([
+            'status' => 'cancelled',
+            'is_active' => false,
+            'error_message' => null,
+            'metadata' => array_merge($metadata, [
+                'deleted_at' => now()->toDateTimeString(),
+                'delete_action' => [
+                    'removed_from_vector_store' => $removeVectorResult,
+                    'deleted_openai_file' => $deleteFileResult,
+                ],
+            ]),
+        ]);
+
+        return $this->formatKnowledgeFile($file->fresh());
+    }
+
+    private function deleteOpenAiVectorStoreFile(string $vectorStoreId, string $openaiFileId): array
+    {
+        $apiKey = config('services.openai.api_key');
+        $baseUrl = rtrim(config('services.openai.base_url'), '/');
+
+        if (!$apiKey) {
+            throw new RuntimeException('Chưa cấu hình OPENAI_API_KEY', 500);
+        }
+
+        try {
+            return Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(60)
+                ->delete($baseUrl . "/vector_stores/{$vectorStoreId}/files/{$openaiFileId}")
+                ->throw()
+                ->json();
+        } catch (Throwable $e) {
+            throw new RuntimeException('Không thể gỡ file khỏi OpenAI Vector Store: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function deleteOpenAiFile(string $openaiFileId): array
+    {
+        $apiKey = config('services.openai.api_key');
+        $baseUrl = rtrim(config('services.openai.base_url'), '/');
+
+        if (!$apiKey) {
+            throw new RuntimeException('Chưa cấu hình OPENAI_API_KEY', 500);
+        }
+
+        try {
+            return Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(60)
+                ->delete($baseUrl . "/files/{$openaiFileId}")
+                ->throw()
+                ->json();
+        } catch (Throwable $e) {
+            return [
+                'deleted' => false,
+                'warning' => $e->getMessage(),
+            ];
+        }
+    }
 }

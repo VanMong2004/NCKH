@@ -23,6 +23,7 @@ class AdminProductService
         $query = Product::query()
             ->with([
                 'category',
+                'department',
                 'images',
                 'variants',
             ]);
@@ -114,6 +115,12 @@ class AdminProductService
                 'slug'
                     => $product->slug,
 
+                'department' => $product->department ? [
+                        'id' => $product->department->id,
+                        'name' => $product->department->name,
+                        'code' => $product->department->code,
+                    ] : null,
+
                 'category'
                     => $product->category?->name,
 
@@ -178,6 +185,7 @@ class AdminProductService
         $product = Product::query()
             ->with([
                 'category',
+                'department',
                 'images',
                 'variants',
             ])
@@ -264,29 +272,6 @@ class AdminProductService
     public function update($request, $id)
     {
         $product = Product::findOrFail($id);
-
-        validator($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'department_id' => 'nullable|integer',
-            'author' => 'nullable|string|max:255',
-            'category_id' => 'required|exists:categories,id',
-            'is_active' => 'required|boolean',
-            'is_featured' => 'required|boolean',
-
-            'images' => 'nullable|array|min:1|max:10',
-            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
-            
-            'variants' => 'nullable|array|min:1',
-            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
-            'variants.*.sku' => 'nullable|string|max:100',
-            'variants.*.attributes' => 'nullable|array',
-            'variants.*.size' => 'nullable|string|max:50',
-            'variants.*.color' => 'nullable|string|max:50',
-            'variants.*.price' => 'nullable|numeric|min:0',
-            'variants.*.stock' => 'nullable|integer|min:0',
-            
-        ])->validate();
 
         return DB::transaction(function () use (
             $request,

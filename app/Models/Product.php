@@ -25,33 +25,33 @@ class Product extends Model
         'view_count',
     ];
 
-    // category
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
-    // images
     public function images()
     {
         return $this->hasMany(ProductImage::class);
     }
 
-    // variants
     public function variants()
     {
         return $this->hasMany(ProductVariant::class);
     }
 
-    // reviews
     public function reviews()
     {
         return $this->hasMany(Review::class);
     }
 
-    // promotion items
     public function promotionItems()
     {
         return $this->hasMany(PromotionItem::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 }

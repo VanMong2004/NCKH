@@ -327,6 +327,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::post('/{id}/items', [AdminPromotionController::class, 'storeItem']); // thêm 1 item vào promotion
         Route::put('/items/{itemId}', [AdminPromotionController::class, 'updateItem']);
         Route::delete('/items/{itemId}', [AdminPromotionController::class, 'destroyItem']);
+    
+        Route::post('/{id}/publish-social', [AdminPromotionController::class, 'publishSocial']);
     });
 
     // ADMIN ANALYTICS

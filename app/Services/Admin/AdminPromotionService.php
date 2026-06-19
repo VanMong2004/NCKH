@@ -9,6 +9,8 @@ use App\Models\PromotionItem;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\SendPromotionSocialAutomationJob;
 use App\Services\Social\N8nSocialAutomationService;
+use App\Models\SocialAutomationLog;
+
 
 class AdminPromotionService
 {
@@ -145,11 +147,6 @@ class AdminPromotionService
             'is_active' => $data['is_active'] ?? true,
         ]);
 
-        $socialLog = app(N8nSocialAutomationService::class)
-            ->createPromotionCreatedLog($promotion);
-
-        SendPromotionSocialAutomationJob::dispatch($socialLog->id);
-
         return [
             'success' => true,
             'message' => 'Tạo khuyến mãi thành công',
@@ -234,6 +231,61 @@ class AdminPromotionService
             'success' => true,
             'message' => 'Xóa khuyến mãi thành công',
             'data' => null,
+        ];
+    }
+
+    public function publishSocial($id): array
+    {
+        $promotion = Promotion::query()
+            ->with([
+                'items.product',
+                'items.productVariant',
+            ])
+            ->find($id);
+
+        if (!$promotion) {
+            throw new RuntimeException('Đợt khuyến mãi không tồn tại', 404);
+        }
+
+        if ($promotion->items->count() <= 0) {
+            throw new RuntimeException(
+                'Vui lòng thêm sản phẩm vào đợt khuyến mãi trước khi đăng Facebook',
+                422
+            );
+        }
+
+        $alreadySent = SocialAutomationLog::query()
+            ->where('trigger_type', 'promotion_created')
+            ->where('entity_type', 'promotion')
+            ->where('entity_id', $promotion->id)
+            ->whereIn('status', [
+                'pending',
+                'sending',
+                'sent',
+                'success',
+            ])
+            ->exists();
+
+        if ($alreadySent) {
+            throw new RuntimeException(
+                'Đợt khuyến mãi này đã được gửi đăng Facebook trước đó',
+                409
+            );
+        }
+
+        $socialLog = app(N8nSocialAutomationService::class)
+            ->createPromotionCreatedLog($promotion);
+
+        SendPromotionSocialAutomationJob::dispatch($socialLog->id);
+
+        return [
+            'success' => true,
+            'message' => 'Đã đưa đợt khuyến mãi vào hàng đợi đăng Facebook',
+            'data' => [
+                'log_id' => $socialLog->id,
+                'status' => $socialLog->status,
+                'promotion_id' => $promotion->id,
+            ],
         ];
     }
 

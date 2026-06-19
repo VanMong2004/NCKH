@@ -152,6 +152,24 @@ class AdminPromotionController extends Controller
         }
     }
 
+    public function publishSocial($id): JsonResponse
+    {
+        try {
+            return response()->json(
+                $this->service->publishSocial($id)
+            );
+
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+
+        } catch (Throwable $e) {
+            return $this->systemError(
+                $e,
+                'Admin promotion publish social error'
+            );
+        }
+    }
+
     public function items($id): JsonResponse
     {
         try {

@@ -1,6 +1,6 @@
-import { Bell, HelpCircle, Home, LogOut, MapPin, Megaphone, Package, Settings, User, WalletCards } from 'lucide-react';
-
+import { Bell, HelpCircle, Home, LogOut, MapPin, Package, User, WalletCards } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function AccountSidebar() {
@@ -12,9 +12,7 @@ export default function AccountSidebar() {
         { label: 'Đơn hàng của tôi', icon: Package, path: '/account/orders' },
         { label: 'Lịch sử thanh toán', icon: WalletCards, path: '/account/transactions' },
         { label: 'Địa chỉ nhận hàng', icon: MapPin, path: '/account/addresses' },
-        { label: 'Chiến dịch của tôi', icon: Megaphone, path: '/account/campaigns' },
         { label: 'Thông báo', icon: Bell, path: '/account/notifications' },
-        // { label: 'Cài đặt', icon: Settings, path: '/account/settings' },
     ];
 
     async function handleLogout() {
@@ -27,7 +25,7 @@ export default function AccountSidebar() {
                 <nav className="space-y-1">
                     {menus.map(({ label, icon: Icon, path }) => (
                         <NavLink
-                            key={label}
+                            key={path}
                             to={path}
                             end={path === '/account/overview'}
                             className={({ isActive }) =>
@@ -62,9 +60,12 @@ export default function AccountSidebar() {
                         Đội ngũ hỗ trợ luôn sẵn sàng giúp bạn.
                     </p>
 
-                    <button className="mt-4 w-full rounded-lg border border-blue-950 py-2 text-sm font-bold text-blue-950 dark:border-blue-300 dark:text-blue-300">
+                    <NavLink
+                        to="/contact"
+                        className="mt-4 block w-full rounded-lg border border-blue-950 py-2 text-center text-sm font-bold text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-blue-300 dark:text-blue-300 dark:hover:bg-blue-700"
+                    >
                         Liên hệ hỗ trợ
-                    </button>
+                    </NavLink>
                 </div>
             </div>
         </aside>

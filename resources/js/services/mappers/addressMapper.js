@@ -1,16 +1,22 @@
 export function mapAddress(item = {}) {
     return {
         id: item.id,
+
         fullName: item.full_name || '',
         phone: item.phone || '',
+
         province: item.province || '',
         district: item.district || '',
         ward: item.ward || '',
         addressLine: item.address_line || '',
+
         postalCode: item.postal_code || '',
         isDefault: Boolean(item.is_default),
+
         createdAt: item.created_at || '',
+
         fullAddress: buildFullAddress(item),
+
         raw: item,
     };
 }

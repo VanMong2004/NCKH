@@ -1,14 +1,18 @@
 export default function ProductPagination({ meta, onPageChange }) {
-    if (!meta || Number(meta.lastPage) <= 1) return null;
+    if (!meta) return null;
 
     const current = Number(meta.currentPage || 1);
     const last = Number(meta.lastPage || 1);
     const pages = buildPages(current, last);
 
+    if (last <= 1) {
+        return null;
+    }
+
     return (
         <div className="mt-8 flex flex-col items-center gap-3">
             <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                Trang {current} / {last}
+                Trang <span className="text-blue-950 dark:text-blue-300">{current}</span> / {last}
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">

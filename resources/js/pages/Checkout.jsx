@@ -1,5 +1,5 @@
 import { ChevronRight, Home } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -19,7 +19,7 @@ export default function Checkout() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const { cartItems, totalItems, grandTotal, fetchCart } = useCart();
+    const { cartItems, fetchCart } = useCart();
 
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('cod');
@@ -27,22 +27,74 @@ export default function Checkout() {
     const [loading, setLoading] = useState(false);
     const [pendingPaymentOrder, setPendingPaymentOrder] = useState(null);
 
-    const cartItemIds = location.state?.cartItemIds || [];
-    if (cartItemIds.length === 0) {
-        nextErrors.cart = 'Vui lòng chọn sản phẩm';
-    }
+    const stateCartItemIds = Array.isArray(location.state?.cartItemIds) ? location.state.cartItemIds : [];
 
-    const checkoutItems = cartItems.filter((item) => cartItemIds.includes(item.cartItemId));
+    useEffect(() => {
+        fetchCart();
+    }, []);
 
-    const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const checkoutItems = useMemo(() => {
+        if (!Array.isArray(cartItems) || cartItems.length === 0) {
+            return [];
+        }
 
-    const checkoutTotalItems = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
+        if (stateCartItemIds.length === 0) {
+            return cartItems;
+        }
+
+        const selectedIds = stateCartItemIds.map((id) => String(id));
+
+        return cartItems.filter((item) => {
+            return selectedIds.includes(String(item.cartItemId));
+        });
+    }, [cartItems, stateCartItemIds]);
+
+    const checkoutCartItemIds = useMemo(() => {
+        return checkoutItems.map((item) => Number(item.cartItemId)).filter((id) => Number.isFinite(id) && id > 0);
+    }, [checkoutItems]);
+
+    const originalSubtotal = useMemo(() => {
+        return checkoutItems.reduce((sum, item) => {
+            const originalPrice = Number(item.originalPrice || item.price || 0);
+
+            return sum + originalPrice * Number(item.quantity || 0);
+        }, 0);
+    }, [checkoutItems]);
+
+    const discountTotal = useMemo(() => {
+        return checkoutItems.reduce((sum, item) => {
+            const discount = Number(item.discountAmount || 0);
+
+            return sum + discount * Number(item.quantity || 0);
+        }, 0);
+    }, [checkoutItems]);
+
+    const subtotal = useMemo(() => {
+        return checkoutItems.reduce((sum, item) => {
+            const finalPrice = Number(item.finalPrice || item.price || 0);
+
+            return sum + finalPrice * Number(item.quantity || 0);
+        }, 0);
+    }, [checkoutItems]);
+
+    const checkoutTotalItems = useMemo(() => {
+        return checkoutItems.reduce((sum, item) => {
+            return sum + Number(item.quantity || 0);
+        }, 0);
+    }, [checkoutItems]);
+
+    const shippingFee = 0;
+    const grandTotal = subtotal + shippingFee;
 
     function validate() {
         const nextErrors = {};
 
         if (!pendingPaymentOrder && checkoutItems.length === 0) {
-            nextErrors.cart = 'Giỏ hàng đang trống';
+            nextErrors.cart = 'Vui lòng chọn sản phẩm cần thanh toán';
+        }
+
+        if (!pendingPaymentOrder && checkoutCartItemIds.length === 0) {
+            nextErrors.cart = 'Danh sách sản phẩm thanh toán không hợp lệ';
         }
 
         if (!pendingPaymentOrder && !selectedAddressId) {
@@ -84,9 +136,9 @@ export default function Checkout() {
             }
 
             const order = await orderService.checkout({
-                address_id: selectedAddressId,
+                address_id: Number(selectedAddressId),
                 payment_method: paymentMethod,
-                cart_item_ids: cartItemIds,
+                cart_item_ids: checkoutCartItemIds,
             });
 
             if (!order.id) {
@@ -94,12 +146,8 @@ export default function Checkout() {
                 return;
             }
 
-            const method = order.paymentMethod;
+            const method = order.paymentMethod || paymentMethod;
 
-            /**
-             * COD:
-             * Chỉ checkout, không gọi /pay.
-             */
             if (method === 'cod') {
                 await fetchCart();
 
@@ -116,10 +164,6 @@ export default function Checkout() {
                 return;
             }
 
-            /**
-             * Online payment:
-             * mock/vnpay phải gọi /pay.
-             */
             setPendingPaymentOrder(order);
 
             await payExistingOrder(order);
@@ -134,7 +178,9 @@ export default function Checkout() {
 
     async function payExistingOrder(order) {
         try {
-            const payment = await paymentService.pay(order.id, order.paymentMethod);
+            const method = order.paymentMethod || paymentMethod;
+
+            const payment = await paymentService.pay(order.id, method);
 
             setPendingPaymentOrder(null);
 
@@ -151,7 +197,7 @@ export default function Checkout() {
                 replace: true,
                 state: {
                     orderCode: order.orderCode,
-                    paymentMethod: order.paymentMethod,
+                    paymentMethod: method,
                 },
             });
         } catch (paymentError) {
@@ -174,7 +220,7 @@ export default function Checkout() {
 
                 <CheckoutSteps />
 
-                <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
                     <div className="space-y-6">
                         <ReceiverForm
                             selectedAddressId={selectedAddressId}
@@ -208,8 +254,13 @@ export default function Checkout() {
 
                     <CheckoutSummary
                         items={checkoutItems}
+                        originalSubtotal={originalSubtotal}
                         subtotal={subtotal}
+                        shippingFee={shippingFee}
+                        discount={discountTotal}
+                        grandTotal={grandTotal}
                         totalItems={checkoutTotalItems}
+                        error={errors.cart}
                         onCheckout={handleCheckout}
                         loading={loading}
                         buttonText={pendingPaymentOrder ? 'Thanh toán lại' : 'Đặt hàng'}

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+
 import ProductSidebar from './ProductSidebar';
 
 export default function MobileFilterModal({ open, onClose, filters, filterOptions, onChange, onApply, onReset }) {
@@ -11,8 +12,10 @@ export default function MobileFilterModal({ open, onClose, filters, filterOption
             <div className="relative h-full w-[88%] max-w-sm overflow-y-auto bg-slate-50 p-4 shadow-xl dark:bg-slate-950">
                 <div className="mb-4 flex items-center justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-blue-950 dark:text-white">Lọc sản phẩm</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Chọn điều kiện rồi bấm áp dụng</p>
+                        <h2 className="text-lg font-bold text-blue-950 dark:text-white">Tìm kiếm và lọc</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Nhập từ khóa hoặc chọn điều kiện lọc
+                        </p>
                     </div>
 
                     <button
@@ -29,14 +32,8 @@ export default function MobileFilterModal({ open, onClose, filters, filterOption
                     filters={filters}
                     filterOptions={filterOptions}
                     onChange={onChange}
-                    onApply={() => {
-                        onApply();
-                        onClose();
-                    }}
-                    onReset={() => {
-                        onReset();
-                        onClose();
-                    }}
+                    onApply={onApply}
+                    onReset={onReset}
                 />
             </div>
         </div>

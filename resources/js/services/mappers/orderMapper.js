@@ -11,6 +11,7 @@ export function orderStatusText(status) {
         confirmed: 'Đã xác nhận',
         processing: 'Đang chuẩn bị',
         shipping: 'Đang giao',
+        shipped: 'Đang giao',
         ready_to_pickup: 'Sẵn sàng nhận hàng',
         delivered: 'Đã giao hàng',
         completed: 'Hoàn thành',
@@ -20,10 +21,58 @@ export function orderStatusText(status) {
     return map[status] || status || 'Đang cập nhật';
 }
 
+export function orderStatusClass(status) {
+    const map = {
+        pending:
+            'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50',
+        paid: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50',
+        processing:
+            'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900/50',
+        shipping:
+            'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-900/50',
+        shipped:
+            'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-900/50',
+        completed:
+            'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50',
+        cancelled: 'bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-900/50',
+    };
+
+    return (
+        map[status] ||
+        'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700'
+    );
+}
+
+function mapCheckoutOrderItem(item = {}) {
+    const originalPrice = toNumber(item.original_price || item.price);
+    const discountAmount = toNumber(item.discount_amount);
+    const finalPrice = toNumber(item.final_price || item.price);
+
+    return {
+        productName: item.product_name || '',
+
+        price: finalPrice,
+        originalPrice,
+        discountAmount,
+        finalPrice,
+
+        quantity: toNumber(item.quantity),
+        total: toNumber(item.total || finalPrice * toNumber(item.quantity)),
+
+        promotion: item.promotion || null,
+        promotionLoginRequired: Boolean(item.promotion_login_required),
+
+        raw: item,
+    };
+}
+
 export function mapCheckoutOrderResponse(response = {}) {
     const item = response.data || {};
 
     return {
+        success: Boolean(response.success),
+        message: response.message || '',
+
         id: item.order_id,
         orderId: item.order_id,
         userId: item.user_id,
@@ -33,6 +82,7 @@ export function mapCheckoutOrderResponse(response = {}) {
 
         status: item.status || '',
         statusText: orderStatusText(item.status),
+        statusClass: orderStatusClass(item.status),
 
         subTotal: toNumber(item.sub_total),
         shippingFee: toNumber(item.shipping_fee),
@@ -41,15 +91,7 @@ export function mapCheckoutOrderResponse(response = {}) {
 
         paymentMethod: item.payment_method || '',
 
-        items: Array.isArray(item.items)
-            ? item.items.map((orderItem) => ({
-                  productName: orderItem.product_name || '',
-                  price: toNumber(orderItem.price),
-                  quantity: toNumber(orderItem.quantity),
-                  total: toNumber(orderItem.total),
-                  raw: orderItem,
-              }))
-            : [],
+        items: Array.isArray(item.items) ? item.items.map(mapCheckoutOrderItem) : [],
 
         raw: item,
     };
@@ -75,14 +117,50 @@ function mapSummary(summary = {}) {
 }
 
 function mapOrderItem(item = {}) {
+    const originalPrice = toNumber(item.original_price || item.price);
+    const discountAmount = toNumber(item.discount_amount);
+    const finalPrice = toNumber(item.final_price || item.price);
+
+    const productId =
+        item.product_id ||
+        item.product?.id ||
+        item.variant?.product_id ||
+        item.product_variant?.product_id ||
+        item.productVariant?.product_id ||
+        item.raw?.product_id ||
+        null;
+
+    const productVariantId =
+        item.product_variant_id || item.variant?.id || item.product_variant?.id || item.productVariant?.id || null;
+
+    const reviewId = item.review_id || item.review?.id || null;
+
     return {
         id: item.id,
-        productName: item.product_name || '',
-        thumbnail: item.thumbnail || '',
-        variant: item.variant || null,
-        price: toNumber(item.price),
+
+        productId,
+        productVariantId,
+
+        productName: item.product_name || item.product?.name || '',
+        productSlug: item.product_slug || item.product?.slug || '',
+
+        thumbnail: item.thumbnail || item.product?.thumbnail || '',
+
+        variant: item.variant || item.variant_snapshot || null,
+
+        price: finalPrice,
+        originalPrice,
+        discountAmount,
+        finalPrice,
+
         quantity: toNumber(item.quantity),
-        total: toNumber(item.total),
+        total: toNumber(item.total || finalPrice * toNumber(item.quantity)),
+
+        promotion: item.promotion || item.promotion_snapshot || null,
+
+        reviewId,
+        reviewed: Boolean(item.is_reviewed || item.reviewed || reviewId),
+
         raw: item,
     };
 }
@@ -108,6 +186,9 @@ export function mapOrderDetailResponse(response = {}) {
     const item = response.data || {};
 
     return {
+        success: Boolean(response.success),
+        message: response.message || '',
+
         id: item.id,
 
         code: item.order_code || '',
@@ -115,10 +196,15 @@ export function mapOrderDetailResponse(response = {}) {
         createdAt: item.created_at || item.timeline?.[0]?.time || '',
 
         type: item.type || '',
+
         status: item.status || '',
         statusText: orderStatusText(item.status),
+        statusClass: orderStatusClass(item.status),
 
         qrCode: item.qr_code || '',
+
+        expiredAt: item.expired_at || '',
+        cancelReason: item.cancel_reason || '',
 
         receiver: mapReceiver(item.receiver),
 
@@ -143,20 +229,26 @@ function mapOrderListItem(item = {}) {
         code: item.order_code || '',
         orderCode: item.order_code || '',
 
-        title: item.title || '',
+        title: item.title || 'Đơn hàng',
         type: item.type || '',
 
         status: item.status || '',
         statusText: orderStatusText(item.status),
+        statusClass: orderStatusClass(item.status),
 
         paymentStatus: item.payment_status || '',
         paymentMethod: item.payment_method || '',
 
         thumbnail: item.thumbnail || '',
+
         itemCount: toNumber(item.item_count),
         total: toNumber(item.total),
 
         qrCode: item.qr_code || '',
+
+        expiredAt: item.expired_at || '',
+        cancelReason: item.cancel_reason || '',
+
         createdAt: item.created_at || '',
         detailUrl: item.detail_url || '',
 
@@ -170,13 +262,16 @@ export function mapOrderListResponse(response = {}) {
     return {
         success: Boolean(response.success),
         message: response.message || '',
+
         orders: raw.map(mapOrderListItem),
+
         meta: {
-            currentPage: toNumber(response.meta?.current_page),
-            lastPage: toNumber(response.meta?.last_page),
-            perPage: toNumber(response.meta?.per_page),
-            total: toNumber(response.meta?.total),
+            currentPage: toNumber(response.meta?.current_page || 1),
+            lastPage: toNumber(response.meta?.last_page || 1),
+            perPage: toNumber(response.meta?.per_page || 10),
+            total: toNumber(response.meta?.total || raw.length),
         },
+
         raw: response,
     };
 }

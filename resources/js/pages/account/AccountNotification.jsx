@@ -72,13 +72,12 @@ export default function AccountNotifications() {
 
     return (
         <div>
-            <Breadcrumb />
-            <div className="space-y-6">
+            <div className="space-y-2">
                 <NotificationHeader unreadCount={unreadCount} onReload={loadData} onMarkAllRead={handleMarkAllRead} />
 
                 <NotificationTabs activeTab={activeTab} onChange={setActiveTab} notifications={notifications} />
 
-                <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+                <section className="grid gap-6 md:grid-cols-[minmax(0,1fr)_420px]">
                     <NotificationList
                         notifications={filteredNotifications}
                         selectedId={selected?.id}
@@ -93,18 +92,3 @@ export default function AccountNotifications() {
     );
 }
 
-function Breadcrumb() {
-    return (
-        <div className="mb-6 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
-            <Home size={14} className="text-blue-950 dark:text-blue-300" />
-
-            <ChevronRight size={14} />
-
-            <span>Tài khoản</span>
-
-            <ChevronRight size={14} />
-
-            <span className="text-blue-950 dark:text-blue-300">Thông báo</span>
-        </div>
-    );
-}

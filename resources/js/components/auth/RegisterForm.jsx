@@ -1,17 +1,19 @@
 import { Mail, Phone, User } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 
 import AuthInput from './AuthInput';
 import PasswordInput from './PasswordInput';
 import GoogleButton from './GoogleButton';
-// import UserTypeSelector from './UserTypeSelector';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterForm() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { register } = useAuth();
+
+    const from = location.state?.from;
 
     const [form, setForm] = useState({
         name: '',
@@ -39,22 +41,17 @@ export default function RegisterForm() {
         }));
     }
 
-    function handleUserTypeChange(value) {
-        setForm((prev) => ({
-            ...prev,
-            user_type: value,
-        }));
-    }
-
     function validate() {
         const nextErrors = {};
 
         if (!form.name.trim()) nextErrors.name = 'Vui lòng nhập họ tên';
         if (!form.email.trim()) nextErrors.email = 'Vui lòng nhập email';
         if (!form.password) nextErrors.password = 'Vui lòng nhập mật khẩu';
+
         if (form.password && form.password.length < 6) {
             nextErrors.password = 'Mật khẩu tối thiểu 6 ký tự';
         }
+
         if (form.password_confirmation !== form.password) {
             nextErrors.password_confirmation = 'Mật khẩu xác nhận không khớp';
         }
@@ -74,13 +71,39 @@ export default function RegisterForm() {
             const response = await register(form);
 
             toast.success(response.message || 'Đăng ký thành công');
-            navigate('/', { replace: true });
+
+            redirectAfterRegister();
         } catch (err) {
             setErrors(normalizeErrors(err));
             toast.error(err.message || 'Đăng ký thất bại');
         } finally {
             setLoading(false);
         }
+    }
+
+    function redirectAfterRegister() {
+        if (from && typeof from === 'object' && from.pathname) {
+            navigate(
+                {
+                    pathname: from.pathname,
+                    search: from.search || '',
+                    hash: from.hash || '',
+                },
+                {
+                    replace: true,
+                    state: from.state || null,
+                },
+            );
+
+            return;
+        }
+
+        if (typeof from === 'string') {
+            navigate(from, { replace: true });
+            return;
+        }
+
+        navigate('/', { replace: true });
     }
 
     return (
@@ -90,8 +113,6 @@ export default function RegisterForm() {
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Đăng ký để mua hàng và theo dõi đơn hàng.</p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-                {/* <UserTypeSelector value={form.user_type} onChange={handleUserTypeChange} /> */}
-
                 <AuthInput
                     name="name"
                     label="Họ và tên"
@@ -142,6 +163,7 @@ export default function RegisterForm() {
                 />
 
                 <button
+                    type="submit"
                     disabled={loading}
                     className="w-full rounded-lg bg-blue-950 py-3 font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700"
                 >
@@ -154,7 +176,13 @@ export default function RegisterForm() {
 
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                     Đã có tài khoản?
-                    <Link to="/login" className="ml-2 font-bold text-blue-700 dark:text-blue-300">
+                    <Link
+                        to="/login"
+                        state={{
+                            from,
+                        }}
+                        className="ml-2 font-bold text-blue-700 dark:text-blue-300"
+                    >
                         Đăng nhập
                     </Link>
                 </p>
@@ -175,8 +203,10 @@ function Divider() {
 
 function normalizeErrors(err) {
     const result = {};
+
     Object.entries(err.errors || {}).forEach(([key, value]) => {
         result[key] = Array.isArray(value) ? value[0] : value;
     });
+
     return result;
 }

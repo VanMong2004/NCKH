@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Home, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -11,16 +11,49 @@ import CartBenefits from '../components/cart/CartBenefits';
 import { useCart } from '../contexts/CartContext';
 
 export default function Cart() {
-    const { cartItems, quantityChange, removeCart, clearCart, totalPrice, totalItems } = useCart();
+    const { cartItems, quantityChange, removeCart, clearCart, totalItems } = useCart();
 
     const [selectedIds, setSelectedIds] = useState([]);
 
+    useEffect(() => {
+        const validIds = cartItems.map((item) => String(item.cartItemId));
+
+        setSelectedIds((current) => {
+            return current.filter((id) => validIds.includes(String(id)));
+        });
+    }, [cartItems]);
+
     const selectedItems = useMemo(() => {
-        return cartItems.filter((item) => selectedIds.includes(item.cartItemId));
+        const selectedKeys = selectedIds.map((id) => String(id));
+
+        return cartItems.filter((item) => selectedKeys.includes(String(item.cartItemId)));
     }, [cartItems, selectedIds]);
 
+    const originalSubtotal = useMemo(() => {
+        return selectedItems.reduce((total, item) => {
+            const originalPrice = Number(item.originalPrice || item.price || 0);
+
+            return total + originalPrice * Number(item.quantity || 0);
+        }, 0);
+    }, [selectedItems]);
+
+    const discountTotal = useMemo(() => {
+        return selectedItems.reduce((total, item) => {
+            const originalPrice = Number(item.originalPrice || item.price || 0);
+            const finalPrice = Number(item.finalPrice || item.price || 0);
+            const directDiscount = Number(item.discountAmount || 0);
+            const discount = directDiscount > 0 ? directDiscount : Math.max(originalPrice - finalPrice, 0);
+
+            return total + discount * Number(item.quantity || 0);
+        }, 0);
+    }, [selectedItems]);
+
     const subtotal = useMemo(() => {
-        return selectedItems.reduce((total, item) => total + Number(item.price || 0) * Number(item.quantity || 0), 0);
+        return selectedItems.reduce((total, item) => {
+            const finalPrice = Number(item.finalPrice || item.price || 0);
+
+            return total + finalPrice * Number(item.quantity || 0);
+        }, 0);
     }, [selectedItems]);
 
     const selectedCount = useMemo(() => {
@@ -35,45 +68,57 @@ export default function Cart() {
             return;
         }
 
-        setSelectedIds(cartItems.map((item) => item.cartItemId));
+        setSelectedIds(cartItems.map((item) => String(item.cartItemId)));
     }
 
     function handleToggle(cartItemId) {
+        const key = String(cartItemId);
+
         setSelectedIds((current) => {
-            if (current.includes(cartItemId)) {
-                return current.filter((id) => id !== cartItemId);
+            if (current.map(String).includes(key)) {
+                return current.filter((id) => String(id) !== key);
             }
 
-            return [...current, cartItemId];
+            return [...current, key];
         });
     }
 
     async function handleIncrease(cartItemId) {
-        const item = cartItems.find((cartItem) => cartItem.cartItemId === cartItemId);
+        const item = cartItems.find((cartItem) => String(cartItem.cartItemId) === String(cartItemId));
 
         if (!item) return;
 
-        if (item.quantity >= item.inStock) {
-            toast.warning(`Chỉ còn ${item.inStock} sản phẩm`);
+        const availableStock = Number(item.availableStock ?? item.inStock ?? 0);
+
+        if (availableStock <= 0) {
+            toast.warning('Sản phẩm đã hết hàng');
             return;
         }
 
-        await quantityChange(cartItemId, item.quantity + 1);
+        if (Number(item.quantity || 0) >= availableStock) {
+            toast.warning(`Chỉ còn ${availableStock} sản phẩm`);
+            return;
+        }
+
+        await quantityChange(item.cartItemId, Number(item.quantity || 0) + 1);
     }
 
     async function handleDecrease(cartItemId) {
-        const item = cartItems.find((cartItem) => cartItem.cartItemId === cartItemId);
+        const item = cartItems.find((cartItem) => String(cartItem.cartItemId) === String(cartItemId));
 
         if (!item) return;
 
-        if (item.quantity <= 1) return;
+        if (Number(item.quantity || 0) <= 1) return;
 
-        await quantityChange(cartItemId, item.quantity - 1);
+        await quantityChange(item.cartItemId, Number(item.quantity || 0) - 1);
     }
 
     async function handleRemove(cartItemId) {
         await removeCart(cartItemId);
-        setSelectedIds((current) => current.filter((id) => id !== cartItemId));
+
+        setSelectedIds((current) => {
+            return current.filter((id) => String(id) !== String(cartItemId));
+        });
     }
 
     async function handleRemoveSelected() {
@@ -93,7 +138,7 @@ export default function Cart() {
 
     return (
         <MainLayout>
-            <main className="mx-auto max-w-7xl px-4 py-5 sm:py-6">
+            <main className="mx-auto max-w-7xl px-4 py-2">
                 <Breadcrumb />
 
                 <section className="mb-6">
@@ -103,10 +148,6 @@ export default function Cart() {
                             ({totalItems || cartItems.length} sản phẩm)
                         </span>
                     </h1>
-
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                        Kiểm tra sản phẩm trước khi tiến hành thanh toán.
-                    </p>
                 </section>
 
                 {cartItems.length === 0 ? (
@@ -128,7 +169,13 @@ export default function Cart() {
                             />
 
                             <div className="space-y-4">
-                                <CartSummary subtotal={subtotal} itemCount={selectedCount} selectedIds={selectedIds} />
+                                <CartSummary
+                                    originalSubtotal={originalSubtotal}
+                                    subtotal={subtotal}
+                                    discount={discountTotal}
+                                    itemCount={selectedCount}
+                                    selectedIds={selectedIds}
+                                />
 
                                 <div className="hidden lg:block">
                                     <CartBenefits />
@@ -171,8 +218,12 @@ function EmptyCart() {
 
 function Breadcrumb() {
     return (
-        <div className="mb-6 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
+        <div className="mb-2 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
+            <ChevronRight size={14} />
+            <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
+                Trang chủ
+            </Link>
             <ChevronRight size={14} />
             <span className="text-blue-950 dark:text-blue-300">Giỏ hàng</span>
         </div>

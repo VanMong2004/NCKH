@@ -132,7 +132,7 @@ export default function Navbar() {
 
     function goSearch(value) {
         const selected = typeof value === 'object' && value !== null ? value : null;
-        
+
         const text = String(
             selected?.keyword || selected?.label || selected?.name || selected?.title || value || '',
         ).trim();
@@ -220,7 +220,7 @@ export default function Navbar() {
                                 value={keyword}
                                 onFocus={handleInputFocus}
                                 onChange={handleInputChange}
-                                placeholder="Tìm sản phẩm, chiến dịch..."
+                                placeholder="Tìm sản phẩm, khuyến mãi..."
                                 className="min-w-0 flex-1 px-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:bg-slate-900 dark:text-white"
                             />
 
@@ -358,17 +358,10 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                <nav className="hidden items-center gap-8 border-t border-slate-100 py-3 text-sm font-semibold text-blue-950 dark:border-slate-800 dark:text-slate-100 md:flex">
-                    <button
-                        type="button"
-                        className="rounded-lg bg-blue-950 px-6 py-3 text-white transition hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500"
-                    >
-                        ☰ Tất cả danh mục
-                    </button>
-
+                <nav className="hidden items-center justify-start ps-2 gap-8 border-t border-slate-100 py-3 text-sm font-semibold text-blue-950 dark:border-slate-800 dark:text-slate-100 md:flex">
                     <DesktopNavLink to="/">Trang chủ</DesktopNavLink>
-                    <DesktopNavLink to="/shop">Cửa hàng</DesktopNavLink>
-                    <DesktopNavLink to="/campaigns">Chiến dịch</DesktopNavLink>
+                    <DesktopNavLink to="/shop">Sản phẩm</DesktopNavLink>
+                    <DesktopNavLink to="/promotions">Khuyến mãi</DesktopNavLink>
                     <DesktopNavLink to="/blog">Blog</DesktopNavLink>
                     <DesktopNavLink to="/faq">FAQ</DesktopNavLink>
                     <DesktopNavLink to="/about">Giới thiệu</DesktopNavLink>
@@ -498,15 +491,15 @@ function MobileMenu({ user, totalItems, onClose, onLogout }) {
                     </MobileNavLink>
 
                     <MobileNavLink to="/shop" onClose={onClose}>
-                        Cửa hàng
+                        Sản phẩm
                     </MobileNavLink>
 
                     <MobileNavLink to="/account/orders" onClose={onClose}>
                         Đơn hàng
                     </MobileNavLink>
 
-                    <MobileNavLink to="/campaigns" onClose={onClose}>
-                        Chiến dịch
+                    <MobileNavLink to="/promotions" onClose={onClose}>
+                        Khuyến mãi
                     </MobileNavLink>
 
                     <MobileNavLink to="/blog" onClose={onClose}>

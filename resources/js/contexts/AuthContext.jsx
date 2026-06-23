@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import authService from '../services/authService';
+import guestTokenService from '../services/guestTokenService';
 
 const AuthContext = createContext();
 
@@ -43,10 +44,10 @@ export function AuthProvider({ children }) {
         const response = await authService.login({
             email,
             password,
+            guest_token: guestTokenService.peekToken(),
         });
 
         const token = response.data.token;
-
         const user = response.data.user;
 
         localStorage.setItem(TOKEN_KEY, token);
@@ -57,10 +58,12 @@ export function AuthProvider({ children }) {
     }
 
     async function register(payload) {
-        const response = await authService.register(payload);
+        const response = await authService.register({
+            ...payload,
+            guest_token: guestTokenService.peekToken(),
+        });
 
         const token = response.data.token;
-
         const user = response.data.user;
 
         localStorage.setItem(TOKEN_KEY, token);
@@ -80,6 +83,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem(TOKEN_KEY);
 
         setUser(null);
+        guestTokenService.resetToken();
     }
 
     async function refreshUser() {

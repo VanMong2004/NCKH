@@ -36,9 +36,9 @@ export default function ProductDetail() {
             setError('');
 
             const result = await productService.getProductBySlug(slug);
+
             setProduct(result);
         } catch (err) {
-            console.error(err);
             setError(err?.message || 'Không thể tải chi tiết sản phẩm.');
         } finally {
             setLoading(false);
@@ -47,7 +47,7 @@ export default function ProductDetail() {
 
     return (
         <MainLayout>
-            <main className="mx-auto max-w-7xl px-4 py-5 sm:py-6">
+            <main className="mx-auto max-w-7xl px-4 py-2">
                 {loading && <ProductDetailSkeleton />}
 
                 {!loading && error && (
@@ -68,7 +68,7 @@ export default function ProductDetail() {
                     <>
                         <Breadcrumb product={product} />
 
-                        <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr] items-start">
+                        <section className="grid items-start gap-2 md:grid-cols-[1.05fr_0.95fr]">
                             <div className="min-w-0">
                                 <ProductGallery product={product} />
                             </div>
@@ -78,17 +78,13 @@ export default function ProductDetail() {
                             </div>
                         </section>
 
-                        <div className="mt-6">
-                            <ProductBenefits />
-                        </div>
-
-                        <section className="mt-6 space-y-6">
+                        <section className="mt-2 space-y-2">
                             <ProductTabs product={product} />
                             <ProductReviews product={product} />
                         </section>
 
-                        <section className="mt-6 min-w-0">
-                            <RelatedProducts products={product.related_products || []} />
+                        <section className="mt-2 min-w-0">
+                            <RelatedProducts products={product.relatedProducts || []} />
                         </section>
                     </>
                 )}
@@ -99,19 +95,26 @@ export default function ProductDetail() {
 
 function Breadcrumb({ product }) {
     return (
-        <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
 
             <ChevronRight size={14} />
 
             <Link to="/shop" className="hover:text-blue-950 dark:hover:text-blue-300">
-                Cửa hàng
+                Sản phẩm
             </Link>
 
             {product.categoryName && (
                 <>
                     <ChevronRight size={14} />
                     <span>{product.categoryName}</span>
+                </>
+            )}
+
+            {product.departmentName && (
+                <>
+                    <ChevronRight size={14} />
+                    <span>{product.departmentName}</span>
                 </>
             )}
 

@@ -1,5 +1,5 @@
+import { Home, MapPin, Package, User, WalletCards } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { Home, MapPin, Package, User, WalletCards, Bell } from 'lucide-react';
 
 const menus = [
     { label: 'Tổng quan', icon: Home, path: '/account/overview' },
@@ -11,7 +11,7 @@ const menus = [
 
 export default function AccountMobileTabs() {
     return (
-        <div className="mb-5 flex gap-2 overflow-x-auto pb-2 lg:hidden">
+        <div className="mb-2 flex gap-2 overflow-x-auto pb-2 lg:hidden">
             {menus.map(({ label, icon: Icon, path }) => (
                 <NavLink
                     key={path}
@@ -20,7 +20,7 @@ export default function AccountMobileTabs() {
                     className={({ isActive }) =>
                         `flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold ${
                             isActive
-                                ? 'bg-blue-950 text-white'
+                                ? 'bg-blue-950 text-white dark:bg-blue-700'
                                 : 'border border-slate-200 bg-white text-blue-950 dark:border-slate-700 dark:bg-slate-900 dark:text-white'
                         }`
                     }

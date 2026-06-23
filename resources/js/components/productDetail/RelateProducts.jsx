@@ -2,10 +2,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Autoplay, Navigation } from 'swiper/modules';
 import { Swiper, SwiperSlide } from 'swiper/react';
 
+import ProductCard from '../product/ProductCard';
+
 import 'swiper/css';
 import 'swiper/css/navigation';
-
-import ProductCard from '../product/ProductCard';
 
 export default function RelatedProducts({ products = [] }) {
     if (!products.length) {
@@ -25,23 +25,25 @@ export default function RelatedProducts({ products = [] }) {
             <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-lg font-bold text-blue-950 dark:text-white">Sản phẩm liên quan</h2>
 
-                <div className="flex shrink-0 gap-2">
-                    <button
-                        type="button"
-                        className="related-prev flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-slate-700 dark:text-white"
-                        aria-label="Sản phẩm trước"
-                    >
-                        <ChevronLeft size={18} />
-                    </button>
+                {products.length > 1 && (
+                    <div className="flex shrink-0 gap-2">
+                        <button
+                            type="button"
+                            className="related-prev flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-slate-700 dark:text-white"
+                            aria-label="Sản phẩm trước"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
 
-                    <button
-                        type="button"
-                        className="related-next flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-slate-700 dark:text-white"
-                        aria-label="Sản phẩm sau"
-                    >
-                        <ChevronRight size={18} />
-                    </button>
-                </div>
+                        <button
+                            type="button"
+                            className="related-next flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-slate-700 dark:text-white"
+                            aria-label="Sản phẩm sau"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="min-w-0 overflow-hidden">
@@ -51,14 +53,14 @@ export default function RelatedProducts({ products = [] }) {
                     observeParents
                     resizeObserver
                     watchOverflow
-                    spaceBetween={12}
+                    spaceBetween={16}
                     slidesPerView={2}
                     loop={false}
-                    rewind={products.length > 2}
+                    rewind={products.length > 4}
                     autoplay={
-                        products.length > 2
+                        products.length > 4
                             ? {
-                                  delay: 2000,
+                                  delay: 2400,
                                   disableOnInteraction: false,
                                   pauseOnMouseEnter: true,
                               }
@@ -85,16 +87,12 @@ export default function RelatedProducts({ products = [] }) {
                             slidesPerView: 4,
                             spaceBetween: 18,
                         },
-                        1280: {
-                            slidesPerView: 5,
-                            spaceBetween: 20,
-                        },
                     }}
                     className="!overflow-hidden"
                 >
                     {products.map((product) => (
                         <SwiperSlide key={product.id} className="!h-auto">
-                            <div className="h-full min-w-0">
+                            <div className="h-full">
                                 <ProductCard product={product} />
                             </div>
                         </SwiperSlide>

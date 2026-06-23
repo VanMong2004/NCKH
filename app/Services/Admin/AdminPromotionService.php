@@ -326,7 +326,7 @@ class AdminPromotionService
             $this->validateVariantBelongsToProduct($data);
             $this->validateLimitQuantity($data);
 
-            $$productVariantId = $data['product_variant_id'] ?? null;
+            $productVariantId = $data['product_variant_id'] ?? null;
             $variantUniqueKey = $productVariantId ? (int) $productVariantId : 0;
 
             $exists = PromotionItem::where('promotion_id', $promotion->id)

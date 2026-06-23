@@ -1,126 +1,172 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import Home from './pages/Home';
-import OrderSuccess from './pages/OrderSuccess';
-import ProductDetail from './pages/ProductDetail';
-import Shop from './pages/Shop';
-
-import ForgotPassword from './pages/ForgotPassword';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import { Loader2 } from 'lucide-react';
+import { ToastContainer } from 'react-toastify';
 
 import '../css/app.css';
-import Campaigns from './pages/Campaigns';
-import CampaignDetail from './pages/CampaignDetail';
-import CampaignRegistrationSuccess from './pages/CampaignRegistrationSuccess';
-import AccountProfile from './pages/account/AccountProfile';
-import MyTransactions from './pages/account/AccountTransactions';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { CartProvider } from './contexts/CartContext';
-import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/ui/ProtectedRoute';
-import AccountLayout from './pages/account/AccountLayout';
-import AccountOrders from './pages/account/AccountOrders';
-import AccountOrderDetail from './pages/account/AccountOrderDetail';
-import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import ResetPassword from './pages/ResetPassword';
-import AccountAddress from './pages/account/AccountAddress';
-import AccountNotifications from './pages/account/AccountNotification';
-import AccountCampaign from './pages/account/AccountCampaign';
-import AccountCampaignDetail from './pages/account/AccountCampaignDetail';
-import AccountOverview from './pages/account/AccountOverview';
-import Blog from './pages/Blog';
-import BlogDetail from './pages/BlogDetail';
-import Policy from './pages/Policy';
-import Faq from './pages/Faq';
-import Contact from './pages/Contact';
-import About from './pages/About';
-import PaymentResult from './pages/PaymentResult';
+
+import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+
+import ProtectedRoute from './components/ui/ProtectedRoute';
+import AdminPromotionDetail from './admin/pages/AdminPromotionDetail';
+
+const Home = lazy(() => import('./pages/Home'));
+const Shop = lazy(() => import('./pages/Shop'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
+const PaymentResult = lazy(() => import('./pages/PaymentResult'));
+
+const Promotions = lazy(() => import('./pages/Promotions'));
+const PromotionDetail = lazy(() => import('./pages/PromotionDetail'));
+
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+
+const Blog = lazy(() => import('./pages/Blog'));
+const BlogDetail = lazy(() => import('./pages/BlogDetail'));
+const Policy = lazy(() => import('./pages/Policy'));
+const Faq = lazy(() => import('./pages/Faq'));
+const Contact = lazy(() => import('./pages/Contact'));
+const About = lazy(() => import('./pages/About'));
+
+const AccountLayout = lazy(() => import('./pages/account/AccountLayout'));
+const AccountOverview = lazy(() => import('./pages/account/AccountOverview'));
+const AccountProfile = lazy(() => import('./pages/account/AccountProfile'));
+const AccountOrders = lazy(() => import('./pages/account/AccountOrders'));
+const AccountOrderDetail = lazy(() => import('./pages/account/AccountOrderDetail'));
+const AccountAddress = lazy(() => import('./pages/account/AccountAddress'));
+const AccountNotifications = lazy(() => import('./pages/account/AccountNotification'));
+const MyTransactions = lazy(() => import('./pages/account/AccountTransactions'));
+
+const AdminRoute = lazy(() => import('./components/ui/AdminRoute'));
+const AdminLayout = lazy(() => import('./admin/layout/AdminLayout'));
+
+const AdminDashboard = lazy(() => import('./admin/pages/AdminDashboard'));
+const AdminProducts = lazy(() => import('./admin/pages/AdminProducts'));
+const AdminPromotions = lazy(() => import('./admin/pages/AdminPromotions'));
+const AdminOrders = lazy(() => import('./admin/pages/AdminOrders'));
+const AdminUsers = lazy(() => import('./admin/pages/AdminUsers'));
+const AdminReviews = lazy(() => import('./admin/pages/AdminReviews'));
+const AdminSiteContent = lazy(() => import('./admin/pages/AdminSiteContent'));
+const AdminAnalytics = lazy(() => import('./admin/pages/AdminAnalytics'));
+const AdminChatKnowledge = lazy(() => import('./admin/pages/AdminChatKnowledge'));
+
+function PageLoader() {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+            <div className="rounded-2xl border border-slate-200 bg-white px-8 py-7 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <Loader2 size={30} className="mx-auto animate-spin text-blue-700 dark:text-blue-300" />
+
+                <p className="mt-3 text-sm font-bold text-blue-950 dark:text-white">Đang tải trang...</p>
+            </div>
+        </div>
+    );
+}
 
 createRoot(document.getElementById('app')).render(
     <BrowserRouter>
         <ThemeProvider>
             <AuthProvider>
                 <CartProvider>
-                    <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/shop" element={<Shop />} />
-                        <Route path="/product/:slug" element={<ProductDetail />} />
-                        <Route path="/blog" element={<Blog />} />
-                        <Route path="/blog/:slug" element={<BlogDetail />} />
-                        <Route path="/policy" element={<Policy />} />
-                        <Route path="/faq" element={<Faq />} />
-                        <Route path="/contact" element={<Contact />} />
-                        <Route path="/about" element={<About />} />
+                    <Suspense fallback={<PageLoader />}>
+                        <Routes>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/shop" element={<Shop />} />
+                            <Route path="/product/:slug" element={<ProductDetail />} />
+                            <Route path="/cart" element={<Cart />} />
 
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/reset-password" element={<ResetPassword />} />
+                            <Route path="/promotions" element={<Promotions />} />
+                            <Route path="/promotions/:slug" element={<PromotionDetail />} />
 
-                        <Route
-                            path="/cart"
-                            element={
-                                <ProtectedRoute>
-                                    <Cart />
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route path="/blog" element={<Blog />} />
+                            <Route path="/blog/:slug" element={<BlogDetail />} />
+                            <Route path="/policy" element={<Policy />} />
+                            <Route path="/faq" element={<Faq />} />
+                            <Route path="/contact" element={<Contact />} />
+                            <Route path="/about" element={<About />} />
 
-                        <Route
-                            path="/checkout"
-                            element={
-                                <ProtectedRoute>
-                                    <Checkout />
-                                </ProtectedRoute>
-                            }
-                        />
-                        <Route
-                            path="/order-success/:orderId"
-                            element={
-                                <ProtectedRoute>
-                                    <OrderSuccess />
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
 
-                        <Route
-                            path="/payment/result"
-                            element={
-                                <ProtectedRoute>
-                                    <PaymentResult />
-                                </ProtectedRoute>
-                            }
-                        />
+                            <Route
+                                path="/checkout"
+                                element={
+                                    <ProtectedRoute>
+                                        <Checkout />
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route path="/campaigns" element={<Campaigns />} />
-                        <Route path="/campaigns/:id" element={<CampaignDetail />} />
-                        <Route path="/campaigns/:id/registration-success" element={<CampaignRegistrationSuccess />} />
+                            <Route
+                                path="/order-success/:orderId"
+                                element={
+                                    <ProtectedRoute>
+                                        <OrderSuccess />
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        <Route
-                            path="/account"
-                            element={
-                                <ProtectedRoute>
-                                    <AccountLayout />
-                                </ProtectedRoute>
-                            }
-                        >
-                            <Route index path="overview" element={<AccountOverview />} />
-                            <Route path="profile" element={<AccountProfile />} />
-                            <Route path="orders" element={<AccountOrders />} />
-                            <Route path="orders/:id" element={<AccountOrderDetail />} />
-                            <Route path="transactions" element={<MyTransactions />} />
-                            <Route path="addresses" element={<AccountAddress />} />
-                            <Route path="notifications" element={<AccountNotifications />} />
-                            <Route path="campaigns" element={<AccountCampaign />} />
-                            <Route path="campaigns/:id" element={<AccountCampaignDetail />} />
-                        </Route>
-                    </Routes>
+                            <Route
+                                path="/payment/result"
+                                element={
+                                    <ProtectedRoute>
+                                        <PaymentResult />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="/account"
+                                element={
+                                    <ProtectedRoute>
+                                        <AccountLayout />
+                                    </ProtectedRoute>
+                                }
+                            >
+                                <Route index element={<AccountOverview />} />
+                                <Route path="overview" element={<AccountOverview />} />
+                                <Route path="profile" element={<AccountProfile />} />
+                                <Route path="orders" element={<AccountOrders />} />
+                                <Route path="orders/:id" element={<AccountOrderDetail />} />
+                                <Route path="transactions" element={<MyTransactions />} />
+                                <Route path="addresses" element={<AccountAddress />} />
+                                <Route path="notifications" element={<AccountNotifications />} />
+                            </Route>
+
+                            <Route
+                                path="/admin"
+                                element={
+                                    <AdminRoute>
+                                        <AdminLayout />
+                                    </AdminRoute>
+                                }
+                            >
+                                <Route index element={<AdminDashboard />} />
+                                <Route path="dashboard" element={<AdminDashboard />} />
+
+                                <Route path="products" element={<AdminProducts />} />
+                                <Route path="promotions" element={<AdminPromotions />} />
+                                <Route path="promotions/:id" element={<AdminPromotionDetail />} />
+                                <Route path="orders" element={<AdminOrders />} />
+                                <Route path="users" element={<AdminUsers />} />
+                                <Route path="reviews" element={<AdminReviews />} />
+                                <Route path="site-content" element={<AdminSiteContent />} />
+                                <Route path="chat-knowledge" element={<AdminChatKnowledge />} />
+                                <Route path="analytics" element={<AdminAnalytics />} />
+                            </Route>
+                        </Routes>
+                    </Suspense>
+
                     <ToastContainer
                         position="bottom-left"
                         autoClose={2500}

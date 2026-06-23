@@ -3,7 +3,7 @@ const tabs = [
     { value: 'unread', label: 'Chưa đọc' },
     { value: 'order', label: 'Đơn hàng' },
     { value: 'payment', label: 'Thanh toán' },
-    { value: 'campaign', label: 'Chiến dịch' },
+    { value: 'promotions', label: 'Khuyến mãi' },
     { value: 'pickup', label: 'Nhận hàng' },
 ];
 

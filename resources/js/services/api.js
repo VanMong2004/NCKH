@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import guestTokenService from './guestTokenService';
+
 const api = axios.create({
     baseURL: '/api',
     timeout: 10000,
@@ -13,6 +15,12 @@ api.interceptors.request.use((config) => {
 
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const guestToken = guestTokenService.getToken();
+
+    if (guestToken) {
+        config.headers['X-Guest-Token'] = guestToken;
     }
 
     return config;

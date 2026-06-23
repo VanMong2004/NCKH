@@ -65,7 +65,7 @@ export default function Contact() {
     return (
         <MainLayout>
             <main className="bg-slate-50 pb-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-                <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
                     <Breadcrumb />
 
                     <ContactHero />
@@ -97,13 +97,17 @@ export default function Contact() {
 
 function Breadcrumb() {
     return (
-        <nav className="mb-5 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+         <div className="mb-2 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
+            <ChevronRight size={14} />
+            <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
+                Trang chủ
+            </Link>
 
             <ChevronRight size={14} />
 
             <span className="text-blue-950 dark:text-blue-300">Liên hệ</span>
-        </nav>
+        </div>
     );
 }
 

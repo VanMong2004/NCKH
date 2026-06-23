@@ -126,13 +126,17 @@ export default function Policy() {
 
 function Breadcrumb() {
     return (
-        <nav className="mb-5 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+         <div className="mb-2 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
+            <ChevronRight size={14} />
+            <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
+                Trang chủ
+            </Link>
 
             <ChevronRight size={14} />
 
             <span className="text-blue-950 dark:text-blue-300">Chính sách</span>
-        </nav>
+        </div>
     );
 }
 

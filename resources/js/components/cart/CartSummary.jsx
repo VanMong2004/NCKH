@@ -2,16 +2,21 @@ import { ReceiptText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function CartSummary({
+    originalSubtotal = 0,
     subtotal = 0,
     itemCount = 0,
     shipping = 0,
     discount = 0,
     selectedIds = [],
-    allCartItemIds = [],
 }) {
-    const total = subtotal + shipping - discount;
+    const displaySubtotal = Number(originalSubtotal || subtotal || 0);
+    const finalSubtotal = Number(subtotal || 0);
+    const shippingFee = Number(shipping || 0);
+    const discountAmount = Number(discount || 0);
+
+    const total = finalSubtotal + shippingFee;
     const checkoutIds = selectedIds;
-    const canCheckout = selectedIds.length > 0; 
+    const canCheckout = selectedIds.length > 0;
 
     return (
         <aside className="sticky top-28 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -21,18 +26,19 @@ export default function CartSummary({
             </div>
 
             <div className="space-y-4 text-sm">
-                <SummaryRow label={`Tạm tính (${itemCount} sản phẩm)`} value={formatMoney(subtotal)} />
+                <SummaryRow label={`Tạm tính (${itemCount} sản phẩm)`} value={formatMoney(displaySubtotal)} />
 
                 <SummaryRow
                     label="Giảm giá"
-                    value={discount > 0 ? `- ${formatMoney(discount)}` : 'Chưa áp dụng'}
-                    muted={discount <= 0}
+                    value={discountAmount > 0 ? `- ${formatMoney(discountAmount)}` : 'Chưa áp dụng'}
+                    muted={discountAmount <= 0}
+                    positive={discountAmount > 0}
                 />
 
                 <SummaryRow
                     label="Phí vận chuyển"
-                    value={shipping > 0 ? formatMoney(shipping) : 'Tính ở bước thanh toán'}
-                    muted={shipping <= 0}
+                    value={shippingFee > 0 ? formatMoney(shippingFee) : 'Tính ở bước thanh toán'}
+                    muted={shippingFee <= 0}
                 />
             </div>
 
@@ -56,6 +62,7 @@ export default function CartSummary({
                 </Link>
             ) : (
                 <button
+                    type="button"
                     disabled
                     className="mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-slate-300 py-4 font-bold text-white dark:bg-slate-700"
                 >
@@ -67,7 +74,7 @@ export default function CartSummary({
                 <p className="mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400">Phương thức hỗ trợ</p>
 
                 <div className="grid grid-cols-4 gap-2">
-                    {['VISA', 'MC', 'Napas', 'QR'].map((item) => (
+                    {['COD', 'VNPay', 'Mock', 'QR'].map((item) => (
                         <div
                             key={item}
                             className="rounded-lg border border-slate-200 py-2 text-xs font-bold text-blue-950 dark:border-slate-700 dark:text-white"
@@ -81,14 +88,18 @@ export default function CartSummary({
     );
 }
 
-function SummaryRow({ label, value, muted = false }) {
+function SummaryRow({ label, value, muted = false, positive = false }) {
     return (
         <div className="flex items-center justify-between gap-4">
             <span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span>
 
             <span
                 className={`text-right font-bold ${
-                    muted ? 'text-slate-400 dark:text-slate-500' : 'text-blue-950 dark:text-white'
+                    positive
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : muted
+                          ? 'text-slate-400 dark:text-slate-500'
+                          : 'text-blue-950 dark:text-white'
                 }`}
             >
                 {value}

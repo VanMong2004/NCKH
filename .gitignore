@@ -17,3 +17,12 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+.env copy
+
+# VS Code local history
+.history/

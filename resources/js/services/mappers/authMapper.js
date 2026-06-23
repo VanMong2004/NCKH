@@ -6,7 +6,7 @@ export function mapUser(item = {}) {
         phone: item.phone || '',
         mssv: item.mssv || '',
         role: item.role || '',
-        avatar: item.avatar || '',
+        avatar: item.avatar || item.avatar_url || '',
         raw: item,
     };
 }

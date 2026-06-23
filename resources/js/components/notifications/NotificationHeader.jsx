@@ -2,21 +2,15 @@ import { CheckCheck, RefreshCw } from 'lucide-react';
 
 export default function NotificationHeader({ unreadCount = 0, onReload, onMarkAllRead }) {
     return (
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-                <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-extrabold text-blue-950 dark:text-white">Thông báo</h1>
+        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center justify-center gap-3">
+                <h1 className="text-3xl font-extrabold text-blue-950 dark:text-white">Thông báo</h1>
 
-                    {unreadCount > 0 && (
-                        <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-600 dark:bg-red-950/40 dark:text-red-300">
-                            {unreadCount} chưa đọc
-                        </span>
-                    )}
-                </div>
-
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    Theo dõi cập nhật về đơn hàng, thanh toán và chiến dịch.
-                </p>
+                {unreadCount > 0 && (
+                    <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-600 dark:bg-red-950/40 dark:text-red-300">
+                        {unreadCount} chưa đọc
+                    </span>
+                )}
             </div>
 
             <div className="flex flex-wrap gap-3">

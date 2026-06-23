@@ -1,19 +1,19 @@
+import { ListFilter } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import ProductEmpty from '../components/product/ProductEmpty';
-import SearchResultBanner from '../components/shop/SearchResultBanner';
 
-import MainLayout from '../layout/MainLayout';
+import ProductGrid from '../components/product/ProductGrid';
 
 import MobileFilterModal from '../components/shop/MobileFilterModal';
 import ProductPagination from '../components/shop/ProductPagination';
 import ProductSidebar from '../components/shop/ProductSidebar';
-import ProductToolbar from '../components/shop/ProductToolbar';
 import ShopFeatures from '../components/shop/ShopFeatures';
 
-import ProductGrid from '../components/product/ProductGrid';
+import MainLayout from '../layout/MainLayout';
 
 import productService from '../services/productService';
+
+const PRODUCT_PER_PAGE = 12;
 
 const defaultFilters = {
     keyword: '',
@@ -26,7 +26,23 @@ const defaultFilters = {
     in_stock: '',
     sort: 'newest',
     page: 1,
-    per_page: 12,
+};
+
+const defaultMeta = {
+    currentPage: 1,
+    lastPage: 1,
+    perPage: PRODUCT_PER_PAGE,
+    total: 0,
+};
+
+const defaultFilterOptions = {
+    categories: [],
+    sizes: [],
+    colors: [],
+    priceRange: {
+        min: 0,
+        max: 0,
+    },
 };
 
 export default function Shop() {
@@ -39,22 +55,8 @@ export default function Shop() {
     const [draftFilters, setDraftFilters] = useState(defaultFilters);
 
     const [products, setProducts] = useState([]);
-    const [meta, setMeta] = useState({
-        currentPage: 1,
-        lastPage: 1,
-        perPage: 12,
-        total: 0,
-    });
-
-    const [filterOptions, setFilterOptions] = useState({
-        categories: [],
-        sizes: [],
-        colors: [],
-        priceRange: {
-            min: 0,
-            max: 0,
-        },
-    });
+    const [meta, setMeta] = useState(defaultMeta);
+    const [filterOptions, setFilterOptions] = useState(defaultFilterOptions);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -88,11 +90,16 @@ export default function Shop() {
             setLoading(true);
             setError('');
 
-            const result = await productService.getProducts(cleanParams(currentFilters));
+            const params = cleanParams({
+                ...currentFilters,
+                per_page: PRODUCT_PER_PAGE,
+            });
+
+            const result = await productService.getProducts(params);
 
             setProducts(result.products || []);
-            setMeta(result.meta);
-            setFilterOptions(result.filters);
+            setMeta(result.meta || defaultMeta);
+            setFilterOptions(result.filters || defaultFilterOptions);
         } catch (err) {
             console.error(err);
 
@@ -111,34 +118,13 @@ export default function Shop() {
         }));
     }
 
-    function handleToolbarChange(name, value) {
-        const nextFilters = {
-            ...draftFilters,
-            [name]: value,
-            page: 1,
-        };
-
-        setDraftFilters(nextFilters);
-
-        if (name === 'sort' || name === 'per_page') {
-            updateUrl(nextFilters);
-        }
-    }
-
-    function handleSearch(e) {
-        e.preventDefault();
-
-        updateUrl({
-            ...draftFilters,
-            page: 1,
-        });
-    }
-
     function handleApplyFilters() {
         updateUrl({
             ...draftFilters,
             page: 1,
         });
+
+        setOpenFilter(false);
     }
 
     function handlePageChange(page) {
@@ -158,6 +144,7 @@ export default function Shop() {
     function handleReset() {
         setDraftFilters(defaultFilters);
         updateUrl(defaultFilters);
+        setOpenFilter(false);
     }
 
     function updateUrl(nextFilters) {
@@ -175,14 +162,6 @@ export default function Shop() {
     return (
         <MainLayout>
             <main className="mx-auto max-w-7xl px-4 py-5 sm:py-6">
-                
-                <SearchResultBanner
-                    keyword={filters.keyword}
-                    total={meta.total}
-                    onClear={() => {
-                        navigate('/shop');
-                    }}
-                />
                 <section className="grid gap-5 md:grid-cols-[260px_1fr] lg:gap-6">
                     <div className="hidden md:block">
                         <ProductSidebar
@@ -195,13 +174,16 @@ export default function Shop() {
                     </div>
 
                     <div className="min-w-0">
-                        <ProductToolbar
-                            filters={draftFilters}
-                            total={meta.total}
-                            onChange={handleToolbarChange}
-                            onSearch={handleSearch}
-                            onOpenFilter={() => setOpenFilter(true)}
-                        />
+                        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:hidden">
+                            <button
+                                type="button"
+                                onClick={() => setOpenFilter(true)}
+                                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-4 text-sm font-bold text-white transition hover:bg-blue-900 dark:bg-blue-700 dark:hover:bg-blue-600"
+                            >
+                                <ListFilter size={17} />
+                                Tìm kiếm và lọc sản phẩm
+                            </button>
+                        </div>
 
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
                             <p className="font-semibold text-slate-500 dark:text-slate-400">
@@ -237,11 +219,7 @@ export default function Shop() {
 
                         {!loading && !error && products.length > 0 && (
                             <>
-                                {products.length > 0 ? (
-                                    <ProductGrid products={products} />
-                                ) : (
-                                    !loading && <ProductEmpty />
-                                )}
+                                <ProductGrid products={products} />
 
                                 <ProductPagination meta={meta} onPageChange={handlePageChange} />
                             </>
@@ -253,7 +231,6 @@ export default function Shop() {
                     </div>
                 </section>
 
-                <ShopFeatures />
             </main>
 
             <MobileFilterModal
@@ -323,7 +300,6 @@ function parseFiltersFromUrl(search) {
         in_stock: params.get('in_stock') || '',
         sort: params.get('sort') || 'newest',
         page: toPositiveNumber(params.get('page'), 1),
-        per_page: toPositiveNumber(params.get('per_page'), 12),
     };
 }
 

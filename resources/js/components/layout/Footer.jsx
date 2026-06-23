@@ -8,7 +8,7 @@ export default function Footer() {
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                         <div className="flex items-center gap-3">
-                            <img src="/images/logo.png" alt="ABC University" className="h-11 w-11 rounded" />
+                            <img src="/images/logo.png" alt="CTUT Shop" className="h-11 w-11 rounded" />
 
                             <div>
                                 <h3 className="font-bold text-blue-950 dark:text-white">CTUT Shop</h3>
@@ -17,7 +17,7 @@ export default function Footer() {
                         </div>
 
                         <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-400">
-                            Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các chiến dịch của nhà trường.
+                            Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của Trường.
                         </p>
                     </div>
 
@@ -25,9 +25,9 @@ export default function Footer() {
                         title="Liên kết"
                         links={[
                             { label: 'Trang chủ', to: '/' },
-                            { label: 'Cửa hàng', to: '/shop' },
-                            { label: 'Chiến dịch', to: '/campaigns' },
-                            { label: 'Sự kiện', to: '/events' },
+                            { label: 'Sản phẩm', to: '/shop' },
+                            { label: 'Khuyến mãi', to: '/promotions' },
+                            { label: 'Blog', to: '/blog' },
                         ]}
                     />
 
@@ -49,7 +49,7 @@ export default function Footer() {
 
                             <Info icon={Phone}>02923 xxx xxx</Info>
 
-                            <Info icon={Mail}>contact@abcuniversity.edu.vn</Info>
+                            <Info icon={Mail}>contact@ctut.edu.vn</Info>
 
                             <div className="flex gap-3 pt-2">
                                 <a
@@ -65,7 +65,7 @@ export default function Footer() {
                 </div>
 
                 <div className="mt-8 border-t border-slate-200 pt-5 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    © 2026 ABC University Shop. All rights reserved.
+                    © 2026 CTUT Shop. All rights reserved.
                 </div>
             </div>
         </footer>

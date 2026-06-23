@@ -1,4 +1,6 @@
-import { mapCampaign } from './campaignMapper';
+function toNumber(value) {
+    return Number(value || 0);
+}
 
 function normalizeImage(url) {
     if (!url) return '/images/no-image.png';
@@ -26,10 +28,25 @@ function formatCurrency(value) {
 }
 
 function getPriceText(product = {}) {
-    const minPrice = Number(product.price_min || 0);
-    const maxPrice = Number(product.price_max || 0);
+    const minPrice = Number(product.min_price || product.price_min || 0);
+    const maxPrice = Number(product.max_price || product.price_max || 0);
 
     if (!minPrice && !maxPrice) return 'Liên hệ';
+
+    if (minPrice && maxPrice && minPrice !== maxPrice) {
+        return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
+    }
+
+    return formatCurrency(minPrice || maxPrice);
+}
+
+function getOriginalPriceText(product = {}) {
+    if (!product.has_promotion) return '';
+
+    const minPrice = Number(product.original_min_price || 0);
+    const maxPrice = Number(product.original_max_price || 0);
+
+    if (!minPrice && !maxPrice) return '';
 
     if (minPrice && maxPrice && minPrice !== maxPrice) {
         return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
@@ -51,19 +68,31 @@ function mapHomeProduct(product = {}) {
         categoryName: product.category?.name || '',
 
         priceText: getPriceText(product),
+        originalPriceText: getOriginalPriceText(product),
 
-        priceMin: Number(product.price_min || 0),
-        priceMax: Number(product.price_max || 0),
+        priceMin: toNumber(product.min_price || product.price_min),
+        priceMax: toNumber(product.max_price || product.price_max),
 
-        rating: Number(product.rating || 0),
-        averageRating: Number(product.average_rating || 0),
+        originalMinPrice: toNumber(product.original_min_price),
+        originalMaxPrice: toNumber(product.original_max_price),
 
-        reviews: Number(product.review_count || 0),
-        reviewCount: Number(product.review_count || 0),
+        promotionMinPrice: toNumber(product.promotion_min_price),
+        promotionMaxPrice: toNumber(product.promotion_max_price),
 
-        sold: Number(product.sold || 0),
+        hasPromotion: Boolean(product.has_promotion),
+        promotionLoginRequired: Boolean(product.promotion_login_required),
 
-        stock: Number(product.stock || 0),
+        rating: toNumber(product.rating || product.average_rating),
+        averageRating: toNumber(product.average_rating || product.rating),
+
+        reviews: toNumber(product.total_reviews || product.review_count),
+        reviewCount: toNumber(product.review_count || product.total_reviews),
+        totalReviews: toNumber(product.total_reviews || product.review_count),
+
+        sold: toNumber(product.sold),
+
+        stock: toNumber(product.stock || product.available_stock),
+        availableStock: toNumber(product.available_stock || product.stock),
 
         inStock: Boolean(product.in_stock),
 
@@ -72,21 +101,6 @@ function mapHomeProduct(product = {}) {
 
         raw: product,
     };
-}
-
-function getCountdownParts(totalSeconds) {
-    const safeSeconds = Math.max(0, Number(totalSeconds || 0));
-
-    const days = Math.floor(safeSeconds / 86400);
-    const hours = Math.floor((safeSeconds % 86400) / 3600);
-    const minutes = Math.floor((safeSeconds % 3600) / 60);
-    const seconds = Math.floor(safeSeconds % 60);
-
-    return [days, hours, minutes, seconds];
-}
-
-function mapHomeCampaign(campaign = {}) {
-    return mapCampaign(campaign);
 }
 
 function mapHomeCategory(category = {}) {
@@ -99,7 +113,7 @@ function mapHomeCategory(category = {}) {
         image: normalizeImage(category.image),
         thumbnail: normalizeImage(category.thumbnail),
 
-        childrenCount: Number(category.children_count || 0),
+        childrenCount: toNumber(category.children_count),
 
         raw: category,
     };
@@ -111,49 +125,103 @@ function mapHomeNews(item = {}) {
         title: item.title || '',
         slug: item.slug || '',
 
-        description: item.excerpt || '',
-        image: normalizeImage(item.thumbnail),
+        description: item.excerpt || item.description || '',
+        image: normalizeImage(item.thumbnail || item.image),
 
-        date: item.published_at || '',
+        date: item.published_at || item.date || '',
         category: item.category || '',
 
         raw: item,
     };
 }
 
-export function mapHomeResponse(response = {}) {
+function mapSiteItem(item = {}) {
     return {
-        featuredProducts: Array.isArray(response.featured_products)
-            ? response.featured_products.map(mapHomeProduct)
+        id: item.id,
+        parentId: item.parent_id,
+
+        groupKey: item.group_key || '',
+        itemKey: item.item_key || '',
+        itemType: item.item_type || '',
+
+        label: item.label || '',
+        title: item.title || '',
+        subtitle: item.subtitle || '',
+        content: item.content || '',
+
+        iconKey: item.icon_key || '',
+
+        image: normalizeImage(item.image),
+        mobileImage: item.mobile_image ? normalizeImage(item.mobile_image) : '',
+
+        linkText: item.link_text || item.label || '',
+        linkUrl: item.link_url || '',
+        target: item.target || '_self',
+
+        payload: item.payload || {},
+        sortOrder: toNumber(item.sort_order),
+
+        raw: item,
+    };
+}
+
+function mapHeroSlider(hero = {}) {
+    const slides = Array.isArray(hero.slides) ? hero.slides.map(mapSiteItem) : [];
+    const buttons = Array.isArray(hero.buttons) ? hero.buttons.map(mapSiteItem) : [];
+    const miniCards = Array.isArray(hero.mini_cards) ? hero.mini_cards.map(mapSiteItem) : [];
+
+    return {
+        id: hero.id,
+
+        badge: hero.badge || hero.payload?.badge || 'CTUT Shop',
+        title: hero.title || 'CTUT Shop',
+        subtitle: hero.subtitle || '',
+        description: hero.description || '',
+
+        backgroundImage: normalizeImage(hero.background_image),
+        mobileBackgroundImage: hero.mobile_background_image ? normalizeImage(hero.mobile_background_image) : '',
+
+        overlayEnabled: Boolean(hero.payload?.overlay_enabled ?? true),
+
+        buttons,
+        miniCards,
+        slides,
+
+        payload: hero.payload || {},
+        raw: hero,
+    };
+}
+
+export function mapHomeResponse(response = {}) {
+    const data = response.data || response;
+    const siteContent = data.site_content || {};
+
+    return {
+        siteContent,
+
+        heroSlider: mapHeroSlider(siteContent.hero_slider || {}),
+
+        featuredProducts: Array.isArray(data.featured_products) ? data.featured_products.map(mapHomeProduct) : [],
+
+        newProducts: Array.isArray(data.new_products) ? data.new_products.map(mapHomeProduct) : [],
+
+        bestSellingProducts: Array.isArray(data.best_selling_products)
+            ? data.best_selling_products.map(mapHomeProduct)
             : [],
 
-        newProducts: Array.isArray(response.new_products) ? response.new_products.map(mapHomeProduct) : [],
+        topRatedProducts: Array.isArray(data.top_rated_products) ? data.top_rated_products.map(mapHomeProduct) : [],
 
-        bestSellingProducts: Array.isArray(response.best_selling_products)
-            ? response.best_selling_products.map(mapHomeProduct)
-            : [],
+        categories: Array.isArray(data.categories) ? data.categories.map(mapHomeCategory) : [],
 
-        topRatedProducts: Array.isArray(response.top_rated_products)
-            ? response.top_rated_products.map(mapHomeProduct)
-            : [],
+        newsEvents: Array.isArray(data.news_events) ? data.news_events.map(mapHomeNews) : [],
 
-        activeCampaigns: Array.isArray(response.active_campaigns) ? response.active_campaigns.map(mapHomeCampaign) : [],
+        trendingKeywords: Array.isArray(data.trending_keywords) ? data.trending_keywords : [],
 
-        upcomingCampaigns: Array.isArray(response.upcoming_campaigns)
-            ? response.upcoming_campaigns.map(mapHomeCampaign)
-            : [],
+        cartCount: toNumber(data.cart_count),
 
-        categories: Array.isArray(response.categories) ? response.categories.map(mapHomeCategory) : [],
+        unreadNotifications: toNumber(data.unread_notifications),
 
-        newsEvents: Array.isArray(response.news_events) ? response.news_events.map(mapHomeNews) : [],
-
-        trendingKeywords: Array.isArray(response.trending_keywords) ? response.trending_keywords : [],
-
-        cartCount: Number(response.cart_count || 0),
-
-        unreadNotifications: Number(response.unread_notifications || 0),
-
-        raw: response,
+        raw: data,
     };
 }
 
@@ -162,8 +230,8 @@ export function mapBlogToHomeNews(blog = {}) {
         id: blog.id,
         title: blog.title || '',
         slug: blog.slug || '',
-        description: blog.excerpt || '',
-        image: normalizeImage(blog.thumbnail),
+        description: blog.excerpt || blog.description || '',
+        image: normalizeImage(blog.thumbnail || blog.image),
         date: blog.published_at || '',
         category: blog.category || '',
         raw: blog,

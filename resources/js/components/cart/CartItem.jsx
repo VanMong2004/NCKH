@@ -1,19 +1,38 @@
 import { Link } from 'react-router-dom';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { Check, Minus, Plus, Trash2 } from 'lucide-react';
 
 export default function CartItem({ item, selected, onToggle, onIncrease, onDecrease, onRemove }) {
-    const outOfStock = Number(item.inStock || 0) <= 0;
-    const limitReached = Number(item.quantity || 0) >= Number(item.inStock || 0);
+    const availableStock = Number(item.availableStock ?? item.inStock ?? 0);
+    const outOfStock = availableStock <= 0;
+    const limitReached = Number(item.quantity || 0) >= availableStock;
+
+    const originalPrice = Number(item.originalPrice || item.price || 0);
+    const finalPrice = Number(item.finalPrice || item.price || 0);
+    const hasDiscount = originalPrice > finalPrice;
+    const lineTotal = finalPrice * Number(item.quantity || 0);
 
     return (
-        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <article
+            className={[
+                'relative rounded-2xl border bg-white p-4 shadow-sm transition dark:bg-slate-900',
+                selected
+                    ? 'border-blue-200 ring-2 ring-blue-950/10 dark:border-blue-500/40 dark:ring-blue-500/10'
+                    : 'border-slate-200 dark:border-slate-800',
+            ].join(' ')}
+        >
             <div className="grid grid-cols-[24px_90px_1fr] gap-3 md:grid-cols-[24px_112px_minmax(0,1fr)_140px_150px_44px] md:items-center">
-                <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => onToggle(item.cartItemId)}
-                    className="mt-9 h-4 w-4 accent-blue-950 md:mt-0"
-                />
+                <label className="mt-9 flex h-5 w-5 cursor-pointer items-center justify-center md:mt-0">
+                    <input
+                        type="checkbox"
+                        checked={Boolean(selected)}
+                        onChange={() => onToggle(item.cartItemId)}
+                        className="peer sr-only"
+                    />
+
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-slate-300 bg-white transition peer-checked:border-blue-950 peer-checked:bg-blue-950 dark:border-slate-600 dark:bg-slate-950 dark:peer-checked:border-blue-500 dark:peer-checked:bg-blue-600">
+                        {selected ? <Check size={14} className="text-white" strokeWidth={3} /> : null}
+                    </span>
+                </label>
 
                 <Link
                     to={`/product/${item.slug}`}
@@ -42,32 +61,52 @@ export default function CartItem({ item, selected, onToggle, onIncrease, onDecre
                         {item.color && <>Màu: {item.color}</>}
                     </p>
 
-                    <p className="mt-2 text-sm font-bold text-blue-950 dark:text-blue-300 md:hidden">
-                        {formatMoney(item.price)}
-                    </p>
+                    {item.hasPromotion && item.promotion?.title && (
+                        <p className="mt-2 line-clamp-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            {item.promotion.title}
+                        </p>
+                    )}
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2 md:hidden">
+                        <span className="text-sm font-bold text-blue-950 dark:text-blue-300">
+                            {formatMoney(finalPrice)}
+                        </span>
+
+                        {hasDiscount && (
+                            <span className="text-xs font-semibold text-slate-400 line-through">
+                                {formatMoney(originalPrice)}
+                            </span>
+                        )}
+                    </div>
 
                     <p
                         className={`mt-2 text-xs font-bold ${
                             outOfStock ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'
                         }`}
                     >
-                        {outOfStock ? 'Hết hàng' : `Còn ${item.inStock} sản phẩm`}
+                        {outOfStock ? 'Hết hàng' : `Còn ${availableStock} sản phẩm`}
                     </p>
                 </div>
 
                 <div className="col-span-2 col-start-2 md:col-span-1 md:col-start-auto">
                     <QuantityControl
                         quantity={item.quantity}
-                        disabledMinus={item.quantity <= 1}
+                        disabledMinus={Number(item.quantity || 0) <= 1}
                         disabledPlus={outOfStock || limitReached}
                         onDecrease={() => onDecrease(item.cartItemId)}
                         onIncrease={() => onIncrease(item.cartItemId)}
                     />
                 </div>
 
-                <p className="hidden text-right text-lg font-extrabold text-blue-950 dark:text-blue-300 md:block">
-                    {formatMoney(item.price * item.quantity)}
-                </p>
+                <div className="hidden text-right md:block">
+                    <p className="text-lg font-extrabold text-blue-950 dark:text-blue-300">{formatMoney(lineTotal)}</p>
+
+                    {hasDiscount && (
+                        <p className="mt-1 text-xs font-semibold text-slate-400">
+                            Đã giảm {formatMoney((originalPrice - finalPrice) * Number(item.quantity || 0))}
+                        </p>
+                    )}
+                </div>
 
                 <button
                     type="button"

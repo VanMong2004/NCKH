@@ -87,7 +87,7 @@ export default function BlogDetail() {
     return (
         <MainLayout>
             <main className="bg-slate-50 pb-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-                <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl px-4 py-2 sm:px-6 lg:px-8">
                     <Breadcrumb blogTitle={blog?.title} />
 
                     {loading ? (
@@ -154,15 +154,12 @@ export default function BlogDetail() {
 
 function Breadcrumb({ blogTitle }) {
     return (
-        <nav className="mb-5 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
+        <div className="mb-2 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
-
             <ChevronRight size={14} />
-
-            <Link to="/" className="transition hover:text-blue-950 dark:hover:text-blue-300">
+            <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
                 Trang chủ
             </Link>
-
             <ChevronRight size={14} />
 
             <Link to="/blog" className="transition hover:text-blue-950 dark:hover:text-blue-300">
@@ -174,7 +171,7 @@ function Breadcrumb({ blogTitle }) {
             <span className="line-clamp-1 max-w-[360px] text-blue-950 dark:text-blue-300">
                 {blogTitle || 'Chi tiết bài viết'}
             </span>
-        </nav>
+        </div>
     );
 }
 

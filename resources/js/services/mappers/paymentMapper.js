@@ -5,6 +5,9 @@ function toNumber(value) {
 export function paymentMethodText(method) {
     const map = {
         cod: 'Thanh toán khi nhận hàng',
+        bank_transfer: 'Chuyển khoản ngân hàng',
+        banking: 'Chuyển khoản ngân hàng',
+        momo: 'MoMo',
         mock: 'Thanh toán mô phỏng',
         vnpay: 'VNPay',
     };
@@ -15,42 +18,62 @@ export function paymentMethodText(method) {
 export function paymentStatusText(status) {
     const map = {
         pending: 'Đang chờ',
+        processing: 'Đang xử lý',
         success: 'Đã thanh toán',
         failed: 'Thất bại',
         cancelled: 'Đã hủy',
+        refunded: 'Đã hoàn tiền',
     };
 
     return map[status] || status || 'Chưa tạo thanh toán';
+}
+
+export function paymentStatusClass(status) {
+    const map = {
+        pending:
+            'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50',
+        processing:
+            'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900/50',
+        success:
+            'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50',
+        failed: 'bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-300 dark:border-red-900/50',
+        cancelled:
+            'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700',
+        refunded:
+            'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-900/50',
+    };
+
+    return (
+        map[status] ||
+        'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700'
+    );
 }
 
 export function mapPayment(item = {}) {
     return {
         id: item.id,
 
+        orderId: item.order_id,
+        orderCode: item.order_code || item.order?.order_code || '',
+
         method: item.method || '',
         methodText: paymentMethodText(item.method),
 
         status: item.status || '',
         statusText: paymentStatusText(item.status),
+        statusClass: paymentStatusClass(item.status),
 
         amount: toNumber(item.amount),
 
         transactionId: item.transaction_id || '',
 
         createdAt: item.created_at || '',
+        updatedAt: item.updated_at || '',
 
         raw: item,
     };
 }
 
-/**
- * POST /api/orders/{order_id}/pay
- *
- * BE trả:
- * data.payment_id
- * data.transaction_id
- * data.redirect_url
- */
 export function mapCreatePaymentResponse(response = {}) {
     const data = response.data || {};
 
@@ -59,11 +82,11 @@ export function mapCreatePaymentResponse(response = {}) {
         message: response.message || '',
 
         paymentId: data.payment_id,
+        orderId: data.order_id,
+
         transactionId: data.transaction_id || '',
 
         redirectUrl: data.redirect_url || '',
-
-        // giữ thêm key này để code cũ nếu có dùng paymentUrl vẫn chạy
         paymentUrl: data.redirect_url || '',
 
         raw: data,
@@ -71,31 +94,25 @@ export function mapCreatePaymentResponse(response = {}) {
 }
 
 export function mapPaymentHistoryResponse(response = {}) {
-    console.log(response);
-    const data = response.data?.data || [];
+    const raw = Array.isArray(response.data?.data)
+        ? response.data.data
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
 
     return {
-        transactions: data.map((item) => ({
-            id: item.id,
-            orderCode: item.order_code,
-            amount: Number(item.amount || 0),
+        success: Boolean(response.success),
+        message: response.message || '',
 
-            method: paymentMethodText(item.method),
-
-            status: item.status,
-            statusText: paymentStatusText(item.status),
-
-            transactionId: item.transaction_id,
-            createdAt: item.created_at,
-
-            orderId: item.order_id,
-        })),
+        transactions: raw.map(mapPayment),
 
         meta: {
-            currentPage: response.data?.current_page || 1,
-            lastPage: response.data?.last_page || 1,
-            total: response.data?.total || 0,
+            currentPage: toNumber(response.data?.current_page || response.meta?.current_page || 1),
+            lastPage: toNumber(response.data?.last_page || response.meta?.last_page || 1),
+            total: toNumber(response.data?.total || response.meta?.total || raw.length),
         },
+
+        raw: response,
     };
 }
 

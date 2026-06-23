@@ -24,13 +24,14 @@ export default function PaymentResult() {
             try {
                 const payment = await paymentService.getPaymentDetail(paymentId);
 
-                const orderId = payment.raw?.order_id || payment.raw?.order?.id;
+                const orderId = payment.orderId || payment.raw?.order_id || payment.raw?.order?.id;
 
                 if (orderId) {
                     navigate(`/order-success/${orderId}`, {
                         replace: true,
                         state: {
-                            paymentStatus: status,
+                            paymentStatus: status || payment.status,
+                            paymentId,
                         },
                     });
 
@@ -56,13 +57,15 @@ export default function PaymentResult() {
                         <XCircle size={34} />
                     </div>
 
-                    <h1 className="text-2xl font-extrabold text-blue-950">Không thể xử lý kết quả thanh toán</h1>
+                    <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">
+                        Không thể xử lý kết quả thanh toán
+                    </h1>
 
-                    <p className="mt-3 text-slate-600">{error}</p>
+                    <p className="mt-3 text-slate-600 dark:text-slate-400">{error}</p>
 
                     <Link
                         to="/account/orders"
-                        className="mt-6 inline-flex rounded-xl bg-blue-950 px-5 py-3 font-bold text-white"
+                        className="mt-6 inline-flex rounded-xl bg-blue-950 px-5 py-3 font-bold text-white dark:bg-blue-700"
                     >
                         Xem đơn hàng của tôi
                     </Link>
@@ -74,13 +77,13 @@ export default function PaymentResult() {
     return (
         <MainLayout>
             <main className="mx-auto max-w-3xl px-4 py-16 text-center">
-                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                     <Loader2 size={34} className="animate-spin" />
                 </div>
 
-                <h1 className="text-2xl font-extrabold text-blue-950">Đang xử lý kết quả thanh toán</h1>
+                <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">Đang xử lý kết quả thanh toán</h1>
 
-                <p className="mt-3 text-slate-600">Vui lòng chờ trong giây lát...</p>
+                <p className="mt-3 text-slate-600 dark:text-slate-400">Vui lòng chờ trong giây lát...</p>
             </main>
         </MainLayout>
     );

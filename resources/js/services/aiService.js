@@ -1,20 +1,65 @@
 import api from './api';
 
-import { mapAiChatResponse, mapAiHistoryResponse } from './mappers/aiMapper';
+import { mapAiChatResponse, mapAiConversationDetailResponse, mapAiConversationsResponse } from './mappers/aiMapper';
+
+const AI_CHAT_TIMEOUT = 120000;
 
 const aiService = {
-    async chat(message) {
-        const res = await api.post('/ai/chat', {
+    async chat(message, conversationId = null) {
+        const payload = {
             message,
+        };
+
+        if (conversationId) {
+            payload.conversation_id = conversationId;
+        }
+
+        const res = await api.post('/chat/send', payload, {
+            timeout: AI_CHAT_TIMEOUT,
         });
 
-        return mapAiChatResponse(res.data);
+        return mapAiChatResponse(res.data, message);
+    },
+
+    async conversations() {
+        const res = await api.get('/chat/conversations', {
+            timeout: 30000,
+        });
+
+        return mapAiConversationsResponse(res.data);
+    },
+
+    async conversation(conversationId) {
+        const res = await api.get(`/chat/conversations/${conversationId}`, {
+            timeout: 30000,
+        });
+
+        return mapAiConversationDetailResponse(res.data);
+    },
+
+    async latestConversation() {
+        const conversations = await this.conversations();
+
+        if (!conversations.length) {
+            return {
+                conversationId: null,
+                messages: [],
+            };
+        }
+
+        const latest = conversations[0];
+        const detail = await this.conversation(latest.id);
+
+        return {
+            conversationId: detail.id,
+            messages: detail.messages,
+        };
     },
 
     async history() {
-        const res = await api.get('/ai/history');
+        const latest = await this.latestConversation();
 
-        return mapAiHistoryResponse(res.data);
+        return latest.messages;
     },
 };
 

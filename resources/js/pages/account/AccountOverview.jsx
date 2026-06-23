@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Download, FileSpreadsheet, Home, Loader2 } from 'lucide-react';
+import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 
-import AnalyticsSummaryCards from '../../components/analytics/AnalyticsSummaryCards';
+import AnalyticsMetricCards from '../../components/analytics/AnalyticsMetricCards';
 import SalesChart from '../../components/analytics/SalesChart';
-import TopProductsTable from '../../components/analytics/TopProductsTable';
+import TopProductsChart from '../../components/analytics/TopProductsChart';
+import OrderStatusDonutChart from '../../components/analytics/OrderStatusDonutChart';
 
 import analyticsService from '../../services/analyticsService';
 
@@ -70,9 +71,7 @@ export default function AccountOverview() {
         return (
             <section className="rounded-2xl border border-red-100 bg-red-50 p-6 text-center dark:border-red-900/50 dark:bg-red-950/30">
                 <h2 className="font-bold text-red-600 dark:text-red-300">Không thể tải thống kê</h2>
-
                 <p className="mt-2 text-sm text-red-500 dark:text-red-300">{error}</p>
-
                 <button
                     type="button"
                     onClick={fetchAnalytics}
@@ -85,63 +84,59 @@ export default function AccountOverview() {
     }
 
     return (
-        <div>
-            <Breadcrumb />
-            <div className="space-y-6">
-                <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">Tổng quan tài khoản</h1>
-
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Theo dõi đơn hàng, chi tiêu, campaign và sản phẩm bạn quan tâm.
-                        </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={handleExportPdf}
-                            disabled={Boolean(exporting)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-blue-950 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800"
-                        >
-                            {exporting === 'pdf' ? (
-                                <Loader2 size={16} className="animate-spin" />
-                            ) : (
-                                <Download size={16} />
-                            )}
-                            PDF
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handleExportExcel}
-                            disabled={Boolean(exporting)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-blue-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
-                        >
-                            {exporting === 'excel' ? (
-                                <Loader2 size={16} className="animate-spin" />
-                            ) : (
-                                <FileSpreadsheet size={16} />
-                            )}
-                            Excel
-                        </button>
-                    </div>
+        <div className="space-y-4">
+            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">Tổng quan tài khoản</h1>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Theo dõi đơn hàng, chi tiêu và sản phẩm bạn quan tâm.
+                    </p>
                 </div>
 
-                <AnalyticsSummaryCards analytics={analytics} />
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={handleExportPdf}
+                        disabled={Boolean(exporting)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-blue-950 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800"
+                    >
+                        {exporting === 'pdf' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                        PDF
+                    </button>
 
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                    <div className="min-w-0 xl:col-span-2">
-                        <SalesChart data={analytics.spending.monthlySpending} />
-                    </div>
-
-                    <div className="min-w-0">
-                        <TopProductsTable products={analytics.interests.mostPurchasedProducts} />
-                    </div>
+                    <button
+                        type="button"
+                        onClick={handleExportExcel}
+                        disabled={Boolean(exporting)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-blue-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
+                    >
+                        {exporting === 'excel' ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <FileSpreadsheet size={16} />
+                        )}
+                        Excel
+                    </button>
                 </div>
-
-                <RecentOrders orders={analytics.orders.recentOrders} />
             </div>
+
+            <AnalyticsMetricCards analytics={analytics} />
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="min-w-0">
+                    <SalesChart data={analytics?.spending?.monthlySpending || []} />
+                </div>
+
+                <div className="min-w-0">
+                    <OrderStatusDonutChart data={analytics?.orders?.statusBreakdown || []} />
+                </div>
+
+                <div className="min-w-0 md:col-span-2 xl:col-span-1">
+                    <TopProductsChart products={analytics?.interests?.mostPurchasedProducts || []} />
+                </div>
+            </div>
+
+            <RecentOrders orders={analytics?.orders?.recentOrders || []} />
         </div>
     );
 }
@@ -164,7 +159,6 @@ function RecentOrders({ orders = [] }) {
                         >
                             <div>
                                 <p className="font-bold text-blue-950 dark:text-white">{order.orderCode}</p>
-
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                     {order.updatedAt || 'Chưa cập nhật'}
                                 </p>
@@ -174,7 +168,6 @@ function RecentOrders({ orders = [] }) {
                                 <p className="font-extrabold text-blue-950 dark:text-blue-300">
                                     {formatMoney(order.total)}
                                 </p>
-
                                 <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
                                     {order.statusText}
                                 </p>
@@ -184,22 +177,6 @@ function RecentOrders({ orders = [] }) {
                 </div>
             )}
         </section>
-    );
-}
-
-function Breadcrumb() {
-    return (
-        <div className="mb-6 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
-            <Home size={14} className="text-blue-950 dark:text-blue-300" />
-
-            <ChevronRight size={14} />
-
-            <span>Tài khoản</span>
-
-            <ChevronRight size={14} />
-
-            <span className="text-blue-950 dark:text-blue-300">Tổng quan</span>
-        </div>
     );
 }
 

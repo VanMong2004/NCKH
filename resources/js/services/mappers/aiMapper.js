@@ -1,19 +1,159 @@
-export function mapAiMessage(item = {}) {
+function makeId(prefix = 'ai') {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function normalizeArray(value) {
+    return Array.isArray(value) ? value : [];
+}
+
+export function mapAiSource(item = {}) {
     return {
-        id: item.id || `${Date.now()}-${Math.random()}`,
-        question: item.question || '',
-        answer: item.answer || '',
-        source: item.source || 'mock',
-        createdAt: item.created_at || '',
+        type: item.type || '',
+        fileId: item.file_id || item.fileId || '',
+        filename: item.filename || item.name || '',
+        quote: item.quote || '',
+        raw: item,
     };
 }
 
-export function mapAiHistoryResponse(response = {}) {
-    const raw = response.data || [];
-
-    return Array.isArray(raw) ? raw.map(mapAiMessage).reverse() : [];
+export function mapAiToolCall(item = {}) {
+    return {
+        name: item.name || '',
+        arguments: item.arguments || {},
+        result: item.result || null,
+        raw: item,
+    };
 }
 
-export function mapAiChatResponse(response = {}) {
-    return mapAiMessage(response.data || response);
+export function mapAiMessage(item = {}) {
+    return {
+        id: item.id || makeId('msg'),
+        question: item.question || '',
+        answer: item.answer || '',
+        source: item.source || 'openai_rag',
+        sources: normalizeArray(item.sources).map(mapAiSource),
+        toolCalls: normalizeArray(item.tool_calls || item.toolCalls).map(mapAiToolCall),
+        conversationId: item.conversation_id || item.conversationId || null,
+        guestToken: item.guest_token || item.guestToken || '',
+        createdAt: item.created_at || item.createdAt || '',
+        raw: item.raw || item,
+    };
+}
+
+export function mapAiChatResponse(response = {}, question = '') {
+    const data = response.data || response;
+
+    return mapAiMessage({
+        id: data.message_id || data.id || makeId('assistant'),
+        question,
+        answer: data.answer || data.content || '',
+        source: 'openai_rag',
+        sources: data.sources || [],
+        tool_calls: data.tool_calls || [],
+        conversation_id: data.conversation_id || null,
+        guest_token: data.guest_token || '',
+        created_at: data.created_at || '',
+        raw: data,
+    });
+}
+
+export function mapAiConversationSummary(item = {}) {
+    return {
+        id: item.id,
+        title: item.title || 'Hội thoại AI',
+        lastMessageAt: item.last_message_at || '',
+        messagesCount: Number(item.messages_count || 0),
+        raw: item,
+    };
+}
+
+export function mapAiConversationsResponse(response = {}) {
+    const raw = response.data || [];
+
+    return Array.isArray(raw) ? raw.map(mapAiConversationSummary) : [];
+}
+
+export function mapAiConversationDetailResponse(response = {}) {
+    const data = response.data || response;
+    const rawMessages = Array.isArray(data.messages) ? data.messages : [];
+
+    const pairs = [];
+    let currentPair = null;
+
+    rawMessages.forEach((message) => {
+        if (message.role === 'user') {
+            if (currentPair) {
+                pairs.push(currentPair);
+            }
+
+            currentPair = {
+                id: message.id || makeId('pair'),
+                question: message.content || '',
+                answer: '',
+                source: 'history',
+                sources: [],
+                toolCalls: [],
+                conversationId: data.id || null,
+                guestToken: data.guest_token || '',
+                createdAt: message.created_at || '',
+                raw: {
+                    userMessage: message,
+                    assistantMessage: null,
+                },
+            };
+
+            return;
+        }
+
+        if (message.role === 'assistant') {
+            if (!currentPair) {
+                currentPair = {
+                    id: message.id || makeId('pair'),
+                    question: '',
+                    answer: message.content || '',
+                    source: 'history',
+                    sources: normalizeArray(message.sources).map(mapAiSource),
+                    toolCalls: normalizeArray(message.tool_calls).map(mapAiToolCall),
+                    conversationId: data.id || null,
+                    guestToken: data.guest_token || '',
+                    createdAt: message.created_at || '',
+                    raw: {
+                        userMessage: null,
+                        assistantMessage: message,
+                    },
+                };
+
+                pairs.push(currentPair);
+                currentPair = null;
+                return;
+            }
+
+            currentPair.answer = message.content || '';
+            currentPair.sources = normalizeArray(message.sources).map(mapAiSource);
+            currentPair.toolCalls = normalizeArray(message.tool_calls).map(mapAiToolCall);
+            currentPair.raw.assistantMessage = message;
+
+            pairs.push(currentPair);
+            currentPair = null;
+        }
+    });
+
+    if (currentPair) {
+        pairs.push(currentPair);
+    }
+
+    return {
+        id: data.id || null,
+        title: data.title || 'Hội thoại AI',
+        guestToken: data.guest_token || '',
+        messages: pairs,
+        raw: data,
+    };
+}
+
+// Giữ hàm cũ để tương thích
+export function mapAiHistoryResponse(response = {}) {
+    const detail = mapAiConversationDetailResponse(response);
+
+    return detail.messages;
 }

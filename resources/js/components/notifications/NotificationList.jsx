@@ -62,7 +62,7 @@ function EmptyList() {
             <h3 className="mt-4 text-lg font-bold text-blue-950 dark:text-white">Chưa có thông báo</h3>
 
             <p className="mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-                Các cập nhật về đơn hàng, thanh toán và chiến dịch sẽ xuất hiện tại đây.
+                Các cập nhật về đơn hàng, thanh toán và khuyến mãi sẽ xuất hiện tại đây.
             </p>
         </div>
     );

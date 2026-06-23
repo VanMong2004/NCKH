@@ -38,6 +38,7 @@ const reviewService = {
 
     async deleteReview(reviewId) {
         const res = await api.delete(`/reviews/${reviewId}`);
+
         return res.data;
     },
 };
@@ -47,6 +48,14 @@ function buildReviewFormData(payload = {}) {
 
     if (payload.productId) {
         formData.append('product_id', payload.productId);
+    }
+
+    if (payload.productVariantId || payload.product_variant_id) {
+        formData.append('product_variant_id', payload.productVariantId || payload.product_variant_id);
+    }
+
+    if (payload.orderId) {
+        formData.append('order_id', payload.orderId);
     }
 
     formData.append('rating', payload.rating || 5);

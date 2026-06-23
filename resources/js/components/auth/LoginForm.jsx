@@ -21,7 +21,7 @@ export default function LoginForm() {
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
-    const redirectTo = location.state?.from?.pathname || '/';
+    const from = location.state?.from;
 
     function handleChange(e) {
         const { name, value } = e.target;
@@ -58,13 +58,39 @@ export default function LoginForm() {
             const response = await login(form.email, form.password);
 
             toast.success(response.message || 'Đăng nhập thành công');
-            navigate(redirectTo, { replace: true });
+
+            redirectAfterLogin();
         } catch (err) {
             setErrors(normalizeErrors(err));
             toast.error(err.message || 'Đăng nhập thất bại');
         } finally {
             setLoading(false);
         }
+    }
+
+    function redirectAfterLogin() {
+        if (from && typeof from === 'object' && from.pathname) {
+            navigate(
+                {
+                    pathname: from.pathname,
+                    search: from.search || '',
+                    hash: from.hash || '',
+                },
+                {
+                    replace: true,
+                    state: from.state || null,
+                },
+            );
+
+            return;
+        }
+
+        if (typeof from === 'string') {
+            navigate(from, { replace: true });
+            return;
+        }
+
+        navigate('/', { replace: true });
     }
 
     return (
@@ -106,6 +132,7 @@ export default function LoginForm() {
                 </div>
 
                 <button
+                    type="submit"
                     disabled={loading}
                     className="w-full rounded-lg bg-blue-950 py-3 font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700"
                 >
@@ -118,7 +145,13 @@ export default function LoginForm() {
 
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                     Chưa có tài khoản?
-                    <Link to="/register" className="ml-2 font-bold text-blue-700 dark:text-blue-300">
+                    <Link
+                        to="/register"
+                        state={{
+                            from,
+                        }}
+                        className="ml-2 font-bold text-blue-700 dark:text-blue-300"
+                    >
                         Đăng ký
                     </Link>
                 </p>
@@ -139,8 +172,10 @@ function Divider() {
 
 function normalizeErrors(err) {
     const result = {};
+
     Object.entries(err.errors || {}).forEach(([key, value]) => {
         result[key] = Array.isArray(value) ? value[0] : value;
     });
+
     return result;
 }

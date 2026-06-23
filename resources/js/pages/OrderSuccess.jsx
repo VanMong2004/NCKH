@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle2, Circle, Info, MapPin, Phone } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
+import { Link, useLocation, useParams } from 'react-router-dom';
 
 import MainLayout from '../layout/MainLayout';
 import orderService from '../services/orderService';
 
 export default function OrderSuccess() {
     const { orderId } = useParams();
+    const location = useLocation();
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,6 +32,10 @@ export default function OrderSuccess() {
         }
     }
 
+    const hero = useMemo(() => {
+        return getHeroState(order, location.state?.paymentStatus);
+    }, [order, location.state]);
+
     if (loading) {
         return (
             <MainLayout>
@@ -49,6 +54,7 @@ export default function OrderSuccess() {
                     <p className="font-bold text-red-500">{error}</p>
 
                     <button
+                        type="button"
                         onClick={loadOrder}
                         className="mt-4 rounded-xl bg-blue-950 px-5 py-3 text-white dark:bg-blue-700"
                     >
@@ -79,18 +85,16 @@ export default function OrderSuccess() {
     return (
         <MainLayout>
             <main className="mx-auto max-w-5xl px-4 py-6">
-                <section className="rounded-3xl border border-emerald-100 bg-emerald-50 p-8 text-center dark:border-emerald-900/50 dark:bg-emerald-950/30">
-                    <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
-                        <CheckCircle2 size={44} />
+                <section className={`rounded-3xl border p-8 text-center shadow-sm ${hero.wrapperClass}`}>
+                    <div
+                        className={`mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full ${hero.iconClass}`}
+                    >
+                        <hero.icon size={44} />
                     </div>
 
-                    <h1 className="text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">
-                        Đặt hàng thành công
-                    </h1>
+                    <h1 className={`text-3xl font-extrabold ${hero.titleClass}`}>{hero.title}</h1>
 
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                        Hệ thống đã ghi nhận đơn hàng của bạn.
-                    </p>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{hero.description}</p>
 
                     <div className="mt-5 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-bold text-blue-950 shadow-sm dark:bg-slate-900 dark:text-white">
                         Mã đơn hàng: {order.code}
@@ -105,9 +109,12 @@ export default function OrderSuccess() {
                                 <InfoBox label="Trạng thái" value={order.statusText} />
                                 <InfoBox
                                     label="Thanh toán"
-                                    value={order.payment?.statusText || 'Chưa tạo thanh toán'}
+                                    value={order.payment?.statusText || getPaymentStatusFallback(order)}
                                 />
-                                <InfoBox label="Phương thức" value={order.payment?.methodText || 'Chưa xác định'} />
+                                <InfoBox
+                                    label="Phương thức"
+                                    value={order.payment?.methodText || 'COD / Chưa tạo thanh toán'}
+                                />
                                 <InfoBox label="Ngày đặt" value={formatDate(order.createdAt)} />
                                 <InfoBox label="Tổng tiền" value={formatMoney(order.summary?.grandTotal)} />
                             </div>
@@ -125,43 +132,63 @@ export default function OrderSuccess() {
 
                         <Card title="Sản phẩm đã đặt">
                             <div className="space-y-3">
-                                {(order.items || []).map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800"
-                                    >
-                                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
-                                            <img
-                                                src={item.thumbnail}
-                                                alt={item.productName}
-                                                className="max-h-full max-w-full object-contain"
-                                                onError={(e) => {
-                                                    e.currentTarget.src = '/images/no-image.png';
-                                                }}
-                                            />
+                                {(order.items || []).map((item) => {
+                                    const originalPrice = Number(item.originalPrice || item.price || 0);
+                                    const finalPrice = Number(item.finalPrice || item.price || 0);
+                                    const hasDiscount = originalPrice > finalPrice;
+
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            className="flex gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800"
+                                        >
+                                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
+                                                <img
+                                                    src={item.thumbnail || '/images/no-image.png'}
+                                                    alt={item.productName}
+                                                    className="max-h-full max-w-full object-contain"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src = '/images/no-image.png';
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+                                                <p className="line-clamp-2 font-bold text-blue-950 dark:text-white">
+                                                    {item.productName}
+                                                </p>
+
+                                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                    {item.variant?.size && <>Size: {item.variant.size}</>}
+                                                    {item.variant?.size && item.variant?.color && ' · '}
+                                                    {item.variant?.color && <>Màu: {item.variant.color}</>}
+                                                </p>
+
+                                                {item.promotion?.title && (
+                                                    <p className="mt-1 line-clamp-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                                        {item.promotion.title}
+                                                    </p>
+                                                )}
+
+                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                                                    <span className="text-slate-500 dark:text-slate-400">
+                                                        SL: {item.quantity} · {formatMoney(finalPrice)}
+                                                    </span>
+
+                                                    {hasDiscount && (
+                                                        <span className="text-xs text-slate-400 line-through">
+                                                            {formatMoney(originalPrice)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <p className="text-sm font-bold text-blue-950 dark:text-blue-300">
+                                                {formatMoney(item.total)}
+                                            </p>
                                         </div>
-
-                                        <div className="min-w-0 flex-1">
-                                            <p className="line-clamp-2 font-bold text-blue-950 dark:text-white">
-                                                {item.productName}
-                                            </p>
-
-                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                {item.variant?.size && <>Size: {item.variant.size}</>}
-                                                {item.variant?.size && item.variant?.color && ' · '}
-                                                {item.variant?.color && <>Màu: {item.variant.color}</>}
-                                            </p>
-
-                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                SL: {item.quantity} · {formatMoney(item.price)}
-                                            </p>
-                                        </div>
-
-                                        <p className="text-sm font-bold text-blue-950 dark:text-blue-300">
-                                            {formatMoney(item.total)}
-                                        </p>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </Card>
 
@@ -169,7 +196,15 @@ export default function OrderSuccess() {
                             <div className="space-y-3 text-sm">
                                 <Row label="Tạm tính" value={formatMoney(order.summary?.subTotal)} />
                                 <Row label="Phí vận chuyển" value={formatMoney(order.summary?.shippingFee)} />
-                                <Row label="Giảm giá" value={formatMoney(order.summary?.discount)} />
+                                <Row
+                                    label="Giảm giá"
+                                    value={
+                                        Number(order.summary?.discount || 0) > 0
+                                            ? `- ${formatMoney(order.summary?.discount)}`
+                                            : formatMoney(0)
+                                    }
+                                    positive={Number(order.summary?.discount || 0) > 0}
+                                />
                                 <div className="border-t border-slate-200 pt-3 dark:border-slate-800" />
                                 <Row label="Tổng cộng" value={formatMoney(order.summary?.grandTotal)} strong />
                             </div>
@@ -205,7 +240,8 @@ export default function OrderSuccess() {
 
                         <Card title="Hướng dẫn nhận hàng">
                             <Guide icon={MapPin}>
-                                {order.pickup?.location || 'Nhận hàng tại điểm giao của cửa hàng.'}
+                                {order.pickup?.location ||
+                                    'Nhận hàng tại điểm giao của cửa hàng hoặc theo địa chỉ đã đăng ký.'}
                             </Guide>
 
                             <Guide icon={Info}>
@@ -237,6 +273,59 @@ export default function OrderSuccess() {
     );
 }
 
+function getHeroState(order, paymentStatus) {
+    const status = order?.status || '';
+    const realPaymentStatus = paymentStatus || order?.payment?.status || '';
+
+    if (realPaymentStatus === 'failed' || status === 'cancelled') {
+        return {
+            icon: XCircle,
+            title: 'Thanh toán chưa thành công',
+            description: 'Đơn hàng của bạn chưa được thanh toán thành công. Vui lòng kiểm tra lại trong mục đơn hàng.',
+            wrapperClass: 'border-red-100 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30',
+            iconClass: 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400',
+            titleClass: 'text-red-700 dark:text-red-400',
+        };
+    }
+
+    if (realPaymentStatus === 'success' || status === 'paid') {
+        return {
+            icon: CheckCircle2,
+            title: 'Thanh toán thành công',
+            description: 'Hệ thống đã ghi nhận thanh toán cho đơn hàng của bạn.',
+            wrapperClass: 'border-emerald-100 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30',
+            iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
+            titleClass: 'text-emerald-700 dark:text-emerald-400',
+        };
+    }
+
+    if (status === 'pending') {
+        return {
+            icon: Clock,
+            title: 'Đặt hàng thành công',
+            description: 'Hệ thống đã ghi nhận đơn hàng của bạn và đang chờ xử lý.',
+            wrapperClass: 'border-amber-100 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30',
+            iconClass: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
+            titleClass: 'text-amber-700 dark:text-amber-400',
+        };
+    }
+
+    return {
+        icon: CheckCircle2,
+        title: 'Đặt hàng thành công',
+        description: 'Hệ thống đã ghi nhận đơn hàng của bạn.',
+        wrapperClass: 'border-emerald-100 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30',
+        iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
+        titleClass: 'text-emerald-700 dark:text-emerald-400',
+    };
+}
+
+function getPaymentStatusFallback(order) {
+    if (order.status === 'paid') return 'Đã thanh toán';
+    if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đã hủy';
+    return 'Chưa tạo thanh toán';
+}
+
 function Card({ title, children }) {
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -255,7 +344,7 @@ function InfoBox({ label, value }) {
     );
 }
 
-function Row({ label, value, strong = false }) {
+function Row({ label, value, strong = false, positive = false }) {
     return (
         <div className="flex items-center justify-between gap-4">
             <span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span>
@@ -264,7 +353,9 @@ function Row({ label, value, strong = false }) {
                 className={`text-right ${
                     strong
                         ? 'text-xl font-extrabold text-blue-950 dark:text-blue-300'
-                        : 'font-bold text-blue-950 dark:text-white'
+                        : positive
+                          ? 'font-bold text-emerald-600 dark:text-emerald-400'
+                          : 'font-bold text-blue-950 dark:text-white'
                 }`}
             >
                 {value}

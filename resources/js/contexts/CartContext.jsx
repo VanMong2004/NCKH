@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { useLocation, useNavigate } from 'react-router-dom';
 
 import cartService from '../services/cartService';
 import { useAuth } from './AuthContext';
@@ -17,9 +16,9 @@ export const CartProvider = ({ children }) => {
     const [discount, setDiscount] = useState(0);
     const [grandTotal, setGrandTotal] = useState(0);
 
+    const [hasLoginRequiredPromotion, setHasLoginRequiredPromotion] = useState(false);
+
     const { user } = useAuth();
-    const location = useLocation();
-    const navigate = useNavigate();
 
     function resetCartState() {
         setCartItems([]);
@@ -29,55 +28,43 @@ export const CartProvider = ({ children }) => {
         setShipping(0);
         setDiscount(0);
         setGrandTotal(0);
+        setHasLoginRequiredPromotion(false);
     }
 
     function applyCartState(cart) {
-        setCartItems(cart.items);
-        setTotalPrice(cart.grandTotal);
-        setTotalItems(cart.totalItems);
+        setCartItems(cart.items || []);
+        setTotalPrice(cart.grandTotal || 0);
+        setTotalItems(cart.totalItems || 0);
 
-        setSubTotal(cart.subTotal);
-        setShipping(cart.shipping);
-        setDiscount(cart.discount);
-        setGrandTotal(cart.grandTotal);
+        setSubTotal(cart.subTotal || 0);
+        setShipping(cart.shipping || 0);
+        setDiscount(cart.discount || 0);
+        setGrandTotal(cart.grandTotal || 0);
+
+        setHasLoginRequiredPromotion(Boolean(cart.hasLoginRequiredPromotion));
     }
 
     async function fetchCart() {
-        if (!user) {
-            resetCartState();
-            return;
-        }
-
         try {
             const cart = await cartService.getCart();
+
             applyCartState(cart);
         } catch (error) {
             console.error('Lỗi fetchCart:', error);
 
-            if (error?.response?.status !== 401) {
-                toast.error(error?.response?.data?.message || error?.message || 'Không thể tải giỏ hàng');
+            resetCartState();
+
+            if (error?.status !== 401 && error?.status !== 404) {
+                toast.error(error?.message || 'Không thể tải giỏ hàng');
             }
         }
     }
 
     useEffect(() => {
-        if (!user) {
-            resetCartState();
-            return;
-        }
-
         fetchCart();
     }, [user]);
 
     async function addToCartByVariant(productVariantId, quantity = 1) {
-        if (!user) {
-            navigate('/login', {
-                state: { from: location.pathname },
-            });
-
-            return false;
-        }
-
         try {
             const response = await cartService.addToCart({
                 product_variant_id: productVariantId,
@@ -96,7 +83,7 @@ export const CartProvider = ({ children }) => {
         } catch (error) {
             console.error('Lỗi addToCartByVariant:', error);
 
-            toast.error(error?.response?.data?.message || error?.message || 'Không thể thêm vào giỏ hàng');
+            toast.error(error?.message || 'Không thể thêm vào giỏ hàng');
 
             return false;
         }
@@ -104,6 +91,7 @@ export const CartProvider = ({ children }) => {
 
     async function addToCart(product, size = null, quantity = 1) {
         const variants = product?.variants || [];
+
         let selectedVariant = null;
 
         if (variants.length === 1) {
@@ -117,7 +105,15 @@ export const CartProvider = ({ children }) => {
             return false;
         }
 
-        return addToCartByVariant(selectedVariant.id, quantity);
+        const productVariantId =
+            selectedVariant.id ?? selectedVariant.product_variant_id ?? selectedVariant.productVariantId;
+
+        if (!productVariantId) {
+            toast.warn('Không tìm thấy biến thể sản phẩm');
+            return false;
+        }
+
+        return addToCartByVariant(productVariantId, quantity);
     }
 
     async function quantityChange(cartItemId, newQuantity) {
@@ -134,7 +130,7 @@ export const CartProvider = ({ children }) => {
         } catch (error) {
             console.error('Lỗi quantityChange:', error);
 
-            toast.error(error?.response?.data?.message || error?.message || 'Không thể cập nhật số lượng');
+            toast.error(error?.message || 'Không thể cập nhật số lượng');
         }
     }
 
@@ -148,7 +144,7 @@ export const CartProvider = ({ children }) => {
         } catch (error) {
             console.error('Lỗi removeCart:', error);
 
-            toast.error(error?.response?.data?.message || error?.message || 'Không thể xóa sản phẩm');
+            toast.error(error?.message || 'Không thể xóa sản phẩm');
         }
     }
 
@@ -159,11 +155,12 @@ export const CartProvider = ({ children }) => {
             }
 
             await fetchCart();
+
             toast.success('Đã xóa toàn bộ giỏ hàng');
         } catch (error) {
             console.error('Lỗi clearCart:', error);
 
-            toast.error(error?.response?.data?.message || error?.message || 'Không thể xóa toàn bộ giỏ hàng');
+            toast.error(error?.message || 'Không thể xóa toàn bộ giỏ hàng');
         }
     }
 
@@ -180,6 +177,8 @@ export const CartProvider = ({ children }) => {
                 shipping,
                 discount,
                 grandTotal,
+
+                hasLoginRequiredPromotion,
 
                 fetchCart,
                 addToCart,

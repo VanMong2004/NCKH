@@ -147,18 +147,8 @@ export default function AccountAddress() {
 
     return (
         <div>
-            <Breadcrumb />
-
-            <div className="space-y-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-blue-950 dark:text-white">Địa chỉ nhận hàng</h1>
-
-                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                            Quản lý địa chỉ dùng khi thanh toán đơn hàng.
-                        </p>
-                    </div>
-
+            <div className="space-y-2">
+                <div className="flex gap-4 sm:flex-row sm:items-center sm:justify-end">
                     <button
                         type="button"
                         onClick={handleAddNew}
@@ -349,18 +339,3 @@ function Input({ label, value, error, onChange, placeholder }) {
     );
 }
 
-function Breadcrumb() {
-    return (
-        <div className="mb-6 hidden items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:flex">
-            <Home size={14} className="text-blue-950 dark:text-blue-300" />
-
-            <ChevronRight size={14} />
-
-            <span>Tài khoản</span>
-
-            <ChevronRight size={14} />
-
-            <span className="text-blue-950 dark:text-blue-300">Địa chỉ</span>
-        </div>
-    );
-}

@@ -2,9 +2,9 @@ import { Loader2, RefreshCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
-import HomeCampaignGrid from '../components/home/HomeCampaignGrid'
 import CategoryList from '../components/home/CategoryList';
 import HeroSection from '../components/home/HeroSection';
+import HomePromotionGrid from '../components/home/HomePromotionGrid';
 import HomeSearchSection from '../components/home/HomeSearchSection';
 import NewsList from '../components/home/NewsList';
 import ProductGrid from '../components/product/ProductGrid';
@@ -12,6 +12,7 @@ import SectionHeader from '../components/ui/SectionHeader';
 import MainLayout from '../layout/MainLayout';
 import blogService from '../services/blogService';
 import homeService from '../services/homeService';
+import promotionService from '../services/promotionService';
 import { mapBlogToHomeNews } from '../services/mappers/homeMapper';
 
 const PRODUCT_TABS = [
@@ -35,6 +36,7 @@ const PRODUCT_TABS = [
 
 export default function Home() {
     const [home, setHome] = useState(null);
+    const [promotions, setPromotions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeProductTab, setActiveProductTab] = useState('featuredProducts');
 
@@ -62,6 +64,22 @@ export default function Home() {
                     newsEvents = [];
                 }
             }
+
+            let promotionItems = [];
+
+            try {
+                const promotionResult = await promotionService.getPromotions({
+                    status: 'active',
+                    sort: 'ending_soon',
+                    per_page: 4,
+                });
+
+                promotionItems = promotionResult.promotions || [];
+            } catch {
+                promotionItems = [];
+            }
+
+            setPromotions(promotionItems);
 
             setHome({
                 ...result,
@@ -133,16 +151,13 @@ export default function Home() {
         <MainLayout>
             <main className="bg-slate-50 pb-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
                 <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-                    <HeroSection
-                        featuredCampaign={home.activeCampaigns?.[0]}
-                        featuredProduct={home.featuredProducts?.[0]}
-                    />
+                    <HeroSection heroSlider={home.heroSlider} />
 
                     <HomeSearchSection trendingKeywords={home.trendingKeywords} />
 
-                    <HomeCampaignGrid activeCampaigns={home.activeCampaigns} upcomingCampaigns={home.upcomingCampaigns} />
+                    <HomePromotionGrid promotions={promotions} />
 
-                    <section className="mt-8 grid gap-7 lg:grid-cols-[280px_minmax(0,1fr)]">
+                    <section className="mt-4 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
                         <CategoryList categories={home.categories} />
 
                         <section className="min-w-0">
@@ -151,7 +166,7 @@ export default function Home() {
 
                                 <ProductTabs activeKey={activeProductTab} onChange={setActiveProductTab} />
 
-                                <div className="mt-5">
+                                <div className="mt-2">
                                     {activeProducts.length > 0 ? (
                                         <ProductGrid products={activeProducts} />
                                     ) : (

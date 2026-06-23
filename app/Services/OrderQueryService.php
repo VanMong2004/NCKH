@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
-use App\Models\OrderItem;
+use App\Models\Review;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -13,72 +13,72 @@ class OrderQueryService
      * My orders
      */
     public function myOrders($user, array $filters)
-{
-    if (!$user) {
-        throw new RuntimeException('Vui lòng đăng nhập', 401);
+    {
+        if (!$user) {
+            throw new RuntimeException('Vui lòng đăng nhập', 401);
+        }
+
+        $query = Order::with([
+            'items.productVariant.product.images',
+            'payments',
+        ])
+            ->where('user_id', $user->id);
+
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['keyword'])) {
+            $query->where('order_code', 'like', '%' . $filters['keyword'] . '%');
+        }
+
+        $sort = $filters['sort'] ?? 'latest';
+
+        $sort === 'oldest'
+            ? $query->oldest()
+            : $query->latest();
+
+        $orders = $query->paginate($filters['per_page'] ?? 10);
+
+        $orders->setCollection(
+            $orders->getCollection()->map(function ($order) {
+                $payment = $order->payments
+                    ->sortByDesc('created_at')
+                    ->first();
+
+                $firstItem = $order->items->first();
+
+                $thumbnail = optional(
+                    $firstItem?->productVariant?->product?->images
+                        ?->where('type', 'thumbnail')
+                        ->first()
+                )->url
+                    ?? optional(
+                        $firstItem?->productVariant?->product?->images
+                            ?->first()
+                    )->url;
+
+                return [
+                    'id' => $order->id,
+                    'order_code' => $order->order_code,
+                    'title' => optional($firstItem?->productVariant?->product)->name,
+                    'status' => $order->status,
+                    'payment_status' => $payment?->status ?? 'pending',
+                    'payment_method' => $payment?->method,
+                    'thumbnail' => $thumbnail,
+                    'item_count' => $order->items->sum('quantity'),
+                    'total' => (float) $order->total,
+                    'qr_code' => $order->order_code,
+                    'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
+                    'cancel_reason' => $order->cancel_reason,
+                    'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
+                    'detail_url' => "/profile/orders/" . $order->id,
+                ];
+            })
+        );
+
+        return $orders;
     }
-
-    $query = Order::with([
-        'items.productVariant.product.images',
-        'payments',
-    ])
-        ->where('user_id', $user->id);
-
-    if (!empty($filters['status'])) {
-        $query->where('status', $filters['status']);
-    }
-
-    if (!empty($filters['keyword'])) {
-        $query->where('order_code', 'like', '%' . $filters['keyword'] . '%');
-    }
-
-    $sort = $filters['sort'] ?? 'latest';
-
-    $sort === 'oldest'
-        ? $query->oldest()
-        : $query->latest();
-
-    $orders = $query->paginate($filters['per_page'] ?? 10);
-
-    $orders->setCollection(
-        $orders->getCollection()->map(function ($order) {
-            $payment = $order->payments
-                ->sortByDesc('created_at')
-                ->first();
-
-            $firstItem = $order->items->first();
-
-            $thumbnail = optional(
-                $firstItem?->productVariant?->product?->images
-                    ?->where('type', 'thumbnail')
-                    ->first()
-            )->url
-            ?? optional(
-                $firstItem?->productVariant?->product?->images
-                    ?->first()
-            )->url;
-
-            return [
-                'id' => $order->id,
-                'order_code' => $order->order_code,
-                'title' => optional($firstItem?->productVariant?->product)->name,
-                'status' => $order->status,
-                'payment_status' => $payment?->status ?? 'pending',
-                'payment_method' => $payment?->method,
-                'thumbnail' => $thumbnail,
-                'item_count' => $order->items->sum('quantity'),
-                'total' => (float) $order->total,
-                'qr_code' => $order->order_code,
-                'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
-                'cancel_reason' => $order->cancel_reason,
-                'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
-                'detail_url' => "/profile/orders/" . $order->id,
-            ];
-        })
-    );
-
-    return $orders;
-}
 
     /**
      * Show order detail
@@ -90,12 +90,12 @@ class OrderQueryService
         }
 
         $order = Order::with([
-            'items.review',
             'items.productVariant.product.images',
             'payments',
+            'reviews',
         ])
-        ->where('user_id', $user->id)
-        ->findOrFail($id);
+            ->where('user_id', $user->id)
+            ->find($id);
 
         if (!$order) {
             throw new RuntimeException('Đơn hàng không tồn tại', 404);
@@ -114,6 +114,12 @@ class OrderQueryService
 
             'qr_code' => $order->order_code,
 
+            'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
+
+            'cancel_reason' => $order->cancel_reason,
+
+            'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
+
             'receiver' => [
                 'name' => $order->shipping_name,
                 'phone' => $order->shipping_phone,
@@ -124,17 +130,14 @@ class OrderQueryService
                 'id' => $payment->id,
                 'method' => $payment->method,
                 'status' => $payment->status,
-                'amount' => $payment->amount,
+                'amount' => (float) $payment->amount,
                 'transaction_id' => $payment->transaction_id,
             ] : null,
 
             'summary' => [
                 'sub_total' => (float) ($order->sub_total ?? 0),
-
                 'shipping_fee' => (float) ($order->shipping_fee ?? 0),
-
                 'discount' => (float) ($order->discount_total ?? 0),
-
                 'grand_total' => (float) ($order->grand_total ?? $order->total),
             ],
 
@@ -143,29 +146,58 @@ class OrderQueryService
 
                 $variant = $item->productVariant;
                 $product = $variant?->product;
-                $review = $item->review;
+
+                $productId = $product?->id;
+                $productVariantId = $variant?->id;
+
+                $review = $productId
+                    ? Review::query()
+                        ->where('order_id', $order->id)
+                        ->where('user_id', $order->user_id)
+                        ->where('product_id', $productId)
+                        ->where('is_active', true)
+                        ->first()
+                    : null;
+
+                $isReviewed = (bool) $review;
 
                 return [
                     'id' => $item->id,
 
-                    'product_id' => $product?->id,
-                    'product_name' => $item->product_name,
+                    /*
+                    |--------------------------------------------------------------------------
+                    | DATA FOR USER REVIEW BUTTON
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'product_id' => $productId,
                     'product_slug' => $product?->slug,
-                    'product_variant_id' => $variant?->id,
-
-                    'is_reviewed' => !is_null($review),
+                    'product_variant_id' => $productVariantId,
                     'review_id' => $review?->id,
+                    'is_reviewed' => $isReviewed,
+                    'can_review' => $order->status === 'completed'
+                        && !empty($productId)
+                        && !$isReviewed,
 
-                    'can_review' => (
-                        $order->status === 'completed'
-                        && is_null($review)
-                    ),                    
+                    /*
+                    |--------------------------------------------------------------------------
+                    | PRODUCT INFO
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'product_name' => $item->product_name ?: $product?->name,
 
                     'thumbnail' => optional(
                         $product?->images?->where('type', 'thumbnail')->first()
                     )->url ?? optional($product?->images?->first())->url,
 
                     'variant' => $item->variant_snapshot,
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | PRICE INFO
+                    |--------------------------------------------------------------------------
+                    */
 
                     'price' => (float) ($item->final_price ?? $item->price),
 
@@ -183,7 +215,7 @@ class OrderQueryService
                         ? $item->promotion_snapshot
                         : null,
                 ];
-            }),
+            })->values(),
 
             'pickup' => [
                 'location' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
@@ -208,7 +240,7 @@ class OrderQueryService
                         'processing',
                         'shipped',
                         'completed',
-                    ]),
+                    ], true),
                     'time' => null,
                 ],
             ],
@@ -231,7 +263,7 @@ class OrderQueryService
             ])
                 ->where('user_id', $user->id)
                 ->lockForUpdate()
-                ->findOrFail($id);
+                ->find($id);
 
             if (!$order) {
                 throw new RuntimeException('Đơn hàng không tồn tại', 404);
@@ -243,7 +275,7 @@ class OrderQueryService
 
             app(\App\Services\Admin\OrderReleaseService::class)
                 ->release($order);
-            
+
             $order->update([
                 'status' => 'cancelled',
                 'cancel_reason' => 'user_cancelled',
@@ -251,5 +283,5 @@ class OrderQueryService
 
             return $order->fresh();
         });
-    }   
+    }
 }

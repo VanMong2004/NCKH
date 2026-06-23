@@ -60,10 +60,10 @@ export default function HomeSearchSection({ trendingKeywords = [] }) {
     }
 
     const displayKeywords =
-        trendingKeywords.length > 0 ? trendingKeywords : ['đồng phục', 'phụ kiện', 'bảng tên', 'chiến dịch'];
+        trendingKeywords.length > 0 ? trendingKeywords : ['đồng phục', 'phụ kiện', 'bảng tên', 'sản phẩm mới'];
 
     return (
-        <section className="mt-6 grid gap-5 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="mt-2 grid gap-5 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:grid-cols-[minmax(0,1fr)_360px]">
             <div>
                 <div className="mb-4 flex items-center gap-2">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
@@ -74,7 +74,7 @@ export default function HomeSearchSection({ trendingKeywords = [] }) {
                         <h2 className="text-lg font-black text-blue-950 dark:text-white">Tìm kiếm nhanh</h2>
 
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Tìm sản phẩm, chiến dịch, tin tức hoặc sự kiện.
+                            Tìm sản phẩm, danh mục, bài viết hoặc thông tin hỗ trợ.
                         </p>
                     </div>
                 </div>
@@ -85,7 +85,7 @@ export default function HomeSearchSection({ trendingKeywords = [] }) {
                     <input
                         value={keyword}
                         onChange={(e) => setKeyword(e.target.value)}
-                        placeholder="Tìm sản phẩm, chiến dịch, bài viết..."
+                        placeholder="Tìm sản phẩm, danh mục, bài viết..."
                         className="h-13 w-full rounded-2xl border border-slate-200 bg-white py-4 pl-12 pr-24 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-500/10"
                     />
 
@@ -132,7 +132,7 @@ export default function HomeSearchSection({ trendingKeywords = [] }) {
                             );
                         })
                     ) : (
-                        ['Áo đồng phục', 'Bảng tên sinh viên', 'Balo', 'Chiến dịch'].map((item) => (
+                        ['Áo đồng phục', 'Bảng tên sinh viên', 'Phụ kiện', 'Sản phẩm mới'].map((item) => (
                             <button
                                 key={item}
                                 type="button"

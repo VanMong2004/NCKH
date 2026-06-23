@@ -1,95 +1,206 @@
-import { ArrowRight, CalendarDays, PackageCheck, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function HeroSection({ featuredCampaign, featuredProduct }) {
-    const image = featuredCampaign?.image || featuredProduct?.image || '/images/system/Rectangle_3897.jpg';
+import { Autoplay, Keyboard, Navigation, Pagination } from 'swiper/modules';
+import { Swiper, SwiperSlide } from 'swiper/react';
+
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+
+const STATIC_SLIDES = [
+    {
+        id: 'static-1',
+        title: 'CTUT Shop',
+        subtitle: 'Sản phẩm sinh viên CTUT',
+        description: 'Khám phá đồng phục, phụ kiện, quà tặng và các sản phẩm dành cho sinh viên CTUT.',
+        image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1800',
+        mobileImage: '',
+    },
+    {
+        id: 'static-2',
+        title: 'Sản phẩm mới mỗi ngày',
+        subtitle: 'Cập nhật nhanh chóng',
+        description: 'Theo dõi các mẫu áo, phụ kiện và sản phẩm mới nhất được cập nhật trên hệ thống.',
+        image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1800',
+        mobileImage: '',
+    },
+    {
+        id: 'static-3',
+        title: 'Mua sắm thuận tiện',
+        subtitle: 'Đặt hàng dễ dàng',
+        description: 'Chọn sản phẩm, thêm giỏ hàng, thanh toán và theo dõi đơn hàng ngay trên hệ thống.',
+        image: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=1800',
+        mobileImage: '',
+    },
+];
+
+export default function HeroSection({ heroSlider }) {
+    const slides = useMemo(() => {
+        const apiSlides = Array.isArray(heroSlider?.slides)
+            ? heroSlider.slides
+                  .filter((item) => item?.image || item?.mobileImage)
+                  .map((item) => ({
+                      id: item.id || item.itemKey || item.item_key,
+                      title: item.title || heroSlider?.title || 'CTUT Shop',
+                      subtitle: item.subtitle || heroSlider?.subtitle || 'CTUT Shop',
+                      description: item.content || item.description || heroSlider?.description || '',
+                      image:
+                          item.image ||
+                          heroSlider?.backgroundImage ||
+                          heroSlider?.background_image ||
+                          '/images/no-image.png',
+                      mobileImage:
+                          item.mobileImage ||
+                          item.mobile_image ||
+                          heroSlider?.mobileBackgroundImage ||
+                          heroSlider?.mobile_background_image ||
+                          '',
+                  }))
+            : [];
+
+        if (apiSlides.length >= 2) {
+            return apiSlides;
+        }
+
+        if (apiSlides.length === 1) {
+            return [apiSlides[0], ...STATIC_SLIDES.slice(1)];
+        }
+
+        if (heroSlider?.backgroundImage || heroSlider?.background_image) {
+            return [
+                {
+                    id: 'hero-api-background',
+                    title: heroSlider.title || 'CTUT Shop',
+                    subtitle: heroSlider.subtitle || heroSlider.badge || 'CTUT Shop',
+                    description: heroSlider.description || '',
+                    image: heroSlider.backgroundImage || heroSlider.background_image,
+                    mobileImage: heroSlider.mobileBackgroundImage || heroSlider.mobile_background_image || '',
+                },
+                ...STATIC_SLIDES.slice(1),
+            ];
+        }
+
+        return STATIC_SLIDES;
+    }, [heroSlider]);
 
     return (
-        <section className="relative overflow-hidden rounded-[2rem] border border-blue-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div
-                className="absolute inset-0 bg-cover bg-center opacity-90"
-                style={{
-                    backgroundImage: `url(${image})`,
+        <section className="relative overflow-hidden rounded-[2rem] border border-blue-100 bg-slate-950 shadow-sm dark:border-slate-800">
+            <Swiper
+                modules={[Autoplay, Navigation, Pagination, Keyboard]}
+                slidesPerView={1}
+                loop={slides.length > 1}
+                speed={750}
+                keyboard={{
+                    enabled: true,
                 }}
-            />
+                autoplay={{
+                    delay: 2000,
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: true,
+                }}
+                navigation={{
+                    prevEl: '.hero-swiper-prev',
+                    nextEl: '.hero-swiper-next',
+                }}
+                pagination={{
+                    clickable: true,
+                    el: '.hero-swiper-pagination',
+                    bulletClass: 'hero-swiper-bullet',
+                    bulletActiveClass: 'hero-swiper-bullet-active',
+                }}
+                className="hero-swiper h-[420px] sm:h-[500px] lg:h-[560px]"
+            >
+                {slides.map((slide, index) => (
+                    <SwiperSlide key={slide.id || index}>
+                        <div className="relative h-[420px] overflow-hidden sm:h-[500px] lg:h-[560px]">
+                            <picture>
+                                {slide.mobileImage && <source media="(max-width: 640px)" srcSet={slide.mobileImage} />}
 
-            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 to-white/30 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-950/40" />
-            <div className="absolute -left-10 bottom-8 h-44 w-44 rounded-full bg-blue-100/70 blur-3xl dark:bg-blue-500/10" />
-            <div className="absolute right-12 top-8 h-28 w-28 rounded-full bg-sky-200/60 blur-2xl dark:bg-sky-500/10" />
+                                <img
+                                    src={slide.image}
+                                    alt={slide.title}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.src = '/images/no-image.png';
+                                    }}
+                                />
+                            </picture>
 
-            <div className="relative grid min-h-[360px] gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center lg:py-14">
-                <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-wide text-blue-700 shadow-sm backdrop-blur dark:border-blue-500/20 dark:bg-slate-900/70 dark:text-blue-300">
-                        <Sparkles size={14} />
-                        CTUT Shop
-                    </div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-950/90 via-blue-950/65 to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
 
-                    <h1 className="mt-6 max-w-3xl text-4xl font-black leading-tight text-blue-950 dark:text-white md:text-5xl">
-                        Kết nối sản phẩm, chiến dịch và hoạt động sinh viên
-                    </h1>
+                            <div className="absolute inset-0 z-20 flex items-center px-5 sm:px-8 lg:px-12">
+                                <div className="max-w-3xl">
+                                    <div className="inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white shadow-sm backdrop-blur">
+                                        {slide.subtitle || 'CTUT Shop'}
+                                    </div>
 
-                    <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 md:text-base">
-                        Theo dõi chiến dịch đang mở, khám phá sản phẩm nổi bật, cập nhật tin tức và nhận thông báo mới
-                        nhất từ hệ thống.
-                    </p>
+                                    <h1 className="mt-5 text-3xl font-black leading-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
+                                        {slide.title}
+                                    </h1>
 
-                    <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                        <Link
-                            to="/shop"
-                            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-950 px-5 text-sm font-black text-white transition hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
-                        >
-                            Khám phá cửa hàng
-                            <ArrowRight size={16} />
-                        </Link>
+                                    {slide.description && (
+                                        <p className="mt-5 max-w-2xl text-sm leading-7 text-white/85 sm:text-base">
+                                            {slide.description}
+                                        </p>
+                                    )}
 
-                        <Link
-                            to="/campaigns"
-                            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white/80 px-5 text-sm font-black text-blue-700 transition hover:bg-blue-50 dark:border-blue-500/20 dark:bg-slate-900/80 dark:text-blue-300 dark:hover:bg-blue-500/10"
-                        >
-                            Xem chiến dịch
-                            <ArrowRight size={16} />
-                        </Link>
-                    </div>
-                </div>
+                                    <div className="mt-8">
+                                        <Link
+                                            to="/shop"
+                                            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-black text-blue-950 transition hover:bg-blue-50"
+                                        >
+                                            Xem cửa hàng
+                                            <ArrowRight size={16} />
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </SwiperSlide>
+                ))}
+            </Swiper>
 
-                <div className="grid gap-3">
-                    <HeroMiniCard
-                        icon={PackageCheck}
-                        title="Đặt hàng thuận tiện"
-                        desc="Xem sản phẩm, chọn biến thể và theo dõi trạng thái đơn hàng."
-                    />
+            <button
+                type="button"
+                className="hero-swiper-prev absolute left-4 top-1/2 z-30 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white backdrop-blur transition hover:bg-black/40 md:flex"
+                aria-label="Slide trước"
+            >
+                <ArrowLeft size={21} />
+            </button>
 
-                    <HeroMiniCard
-                        icon={CalendarDays}
-                        title="Chiến dịch đang mở"
-                        desc="Đăng ký tham gia các chương trình và hoạt động theo từng thời điểm."
-                    />
+            <button
+                type="button"
+                className="hero-swiper-next absolute right-4 top-1/2 z-30 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white backdrop-blur transition hover:bg-black/40 md:flex"
+                aria-label="Slide tiếp theo"
+            >
+                <ArrowRight size={21} />
+            </button>
 
-                    <HeroMiniCard
-                        icon={ShieldCheck}
-                        title="Thông tin minh bạch"
-                        desc="Theo dõi thanh toán, nhận hàng, thông báo và chính sách rõ ràng."
-                    />
-                </div>
-            </div>
+            <div className="hero-swiper-pagination absolute bottom-5 left-0 right-0 z-30 flex items-center justify-center gap-2" />
+
+            <style>{`
+                .hero-swiper-bullet {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 9999px;
+                    background: rgba(255, 255, 255, 0.45);
+                    display: inline-block;
+                    cursor: pointer;
+                    transition: all 0.25s ease;
+                }
+
+                .hero-swiper-bullet:hover {
+                    background: rgba(255, 255, 255, 0.85);
+                }
+
+                .hero-swiper-bullet-active {
+                    width: 36px;
+                    background: #ffffff;
+                }
+            `}</style>
         </section>
-    );
-}
-
-function HeroMiniCard({ icon: Icon, title, desc }) {
-    return (
-        <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/75">
-            <div className="flex gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                    <Icon size={21} />
-                </div>
-
-                <div>
-                    <h3 className="text-sm font-black text-blue-950 dark:text-white">{title}</h3>
-
-                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{desc}</p>
-                </div>
-            </div>
-        </div>
     );
 }

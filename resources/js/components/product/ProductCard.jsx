@@ -69,10 +69,6 @@ export default function ProductCard({ product }) {
                             {product.originalPriceText}
                         </p>
                     )}
-
-                    {product.promotionLoginRequired && (
-                        <p className="mt-1 text-[11px] font-bold text-red-500">Đăng nhập để nhận giá ưu đãi</p>
-                    )}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">

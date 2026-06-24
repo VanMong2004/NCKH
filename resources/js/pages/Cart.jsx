@@ -7,6 +7,7 @@ import MainLayout from '../layout/MainLayout';
 import CartList from '../components/cart/CartList';
 import CartSummary from '../components/cart/CartSummary';
 import CartBenefits from '../components/cart/CartBenefits';
+import ConfirmDialog from '../admin/components/ui/ConfirmDialog';
 
 import { useCart } from '../contexts/CartContext';
 
@@ -14,6 +15,16 @@ export default function Cart() {
     const { cartItems, quantityChange, removeCart, clearCart, totalItems } = useCart();
 
     const [selectedIds, setSelectedIds] = useState([]);
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
 
     useEffect(() => {
         const validIds = cartItems.map((item) => String(item.cartItemId));
@@ -84,7 +95,7 @@ export default function Cart() {
     }
 
     async function handleIncrease(cartItemId) {
-        const item = cartItems.find((cartItem) => String(cartItem.cartItemId) === String(cartItemId));
+        const item = findCartItem(cartItemId);
 
         if (!item) return;
 
@@ -104,7 +115,7 @@ export default function Cart() {
     }
 
     async function handleDecrease(cartItemId) {
-        const item = cartItems.find((cartItem) => String(cartItem.cartItemId) === String(cartItemId));
+        const item = findCartItem(cartItemId);
 
         if (!item) return;
 
@@ -113,27 +124,100 @@ export default function Cart() {
         await quantityChange(item.cartItemId, Number(item.quantity || 0) - 1);
     }
 
-    async function handleRemove(cartItemId) {
-        await removeCart(cartItemId);
+    function handleRemove(cartItemId) {
+        const item = findCartItem(cartItemId);
 
-        setSelectedIds((current) => {
-            return current.filter((id) => String(id) !== String(cartItemId));
+        if (!item) return;
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa sản phẩm khỏi giỏ hàng',
+            message: `Bạn muốn xóa "${item.name}" khỏi giỏ hàng?`,
+            description: 'Sản phẩm đã xóa sẽ không còn nằm trong giỏ hàng của bạn.',
+            confirmText: 'Xóa sản phẩm',
+            type: 'danger',
+            onConfirm: async () => {
+                await removeOneItem(cartItemId);
+            },
         });
     }
 
-    async function handleRemoveSelected() {
-        const idsToRemove = selectedIds.length > 0 ? selectedIds : cartItems.map((item) => item.cartItemId);
-
-        for (const cartItemId of idsToRemove) {
+    async function removeOneItem(cartItemId) {
+        try {
             await removeCart(cartItemId);
-        }
 
-        setSelectedIds([]);
+            setSelectedIds((current) => {
+                return current.filter((id) => String(id) !== String(cartItemId));
+            });
+
+            toast.success('Đã xóa sản phẩm khỏi giỏ hàng');
+        } catch (error) {
+            toast.error(error?.message || 'Không thể xóa sản phẩm khỏi giỏ hàng');
+        }
     }
 
-    async function handleClear() {
-        await clearCart();
-        setSelectedIds([]);
+    function handleRemoveSelected() {
+        if (selectedIds.length === 0) {
+            toast.warning('Vui lòng chọn sản phẩm cần xóa');
+            return;
+        }
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa sản phẩm đã chọn',
+            message: `Bạn muốn xóa ${selectedIds.length} sản phẩm đã chọn khỏi giỏ hàng?`,
+            description: 'Các sản phẩm đã chọn sẽ bị xóa khỏi giỏ hàng.',
+            confirmText: 'Xóa đã chọn',
+            type: 'danger',
+            onConfirm: removeSelectedItems,
+        });
+    }
+
+    async function removeSelectedItems() {
+        try {
+            const idsToRemove = [...selectedIds];
+
+            for (const cartItemId of idsToRemove) {
+                await removeCart(cartItemId);
+            }
+
+            setSelectedIds([]);
+            toast.success('Đã xóa sản phẩm đã chọn');
+        } catch (error) {
+            toast.error(error?.message || 'Không thể xóa sản phẩm đã chọn');
+        }
+    }
+
+    function handleClear() {
+        if (cartItems.length === 0) {
+            toast.info('Giỏ hàng đang trống');
+            return;
+        }
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa toàn bộ giỏ hàng',
+            message: `Bạn muốn xóa toàn bộ ${cartItems.length} sản phẩm trong giỏ hàng?`,
+            description: 'Toàn bộ sản phẩm trong giỏ hàng sẽ bị xóa. Thao tác này không thể hoàn tác trên giao diện.',
+            confirmText: 'Xóa toàn bộ',
+            type: 'danger',
+            onConfirm: clearAllItems,
+        });
+    }
+
+    async function clearAllItems() {
+        try {
+            await clearCart();
+
+            setSelectedIds([]);
+            toast.success('Đã xóa toàn bộ giỏ hàng');
+        } catch (error) {
+            toast.error(error?.message || 'Không thể xóa toàn bộ giỏ hàng');
+        }
+    }
+
+    function findCartItem(cartItemId) {
+        return cartItems.find((item) => String(item.cartItemId) === String(cartItemId));
     }
 
     return (
@@ -188,6 +272,22 @@ export default function Cart() {
                         </div>
                     </>
                 )}
+
+                <ConfirmDialog
+                    open={confirmDialog.open}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    description={confirmDialog.description}
+                    confirmText={confirmDialog.confirmText}
+                    type={confirmDialog.type}
+                    onConfirm={confirmDialog.onConfirm}
+                    onOpenChange={(open) => {
+                        setConfirmDialog((prev) => ({
+                            ...prev,
+                            open,
+                        }));
+                    }}
+                />
             </main>
         </MainLayout>
     );

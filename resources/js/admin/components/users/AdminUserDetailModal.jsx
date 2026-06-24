@@ -1,7 +1,8 @@
-import { Lock, Loader2, MapPin, Package, RotateCcw, Save, ShieldCheck, Star, Unlock, UserRound, X } from 'lucide-react';
+import { Lock, Loader2, MapPin, Package, RotateCcw, Save, ShieldCheck, Star, Unlock, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
+import ConfirmDialog from '../ui/ConfirmDialog';
 import { formatMoney, getOrderStatusText, getUserRoleText } from '../../mappers/adminUserMapper';
 import adminUserService from '../../services/adminUserService';
 
@@ -12,6 +13,16 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
     const [role, setRole] = useState('user');
     const [savingRole, setSavingRole] = useState(false);
     const [locking, setLocking] = useState(false);
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
 
     useEffect(() => {
         if (!open || !userId) return;
@@ -36,7 +47,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
         }
     }
 
-    async function handleUpdateRole(e) {
+    function handleUpdateRole(e) {
         e.preventDefault();
 
         if (!user) return;
@@ -46,12 +57,25 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
             return;
         }
 
-        const message =
-            role === 'admin'
-                ? `Bạn muốn cấp quyền quản trị cho "${user.name}"? Người này có thể truy cập khu vực admin.`
-                : `Bạn muốn chuyển "${user.name}" về vai trò khách hàng?`;
+        const isMakeAdmin = role === 'admin';
 
-        if (!window.confirm(message)) return;
+        setConfirmDialog({
+            open: true,
+            title: isMakeAdmin ? 'Cấp quyền quản trị' : 'Chuyển về khách hàng',
+            message: isMakeAdmin
+                ? `Bạn muốn cấp quyền quản trị cho "${user.name}"?`
+                : `Bạn muốn chuyển "${user.name}" về vai trò khách hàng?`,
+            description: isMakeAdmin
+                ? 'Người này có thể truy cập khu vực admin và thực hiện các thao tác quản trị.'
+                : 'Người này sẽ không còn quyền truy cập khu vực quản trị.',
+            confirmText: isMakeAdmin ? 'Cấp quyền admin' : 'Cập nhật vai trò',
+            type: isMakeAdmin ? 'warning' : 'info',
+            onConfirm: updateRole,
+        });
+    }
+
+    async function updateRole() {
+        if (!user) return;
 
         try {
             setSavingRole(true);
@@ -70,14 +94,22 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
         }
     }
 
-    async function handleLock() {
+    function handleLock() {
         if (!user) return;
 
-        const ok = window.confirm(
-            `Bạn muốn khóa tài khoản "${user.name}"?\n\nNgười này sẽ không còn hoạt động như tài khoản bình thường cho đến khi được mở lại.`,
-        );
+        setConfirmDialog({
+            open: true,
+            title: 'Khóa tài khoản',
+            message: `Bạn muốn khóa tài khoản "${user.name}"?`,
+            description: 'Người này sẽ không còn hoạt động như tài khoản bình thường cho đến khi được mở lại.',
+            confirmText: 'Khóa tài khoản',
+            type: 'danger',
+            onConfirm: lockUser,
+        });
+    }
 
-        if (!ok) return;
+    async function lockUser() {
+        if (!user) return;
 
         try {
             setLocking(true);
@@ -95,12 +127,22 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
         }
     }
 
-    async function handleRestore() {
+    function handleRestore() {
         if (!user) return;
 
-        const ok = window.confirm(`Bạn muốn mở khóa tài khoản "${user.name}"?`);
+        setConfirmDialog({
+            open: true,
+            title: 'Mở khóa tài khoản',
+            message: `Bạn muốn mở khóa tài khoản "${user.name}"?`,
+            description: 'Sau khi mở khóa, tài khoản có thể hoạt động lại bình thường.',
+            confirmText: 'Mở khóa',
+            type: 'success',
+            onConfirm: restoreUser,
+        });
+    }
 
-        if (!ok) return;
+    async function restoreUser() {
+        if (!user) return;
 
         try {
             setLocking(true);
@@ -108,6 +150,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
             const result = await adminUserService.restoreUser(user.id);
 
             setUser(result);
+            setRole(result.role || role);
 
             toast.success('Đã mở khóa tài khoản');
             onUpdated?.();
@@ -119,6 +162,9 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
     }
 
     if (!open) return null;
+
+    const addresses = user?.addresses || [];
+    const recentOrders = user?.recentOrders || [];
 
     return (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-3">
@@ -187,13 +233,10 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
                                     </div>
                                 </Section>
 
-                                <Section
-                                    title="Địa chỉ nhận hàng"
-                                    description={`${user.addresses.length || 0} địa chỉ`}
-                                >
-                                    {user.addresses.length > 0 ? (
+                                <Section title="Địa chỉ nhận hàng" description={`${addresses.length} địa chỉ`}>
+                                    {addresses.length > 0 ? (
                                         <div className="grid gap-3 md:grid-cols-2">
-                                            {user.addresses.map((address) => (
+                                            {addresses.map((address) => (
                                                 <AddressCard key={address.id} address={address} />
                                             ))}
                                         </div>
@@ -208,9 +251,9 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
 
                                 <Section
                                     title="Đơn hàng gần đây"
-                                    description={`${user.recentOrders.length || 0} đơn hàng gần nhất`}
+                                    description={`${recentOrders.length} đơn hàng gần nhất`}
                                 >
-                                    {user.recentOrders.length > 0 ? (
+                                    {recentOrders.length > 0 ? (
                                         <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
                                             <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
                                                 <thead className="bg-slate-50 dark:bg-slate-950/60">
@@ -223,7 +266,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
                                                 </thead>
 
                                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                                    {user.recentOrders.map((order) => (
+                                                    {recentOrders.map((order) => (
                                                         <tr key={order.id}>
                                                             <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900 dark:text-white">
                                                                 {order.orderCode || `#${order.id}`}
@@ -365,6 +408,22 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }

@@ -4,8 +4,10 @@ import {
     mapAdminPromotionDetailResponse,
     mapAdminPromotionItemsResponse,
     mapAdminPromotionListResponse,
+    mapAvailablePromotionProductsResponse,
     normalizeAdminPromotionItemPayload,
     normalizeAdminPromotionPayload,
+    normalizePromotionBulkItemsPayload,
 } from '../mappers/adminPromotionMapper';
 
 const adminPromotionService = {
@@ -20,12 +22,32 @@ const adminPromotionService = {
     },
 
     async createPromotion(payload) {
-        const res = await api.post('/admin/promotions', normalizeAdminPromotionPayload(payload));
+        const formData = buildPromotionFormData(payload);
+
+        const res = await api.post('/admin/promotions', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
         return mapAdminPromotionDetailResponse(res.data);
     },
 
     async updatePromotion(id, payload) {
-        const res = await api.put(`/admin/promotions/${id}`, normalizeAdminPromotionPayload(payload));
+        const formData = buildPromotionFormData(payload);
+
+        /*
+         * Dùng POST + _method=PUT để upload file ổn định hơn.
+         * Laravel sẽ hiểu request này là PUT nhờ _method.
+         */
+        formData.append('_method', 'PUT');
+
+        const res = await api.post(`/admin/promotions/${id}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
         return mapAdminPromotionDetailResponse(res.data);
     },
 
@@ -44,28 +66,70 @@ const adminPromotionService = {
         return mapAdminPromotionItemsResponse(res.data);
     },
 
+    async getAvailableProducts(promotionId, params = {}) {
+        const res = await api.get(`/admin/promotions/${promotionId}/available-products`, {
+            params,
+        });
+
+        return mapAvailablePromotionProductsResponse(res.data);
+    },
+
     async createPromotionItem(promotionId, payload) {
         const res = await api.post(
             `/admin/promotions/${promotionId}/items`,
             normalizeAdminPromotionItemPayload(payload),
         );
+
         return res.data;
     },
 
     async createPromotionItemsBulk(promotionId, payload) {
-        const res = await api.post(`/admin/promotions/${promotionId}/items/bulk`, payload);
+        const res = await api.post(
+            `/admin/promotions/${promotionId}/items/bulk`,
+            normalizePromotionBulkItemsPayload(payload),
+        );
+
         return res.data;
     },
 
     async updatePromotionItem(itemId, payload) {
-        const res = await api.put(`/admin/promotion-items/${itemId}`, normalizeAdminPromotionItemPayload(payload));
+        const res = await api.put(`/admin/promotions/items/${itemId}`, normalizeAdminPromotionItemPayload(payload));
+
         return res.data;
     },
 
     async deletePromotionItem(itemId) {
-        const res = await api.delete(`/admin/promotion-items/${itemId}`);
+        const res = await api.delete(`/admin/promotions/items/${itemId}`);
         return res.data;
     },
 };
+
+function buildPromotionFormData(payload = {}) {
+    const normalized = normalizeAdminPromotionPayload(payload);
+    const formData = new FormData();
+
+    formData.append('title', normalized.title);
+    formData.append('slug', normalized.slug);
+    formData.append('description', normalized.description || '');
+
+    formData.append('discount_type', normalized.discount_type);
+    formData.append('discount_value', normalized.discount_value);
+
+    formData.append('start_date', normalized.start_date);
+    formData.append('end_date', normalized.end_date);
+
+    formData.append('status', normalized.status);
+    formData.append('is_active', normalized.is_active ? '1' : '0');
+
+    if (payload.bannerFile instanceof File) {
+        formData.append('banner', payload.bannerFile);
+    }
+
+    if (payload.thumbnailFile instanceof File) {
+        formData.append('thumbnail', payload.thumbnailFile);
+    }
+
+    return formData;
+}
 
 export default adminPromotionService;

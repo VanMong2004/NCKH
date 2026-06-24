@@ -2,6 +2,7 @@ import { Eye, EyeOff, Loader2, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
+import ConfirmDialog from '../ui/ConfirmDialog';
 import { getReviewStatusText } from '../../mappers/adminReviewMapper';
 import adminReviewService from '../../services/adminReviewService';
 
@@ -9,6 +10,16 @@ export default function AdminReviewDetailModal({ open, reviewId, onClose, onUpda
     const [review, setReview] = useState(null);
     const [loading, setLoading] = useState(false);
     const [action, setAction] = useState('');
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
 
     useEffect(() => {
         if (!open || !reviewId) return;
@@ -50,13 +61,22 @@ export default function AdminReviewDetailModal({ open, reviewId, onClose, onUpda
         }
     }
 
-    async function handleHide() {
+    function handleHide() {
         if (!review) return;
 
-        const ok = window.confirm('Bạn muốn ẩn đánh giá này khỏi website?');
+        setConfirmDialog({
+            open: true,
+            title: 'Ẩn đánh giá',
+            message: 'Bạn muốn ẩn đánh giá này khỏi website?',
+            description:
+                'Đánh giá bị ẩn sẽ không hiển thị ở trang sản phẩm, nhưng dữ liệu vẫn được giữ trong hệ thống.',
+            confirmText: 'Ẩn đánh giá',
+            type: 'warning',
+            onConfirm: hideReview,
+        });
+    }
 
-        if (!ok) return;
-
+    async function hideReview() {
         try {
             setAction('hide');
 
@@ -72,15 +92,21 @@ export default function AdminReviewDetailModal({ open, reviewId, onClose, onUpda
         }
     }
 
-    async function handleDelete() {
+    function handleDelete() {
         if (!review) return;
 
-        const ok = window.confirm(
-            'Bạn muốn xóa đánh giá này?\n\nĐánh giá đã xóa sẽ không hiển thị lại được từ màn hình này.',
-        );
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa đánh giá',
+            message: 'Bạn muốn xóa đánh giá này?',
+            description: 'Đánh giá đã xóa sẽ không hiển thị lại được từ màn hình này.',
+            confirmText: 'Xóa đánh giá',
+            type: 'danger',
+            onConfirm: deleteReview,
+        });
+    }
 
-        if (!ok) return;
-
+    async function deleteReview() {
         try {
             setAction('delete');
 
@@ -254,6 +280,22 @@ export default function AdminReviewDetailModal({ open, reviewId, onClose, onUpda
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }

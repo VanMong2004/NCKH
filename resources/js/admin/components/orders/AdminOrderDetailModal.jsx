@@ -1,4 +1,4 @@
-import { CheckCircle2, Loader2, Package, Save, X } from 'lucide-react';
+import { CheckCircle2, Loader2, Save, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -10,6 +10,7 @@ import {
     getPaymentStatusText,
 } from '../../mappers/adminOrderMapper';
 import adminOrderService from '../../services/adminOrderService';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdated }) {
     const [order, setOrder] = useState(null);
@@ -20,6 +21,16 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         status: '',
         note: '',
         cancel_reason: '',
+    });
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
     });
 
     useEffect(() => {
@@ -60,7 +71,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         }));
     }
 
-    async function handleUpdateStatus(e) {
+    function handleUpdateStatus(e) {
         e.preventDefault();
 
         if (!statusForm.status) {
@@ -73,12 +84,18 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
             return;
         }
 
-        const ok = window.confirm(
-            `Chuyển đơn ${order.orderCode} từ "${order.statusText}" sang "${getOrderStatusText(statusForm.status)}"?`,
-        );
+        setConfirmDialog({
+            open: true,
+            title: 'Chuyển trạng thái đơn hàng',
+            message: `Chuyển đơn ${order.orderCode} từ "${order.statusText}" sang "${getOrderStatusText(statusForm.status)}"?`,
+            description: 'Thao tác này sẽ cập nhật trạng thái đơn hàng trên hệ thống.',
+            confirmText: 'Cập nhật',
+            type: 'warning',
+            onConfirm: updateOrderStatus,
+        });
+    }
 
-        if (!ok) return;
-
+    async function updateOrderStatus() {
         try {
             setSavingStatus(true);
 
@@ -316,6 +333,22 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }

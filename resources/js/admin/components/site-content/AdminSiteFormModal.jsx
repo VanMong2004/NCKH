@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 import adminSiteContentService from '../../services/adminSiteContentService';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 const initialForm = {
     id: null,
@@ -62,6 +63,16 @@ export default function AdminSiteFormModal({ open, componentId = null, onClose, 
     const [itemModalOpen, setItemModalOpen] = useState(false);
     const [itemForm, setItemForm] = useState(initialItemForm);
     const [itemSaving, setItemSaving] = useState(false);
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
 
     const componentKey = String(form.component_key || '').toLowerCase();
 
@@ -274,11 +285,23 @@ export default function AdminSiteFormModal({ open, componentId = null, onClose, 
         }
     }
 
-    async function handleDeleteItem(item) {
+    function handleDeleteItem(item) {
         const name = item.title || item.label || 'mục này';
 
-        if (!window.confirm(`Bạn muốn xóa "${name}"?`)) return;
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa mục con',
+            message: `Bạn muốn xóa "${name}"?`,
+            description: 'Mục con đã xóa sẽ không còn hiển thị trong nội dung website.',
+            confirmText: 'Xóa mục con',
+            type: 'danger',
+            onConfirm: async () => {
+                await deleteItem(item);
+            },
+        });
+    }
 
+    async function deleteItem(item) {
         try {
             setActionId(item.id);
 
@@ -459,6 +482,22 @@ export default function AdminSiteFormModal({ open, componentId = null, onClose, 
                     onSubmit={handleSaveItem}
                 />
             )}
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Home, MapPin, Plus, X } from 'lucide-react';
+import { MapPin, Plus, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import addressService from '../../services/addressService';
 import AddressCard from '../../components/account/AddressCard';
+import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 
 const emptyForm = {
     fullName: '',
@@ -25,6 +26,16 @@ export default function AccountAddress() {
     const [submitting, setSubmitting] = useState(false);
     const [showForm, setShowForm] = useState(false);
 
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
+
     useEffect(() => {
         loadAddresses();
     }, []);
@@ -42,9 +53,15 @@ export default function AccountAddress() {
     }
 
     function handleChange(field, value) {
+        let nextValue = value;
+
+        if (field === 'phone') {
+            nextValue = String(value).replace(/\D/g, '').slice(0, 11);
+        }
+
         setForm((prev) => ({
             ...prev,
-            [field]: value,
+            [field]: nextValue,
         }));
 
         setErrors((prev) => ({
@@ -57,13 +74,20 @@ export default function AccountAddress() {
         const nextErrors = {};
 
         if (!form.fullName.trim()) nextErrors.fullName = 'Vui lòng nhập họ tên';
-        if (!form.phone.trim()) nextErrors.phone = 'Vui lòng nhập số điện thoại';
+
+        if (!form.phone.trim()) {
+            nextErrors.phone = 'Vui lòng nhập số điện thoại';
+        } else if (!/^\d{10,11}$/.test(form.phone)) {
+            nextErrors.phone = 'Số điện thoại phải có 10 đến 11 chữ số';
+        }
+
         if (!form.province.trim()) nextErrors.province = 'Vui lòng nhập tỉnh/thành';
         if (!form.district.trim()) nextErrors.district = 'Vui lòng nhập quận/huyện';
         if (!form.ward.trim()) nextErrors.ward = 'Vui lòng nhập phường/xã';
         if (!form.addressLine.trim()) nextErrors.addressLine = 'Vui lòng nhập địa chỉ cụ thể';
 
         setErrors(nextErrors);
+
         return Object.keys(nextErrors).length === 0;
     }
 
@@ -123,9 +147,23 @@ export default function AccountAddress() {
         }
     }
 
-    async function handleDelete(id) {
-        if (!window.confirm('Bạn có chắc muốn xóa địa chỉ này?')) return;
+    function handleDelete(id) {
+        const address = addresses.find((item) => item.id === id);
 
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa địa chỉ nhận hàng',
+            message: `Bạn có chắc muốn xóa địa chỉ của "${address?.fullName || 'người nhận'}"?`,
+            description: 'Địa chỉ đã xóa sẽ không thể dùng lại khi đặt hàng.',
+            confirmText: 'Xóa địa chỉ',
+            type: 'danger',
+            onConfirm: async () => {
+                await deleteAddress(id);
+            },
+        });
+    }
+
+    async function deleteAddress(id) {
         try {
             await addressService.deleteAddress(id);
             toast.success('Đã xóa địa chỉ');
@@ -205,6 +243,22 @@ export default function AccountAddress() {
                     </section>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }
@@ -244,6 +298,8 @@ function AddressForm({ form, errors, editing, submitting, onChange, onSubmit, on
                     error={errors.phone}
                     onChange={(value) => onChange('phone', value)}
                     placeholder="Nhập số điện thoại"
+                    inputMode="numeric"
+                    maxLength={11}
                 />
 
                 <Input
@@ -320,7 +376,7 @@ function AddressForm({ form, errors, editing, submitting, onChange, onSubmit, on
     );
 }
 
-function Input({ label, value, error, onChange, placeholder }) {
+function Input({ label, value, error, onChange, placeholder, inputMode, maxLength }) {
     return (
         <label className="block">
             <span className="mb-2 block text-sm font-bold text-blue-950 dark:text-white">{label}</span>
@@ -329,6 +385,8 @@ function Input({ label, value, error, onChange, placeholder }) {
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
+                inputMode={inputMode}
+                maxLength={maxLength}
                 className={`h-12 w-full rounded-xl border bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-950 dark:bg-slate-950 dark:text-white ${
                     error ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
                 }`}
@@ -338,4 +396,3 @@ function Input({ label, value, error, onChange, placeholder }) {
         </label>
     );
 }
-

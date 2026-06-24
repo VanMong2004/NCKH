@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
-import AdminPromotionFormModal from '../components/promotions/AdminPromotionItemFormModal';
+import AdminPromotionFormModal from '../components/promotions/AdminPromotionFormModal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import adminPromotionService from '../services/adminPromotionService';
 import StatCard from '../components/ui/StatCard';
 
@@ -33,6 +34,16 @@ export default function AdminPromotions() {
         open: false,
         mode: 'create',
         promotion: null,
+    });
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
     });
 
     useEffect(() => {
@@ -111,11 +122,22 @@ export default function AdminPromotions() {
         closeForm();
     }
 
-    async function handleDelete(promotion) {
-        const ok = window.confirm(`Bạn có chắc muốn xóa/tắt khuyến mãi "${promotion.title}" không?`);
+    function handleDelete(promotion) {
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa hoặc tắt khuyến mãi',
+            message: `Bạn có chắc muốn xóa/tắt khuyến mãi "${promotion.title}"?`,
+            description:
+                'Nếu khuyến mãi đã phát sinh dữ liệu, hệ thống có thể chuyển sang trạng thái tắt thay vì xóa hẳn.',
+            confirmText: 'Xóa/Tắt',
+            type: 'danger',
+            onConfirm: async () => {
+                await deletePromotion(promotion);
+            },
+        });
+    }
 
-        if (!ok) return;
-
+    async function deletePromotion(promotion) {
         try {
             setDeletingId(promotion.id);
 
@@ -131,13 +153,21 @@ export default function AdminPromotions() {
         }
     }
 
-    async function handlePublishSocial(promotion) {
-        const ok = window.confirm(
-            `Đăng khuyến mãi "${promotion.title}" lên Facebook?\n\nHệ thống sẽ gửi dữ liệu sang n8n để xử lý bài đăng.`,
-        );
+    function handlePublishSocial(promotion) {
+        setConfirmDialog({
+            open: true,
+            title: 'Đăng khuyến mãi lên Facebook',
+            message: `Đăng khuyến mãi "${promotion.title}" lên Facebook?`,
+            description: 'Hệ thống sẽ gửi dữ liệu sang n8n để xử lý bài đăng.',
+            confirmText: 'Đăng Facebook',
+            type: 'info',
+            onConfirm: async () => {
+                await publishPromotionSocial(promotion);
+            },
+        });
+    }
 
-        if (!ok) return;
-
+    async function publishPromotionSocial(promotion) {
         try {
             setPublishingId(promotion.id);
 
@@ -184,10 +214,10 @@ export default function AdminPromotions() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="Tổng item" value={summary.total} tone="blue" />
-                <StatCard label="Đang áp dụng" value={summary.active} tone="emerald" />
-                <StatCard label="Đã bán" value={summary.sold} tone="violet" />
-                <StatCard label="Đang giữ chỗ" value={summary.reserved} tone="amber" />
+                <StatCard label="Tổng khuyến mãi" value={summary.total} tone="blue" />
+                <StatCard label="Đang bật" value={summary.active} tone="emerald" />
+                <StatCard label="Bản nháp" value={summary.draft} tone="amber" />
+                <StatCard label="Đã tắt" value={summary.inactive} tone="slate" />
             </div>
 
             <section className="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -266,6 +296,7 @@ export default function AdminPromotions() {
                                                     <p className="line-clamp-1 font-semibold text-slate-900 dark:text-white">
                                                         {promotion.title}
                                                     </p>
+
                                                     <p className="mt-0.5 text-xs text-slate-500">{promotion.slug}</p>
                                                 </div>
                                             </div>
@@ -385,6 +416,22 @@ export default function AdminPromotions() {
                 promotion={formState.promotion}
                 onClose={closeForm}
                 onSaved={handleSavedPromotion}
+            />
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
             />
         </div>
     );

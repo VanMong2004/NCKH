@@ -15,8 +15,35 @@ function normalizeBoolean(value) {
     return value === true || value === 1 || value === '1';
 }
 
+function normalizeImage(url) {
+    if (!url) return '/images/no-image.png';
+
+    const value = String(url).trim();
+
+    if (!value) return '/images/no-image.png';
+
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return value;
+    }
+
+    return `/${value.replace(/^public\//, '')}`;
+}
+
 export function formatMoney(value) {
     return toNumber(value).toLocaleString('vi-VN') + ' đ';
+}
+
+export function createSlug(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
 }
 
 function getDiscountText(type, value) {
@@ -64,33 +91,6 @@ function toDatetimeLocal(value) {
     return '';
 }
 
-function normalizeImage(url) {
-    if (!url) return '/images/no-image.png';
-
-    const value = String(url).trim();
-
-    if (!value) return '/images/no-image.png';
-
-    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
-        return value;
-    }
-
-    return `/${value.replace(/^public\//, '')}`;
-}
-
-export function createSlug(value) {
-    return String(value || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/đ/g, 'd')
-        .replace(/Đ/g, 'D')
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
-}
-
 export function mapAdminPromotion(item = {}) {
     const status = item.status || '';
     const computedStatus = item.computed_status || status;
@@ -100,8 +100,9 @@ export function mapAdminPromotion(item = {}) {
         title: item.title || '',
         slug: item.slug || '',
         description: item.description || '',
-        banner: item.banner || '',
-        thumbnail: item.thumbnail || '',
+
+        banner: normalizeImage(item.banner),
+        thumbnail: normalizeImage(item.thumbnail),
 
         discountType: item.discount_type || '',
         discountValue: toNumber(item.discount_value),
@@ -165,6 +166,49 @@ export function mapAdminPromotionItem(item = {}) {
     };
 }
 
+export function mapAvailablePromotionVariant(product = {}, variant = {}) {
+    return {
+        id: variant.id,
+        productId: product.id,
+        productName: product.name || '',
+        productSlug: product.slug || '',
+        productCategory: product.category || '',
+        productThumbnail: normalizeImage(product.thumbnail),
+
+        sku: variant.sku || '',
+        size: variant.size || '',
+        color: variant.color || '',
+
+        price: toNumber(variant.price),
+        stock: toNumber(variant.stock),
+        reservedStock: toNumber(variant.reserved_stock),
+        availableStock: toNumber(variant.available_stock),
+
+        isActive: toBoolean(variant.is_active),
+        alreadyAdded: toBoolean(variant.already_added),
+
+        label: buildVariantLabel(variant),
+        raw: variant,
+    };
+}
+
+export function mapAvailablePromotionProduct(item = {}) {
+    const variants = Array.isArray(item.variants)
+        ? item.variants.map((variant) => mapAvailablePromotionVariant(item, variant))
+        : [];
+
+    return {
+        id: item.id,
+        name: item.name || '',
+        slug: item.slug || '',
+        category: item.category || '',
+        thumbnail: normalizeImage(item.thumbnail),
+        isActive: toBoolean(item.is_active),
+        variants,
+        raw: item,
+    };
+}
+
 export function mapAdminPromotionListResponse(response = {}) {
     const paginator = response.data || {};
     const raw = Array.isArray(paginator.data) ? paginator.data : [];
@@ -198,18 +242,42 @@ export function mapAdminPromotionItemsResponse(response = {}) {
     };
 }
 
+export function mapAvailablePromotionProductsResponse(response = {}) {
+    const raw = Array.isArray(response.data) ? response.data : [];
+    const meta = response.meta || {};
+
+    return {
+        success: Boolean(response.success),
+        message: response.message || '',
+        products: raw.map(mapAvailablePromotionProduct),
+        meta: {
+            currentPage: toNumber(meta.current_page || 1),
+            lastPage: toNumber(meta.last_page || 1),
+            perPage: toNumber(meta.per_page || raw.length || 10),
+            total: toNumber(meta.total || raw.length),
+        },
+        raw: response,
+    };
+}
+
 export function mapAdminPromotionToForm(promotion = null) {
     if (!promotion) {
         return {
             title: '',
             slug: '',
             description: '',
+
             banner: '',
             thumbnail: '',
+            bannerFile: null,
+            thumbnailFile: null,
+
             discount_type: 'percent',
             discount_value: '',
+
             start_date: '',
             end_date: '',
+
             status: 'draft',
             is_active: true,
         };
@@ -217,27 +285,34 @@ export function mapAdminPromotionToForm(promotion = null) {
 
     return {
         title: promotion.title || '',
-        slug: promotion.slug || '',
+        slug: promotion.slug || createSlug(promotion.title),
+
         description: promotion.description || '',
+
         banner: promotion.banner || '',
         thumbnail: promotion.thumbnail || '',
+        bannerFile: null,
+        thumbnailFile: null,
+
         discount_type: promotion.discountType || promotion.raw?.discount_type || 'percent',
         discount_value: promotion.discountValue || promotion.raw?.discount_value || '',
+
         start_date: promotion.startDateInput || toDatetimeLocal(promotion.raw?.start_date),
         end_date: promotion.endDateInput || toDatetimeLocal(promotion.raw?.end_date),
+
         status: promotion.status || 'draft',
         is_active: Boolean(promotion.isActive),
     };
 }
 
 export function normalizeAdminPromotionPayload(payload = {}) {
-    return {
-        title: payload.title || '',
-        slug: payload.slug || '',
-        description: emptyToNull(payload.description),
+    const title = payload.title || '';
+    const slug = payload.slug || createSlug(title);
 
-        banner: emptyToNull(payload.banner),
-        thumbnail: emptyToNull(payload.thumbnail),
+    return {
+        title,
+        slug,
+        description: emptyToNull(payload.description),
 
         discount_type: payload.discount_type || 'percent',
         discount_value: Number(payload.discount_value || 0),
@@ -268,4 +343,22 @@ export function normalizeAdminPromotionItemPayload(payload = {}) {
 
         is_active: normalizeBoolean(payload.is_active),
     };
+}
+
+export function normalizePromotionBulkItemsPayload(payload = {}) {
+    const items = Array.isArray(payload.items) ? payload.items : [];
+
+    return {
+        items: items.map((item) => normalizeAdminPromotionItemPayload(item)),
+    };
+}
+
+function buildVariantLabel(variant = {}) {
+    const parts = [];
+
+    if (variant.sku) parts.push(variant.sku);
+    if (variant.size) parts.push(`Size ${variant.size}`);
+    if (variant.color) parts.push(variant.color);
+
+    return parts.length ? parts.join(' · ') : `Phân loại #${variant.id}`;
 }

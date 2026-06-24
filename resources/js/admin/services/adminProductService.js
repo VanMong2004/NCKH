@@ -45,6 +45,21 @@ const adminProductService = {
         const res = await api.delete(`/admin/products/${id}`);
         return res.data;
     },
+
+    async toggleProductSale(id) {
+        const res = await api.post(`/admin/products/${id}/toggle-sale`);
+        return res.data;
+    },
+
+    async toggleVariantSale(id) {
+        const res = await api.post(`/admin/products/variants/${id}/toggle-sale`);
+        return res.data;
+    },
+
+    async postFacebook(id) {
+        const res = await api.post(`/admin/products/${id}/post-facebook`);
+        return res.data;
+    },
 };
 
 function normalizeBoolean(value) {

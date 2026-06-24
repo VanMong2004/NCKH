@@ -1,10 +1,11 @@
-import { Edit3, Loader2, Plus, RefreshCcw, Search, Star, Trash2 } from 'lucide-react';
+import { Edit3, Loader2, Plus, Power, PowerOff, RefreshCcw, Search, Send, Star, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 import categoryService from '../../services/categoryService';
 
 import AdminProductFormModal from '../components/products/AdminProductFormModal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatCard from '../components/ui/StatCard';
 import { formatMoney } from '../mappers/adminProductMapper';
 import adminProductService from '../services/adminProductService';
@@ -34,6 +35,8 @@ export default function AdminProducts() {
 
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
+    const [saleActionId, setSaleActionId] = useState(null);
+    const [facebookActionId, setFacebookActionId] = useState(null);
 
     const [filters, setFilters] = useState({
         keyword: '',
@@ -58,6 +61,16 @@ export default function AdminProducts() {
         open: false,
         mode: 'create',
         productId: null,
+    });
+
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
     });
 
     useEffect(() => {
@@ -175,13 +188,21 @@ export default function AdminProducts() {
         closeForm();
     }
 
-    async function handleDelete(product) {
-        const ok = window.confirm(
-            `Bạn muốn xóa sản phẩm "${product.name}"?\n\nNếu sản phẩm đang có đơn hàng chưa hoàn tất, hệ thống sẽ không cho xóa.`,
-        );
+    function handleDelete(product) {
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa sản phẩm',
+            message: `Bạn muốn xóa sản phẩm "${product.name}"?`,
+            description: 'Nếu sản phẩm đang có đơn hàng chưa hoàn tất, hệ thống sẽ không cho xóa.',
+            confirmText: 'Xóa sản phẩm',
+            type: 'danger',
+            onConfirm: async () => {
+                await deleteProduct(product);
+            },
+        });
+    }
 
-        if (!ok) return;
-
+    async function deleteProduct(product) {
         try {
             setDeletingId(product.id);
 
@@ -193,6 +214,70 @@ export default function AdminProducts() {
             toast.error(error?.message || 'Không thể xóa sản phẩm');
         } finally {
             setDeletingId(null);
+        }
+    }
+
+    function handleToggleSale(product) {
+        const isSelling = Boolean(product.isActive);
+
+        setConfirmDialog({
+            open: true,
+            title: isSelling ? 'Tắt bán sản phẩm' : 'Mở bán sản phẩm',
+            message: isSelling
+                ? `Bạn muốn tắt bán sản phẩm "${product.name}"?`
+                : `Bạn muốn mở bán sản phẩm "${product.name}"?`,
+            description: isSelling
+                ? 'Sau khi tắt bán, sản phẩm sẽ không còn hiển thị như sản phẩm đang bán trên website.'
+                : 'Sau khi mở bán, sản phẩm có thể hiển thị lại trên website.',
+            confirmText: isSelling ? 'Tắt bán' : 'Mở bán',
+            type: isSelling ? 'warning' : 'success',
+            onConfirm: async () => {
+                await toggleProductSale(product);
+            },
+        });
+    }
+
+    async function toggleProductSale(product) {
+        try {
+            setSaleActionId(product.id);
+
+            const result = await adminProductService.toggleProductSale(product.id);
+
+            toast.success(result.message || (product.isActive ? 'Đã tắt bán sản phẩm' : 'Đã mở bán sản phẩm'));
+
+            await loadProducts();
+        } catch (error) {
+            toast.error(error?.message || 'Không thể cập nhật trạng thái bán sản phẩm');
+        } finally {
+            setSaleActionId(null);
+        }
+    }
+
+    function handlePostFacebook(product) {
+        setConfirmDialog({
+            open: true,
+            title: 'Đăng sản phẩm lên Facebook',
+            message: `Đăng sản phẩm "${product.name}" lên Facebook?`,
+            description: 'Hệ thống sẽ gửi dữ liệu sản phẩm sang n8n để xử lý bài đăng Facebook.',
+            confirmText: 'Đăng Facebook',
+            type: 'info',
+            onConfirm: async () => {
+                await postProductFacebook(product);
+            },
+        });
+    }
+
+    async function postProductFacebook(product) {
+        try {
+            setFacebookActionId(product.id);
+
+            const result = await adminProductService.postFacebook(product.id);
+
+            toast.success(result.message || 'Đã gửi yêu cầu đăng Facebook');
+        } catch (error) {
+            toast.error(error?.message || 'Không thể gửi yêu cầu đăng Facebook');
+        } finally {
+            setFacebookActionId(null);
         }
     }
 
@@ -403,28 +488,63 @@ export default function AdminProducts() {
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4 text-right">
-                                            <div className="flex justify-end gap-2">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => openEditForm(product)}
-                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                    title="Đăng Facebook"
+                                                    disabled={facebookActionId === product.id}
+                                                    onClick={() => handlePostFacebook(product)}
+                                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
                                                 >
-                                                    <Edit3 size={15} />
-                                                    Sửa
+                                                    {facebookActionId === product.id ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <Send size={16} />
+                                                    )}
                                                 </button>
 
                                                 <button
                                                     type="button"
+                                                    title={product.isActive ? 'Tắt bán' : 'Mở bán'}
+                                                    disabled={saleActionId === product.id}
+                                                    onClick={() => handleToggleSale(product)}
+                                                    className={[
+                                                        'inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-white transition disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950',
+                                                        product.isActive
+                                                            ? 'border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-amber-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-amber-500/10'
+                                                            : 'border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-emerald-500/10',
+                                                    ].join(' ')}
+                                                >
+                                                    {saleActionId === product.id ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : product.isActive ? (
+                                                        <PowerOff size={16} />
+                                                    ) : (
+                                                        <Power size={16} />
+                                                    )}
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    title="Sửa sản phẩm"
+                                                    onClick={() => openEditForm(product)}
+                                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                                                >
+                                                    <Edit3 size={16} />
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    title="Xóa sản phẩm"
                                                     disabled={deletingId === product.id}
                                                     onClick={() => handleDelete(product)}
-                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-500/10"
+                                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-500/10"
                                                 >
                                                     {deletingId === product.id ? (
-                                                        <Loader2 size={15} className="animate-spin" />
+                                                        <Loader2 size={16} className="animate-spin" />
                                                     ) : (
-                                                        <Trash2 size={15} />
+                                                        <Trash2 size={16} />
                                                     )}
-                                                    Xóa
                                                 </button>
                                             </div>
                                         </td>
@@ -505,6 +625,22 @@ export default function AdminProducts() {
                 categories={categories}
                 onClose={closeForm}
                 onSaved={handleSavedProduct}
+            />
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
             />
         </div>
     );

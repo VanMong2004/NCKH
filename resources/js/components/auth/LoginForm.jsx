@@ -8,6 +8,16 @@ import PasswordInput from './PasswordInput';
 import GoogleButton from './GoogleButton';
 import { useAuth } from '../../contexts/AuthContext';
 
+function isAdminUser(user) {
+    if (!user) return false;
+
+    if (user.role === 'admin') return true;
+    if (user.role?.name === 'admin') return true;
+    if (Array.isArray(user.roles) && user.roles.includes('admin')) return true;
+
+    return false;
+}
+
 export default function LoginForm() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -56,10 +66,11 @@ export default function LoginForm() {
             setLoading(true);
 
             const response = await login(form.email, form.password);
+            const user = response.data?.user;
 
             toast.success(response.message || 'Đăng nhập thành công');
 
-            redirectAfterLogin();
+            redirectAfterLogin(user);
         } catch (err) {
             setErrors(normalizeErrors(err));
             toast.error(err.message || 'Đăng nhập thất bại');
@@ -68,7 +79,28 @@ export default function LoginForm() {
         }
     }
 
-    function redirectAfterLogin() {
+    function redirectAfterLogin(user) {
+        if (isAdminUser(user)) {
+            if (from && typeof from === 'object' && from.pathname?.startsWith('/admin')) {
+                navigate(
+                    {
+                        pathname: from.pathname,
+                        search: from.search || '',
+                        hash: from.hash || '',
+                    },
+                    {
+                        replace: true,
+                        state: from.state || null,
+                    },
+                );
+
+                return;
+            }
+
+            navigate('/admin/dashboard', { replace: true });
+            return;
+        }
+
         if (from && typeof from === 'object' && from.pathname) {
             navigate(
                 {

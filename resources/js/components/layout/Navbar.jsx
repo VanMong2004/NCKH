@@ -12,7 +12,8 @@ import searchService from '../../services/searchService';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import SearchSuggestionDropdown from '../search/SearchSuggestionDropdown';
 
-export default function Navbar() {
+// export default function Navbar() {
+export default function Navbar({ siteContent }) {
     const navigate = useNavigate();
 
     const desktopSearchRef = useRef(null);
@@ -21,6 +22,39 @@ export default function Navbar() {
     const { user, logout } = useAuth();
     const { totalItems } = useCart();
     const { theme, toggleTheme } = useTheme();
+
+    //thêm
+    const navbar = siteContent?.navbar || {};
+    const mobileMenu = siteContent?.mobile_menu || {};
+    const site = siteContent?.site || {};
+
+    const logo = navbar.logo || site.logo || '/images/logo.png';
+    const mobileLogo = navbar.mobile_logo || logo;
+
+    const siteName = navbar.title || site.name || 'CTUT Shop';
+    const tagline = navbar.subtitle || site.tagline || 'Cùng nhau phát triển';
+
+    const payload = navbar.payload || {};
+    const searchPlaceholder = payload.search_placeholder || 'Tìm sản phẩm, khuyến mãi...';
+    const mobileSearchPlaceholder = payload.mobile_search_placeholder || 'Tìm sản phẩm...';
+
+    const desktopLinks = Array.isArray(navbar.desktop_links) && navbar.desktop_links.length
+        ? navbar.desktop_links
+        : [
+            { label: 'Trang chủ', link_url: '/' },
+            { label: 'Sản phẩm', link_url: '/shop' },
+            { label: 'Khuyến mãi', link_url: '/promotions' },
+            { label: 'Blog', link_url: '/blog' },
+            { label: 'FAQ', link_url: '/faq' },
+            { label: 'Giới thiệu', link_url: '/about' },
+            { label: 'Liên hệ', link_url: '/contact' },
+            { label: 'Chính sách', link_url: '/policy' },
+        ];
+    //
+
+    const mobileLinks = Array.isArray(mobileMenu.links) && mobileMenu.links.length
+        ? mobileMenu.links
+        : desktopLinks;
 
     const [keyword, setKeyword] = useState('');
     const [suggestions, setSuggestions] = useState([]);
@@ -199,13 +233,16 @@ export default function Navbar() {
                     </button>
 
                     <Link to="/" className="flex shrink-0 items-center gap-3">
-                        <img src="/images/logo.png" alt="CTUT" className="h-9 w-9 rounded" />
+                        {/* <img src="/images/logo.png" alt="CTUT" className="h-9 w-9 rounded" /> */}
+                        <img src={logo} alt={siteName} className="h-9 w-9 rounded object-cover" />
 
                         <div>
-                            <h1 className="text-sm font-bold text-blue-950 dark:text-white md:text-lg">CTUT Shop</h1>
+                            {/* <h1 className="text-sm font-bold text-blue-950 dark:text-white md:text-lg">CTUT Shop</h1> */}
+                            <h1 className="text-sm font-bold text-blue-950 dark:text-white md:text-lg">{siteName}</h1>
 
                             <p className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">
-                                Cùng nhau phát triển
+                                {/* Cùng nhau phát triển */}
+                                {tagline}
                             </p>
                         </div>
                     </Link>
@@ -220,7 +257,8 @@ export default function Navbar() {
                                 value={keyword}
                                 onFocus={handleInputFocus}
                                 onChange={handleInputChange}
-                                placeholder="Tìm sản phẩm, khuyến mãi..."
+                                // placeholder="Tìm sản phẩm, khuyến mãi..."
+                                placeholder={searchPlaceholder}
                                 className="min-w-0 flex-1 px-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:bg-slate-900 dark:text-white"
                             />
 
@@ -359,14 +397,19 @@ export default function Navbar() {
                 </div>
 
                 <nav className="hidden items-center justify-start ps-2 gap-8 border-t border-slate-100 py-3 text-sm font-semibold text-blue-950 dark:border-slate-800 dark:text-slate-100 md:flex">
-                    <DesktopNavLink to="/">Trang chủ</DesktopNavLink>
+                    {/* <DesktopNavLink to="/">Trang chủ</DesktopNavLink>
                     <DesktopNavLink to="/shop">Sản phẩm</DesktopNavLink>
                     <DesktopNavLink to="/promotions">Khuyến mãi</DesktopNavLink>
                     <DesktopNavLink to="/blog">Blog</DesktopNavLink>
                     <DesktopNavLink to="/faq">FAQ</DesktopNavLink>
                     <DesktopNavLink to="/about">Giới thiệu</DesktopNavLink>
                     <DesktopNavLink to="/contact">Liên hệ</DesktopNavLink>
-                    <DesktopNavLink to="/policy">Chính sách</DesktopNavLink>
+                    <DesktopNavLink to="/policy">Chính sách</DesktopNavLink> */}
+                    {desktopLinks.map((item) => (
+                        <DesktopNavLink key={item.id || item.item_key || item.link_url} to={item.link_url || '/'}>
+                            {item.label || item.title}
+                        </DesktopNavLink>
+                    ))}
                 </nav>
             </div>
 
@@ -390,7 +433,8 @@ export default function Navbar() {
                                             value={keyword}
                                             onFocus={handleInputFocus}
                                             onChange={handleInputChange}
-                                            placeholder="Tìm sản phẩm..."
+                                            // placeholder="Tìm sản phẩm..."
+                                            placeholder={mobileSearchPlaceholder}
                                             className="min-w-0 flex-1 bg-transparent px-4 text-sm outline-none dark:text-white"
                                         />
 
@@ -437,9 +481,19 @@ export default function Navbar() {
             )}
 
             {openMobileMenu && (
+                // <MobileMenu
+                //     user={user}
+                //     totalItems={totalItems}
+                //     onClose={() => setOpenMobileMenu(false)}
+                //     onLogout={handleLogout}
+                // />
                 <MobileMenu
                     user={user}
                     totalItems={totalItems}
+                    siteName={siteName}
+                    tagline={tagline}
+                    logo={mobileLogo}
+                    links={mobileLinks}
                     onClose={() => setOpenMobileMenu(false)}
                     onLogout={handleLogout}
                 />
@@ -463,7 +517,8 @@ function DesktopNavLink({ to, children }) {
     );
 }
 
-function MobileMenu({ user, totalItems, onClose, onLogout }) {
+// function MobileMenu({ user, totalItems, onClose, onLogout }) {
+function MobileMenu({ user, totalItems, siteName, tagline, logo, links = [], onClose, onLogout }) {
     return (
         <div className="fixed inset-0 z-50 md:hidden">
             <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Đóng menu" />
@@ -471,9 +526,15 @@ function MobileMenu({ user, totalItems, onClose, onLogout }) {
             <div className="relative h-full w-[82%] max-w-sm overflow-y-auto bg-white p-5 shadow-xl dark:bg-slate-950">
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h2 className="font-bold text-blue-950 dark:text-white">CTUT Shop</h2>
-
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Cùng nhau phát triển</p>
+                        {/* <h2 className="font-bold text-blue-950 dark:text-white">CTUT Shop</h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Cùng nhau phát triển</p> */}
+                        <div className="flex items-center gap-3">
+                            <img src={logo} alt={siteName} className="h-9 w-9 rounded object-cover" />
+                            <div>
+                                <h2 className="font-bold text-blue-950 dark:text-white">{siteName}</h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{tagline}</p>
+                            </div>
+                        </div>
                     </div>
 
                     <button
@@ -486,7 +547,7 @@ function MobileMenu({ user, totalItems, onClose, onLogout }) {
                 </div>
 
                 <div className="space-y-2">
-                    <MobileNavLink to="/" onClose={onClose}>
+                    {/* <MobileNavLink to="/" onClose={onClose}>
                         Trang chủ
                     </MobileNavLink>
 
@@ -520,7 +581,16 @@ function MobileMenu({ user, totalItems, onClose, onLogout }) {
 
                     <MobileNavLink to="/policy" onClose={onClose}>
                         Chính sách
-                    </MobileNavLink>
+                    </MobileNavLink> */}
+                    {links.map((item) => (
+                        <MobileNavLink
+                            key={item.id || item.item_key || item.link_url}
+                            to={item.link_url || '/'}
+                            onClose={onClose}
+                        >
+                            {item.label || item.title}
+                        </MobileNavLink>
+                    ))}
                 </div>
 
                 <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">

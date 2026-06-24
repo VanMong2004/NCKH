@@ -1,77 +1,56 @@
-import { Edit3, Eye, EyeOff, Layers, Loader2, RefreshCcw, Search } from 'lucide-react';
+import {
+    Edit3,
+    Image,
+    Layers,
+    Loader2,
+    MonitorSmartphone,
+    RefreshCcw,
+    Smartphone,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 import AdminSiteFormModal from '../components/site-content/AdminSiteFormModal';
 import adminSiteContentService from '../services/adminSiteContentService';
-import StatCard from '../components/ui/StatCard';
+import SiteQuickEditModal from '../components/site-content/SiteQuickEditModal';
 
-const pageOptions = [
-    { value: '', label: 'Tất cả khu vực' },
-    { value: 'home', label: 'Trang chủ' },
-    { value: 'navbar', label: 'Thanh điều hướng' },
-    { value: 'footer', label: 'Chân trang' },
-    { value: 'shop', label: 'Trang sản phẩm' },
-    { value: 'promotions', label: 'Trang khuyến mãi' },
-    { value: 'about', label: 'Giới thiệu' },
-    { value: 'contact', label: 'Liên hệ' },
-];
-
-const statusOptions = [
-    { value: '', label: 'Tất cả trạng thái' },
-    { value: '1', label: 'Đang hiển thị' },
-    { value: '0', label: 'Đã tắt' },
+const COMPONENT_ORDER = [
+    'navbar',
+    'hero_slider',
+    'mobile_menu',
+    'bottom_navigation',
+    'footer',
 ];
 
 export default function AdminSiteContent() {
     const [components, setComponents] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [actionId, setActionId] = useState(null);
-
-    const [filters, setFilters] = useState({
-        keyword: '',
-        page_key: '',
-        is_active: '',
-        page: 1,
-        per_page: 10,
-    });
-
-    const [debouncedKeyword, setDebouncedKeyword] = useState('');
 
     const [formState, setFormState] = useState({
         open: false,
         componentId: null,
     });
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedKeyword(filters.keyword.trim());
-        }, 350);
-
-        return () => clearTimeout(timer);
-    }, [filters.keyword]);
+    const [quickEdit, setQuickEdit] = useState({
+        open: false,
+        type: '',
+        component: null,
+        item: null,
+    });
 
     useEffect(() => {
         loadComponents();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedKeyword, filters.page_key, filters.is_active]);
+    }, []);
 
     async function loadComponents() {
         try {
             setLoading(true);
 
             const result = await adminSiteContentService.getComponents({
-                keyword: debouncedKeyword || undefined,
-                page_key: filters.page_key || undefined,
-                is_active: filters.is_active === '' ? undefined : filters.is_active,
+                page_key: 'home',
             });
 
             setComponents(result.components || []);
-
-            setFilters((prev) => ({
-                ...prev,
-                page: 1,
-            }));
         } catch (error) {
             toast.error(error?.message || 'Không thể tải nội dung website');
         } finally {
@@ -79,84 +58,54 @@ export default function AdminSiteContent() {
         }
     }
 
-    function updateFilter(key, value) {
-        setFilters((prev) => ({
-            ...prev,
-            [key]: value,
-            page: key === 'page' ? value : 1,
-        }));
-    }
+    function openEditor(component) {
+        if (!component) return;
 
-    function resetFilters() {
-        setFilters({
-            keyword: '',
-            page_key: '',
-            is_active: '',
-            page: 1,
-            per_page: 10,
-        });
-
-        setDebouncedKeyword('');
-    }
-
-    function openManageForm(component) {
         setFormState({
             open: true,
             componentId: component.id,
         });
     }
 
-    function closeForm() {
+    function closeEditor() {
         setFormState({
             open: false,
             componentId: null,
         });
     }
 
-    async function handleSavedComponent() {
+    async function handleSaved() {
         await loadComponents();
     }
 
-    async function handleToggle(component) {
-        try {
-            setActionId(component.id);
+    const sortedComponents = useMemo(() => {
+        return [...components].sort((a, b) => {
+            const ai = COMPONENT_ORDER.indexOf(a.componentKey);
+            const bi = COMPONENT_ORDER.indexOf(b.componentKey);
 
-            await adminSiteContentService.toggleComponent(component.id);
+            const av = ai === -1 ? 999 : ai;
+            const bv = bi === -1 ? 999 : bi;
 
-            toast.success(component.isActive ? 'Đã tắt khu vực hiển thị' : 'Đã bật khu vực hiển thị');
-
-            await loadComponents();
-        } catch (error) {
-            toast.error(error?.message || 'Không thể cập nhật trạng thái');
-        } finally {
-            setActionId(null);
-        }
-    }
-
-    const summary = useMemo(() => {
-        return {
-            total: components.length,
-            active: components.filter((item) => item.isActive).length,
-            inactive: components.filter((item) => !item.isActive).length,
-            items: components.reduce((sum, item) => sum + Number(item.itemsCount || 0), 0),
-        };
+            return av - bv;
+        });
     }, [components]);
 
-    const pageCount = Math.max(1, Math.ceil(components.length / filters.per_page));
-
-    const pagedComponents = useMemo(() => {
-        const start = (filters.page - 1) * filters.per_page;
-        return components.slice(start, start + filters.per_page);
-    }, [components, filters.page, filters.per_page]);
+    const componentMap = useMemo(() => {
+        return Object.fromEntries(
+            components.map((item) => [item.componentKey, item]),
+        );
+    }, [components]);
 
     return (
         <div className="space-y-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nội dung website</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Tùy biến giao diện website
+                    </h1>
 
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Quản lý menu, slider, chân trang và các khu vực hiển thị ngoài website.
+                        Xem mô phỏng Header, Slider, Footer rồi bấm vào từng khu vực để chỉnh sửa.
                     </p>
                 </div>
 
@@ -171,256 +120,433 @@ export default function AdminSiteContent() {
                 </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="Khu vực quản lý" value={summary.total} tone="blue" />
-                <StatCard label="Đang hiển thị" value={summary.active} tone="emerald" />
-                <StatCard label="Đã tắt" value={summary.inactive} tone="slate" />
-                <StatCard label="Tổng mục nội dung" value={summary.items} tone="violet" />
-            </div>
-
-            <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                <div className="border-b border-slate-200 p-4 dark:border-slate-800">
-                    <div className="grid gap-3 md:grid-cols-12">
-                        <div className="relative md:col-span-5">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-
-                            <input
-                                value={filters.keyword}
-                                onChange={(e) => updateFilter('keyword', e.target.value)}
-                                placeholder="Tìm menu, slider, chân trang..."
-                                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                            />
-                        </div>
-
-                        <select
-                            value={filters.page_key}
-                            onChange={(e) => updateFilter('page_key', e.target.value)}
-                            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white md:col-span-3"
-                        >
-                            {pageOptions.map((option) => (
-                                <option key={option.value || 'all'} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <select
-                            value={filters.is_active}
-                            onChange={(e) => updateFilter('is_active', e.target.value)}
-                            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white md:col-span-2"
-                        >
-                            {statusOptions.map((option) => (
-                                <option key={option.value || 'all'} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-
-                        <button
-                            type="button"
-                            onClick={resetFilters}
-                            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 md:col-span-2"
-                        >
-                            Đặt lại
-                        </button>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-                        <thead className="bg-slate-50 dark:bg-slate-950/60">
-                            <tr>
-                                <Th>Khu vực</Th>
-                                <Th>Vị trí</Th>
-                                <Th className="text-center">Mục con</Th>
-                                <Th>Cập nhật</Th>
-                                <Th>Trạng thái</Th>
-                                <Th className="text-right">Thao tác</Th>
-                            </tr>
-                        </thead>
-
-                        <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center">
-                                        <Loader2 size={26} className="mx-auto animate-spin text-blue-600" />
-                                        <p className="mt-3 text-sm text-slate-500">Đang tải nội dung...</p>
-                                    </td>
-                                </tr>
-                            ) : pagedComponents.length > 0 ? (
-                                pagedComponents.map((component) => (
-                                    <tr key={component.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
-                                        <td className="whitespace-nowrap px-4 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-                                                    {component.image ? (
-                                                        <img
-                                                            src={component.image}
-                                                            alt={component.areaText}
-                                                            className="h-full w-full rounded-lg object-cover"
-                                                            onError={(e) => {
-                                                                e.currentTarget.style.display = 'none';
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <Layers size={17} className="text-slate-400" />
-                                                    )}
-                                                </div>
-
-                                                <div className="min-w-0">
-                                                    <p className="max-w-[260px] truncate font-semibold text-slate-900 dark:text-white">
-                                                        {component.areaText}
-                                                    </p>
-
-                                                    <p className="mt-0.5 max-w-[260px] truncate text-xs text-slate-500">
-                                                        {component.title ||
-                                                            component.componentName ||
-                                                            'Chưa có tiêu đề'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <td className="whitespace-nowrap px-4 py-4 text-slate-600 dark:text-slate-300">
-                                            {component.positionText}
-                                        </td>
-
-                                        <td className="whitespace-nowrap px-4 py-4 text-center text-slate-700 dark:text-slate-200">
-                                            {component.itemsCount || 0}
-                                        </td>
-
-                                        <td className="whitespace-nowrap px-4 py-4 text-slate-500">
-                                            {component.updatedAt || '—'}
-                                        </td>
-
-                                        <td className="whitespace-nowrap px-4 py-4">
-                                            <StatusBadge active={component.isActive} />
-                                        </td>
-
-                                        <td className="whitespace-nowrap px-4 py-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openManageForm(component)}
-                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
-                                                >
-                                                    <Edit3 size={15} />
-                                                    Sửa
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    disabled={actionId === component.id}
-                                                    onClick={() => handleToggle(component)}
-                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
-                                                >
-                                                    {actionId === component.id ? (
-                                                        <Loader2 size={15} className="animate-spin" />
-                                                    ) : component.isActive ? (
-                                                        <EyeOff size={15} />
-                                                    ) : (
-                                                        <Eye size={15} />
-                                                    )}
-
-                                                    {component.isActive ? 'Tắt' : 'Bật'}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center">
-                                        <Layers size={28} className="mx-auto text-slate-300" />
-
-                                        <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">
-                                            Không tìm thấy khu vực phù hợp
-                                        </p>
-
-                                        <p className="mt-1 text-sm text-slate-500">
-                                            Thử đổi từ khóa hoặc đặt lại bộ lọc.
-                                        </p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-                    <p className="text-sm text-slate-500">
-                        Hiển thị <b>{pagedComponents.length}</b> / <b>{components.length}</b> khu vực
+            {loading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
+                    <Loader2 size={28} className="mx-auto animate-spin text-blue-600" />
+                    <p className="mt-3 text-sm font-semibold text-slate-500">
+                        Đang tải giao diện...
                     </p>
-
-                    <div className="flex items-center gap-2">
-                        <select
-                            value={filters.per_page}
-                            onChange={(e) => updateFilter('per_page', Number(e.target.value))}
-                            className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                        >
-                            <option value={10}>10 / trang</option>
-                            <option value={20}>20 / trang</option>
-                            <option value={50}>50 / trang</option>
-                        </select>
-
-                        <button
-                            type="button"
-                            disabled={filters.page <= 1 || loading}
-                            onClick={() => updateFilter('page', Math.max(1, filters.page - 1))}
-                            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                        >
-                            Trước
-                        </button>
-
-                        <span className="min-w-[80px] text-center text-sm text-slate-500">
-                            {filters.page}/{pageCount}
-                        </span>
-
-                        <button
-                            type="button"
-                            disabled={filters.page >= pageCount || loading}
-                            onClick={() => updateFilter('page', Math.min(pageCount, filters.page + 1))}
-                            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                        >
-                            Sau
-                        </button>
-                    </div>
                 </div>
-            </section>
+            ) : (
+                <div className="space-y-5">
+                    <WebsitePreviewFrame>
+                        <HeaderPreview
+                            component={componentMap.navbar}
+                            onEdit={() => openEditor(componentMap.navbar)}
+                            onQuickEdit={openQuickEdit}
+                        />
+
+                        <HeroPreview
+                            component={componentMap.hero_slider}
+                            onEdit={() => openEditor(componentMap.hero_slider)}
+                            onQuickEdit={openQuickEdit}
+                        />
+
+                        <FooterPreview
+                            component={componentMap.footer}
+                            onEdit={() => openEditor(componentMap.footer)}
+                            onQuickEdit={openQuickEdit}
+                        />
+                    </WebsitePreviewFrame>
+
+                    <section className="grid gap-4 lg:grid-cols-2">
+                        {sortedComponents.map((component) => (
+                            <ComponentCard
+                                key={component.id}
+                                component={component}
+                                onEdit={() => openEditor(component)}
+                            />
+                        ))}
+                    </section>
+                </div>
+            )}
 
             <AdminSiteFormModal
                 open={formState.open}
                 componentId={formState.componentId}
-                onClose={closeForm}
-                onSaved={handleSavedComponent}
+                onClose={closeEditor}
+                onSaved={handleSaved}
             />
+
+            <SiteQuickEditModal
+                open={quickEdit.open}
+                type={quickEdit.type}
+                component={quickEdit.component}
+                item={quickEdit.item}
+                onClose={closeQuickEdit}
+                onSaved={handleSaved}
+            />
+        </div>
+    );
+
+    async function openQuickEdit(type, component, item = null) {
+        if (!component) return;
+
+        try {
+            const fullComponent = await adminSiteContentService.getComponent(component.id);
+
+            setQuickEdit({
+                open: true,
+                type,
+                component: fullComponent,
+                item,
+            });
+        } catch (error) {
+            toast.error(error?.message || 'Không thể tải chi tiết nội dung');
+        }
+    }
+
+    function closeQuickEdit() {
+        setQuickEdit({
+            open: false,
+            type: '',
+            component: null,
+            item: null,
+        });
+    }
+}
+
+function WebsitePreviewFrame({ children }) {
+    return (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-red-400" />
+                    <span className="h-3 w-3 rounded-full bg-yellow-400" />
+                    <span className="h-3 w-3 rounded-full bg-green-400" />
+                </div>
+
+                <div className="hidden rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800 sm:block">
+                    Preview trang chủ
+                </div>
+
+                <MonitorSmartphone size={18} className="text-slate-400" />
+            </div>
+
+            <div className="bg-white dark:bg-slate-900">
+                {children}
+            </div>
+        </section>
+    );
+}
+
+function HeaderPreview({ component, onEdit, onQuickEdit }) {
+    const payload = component?.payload || {};
+    const links = component?.items?.filter((item) => item.groupKey === 'desktop_links') || [];
+
+    const title = component?.title || 'CTUT Shop';
+    const subtitle = component?.subtitle || 'Cùng nhau phát triển';
+    const logo = component?.image || '/images/logo.png';
+
+    return (
+        <PreviewBlock label="Header" onEdit={onEdit} disabled={!component}>
+            <div className="border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <img
+                            src={logo}
+                            alt={title}
+                            onClick={() => onQuickEdit('navbar-logo', component)}
+                            className="h-11 w-11 cursor-pointer rounded-lg object-cover ring-2 ring-transparent hover:ring-blue-500"
+                        />
+
+                        <div
+                            onClick={() => onQuickEdit('navbar-text', component)}
+                            className="cursor-pointer rounded-lg p-1 hover:bg-blue-50"
+                        >
+                            <p className="font-black text-blue-950 dark:text-white">{title}</p>
+                            <p className="text-xs text-slate-500">{subtitle}</p>
+                        </div>
+                    </div>
+
+                    <div className="hidden flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-400 md:block dark:border-slate-700">
+                        {payload.search_placeholder || 'Tìm sản phẩm, khuyến mãi...'}
+                    </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold text-blue-950 dark:text-slate-100">
+                    {links.length > 0 ? (
+                        links.map((item) => (
+                            <span key={item.id}>
+                                {item.label || item.title}
+                            </span>
+                        ))
+                    ) : (
+                        <>
+                            <span>Trang chủ</span>
+                            <span>Sản phẩm</span>
+                            <span>Khuyến mãi</span>
+                            <span>Blog</span>
+                        </>
+                    )}
+                </div>
+            </div>
+        </PreviewBlock>
+    );
+}
+
+function HeroPreview({ component, onEdit, onQuickEdit }) {
+    const slides = component?.items?.filter((item) => item.groupKey === 'hero_slides') || [];
+
+    const firstSlide = slides[0];
+
+    const image =
+        firstSlide?.image ||
+        component?.image ||
+        '/images/system/Rectangle_3897.jpg';
+
+    const title =
+        firstSlide?.title ||
+        component?.title ||
+        'Kết nối sản phẩm, hoạt động và trải nghiệm sinh viên';
+
+    const subtitle =
+        firstSlide?.subtitle ||
+        component?.subtitle ||
+        'CTUT Shop';
+
+    const content =
+        firstSlide?.content ||
+        component?.content ||
+        'Khám phá sản phẩm nổi bật, cập nhật tin tức và theo dõi đơn hàng thuận tiện trên hệ thống.';
+
+    return (
+        <PreviewBlock label="Slider trang chủ" onEdit={onEdit} disabled={!component}>
+            <div className="relative h-[320px] overflow-hidden bg-slate-900">
+                <div
+                    onClick={() => onQuickEdit('hero-slides-manager', component, firstSlide)}
+                    className="absolute inset-0 z-10 cursor-pointer"
+                />
+
+                <img
+                    src={image}
+                    alt={title}
+                    className="h-full w-full object-cover opacity-80"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-950/90 via-blue-950/60 to-transparent" />
+
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-center px-8">
+                    <div className="max-w-2xl">
+                        <span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wider text-white">
+                            {subtitle}
+                        </span>
+
+                        <h2 className="mt-4 text-3xl font-black text-white md:text-5xl">
+                            {title}
+                        </h2>
+
+                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-white/85">
+                            {content}
+                        </p>
+
+                        <div className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-black text-blue-950">
+                            {firstSlide?.linkText || 'Xem cửa hàng'}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="absolute bottom-4 right-4 rounded-full bg-black/40 px-3 py-1 text-xs font-semibold text-white">
+                    {slides.length || 1} slide
+                </div>
+            </div>
+        </PreviewBlock>
+    );
+}
+
+function FooterPreview({ component, onEdit, onQuickEdit }) {
+    const columns = component?.items?.filter((item) => item.groupKey === 'footer_columns') || [];
+    const contacts = component?.items?.filter((item) => item.groupKey === 'footer_contacts') || [];
+
+    const title = component?.title || 'CTUT Shop';
+    const subtitle = component?.subtitle || 'Cùng nhau phát triển';
+    const content = component?.content || 'Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của nhà trường.';
+    const logo = component?.image || '/images/logo.png';
+
+    return (
+        <PreviewBlock label="Footer" onEdit={onEdit} disabled={!component}>
+            <div className="border-t border-slate-200 bg-white px-5 py-8 dark:border-slate-800 dark:bg-slate-900">
+                <div className="grid gap-6 md:grid-cols-4">
+                    <div
+                        onClick={() => onQuickEdit('footer-brand', component)}
+                        className="cursor-pointer rounded-xl p-2 hover:bg-blue-50 dark:hover:bg-slate-800"
+                    >
+                        <div className="flex items-center gap-3">
+                            <img
+                                src={logo}
+                                alt={title}
+                                className="h-11 w-11 rounded-lg object-cover"
+                            />
+
+                            <div>
+                                <p className="font-black text-blue-950 dark:text-white">
+                                    {title}
+                                </p>
+                                <p className="text-xs text-slate-500">{subtitle}</p>
+                            </div>
+                        </div>
+
+                        <p className="mt-4 line-clamp-3 text-sm text-slate-500">
+                            {content}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p className="font-bold text-slate-900 dark:text-white">Liên kết</p>
+                        <div className="mt-3 space-y-2 text-sm text-slate-500">
+                            {columns.length > 0 ? (
+                                columns.slice(0, 4).map((item) => (
+                                    <p key={item.id}>{item.title || item.label}</p>
+                                ))
+                            ) : (
+                                <>
+                                    <p>Trang chủ</p>
+                                    <p>Sản phẩm</p>
+                                    <p>Blog</p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="font-bold text-slate-900 dark:text-white">Liên hệ</p>
+                        <div className="mt-3 space-y-2 text-sm text-slate-500">
+                            {contacts.length > 0 ? (
+                                contacts.slice(0, 4).map((item) => (
+                                    <p key={item.id}>{item.label}</p>
+                                ))
+                            ) : (
+                                <>
+                                    <p>Cần Thơ, Việt Nam</p>
+                                    <p>contact@ctut.edu.vn</p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p className="font-bold text-slate-900 dark:text-white">Trạng thái</p>
+                        <p className="mt-3 text-sm text-slate-500">
+                            {component?.isActive ? 'Đang hiển thị' : 'Đã tắt'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </PreviewBlock>
+    );
+}
+
+function PreviewBlock({ label, onEdit, disabled, children }) {
+    return (
+        <div className="group relative">
+            {children}
+
+            <div className="pointer-events-none absolute inset-0 border-2 border-transparent transition group-hover:border-blue-500/70" />
+
+            <div className="absolute left-4 top-4 z-20 rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white shadow">
+                {label}
+            </div>
+
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={onEdit}
+                className="absolute right-4 top-4 z-20 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-white px-3 text-sm font-black text-blue-950 shadow transition hover:bg-blue-50 disabled:opacity-60 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+            >
+                <Edit3 size={15} />
+                Chỉnh sửa
+            </button>
         </div>
     );
 }
 
-function Th({ children, className = '' }) {
+function ComponentCard({ component, onEdit }) {
+    const config = getComponentConfig(component.componentKey);
+
+    const Icon = config.icon;
+
     return (
-        <th
-            scope="col"
-            className={`whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 ${className}`}
+        <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500/40"
         >
-            {children}
-        </th>
+            <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                    <Icon size={22} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <p className="font-black text-slate-900 dark:text-white">
+                                {config.title}
+                            </p>
+
+                            <p className="mt-1 text-sm text-slate-500">
+                                {config.description}
+                            </p>
+                        </div>
+
+                        <span
+                            className={[
+                                'shrink-0 rounded-full px-2.5 py-1 text-xs font-bold',
+                                component.isActive
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300',
+                            ].join(' ')}
+                        >
+                            {component.isActive ? 'Đang bật' : 'Đã tắt'}
+                        </span>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between text-sm">
+                        <span className="text-slate-500">
+                            {component.itemsCount || 0} mục con
+                        </span>
+
+                        <span className="font-bold text-blue-700 dark:text-blue-300">
+                            Chỉnh sửa →
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </button>
     );
 }
 
-function StatusBadge({ active }) {
-    if (active) {
-        return (
-            <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                Đang hiển thị
-            </span>
-        );
-    }
+function getComponentConfig(key) {
+    const map = {
+        navbar: {
+            title: 'Logo & Header',
+            description: 'Đổi logo, tên website, slogan và menu đầu trang.',
+            icon: MonitorSmartphone,
+        },
+        hero_slider: {
+            title: 'Slider trang chủ',
+            description: 'Quản lý banner lớn, ảnh nền, tiêu đề và nút bấm.',
+            icon: Image,
+        },
+        mobile_menu: {
+            title: 'Menu mobile',
+            description: 'Quản lý menu mở rộng trên điện thoại.',
+            icon: Smartphone,
+        },
+        bottom_navigation: {
+            title: 'Menu dưới mobile',
+            description: 'Quản lý thanh điều hướng cố định dưới màn hình điện thoại.',
+            icon: Smartphone,
+        },
+        footer: {
+            title: 'Footer',
+            description: 'Thông tin cuối trang, liên hệ, mạng xã hội và liên kết.',
+            icon: Layers,
+        },
+    };
 
-    return (
-        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            Đã tắt
-        </span>
-    );
+    return map[key] || {
+        title: 'Khu vực nội dung',
+        description: 'Quản lý nội dung hiển thị ngoài website.',
+        icon: Layers,
+    };
 }

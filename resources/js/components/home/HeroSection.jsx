@@ -42,30 +42,38 @@ export default function HeroSection({ heroSlider }) {
             ? heroSlider.slides
                   .filter((item) => item?.image || item?.mobileImage)
                   .map((item) => ({
-                      id: item.id || item.itemKey || item.item_key,
-                      title: item.title || heroSlider?.title || 'CTUT Shop',
-                      subtitle: item.subtitle || heroSlider?.subtitle || 'CTUT Shop',
-                      description: item.content || item.description || heroSlider?.description || '',
-                      image:
-                          item.image ||
-                          heroSlider?.backgroundImage ||
-                          heroSlider?.background_image ||
-                          '/images/no-image.png',
-                      mobileImage:
-                          item.mobileImage ||
-                          item.mobile_image ||
-                          heroSlider?.mobileBackgroundImage ||
-                          heroSlider?.mobile_background_image ||
-                          '',
+                        id: item.id || item.itemKey || item.item_key,
+                        title: item.title || heroSlider?.title || 'CTUT Shop',
+                        subtitle: item.subtitle || heroSlider?.subtitle || 'CTUT Shop',
+                        description: item.content || item.description || heroSlider?.description || '',
+                        image:
+                            item.image ||
+                            heroSlider?.backgroundImage ||
+                            heroSlider?.background_image ||
+                            '/images/no-image.png',
+                        mobileImage:
+                            item.mobileImage ||
+                            item.mobile_image ||
+                            heroSlider?.mobileBackgroundImage ||
+                            heroSlider?.mobile_background_image ||
+                            '',
+                        // thêm
+                        linkText: item.link_text || item.linkText || 'Xem cửa hàng',
+                        linkUrl: item.link_url || item.linkUrl || '/shop',
+                        // 
                   }))
             : [];
 
-        if (apiSlides.length >= 2) {
-            return apiSlides;
-        }
+        // if (apiSlides.length >= 2) {
+        //     return apiSlides;
+        // }
 
-        if (apiSlides.length === 1) {
-            return [apiSlides[0], ...STATIC_SLIDES.slice(1)];
+        // if (apiSlides.length === 1) {
+        //     return [apiSlides[0], ...STATIC_SLIDES.slice(1)];
+        // }
+
+        if (apiSlides.length >= 1) {
+            return apiSlides;
         }
 
         if (heroSlider?.backgroundImage || heroSlider?.background_image) {
@@ -148,11 +156,18 @@ export default function HeroSection({ heroSlider }) {
                                     )}
 
                                     <div className="mt-8">
-                                        <Link
+                                        {/* <Link
                                             to="/shop"
                                             className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-black text-blue-950 transition hover:bg-blue-50"
                                         >
                                             Xem cửa hàng
+                                            <ArrowRight size={16} />
+                                        </Link> */}
+                                        <Link
+                                            to={slide.linkUrl || '/shop'}
+                                            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-black text-blue-950 transition hover:bg-blue-50"
+                                        >
+                                            {slide.linkText || 'Xem cửa hàng'}
                                             <ArrowRight size={16} />
                                         </Link>
                                     </div>

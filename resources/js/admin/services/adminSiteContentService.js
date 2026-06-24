@@ -69,15 +69,19 @@ const adminSiteContentService = {
     },
 
     async uploadImage(file, folder = 'site-content') {
-        const formData = new FormData();
+        if (!file) {
+            throw new Error('Chưa chọn ảnh');
+        }
 
+        const formData = new FormData();
         formData.append('image', file);
         formData.append('folder', folder);
 
         const res = await api.post('/admin/uploads/image', formData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': undefined,
             },
+            transformRequest: [(data) => data],
         });
 
         return mapAdminUploadResponse(res.data);

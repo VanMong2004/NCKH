@@ -3,17 +3,33 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 import { useCart } from '../../contexts/CartContext';
 
-export default function BottomNavigation() {
+// export default function BottomNavigation() {
+export default function BottomNavigation({ bottomNavigation }) {
     const { totalItems } = useCart();
     const location = useLocation();
 
-    const items = [
-        { label: 'Trang chủ', to: '/', icon: Home },
-        { label: 'Sản phẩm', to: '/shop', icon: PackageSearch },
-        { label: 'Khuyến mãi', to: '/promotions', icon: BadgePercent },
-        { label: 'Giỏ hàng', to: '/cart', icon: ShoppingCart, badge: totalItems },
-        { label: 'Tài khoản', to: '/account/profile', icon: UserRound },
-    ];
+    // const items = [
+    //     { label: 'Trang chủ', to: '/', icon: Home },
+    //     { label: 'Sản phẩm', to: '/shop', icon: PackageSearch },
+    //     { label: 'Khuyến mãi', to: '/promotions', icon: BadgePercent },
+    //     { label: 'Giỏ hàng', to: '/cart', icon: ShoppingCart, badge: totalItems },
+    //     { label: 'Tài khoản', to: '/account/profile', icon: UserRound },
+    // ];
+    const apiItems = Array.isArray(bottomNavigation?.items) ? bottomNavigation.items : [];
+    const items = apiItems.length
+        ? apiItems.map((item) => ({
+            label: item.label || item.title,
+            to: item.link_url || '/',
+            icon: getBottomIcon(item.icon_key),
+            badge: item.icon_key === 'cart' ? totalItems : undefined,
+        }))
+        : [
+            { label: 'Trang chủ', to: '/', icon: Home },
+            { label: 'Sản phẩm', to: '/shop', icon: PackageSearch },
+            { label: 'Khuyến mãi', to: '/promotions', icon: BadgePercent },
+            { label: 'Giỏ hàng', to: '/cart', icon: ShoppingCart, badge: totalItems },
+            { label: 'Tài khoản', to: '/account/profile', icon: UserRound },
+        ];
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-950/95">
@@ -64,3 +80,16 @@ function isActiveRoute(pathname, to) {
 
     return pathname.startsWith(to);
 }
+
+//thêm
+function getBottomIcon(iconKey) {
+    const key = String(iconKey || '').toLowerCase();
+
+    if (key.includes('shop') || key.includes('package')) return PackageSearch;
+    if (key.includes('promotion') || key.includes('percent')) return BadgePercent;
+    if (key.includes('cart')) return ShoppingCart;
+    if (key.includes('user') || key.includes('account')) return UserRound;
+
+    return Home;
+}
+//

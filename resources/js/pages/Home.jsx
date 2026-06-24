@@ -102,7 +102,10 @@ export default function Home() {
 
     if (loading && !home) {
         return (
-            <MainLayout>
+            // <MainLayout>
+            <MainLayout
+                siteContent={home?.siteContent}
+            >
                 <main className="bg-slate-50 px-4 py-10 dark:bg-slate-950">
                     <div className="mx-auto max-w-7xl rounded-[1.5rem] border border-slate-200 bg-white p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
@@ -118,7 +121,10 @@ export default function Home() {
 
     if (!home) {
         return (
-            <MainLayout>
+            // <MainLayout>
+            <MainLayout
+                siteContent={home?.siteContent}
+            >
                 <main className="bg-slate-50 px-4 py-10 dark:bg-slate-950">
                     <div className="mx-auto max-w-7xl rounded-[1.5rem] border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300">
@@ -148,7 +154,10 @@ export default function Home() {
     }
 
     return (
-        <MainLayout>
+        // <MainLayout>
+        <MainLayout
+            siteContent={home?.siteContent}
+        >
             <main className="bg-slate-50 pb-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
                 <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
                     <HeroSection heroSlider={home.heroSlider} />

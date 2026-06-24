@@ -93,7 +93,7 @@ class SiteContentSeeder extends Seeder
             'component_type' => 'navigation',
             'title' => 'CTUT Shop',
             'subtitle' => 'Cùng nhau phát triển',
-            'image' => '/images/logo.png',
+            'image' => '/storage/uploads/site-content/logo-20260624131441-foZ2w58N.png',
             'payload' => [
                 'login_label' => 'Đăng nhập',
                 'logout_label' => 'Đăng xuất',
@@ -170,7 +170,7 @@ class SiteContentSeeder extends Seeder
             'title' => 'CTUT Shop',
             'subtitle' => 'Cùng nhau phát triển',
             'content' => 'Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của nhà trường.',
-            'image' => '/images/logo.png',
+            'image' => '/storage/uploads/site-content/logo-20260624131441-foZ2w58N.png',
             'payload' => [
                 'copyright' => '© 2026 CTUT Shop. All rights reserved.',
             ],
@@ -278,7 +278,7 @@ class SiteContentSeeder extends Seeder
             'title' => 'Kết nối sản phẩm, hoạt động và trải nghiệm sinh viên',
             'subtitle' => 'CTUT Shop',
             'content' => 'Khám phá sản phẩm nổi bật, cập nhật tin tức và theo dõi đơn hàng thuận tiện trên hệ thống.',
-            'image' => '/images/system/Rectangle_3897.jpg',
+            'image' => '/storage/uploads/site-content/bg-sign-20260624163322-Fp3qwL1P.png',
             'payload' => [
                 'badge' => 'CTUT Shop',
                 'overlay_enabled' => true,
@@ -349,7 +349,7 @@ class SiteContentSeeder extends Seeder
             'title' => 'Kết nối sản phẩm, hoạt động và trải nghiệm sinh viên',
             'subtitle' => 'CTUT Shop',
             'content' => 'Khám phá sản phẩm nổi bật, cập nhật tin tức và theo dõi đơn hàng thuận tiện trên hệ thống.',
-            'image' => '/images/system/Rectangle_3897.jpg',
+            'image' => '/storage/uploads/site-content/bg-sign-20260624163322-Fp3qwL1P.png',
             'link_text' => 'Khám phá cửa hàng',
             'link_url' => '/shop',
             'sort_order' => 1,

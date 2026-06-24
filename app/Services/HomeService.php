@@ -360,6 +360,7 @@ class HomeService
             'payload' => $item->payload ?? [],
 
             'sort_order' => (int) $item->sort_order,
+            'is_active' => (bool) $item->is_active,
         ];
     }
 

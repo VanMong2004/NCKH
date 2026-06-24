@@ -208,6 +208,8 @@ export default function AdminSiteFormModal({ open, componentId = null, onClose, 
     function openCreateItem() {
         setItemForm({
             ...initialItemForm,
+            group_key: getDefaultGroupKey(componentKey),
+            item_key: `${getDefaultItemKeyPrefix(componentKey)}_${Date.now()}`,
             item_type: getDefaultItemType(componentKey),
             sort_order: sortedItems.length + 1,
             is_active: true,
@@ -418,10 +420,42 @@ export default function AdminSiteFormModal({ open, componentId = null, onClose, 
                         </div>
 
                         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                            {activeTab === 'main' && <MainTab form={form} updateField={updateField} />}
+                            {/* {activeTab === 'main' && <MainTab form={form} updateField={updateField} />}
 
                             {activeTab === 'items' && (
                                 <ItemsTab
+                                    items={sortedItems}
+                                    actionId={actionId}
+                                    onCreate={openCreateItem}
+                                    onEdit={openEditItem}
+                                    onToggle={handleToggleItem}
+                                    onDelete={handleDeleteItem}
+                                    onMove={handleMoveItem}
+                                />
+                            )}
+
+                            {activeTab === 'images' && (
+                                <ImagesTab
+                                    form={form}
+                                    updateField={updateField}
+                                    uploadingField={uploadingField}
+                                    onUpload={handleUploadImage}
+                                />
+                            )}
+
+                            {activeTab === 'settings' && <SettingsTab form={form} updateField={updateField} />} */}
+                            {activeTab === 'main' && (
+                                <SmartMainTab
+                                    form={form}
+                                    updateField={updateField}
+                                    uploadingField={uploadingField}
+                                    onUpload={handleUploadImage}
+                                />
+                            )}
+
+                            {activeTab === 'items' && (
+                                <SmartItemsTab
+                                    componentKey={componentKey}
                                     items={sortedItems}
                                     actionId={actionId}
                                     onCreate={openCreateItem}
@@ -867,17 +901,18 @@ function ItemEditorModal({
                                         </select>
                                     </Field>
 
-                                    <Field label="Nhóm">
+                                    {/* <Field label="Nhóm">
                                         <input
                                             value={itemForm.group_key}
                                             onChange={(e) => updateItemField('group_key', e.target.value)}
                                             placeholder="quick_links, social, contact..."
                                             className={inputClass}
                                         />
-                                    </Field>
+                                    </Field> */}
                                 </div>
 
-                                <Field label="Tên hiển thị">
+                                {/* <Field label="Tên hiển thị"> */}
+                                <Field label="Tên menu / tên nút">
                                     <input
                                         value={itemForm.label}
                                         onChange={(e) => updateItemField('label', e.target.value)}
@@ -886,7 +921,8 @@ function ItemEditorModal({
                                     />
                                 </Field>
 
-                                <Field label="Tiêu đề">
+                                {/* <Field label="Tiêu đề"> */}
+                                <Field label="Tiêu đề slide / tiêu đề mục">
                                     <input
                                         value={itemForm.title}
                                         onChange={(e) => updateItemField('title', e.target.value)}
@@ -904,7 +940,8 @@ function ItemEditorModal({
                                     />
                                 </Field>
 
-                                <Field label="Nội dung">
+                                {/* <Field label="Nội dung"> */}
+                                <Field label="Mô tả">
                                     <textarea
                                         value={itemForm.content}
                                         onChange={(e) => updateItemField('content', e.target.value)}
@@ -1003,6 +1040,14 @@ function ItemEditorModal({
                                         <input
                                             value={itemForm.item_key}
                                             onChange={(e) => updateItemField('item_key', e.target.value)}
+                                            className={inputClass}
+                                        />
+                                    </Field>
+
+                                    <Field label="Nhóm hiển thị">
+                                        <input
+                                            value={itemForm.group_key}
+                                            onChange={(e) => updateItemField('group_key', e.target.value)}
                                             className={inputClass}
                                         />
                                     </Field>
@@ -1179,6 +1224,30 @@ function getDefaultItemType(componentKey) {
     return 'link';
 }
 
+function getDefaultGroupKey(componentKey) {
+    const key = String(componentKey || '').toLowerCase();
+
+    if (key === 'navbar') return 'desktop_links';
+    if (key === 'mobile_menu') return 'mobile_links';
+    if (key === 'bottom_navigation') return 'bottom_items';
+    if (key === 'footer') return 'footer_columns';
+    if (key === 'hero_slider') return 'hero_slides';
+
+    return '';
+}
+
+function getDefaultItemKeyPrefix(componentKey) {
+    const key = String(componentKey || '').toLowerCase();
+
+    if (key === 'navbar') return 'desktop_link';
+    if (key === 'mobile_menu') return 'mobile_link';
+    if (key === 'bottom_navigation') return 'bottom_item';
+    if (key === 'footer') return 'footer_item';
+    if (key === 'hero_slider') return 'hero_slide';
+
+    return 'item';
+}
+
 function getItemTypeText(type) {
     const map = {
         link: 'Link',
@@ -1189,6 +1258,475 @@ function getItemTypeText(type) {
     };
 
     return map[type] || type || 'Mục';
+}
+
+function SmartMainTab({ form, updateField, uploadingField, onUpload }) {
+    const key = String(form.component_key || '').toLowerCase();
+
+    if (key === 'navbar') {
+        return (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <Section
+                    title="Logo & Header"
+                    description="Chỉnh tên website, slogan, logo và nội dung hiển thị trên thanh đầu trang."
+                >
+                    <div className="space-y-4">
+                        <Field label="Tên website">
+                            <input
+                                value={form.title}
+                                onChange={(e) => updateField('title', e.target.value)}
+                                placeholder="Ví dụ: CTUT Shop"
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Slogan">
+                            <input
+                                value={form.subtitle}
+                                onChange={(e) => updateField('subtitle', e.target.value)}
+                                placeholder="Ví dụ: Cùng nhau phát triển"
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Placeholder ô tìm kiếm">
+                            <input
+                                value={readPayload(form, 'search_placeholder')}
+                                onChange={(e) => updatePayloadField(form, updateField, 'search_placeholder', e.target.value)}
+                                placeholder="Tìm sản phẩm, khuyến mãi..."
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Placeholder tìm kiếm mobile">
+                            <input
+                                value={readPayload(form, 'mobile_search_placeholder')}
+                                onChange={(e) => updatePayloadField(form, updateField, 'mobile_search_placeholder', e.target.value)}
+                                placeholder="Tìm sản phẩm..."
+                                className={inputClass}
+                            />
+                        </Field>
+                    </div>
+                </Section>
+
+                <Section title="Logo website">
+                    <div className="space-y-4">
+                        <ImagePicker
+                            label="Logo desktop"
+                            value={form.image}
+                            uploading={uploadingField === 'image'}
+                            onChange={(value) => updateField('image', value)}
+                            onUpload={(file) => onUpload('image', file)}
+                        />
+
+                        <ImagePicker
+                            label="Logo mobile"
+                            value={form.mobile_image}
+                            uploading={uploadingField === 'mobile_image'}
+                            onChange={(value) => updateField('mobile_image', value)}
+                            onUpload={(file) => onUpload('mobile_image', file)}
+                        />
+                    </div>
+                </Section>
+            </div>
+        );
+    }
+
+    if (key === 'hero_slider') {
+        return (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <Section
+                    title="Slider trang chủ"
+                    description="Chỉnh tiêu đề mặc định và cấu hình chung cho slider. Slide cụ thể nằm ở tab Mục con."
+                >
+                    <div className="space-y-4">
+                        <Field label="Tiêu đề mặc định">
+                            <input
+                                value={form.title}
+                                onChange={(e) => updateField('title', e.target.value)}
+                                placeholder="Tiêu đề slider"
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Nhãn nhỏ">
+                            <input
+                                value={form.subtitle}
+                                onChange={(e) => updateField('subtitle', e.target.value)}
+                                placeholder="Ví dụ: CTUT Shop"
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Mô tả mặc định">
+                            <textarea
+                                value={form.content}
+                                onChange={(e) => updateField('content', e.target.value)}
+                                rows={5}
+                                placeholder="Mô tả slider"
+                                className={textareaClass}
+                            />
+                        </Field>
+
+                        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                            <div>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    Lớp phủ ảnh
+                                </p>
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                    Bật để chữ trên banner dễ đọc hơn.
+                                </p>
+                            </div>
+
+                            <input
+                                type="checkbox"
+                                checked={Boolean(readPayload(form, 'overlay_enabled', true))}
+                                onChange={(e) => updatePayloadField(form, updateField, 'overlay_enabled', e.target.checked)}
+                                className="h-5 w-5"
+                            />
+                        </label>
+                    </div>
+                </Section>
+
+                <Section title="Ảnh nền mặc định">
+                    <div className="space-y-4">
+                        <ImagePicker
+                            label="Ảnh desktop"
+                            value={form.image}
+                            uploading={uploadingField === 'image'}
+                            onChange={(value) => updateField('image', value)}
+                            onUpload={(file) => onUpload('image', file)}
+                        />
+
+                        <ImagePicker
+                            label="Ảnh mobile"
+                            value={form.mobile_image}
+                            uploading={uploadingField === 'mobile_image'}
+                            onChange={(value) => updateField('mobile_image', value)}
+                            onUpload={(file) => onUpload('mobile_image', file)}
+                        />
+                    </div>
+                </Section>
+            </div>
+        );
+    }
+
+    if (key === 'footer') {
+        return (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <Section
+                    title="Thông tin Footer"
+                    description="Chỉnh logo, tên website và mô tả cuối trang."
+                >
+                    <div className="space-y-4">
+                        <Field label="Tên website">
+                            <input
+                                value={form.title}
+                                onChange={(e) => updateField('title', e.target.value)}
+                                placeholder="CTUT Shop"
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Slogan">
+                            <input
+                                value={form.subtitle}
+                                onChange={(e) => updateField('subtitle', e.target.value)}
+                                placeholder="Cùng nhau phát triển"
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field label="Mô tả footer">
+                            <textarea
+                                value={form.content}
+                                onChange={(e) => updateField('content', e.target.value)}
+                                rows={6}
+                                placeholder="Mô tả ngắn về website"
+                                className={textareaClass}
+                            />
+                        </Field>
+
+                        <Field label="Copyright">
+                            <input
+                                value={readPayload(form, 'copyright')}
+                                onChange={(e) => updatePayloadField(form, updateField, 'copyright', e.target.value)}
+                                placeholder="© 2026 CTUT Shop. All rights reserved."
+                                className={inputClass}
+                            />
+                        </Field>
+                    </div>
+                </Section>
+
+                <Section title="Logo Footer">
+                    <ImagePicker
+                        label="Logo"
+                        value={form.image}
+                        uploading={uploadingField === 'image'}
+                        onChange={(value) => updateField('image', value)}
+                        onUpload={(file) => onUpload('image', file)}
+                    />
+                </Section>
+            </div>
+        );
+    }
+
+    if (key === 'bottom_navigation') {
+        return (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <Section
+                    title="Menu dưới mobile"
+                    description="Khu vực này dùng cho thanh điều hướng cố định dưới màn hình điện thoại."
+                >
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+                        Hãy qua tab <b>Mục con</b> để thêm, sửa, bật/tắt hoặc sắp xếp các nút menu dưới mobile.
+                    </div>
+                </Section>
+
+                <Section title="Trạng thái">
+                    <StatusSwitch form={form} updateField={updateField} />
+                </Section>
+            </div>
+        );
+    }
+
+    return <MainTab form={form} updateField={updateField} />;
+}
+
+function SmartItemsTab({ componentKey, items, actionId, onCreate, onEdit, onToggle, onDelete, onMove }) {
+    const config = getItemsConfig(componentKey);
+
+    return (
+        <Section
+            title={config.title}
+            description={config.description}
+            action={
+                <button
+                    type="button"
+                    onClick={onCreate}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                >
+                    <Plus size={15} />
+                    {config.addText}
+                </button>
+            }
+        >
+            {items.length > 0 ? (
+                <div className="grid gap-3">
+                    {items.map((item, index) => (
+                        <div
+                            key={item.id}
+                            className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                        >
+                            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                <div className="flex min-w-0 gap-3">
+                                    <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                                        {item.image ? (
+                                            <img
+                                                src={item.image}
+                                                alt={item.title || item.label || 'Mục'}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                                                Không ảnh
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="font-bold text-slate-900 dark:text-white">
+                                                {item.title || item.label || 'Chưa đặt tên'}
+                                            </p>
+
+                                            <StatusBadge active={item.isActive} />
+                                        </div>
+
+                                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                                            {item.subtitle || item.content || item.linkUrl || 'Chưa có mô tả'}
+                                        </p>
+
+                                        <p className="mt-1 text-xs text-slate-400">
+                                            {getFriendlyGroupText(item.groupKey)} · {item.linkUrl || 'Không có link'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                                    <IconButton disabled={index <= 0 || actionId === item.id} onClick={() => onMove(item, 'up')} title="Đưa lên">
+                                        <ArrowUp size={15} />
+                                    </IconButton>
+
+                                    <IconButton disabled={index >= items.length - 1 || actionId === item.id} onClick={() => onMove(item, 'down')} title="Đưa xuống">
+                                        <ArrowDown size={15} />
+                                    </IconButton>
+
+                                    <IconButton onClick={() => onEdit(item)} title="Sửa">
+                                        <Pencil size={15} />
+                                    </IconButton>
+
+                                    <IconButton disabled={actionId === item.id} onClick={() => onToggle(item)} title={item.isActive ? 'Tắt' : 'Bật'}>
+                                        {actionId === item.id ? (
+                                            <Loader2 size={15} className="animate-spin" />
+                                        ) : item.isActive ? (
+                                            <EyeOff size={15} />
+                                        ) : (
+                                            <Eye size={15} />
+                                        )}
+                                    </IconButton>
+
+                                    <IconButton danger disabled={actionId === item.id} onClick={() => onDelete(item)} title="Xóa">
+                                        <Trash2 size={15} />
+                                    </IconButton>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="rounded-lg border border-dashed border-slate-300 px-4 py-10 text-center dark:border-slate-700">
+                    <p className="font-semibold text-slate-800 dark:text-white">{config.emptyTitle}</p>
+                    <p className="mt-1 text-sm text-slate-500">{config.emptyDescription}</p>
+
+                    <button
+                        type="button"
+                        onClick={onCreate}
+                        className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                    >
+                        <Plus size={15} />
+                        {config.addText}
+                    </button>
+                </div>
+            )}
+        </Section>
+    );
+}
+
+function StatusSwitch({ form, updateField }) {
+    return (
+        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {form.is_active ? 'Đang hiển thị' : 'Đang tắt'}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                    Tắt nếu chưa muốn hiển thị ngoài website.
+                </p>
+            </div>
+
+            <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={(e) => updateField('is_active', e.target.checked)}
+                className="h-5 w-5"
+            />
+        </label>
+    );
+}
+
+function readPayload(form, key, fallback = '') {
+    try {
+        const payload = JSON.parse(form.payload_text || '{}');
+        return payload?.[key] ?? fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function updatePayloadField(form, updateField, key, value) {
+    let payload = {};
+
+    try {
+        payload = JSON.parse(form.payload_text || '{}');
+    } catch {
+        payload = {};
+    }
+
+    payload[key] = value;
+
+    updateField('payload_text', JSON.stringify(payload, null, 2));
+}
+
+function getItemsConfig(componentKey) {
+    const key = String(componentKey || '').toLowerCase();
+
+    if (key === 'navbar') {
+        return {
+            title: 'Menu đầu trang',
+            description: 'Quản lý các link menu hiển thị trên thanh điều hướng desktop.',
+            addText: 'Thêm link menu',
+            emptyTitle: 'Chưa có link menu',
+            emptyDescription: 'Thêm các link như Trang chủ, Cửa hàng, Blog, Liên hệ...',
+        };
+    }
+
+    if (key === 'mobile_menu') {
+        return {
+            title: 'Menu điện thoại',
+            description: 'Quản lý các link hiển thị trong menu mở rộng trên điện thoại.',
+            addText: 'Thêm link mobile',
+            emptyTitle: 'Chưa có link mobile',
+            emptyDescription: 'Thêm các link dành cho giao diện điện thoại.',
+        };
+    }
+
+    if (key === 'bottom_navigation') {
+        return {
+            title: 'Nút menu dưới mobile',
+            description: 'Quản lý các nút cố định dưới màn hình điện thoại.',
+            addText: 'Thêm nút menu',
+            emptyTitle: 'Chưa có nút menu',
+            emptyDescription: 'Thêm Trang chủ, Cửa hàng, Giỏ hàng, Tài khoản...',
+        };
+    }
+
+    if (key === 'footer') {
+        return {
+            title: 'Nội dung Footer',
+            description: 'Quản lý cột link, thông tin liên hệ và mạng xã hội ở cuối trang.',
+            addText: 'Thêm mục footer',
+            emptyTitle: 'Chưa có nội dung footer',
+            emptyDescription: 'Thêm cột liên kết, liên hệ hoặc mạng xã hội.',
+        };
+    }
+
+    if (key === 'hero_slider') {
+        return {
+            title: 'Danh sách slide',
+            description: 'Quản lý các banner lớn trên trang chủ. Mỗi slide nên có ảnh, tiêu đề, mô tả và nút bấm.',
+            addText: 'Thêm slide',
+            emptyTitle: 'Chưa có slide',
+            emptyDescription: 'Thêm slide đầu tiên cho banner trang chủ.',
+        };
+    }
+
+    return {
+        title: 'Mục con',
+        description: 'Quản lý các mục hiển thị bên trong khu vực này.',
+        addText: 'Thêm mục',
+        emptyTitle: 'Chưa có mục con',
+        emptyDescription: 'Thêm nội dung cần hiển thị.',
+    };
+}
+
+function getFriendlyGroupText(groupKey) {
+    const key = String(groupKey || '').toLowerCase();
+
+    const map = {
+        desktop_links: 'Menu desktop',
+        user_menu_links: 'Menu người dùng',
+        mobile_links: 'Menu mobile',
+        bottom_items: 'Menu dưới mobile',
+        footer_columns: 'Cột footer',
+        footer_contacts: 'Liên hệ',
+        footer_socials: 'Mạng xã hội',
+        hero_buttons: 'Nút hero',
+        hero_cards: 'Thẻ thông tin',
+        hero_slides: 'Slide',
+    };
+
+    return map[key] || groupKey || 'Chưa phân nhóm';
 }
 
 const inputClass =

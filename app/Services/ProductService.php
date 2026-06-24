@@ -34,11 +34,17 @@ class ProductService
         $query = Product::query()
             ->with([
                 'images',
-                'variants',
+                'variants' => function ($q) {
+                    $q->where('is_active', true);
+                },
                 'category.parent',
                 'department',
             ])
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->whereHas('variants', function ($q) {
+                $q->where('is_active', true)
+                    ->whereRaw('(stock - reserved_stock) > 0');
+            });
 
         if (!empty($filters['keyword'])) {
             $keyword = $filters['keyword'];
@@ -61,6 +67,8 @@ class ProductService
 
         if (!empty($filters['min_price']) || !empty($filters['max_price'])) {
             $query->whereHas('variants', function ($q) use ($filters) {
+                $q->where('is_active', true);
+                
                 if (!empty($filters['min_price'])) {
                     $q->where('price', '>=', $filters['min_price']);
                 }
@@ -77,7 +85,8 @@ class ProductService
                 : explode(',', $filters['sizes']);
 
             $query->whereHas('variants', function ($q) use ($sizes) {
-                $q->whereIn('size', $sizes);
+                $q->where('is_active', true)
+                    ->whereIn('size', $sizes);
             });
         }
 
@@ -87,7 +96,8 @@ class ProductService
                 : explode(',', $filters['colors']);
 
             $query->whereHas('variants', function ($q) use ($colors) {
-                $q->whereIn('color', $colors);
+                $q->where('is_active', true)
+                    ->whereIn('color', $colors);
             });
         }
 
@@ -97,7 +107,8 @@ class ProductService
 
         if (!empty($filters['in_stock'])) {
             $query->whereHas('variants', function ($q) {
-                $q->whereRaw('(stock - reserved_stock) > 0');
+                $q->where('is_active', true)
+                    ->whereRaw('(stock - reserved_stock) > 0');
             });
         }
 
@@ -107,13 +118,15 @@ class ProductService
                 break;
 
             case 'price_asc':
-                $query->withMin('variants', 'price')
-                    ->orderBy('variants_min_price', 'asc');
+                $query->withMin(['variants as active_min_price' => function ($q) {
+                    $q->where('is_active', true);
+                }], 'price')->orderBy('active_min_price', 'asc');
                 break;
 
             case 'price_desc':
-                $query->withMin('variants', 'price')
-                    ->orderBy('variants_min_price', 'desc');
+                $query->withMax(['variants as active_max_price' => function ($q) {
+                    $q->where('is_active', true);
+                }], 'price')->orderBy('active_max_price', 'desc');
                 break;
 
             case 'rating':
@@ -141,22 +154,28 @@ class ProductService
             })
             ->values();
 
-        $allVariants = ProductVariant::query();
+        $allVariants = ProductVariant::query()
+            ->where('is_active', true)
+            ->whereHas('product', function ($q) {
+                $q->where('is_active', true);
+            });
 
         $filterMeta = [
-            'sizes' => $allVariants
+            'sizes' => (clone $allVariants)
                 ->select('size')
+                ->whereNotNull('size')
                 ->distinct()
                 ->pluck('size'),
 
-            'colors' => ProductVariant::query()
+            'colors' => (clone $allVariants)
                 ->select('color')
+                ->whereNotNull('color')
                 ->distinct()
                 ->pluck('color'),
 
             'price_range' => [
-                'min' => ProductVariant::min('price'),
-                'max' => ProductVariant::max('price'),
+                'min' => (clone $allVariants)->min('price'),
+                'max' => (clone $allVariants)->max('price'),
             ],
 
             'departments' => Department::query()
@@ -223,13 +242,19 @@ class ProductService
         $product = Product::query()
             ->with([
                 'images',
-                'variants',
+                'variants' => function ($q) {
+                    $q->where('is_active', true);
+                },
                 'category.parent',
                 'department',
                 'reviews.user',
             ])
             ->where('slug', $slug)
             ->where('is_active', true)
+            ->whereHas('variants', function ($q) {
+                $q->where('is_active', true)
+                    ->whereRaw('(stock - reserved_stock) > 0');
+            })
             ->first();
 
         if (!$product) {
@@ -300,26 +325,28 @@ class ProductService
         $relatedProducts = Product::query()
             ->with([
                 'images',
-                'variants',
+                'variants' => function ($q) {
+                    $q->where('is_active', true);
+                },
                 'category.parent',
                 'department',
             ])
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->where('is_active', true)
-            ->withSum('variants', 'sold_stock')
-            ->orderByDesc('variants_sum_sold_stock')
+            ->whereHas('variants', function ($q) {
+                $q->where('is_active', true)
+                    ->whereRaw('(stock - reserved_stock) > 0');
+            })
+            ->withSum(['variants as active_sold_stock' => function ($q) {
+                $q->where('is_active', true);
+            }], 'sold_stock')
+            ->orderByDesc('active_sold_stock')
             ->orderByDesc('average_rating')
             ->latest()
             ->limit(self::RELATED_PRODUCTS_LIMIT)
             ->get()
-            ->map(
-                fn ($item)
-                => $this->formatProduct(
-                    $item,
-                    $user
-                )
-            );
+            ->map(fn ($item) => $this->formatProduct($item, $user));
 
         return [
             'success' => true,
@@ -431,7 +458,13 @@ class ProductService
     // =========================
     public function getVariants($productId)
     {
-        $product = Product::with('variants')->find($productId);
+        $product = Product::with([
+                'variants' => function ($q) {
+                    $q->where('is_active', true);
+                },
+            ])
+            ->where('is_active', true)
+            ->find($productId);
 
         if (!$product) {
             throw new RuntimeException('Sản phẩm không tồn tại');
@@ -621,11 +654,14 @@ class ProductService
         $items = RecentlyViewedProduct::query()
             ->with([
                 'product.images',
-                'product.variants',
+                'product.variants' => function ($q) {
+                    $q->where('is_active', true);
+                },
                 'product.category.parent',
                 'product.department',
             ])
             ->where('user_id', $user->id)
+            ->where('is_active', true)
             ->orderByDesc('viewed_at')
             ->limit(20)
             ->get();
@@ -636,7 +672,11 @@ class ProductService
             'message' => 'Lấy recently viewed thành công',
 
             'data' => $items
-                ->filter(fn ($item) => $item->product)
+                ->filter(fn ($item) =>
+                    $item->product
+                    && $item->product->is_active
+                    && $item->product->variants->isNotEmpty()
+                )
                 ->map(function ($item) use ($user) {
                     return $this->formatProduct(
                         $item->product,

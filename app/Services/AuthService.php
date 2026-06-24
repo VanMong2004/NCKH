@@ -250,7 +250,7 @@ class AuthService
     // =========================
     private function getDefaultAvatar()
     {
-        $path = resource_path('images/default_avatar.png');
+        $path = resource_path('images/user/default_avatar.png');
 
         if (!file_exists($path)) {
             return null;

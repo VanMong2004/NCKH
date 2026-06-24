@@ -58,6 +58,12 @@ class AdminPromotionController extends Controller
 
                 'items.*.is_active'
                     => 'nullable|boolean',
+
+                'items.*.discount_type' 
+                    => 'required|in:percent,fixed',
+                
+                'items.*.discount_value' 
+                    => 'required|numeric|min:0',
             ]);
 
             return response()->json(
@@ -89,6 +95,9 @@ class AdminPromotionController extends Controller
     {
         try {
             $data = $request->validate($this->promotionRules());
+
+            $data['banner_file'] = $request->file('banner');
+            $data['thumbnail_file'] = $request->file('thumbnail');
 
             return response()->json(
                 $this->service->store($data),
@@ -124,6 +133,9 @@ class AdminPromotionController extends Controller
     {
         try {
             $data = $request->validate($this->promotionRules($id));
+
+            $data['banner_file'] = $request->file('banner');
+            $data['thumbnail_file'] = $request->file('thumbnail');
 
             return response()->json(
                 $this->service->update($id, $data)
@@ -184,6 +196,19 @@ class AdminPromotionController extends Controller
         }
     }
 
+    public function availableProducts(Request $request, $id): JsonResponse
+    {
+        try {
+            return response()->json(
+                $this->service->availableProducts($id, $request)
+            );
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'Admin promotion available products error');
+        }
+    }
+
     public function storeItem(Request $request, $id): JsonResponse
     {
         try {
@@ -241,8 +266,8 @@ class AdminPromotionController extends Controller
             'title' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:promotions,slug,' . $id,
             'description' => 'nullable|string',
-            'banner' => 'nullable|string|max:1000',
-            'thumbnail' => 'nullable|string|max:1000',
+            'banner' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'thumbnail' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'discount_type' => 'required|in:percent,fixed',
             'discount_value' => 'required|numeric|min:0',
             'start_date' => 'required|date',

@@ -2,70 +2,52 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Faq;
+use Illuminate\Database\Seeder;
 
 class FaqSeeder extends Seeder
 {
     public function run(): void
     {
-        Faq::truncate();
-
         $faqs = [
+
             [
                 'category' => 'order',
                 'question' => 'Làm sao để đặt hàng?',
-                'answer' => 'Bạn chọn sản phẩm, thêm vào giỏ hàng, kiểm tra thông tin nhận hàng và tiến hành thanh toán.',
-                'sort_order' => 1,
+                'answer' => 'Chọn sản phẩm, thêm vào giỏ hàng và tiến hành thanh toán.'
             ],
+
             [
                 'category' => 'payment',
-                'question' => 'Có những phương thức thanh toán nào?',
-                'answer' => 'Hệ thống hỗ trợ COD, chuyển khoản ngân hàng, Momo, VNPay và Mock Payment trong môi trường thử nghiệm.',
-                'sort_order' => 2,
+                'question' => 'Có hỗ trợ thanh toán Momo không?',
+                'answer' => 'Có. Hệ thống hỗ trợ Momo, VNPay và chuyển khoản.'
             ],
+
             [
-                'category' => 'campaign',
-                'question' => 'Campaign là gì?',
-                'answer' => 'Campaign là đợt đăng ký sản phẩm theo thời gian, ví dụ đồng phục, áo khoa hoặc sản phẩm sự kiện.',
-                'sort_order' => 3,
+                'category' => 'shipping',
+                'question' => 'Bao lâu nhận được hàng?',
+                'answer' => 'Thông thường từ 2-5 ngày làm việc.'
             ],
+
             [
-                'category' => 'campaign',
-                'question' => 'Làm sao để đăng ký campaign?',
-                'answer' => 'Bạn vào trang Campaign, chọn campaign đang mở, chọn sản phẩm hoặc biến thể phù hợp rồi gửi đăng ký.',
-                'sort_order' => 4,
+                'category' => 'return',
+                'question' => 'Có được đổi size áo không?',
+                'answer' => 'Có thể đổi trong vòng 7 ngày nếu còn nguyên tem.'
             ],
+
             [
-                'category' => 'pickup',
-                'question' => 'Khi nhận hàng cần mang theo gì?',
-                'answer' => 'Bạn cần mang theo MSSV, mã đơn hàng hoặc mã QR để đối chiếu khi nhận hàng.',
-                'sort_order' => 5,
-            ],
-            [
-                'category' => 'account',
-                'question' => 'Tôi có thể cập nhật thông tin cá nhân không?',
-                'answer' => 'Bạn có thể cập nhật họ tên, số điện thoại, MSSV và ảnh đại diện trong trang Hồ sơ cá nhân.',
-                'sort_order' => 6,
-            ],
-            [
-                'category' => 'review',
-                'question' => 'Khi nào tôi được đánh giá sản phẩm?',
-                'answer' => 'Bạn chỉ có thể đánh giá sản phẩm sau khi đã mua và thanh toán thành công.',
-                'sort_order' => 7,
-            ],
-            [
-                'category' => 'notification',
-                'question' => 'Thông báo đơn hàng hiển thị ở đâu?',
-                'answer' => 'Thông báo được hiển thị trong Notification Center và biểu tượng chuông trên thanh điều hướng.',
-                'sort_order' => 8,
+                'category' => 'student',
+                'question' => 'Sinh viên CTUT có ưu đãi không?',
+                'answer' => 'Một số chương trình ưu đãi dành riêng cho sinh viên CTUT.'
             ],
         ];
 
-        foreach ($faqs as $faq) {
+        foreach ($faqs as $index => $faq) {
+
             Faq::create([
                 ...$faq,
                 'is_active' => true,
+                'sort_order' => $index + 1,
             ]);
         }
     }

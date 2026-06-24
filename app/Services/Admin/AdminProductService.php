@@ -155,6 +155,12 @@ class AdminProductService
                 'is_active'
                     => $product->is_active,
 
+                'active_variants_count' 
+                    => $product->variants->where('is_active', true)->count(),
+
+                'inactive_variants_count' 
+                    => $product->variants->where('is_active', false)->count(),
+
                 'is_featured'
                     => $product->is_featured,
 
@@ -249,11 +255,6 @@ class AdminProductService
                 $product,
                 $request->variants
             );
-
-            $socialLog = app(N8nSocialAutomationService::class)
-                ->createProductCreatedLog($product);
-
-            SendProductSocialAutomationJob::dispatch($socialLog->id)->afterCommit();
 
             return [
 
@@ -487,6 +488,7 @@ class AdminProductService
                 'stock' => $variant['stock'] ?? 0,
                 'reserved_stock' => 0,
                 'sold_stock' => 0,
+                'is_active' => $variant['is_active'] ?? true,
             ]);
         }
     }
@@ -594,6 +596,9 @@ class AdminProductService
                     'sku' => $variantData['sku'] ?? $variant->sku,
                     'price' => $variantData['price'] ?? $variant->price,
                     'stock' => $newStock,
+                    'is_active' => array_key_exists('is_active', $variantData)
+                        ? (bool) $variantData['is_active']
+                        : $variant->is_active,
                 ]);
 
                 $after = $variant->fresh();
@@ -625,6 +630,7 @@ class AdminProductService
                 'stock' => $variantData['stock'] ?? 0,
                 'reserved_stock' => 0,
                 'sold_stock' => 0,
+                'is_active' => $variantData['is_active'] ?? true,
             ]);
         }
     }
@@ -645,5 +651,85 @@ class AdminProductService
         if ($exists) {
             throw new Exception("SKU {$sku} đã tồn tại");
         }
+    }
+
+    public function toggleProductSale($id, bool $isActive): array
+    {
+        $product = Product::findOrFail($id);
+
+        $product->update([
+            'is_active' => $isActive,
+        ]);
+
+        if (!$isActive) {
+            ProductVariant::where('product_id', $product->id)
+                ->update([
+                    'is_active' => false,
+                ]);
+        }
+
+        return [
+            'success' => true,
+            'message' => $isActive
+                ? 'Đã mở bán sản phẩm'
+                : 'Đã tắt bán sản phẩm',
+            'data' => $this->show($product->id)['data'],
+        ];
+    }
+
+    public function toggleVariantSale($id, bool $isActive): array
+    {
+        $variant = ProductVariant::with('product')->findOrFail($id);
+
+        if ($isActive && !$variant->product->is_active) {
+            throw new Exception('Không thể mở bán biến thể khi sản phẩm đang bị tắt bán');
+        }
+
+        $variant->update([
+            'is_active' => $isActive,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => $isActive
+                ? 'Đã mở bán biến thể sản phẩm'
+                : 'Đã tắt bán biến thể sản phẩm',
+            'data' => $variant->fresh(),
+        ];
+    }
+
+    public function postFacebook($id): array
+    {
+        $product = Product::with([
+            'category',
+            'images',
+            'variants',
+        ])->findOrFail($id);
+
+        if (!$product->is_active) {
+            throw new Exception('Không thể đăng Facebook vì sản phẩm đang tắt bán');
+        }
+
+        $hasActiveVariant = $product->variants
+            ->where('is_active', true)
+            ->isNotEmpty();
+
+        if (!$hasActiveVariant) {
+            throw new Exception('Không thể đăng Facebook vì sản phẩm không có biến thể đang mở bán');
+        }
+
+        $socialLog = app(N8nSocialAutomationService::class)
+            ->createProductCreatedLog($product);
+
+        SendProductSocialAutomationJob::dispatch($socialLog->id);
+
+        return [
+            'success' => true,
+            'message' => 'Đã gửi yêu cầu đăng Facebook sang n8n',
+            'data' => [
+                'log_id' => $socialLog->id,
+                'status' => $socialLog->status,
+            ],
+        ];
     }
 }

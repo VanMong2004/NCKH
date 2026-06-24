@@ -275,14 +275,12 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::delete('/{id}', [AdminUserController::class, 'destroy']);
     });
 
-
     // ADMIN ORDERS
     Route::prefix('orders')->group(function () {
         Route::get('/', [AdminOrderController::class, 'index']);
         Route::get('/{id}', [AdminOrderController::class, 'show']);
         Route::patch('/{id}/status', [AdminOrderController::class, 'updateStatus']);
     });  
-
 
     // ADMIN PRODUCTS
     Route::prefix('products')->group(function () {
@@ -291,6 +289,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/{id}', [AdminProductController::class, 'show']);// Lấy chi tiết sản phẩm
         Route::post('/{id}', [AdminProductController::class, 'update']);// Cập nhật sản phẩm
         Route::delete('/{id}', [AdminProductController::class, 'destroy']);// Xóa sản phẩm
+        
+        Route::post('/{id}/toggle-sale', [AdminProductController::class, 'toggleProductSale']);
+        Route::post('/variants/{id}/toggle-sale', [AdminProductController::class, 'toggleVariantSale']);
+        
+        Route::post('/{id}/post-facebook', [AdminProductController::class, 'postFacebook']);
     });
 
     Route::get('/images/products/{folder}/{file}', function (
@@ -322,6 +325,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::delete('/{id}', [AdminPromotionController::class, 'destroy']);
 
         Route::get('/{id}/items', [AdminPromotionController::class, 'items']);
+        Route::get('/{id}/available-products', [AdminPromotionController::class, 'availableProducts']);
         Route::post('/{id}/items/bulk', [AdminPromotionController::class,'storeItemsBulk']); // thêm nhiều item cùng lúc vào promotion
         Route::post('/{id}/items', [AdminPromotionController::class, 'storeItem']); // thêm 1 item vào promotion
         Route::put('/items/{itemId}', [AdminPromotionController::class, 'updateItem']);

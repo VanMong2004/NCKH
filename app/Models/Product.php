@@ -25,6 +25,15 @@ class Product extends Model
         'view_count',
     ];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_featured' => 'boolean',
+        'average_rating' => 'float',
+        'total_reviews' => 'integer',
+        'sold_count' => 'integer',
+        'view_count' => 'integer',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);

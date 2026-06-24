@@ -16,10 +16,10 @@ class PromotionSeeder extends Seeder
                 'discount_type' => 'percent',
                 'discount_value' => 10,
                 'status' => 'active',
-                'start_date' => now()->subDays(5),
+                'start_date' => now()->subDays(7),
                 'end_date' => now()->addDays(30),
+                'description' => 'Ưu đãi dành cho tân sinh viên khi mua đồng phục và phụ kiện nhập học.',
             ],
-
             [
                 'title' => 'Tuần lễ khai giảng',
                 'discount_type' => 'fixed',
@@ -27,61 +27,36 @@ class PromotionSeeder extends Seeder
                 'status' => 'active',
                 'start_date' => now()->subDays(2),
                 'end_date' => now()->addDays(10),
+                'description' => 'Giảm trực tiếp cho một số sản phẩm phụ kiện trong tuần lễ khai giảng.',
             ],
-
             [
-                'title' => 'Sale phụ kiện CTUT',
-                'discount_type' => 'percent',
-                'discount_value' => 15,
-                'status' => 'active',
-                'start_date' => now()->subDay(),
-                'end_date' => now()->addDays(15),
-            ],
-
-            [
-                'title' => 'Black Friday CTUT',
+                'title' => 'Black Friday CTUT 2025',
                 'discount_type' => 'percent',
                 'discount_value' => 25,
                 'status' => 'inactive',
-                'start_date' => now()->subMonths(1),
-                'end_date' => now()->subDays(20),
+                'start_date' => now()->subMonths(7),
+                'end_date' => now()->subMonths(6),
+                'description' => 'Chương trình khuyến mãi đã kết thúc.',
             ],
-
             [
                 'title' => 'Flash Sale cuối tháng',
                 'discount_type' => 'fixed',
                 'discount_value' => 50000,
                 'status' => 'draft',
                 'start_date' => now()->addDays(5),
-                'end_date' => now()->addDays(10),
+                'end_date' => now()->addDays(8),
+                'description' => 'Chương trình đang chuẩn bị, chưa công khai.',
             ],
         ];
 
-        foreach ($promotions as $item) {
-            Promotion::updateOrCreate(
-                [
-                    'slug' => Str::slug($item['title']),
-                ],
-                [
-                    'title' => $item['title'],
-                    'slug' => Str::slug($item['title']),
-                    'description' => 'Chương trình khuyến mãi dành cho sinh viên và khách hàng CTUT.',
-
-                    'banner' => 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200',
-
-                    'thumbnail' => 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=600',
-
-                    'discount_type' => $item['discount_type'],
-                    'discount_value' => $item['discount_value'],
-
-                    'start_date' => $item['start_date'],
-                    'end_date' => $item['end_date'],
-
-                    'status' => $item['status'],
-
-                    'is_active' => true,
-                ]
-            );
+        foreach ($promotions as $promotion) {
+            Promotion::create([
+                ...$promotion,
+                'slug' => Str::slug($promotion['title']),
+                'banner' => 'images/promotions/' . Str::slug($promotion['title']) . '/banner.jpg',
+                'thumbnail' => 'images/promotions/' . Str::slug($promotion['title']) . '/thumbnail.jpg',
+                'is_active' => true,
+            ]);
         }
     }
 }

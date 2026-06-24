@@ -5,11 +5,13 @@ namespace App\Services\Admin;
 use RuntimeException;
 use App\Models\ProductVariant;
 use App\Models\Promotion;
+use App\Models\Product;
 use App\Models\PromotionItem;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\SendPromotionSocialAutomationJob;
 use App\Services\Social\N8nSocialAutomationService;
 use App\Models\SocialAutomationLog;
+use Illuminate\Support\Str;
 
 
 class AdminPromotionService
@@ -61,12 +63,17 @@ class AdminPromotionService
                 throw new RuntimeException('Khuyến mãi không tồn tại', 404);
             }
 
+            if (($data['discount_type'] ?? null) === 'percent' && ($data['discount_value'] ?? 0) > 100) {
+                throw new RuntimeException('Phần trăm giảm giá không được vượt quá 100%', 400);
+            }
+
             $created = [];
             $skipped = [];
 
             foreach ($items as $index => $data) {
                 try {
                     $this->validateVariantBelongsToProduct($data);
+                    $this->validateProductIsSellable($data);
                     $this->validateLimitQuantity($data);
 
                     $productVariantId = $data['product_variant_id'] ?? null;
@@ -133,12 +140,14 @@ class AdminPromotionService
 
     public function store(array $data): array
     {
+        $slug = $this->generateUniqueSlug($data['title']);
+
         $promotion = Promotion::create([
             'title' => $data['title'],
-            'slug' => $data['slug'],
+            'slug' => $slug,
             'description' => $data['description'] ?? null,
-            'banner' => $data['banner'] ?? null,
-            'thumbnail' => $data['thumbnail'] ?? null,
+            'banner' => null,
+            'thumbnail' => null,
             'discount_type' => $data['discount_type'],
             'discount_value' => $data['discount_value'],
             'start_date' => $data['start_date'],
@@ -147,10 +156,20 @@ class AdminPromotionService
             'is_active' => $data['is_active'] ?? true,
         ]);
 
+        $promotion->update([
+            'banner' => !empty($data['banner_file'])
+                ? $this->uploadPromotionImage($promotion, $data['banner_file'], 'banner')
+                : null,
+
+            'thumbnail' => !empty($data['thumbnail_file'])
+                ? $this->uploadPromotionImage($promotion, $data['thumbnail_file'], 'thumbnail')
+                : null,
+        ]);
+
         return [
             'success' => true,
             'message' => 'Tạo khuyến mãi thành công',
-            'data' => $this->formatPromotion($promotion),
+            'data' => $this->formatPromotion($promotion->fresh()),
         ];
     }
 
@@ -176,19 +195,31 @@ class AdminPromotionService
             throw new RuntimeException('Khuyến mãi không tồn tại', 404);
         }
 
-        $promotion->update([
+        $slug = $this->generateUniqueSlug($data['title'], $promotion->id);
+
+        $updateData = [
             'title' => $data['title'],
-            'slug' => $data['slug'],
+            'slug' => $slug,
             'description' => $data['description'] ?? null,
-            'banner' => $data['banner'] ?? null,
-            'thumbnail' => $data['thumbnail'] ?? null,
             'discount_type' => $data['discount_type'],
             'discount_value' => $data['discount_value'],
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'status' => $data['status'],
             'is_active' => $data['is_active'] ?? true,
-        ]);
+        ];
+
+        if (!empty($data['banner_file'])) {
+            $this->deletePublicFile($promotion->banner);
+            $updateData['banner'] = $this->uploadPromotionImage($promotion, $data['banner_file'], 'banner');
+        }
+
+        if (!empty($data['thumbnail_file'])) {
+            $this->deletePublicFile($promotion->thumbnail);
+            $updateData['thumbnail'] = $this->uploadPromotionImage($promotion, $data['thumbnail_file'], 'thumbnail');
+        }
+
+        $promotion->update($updateData);
 
         return [
             'success' => true,
@@ -314,6 +345,94 @@ class AdminPromotionService
         ];
     }
 
+    public function availableProducts($promotionId, $request): array
+    {
+        $promotion = Promotion::find($promotionId);
+
+        if (!$promotion) {
+            throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+        }
+
+        $keyword = $request->keyword;
+        $perPage = $request->per_page ?? 10;
+
+        $query = Product::query()
+            ->with([
+                'images',
+                'category',
+                'variants' => function ($q) {
+                    $q->where('is_active', true)
+                        ->whereRaw('(stock - reserved_stock) > 0')
+                        ->orderBy('price');
+                },
+            ])
+            ->where('is_active', true)
+            ->whereHas('variants', function ($q) {
+                $q->where('is_active', true)
+                    ->whereRaw('(stock - reserved_stock) > 0');
+            });
+
+        if ($keyword) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('slug', 'like', "%{$keyword}%");
+            });
+        }
+
+        $products = $query->latest()->paginate($perPage);
+
+        $data = collect($products->items())->map(function ($product) use ($promotion) {
+            $existingVariantKeys = PromotionItem::query()
+                ->where('promotion_id', $promotion->id)
+                ->where('product_id', $product->id)
+                ->pluck('variant_unique_key')
+                ->toArray();
+
+            $variants = $product->variants
+                ->map(function ($variant) use ($existingVariantKeys) {
+                    $variantKey = (int) $variant->id;
+
+                    return [
+                        'id' => $variant->id,
+                        'sku' => $variant->sku,
+                        'size' => $variant->size,
+                        'color' => $variant->color,
+                        'price' => (float) $variant->price,
+                        'stock' => (int) $variant->stock,
+                        'reserved_stock' => (int) $variant->reserved_stock,
+                        'available_stock' => max(0, (int) $variant->stock - (int) $variant->reserved_stock),
+                        'is_active' => (bool) $variant->is_active,
+                        'already_added' => in_array($variantKey, $existingVariantKeys),
+                    ];
+                })
+                ->values();
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'category' => $product->category?->name,
+                'thumbnail' => optional(
+                    $product->images->where('type', 'thumbnail')->first()
+                )->url ?? optional($product->images->first())->url,
+                'is_active' => (bool) $product->is_active,
+                'variants' => $variants,
+            ];
+        })->values();
+
+        return [
+            'success' => true,
+            'message' => 'Lấy danh sách sản phẩm có thể thêm vào khuyến mãi thành công',
+            'data' => $data,
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+            ],
+        ];
+    }
+
     public function storeItem($promotionId, array $data): array
     {
         return DB::transaction(function () use ($promotionId, $data) {
@@ -323,7 +442,12 @@ class AdminPromotionService
                 throw new RuntimeException('Khuyến mãi không tồn tại', 404);
             }
 
+            if (($data['discount_type'] ?? null) === 'percent' && ($data['discount_value'] ?? 0) > 100) {
+                throw new RuntimeException('Phần trăm giảm giá không được vượt quá 100%', 400);
+            }
+
             $this->validateVariantBelongsToProduct($data);
+            $this->validateProductIsSellable($data);
             $this->validateLimitQuantity($data);
 
             $productVariantId = $data['product_variant_id'] ?? null;
@@ -511,6 +635,29 @@ class AdminPromotionService
             throw new RuntimeException('Biến thể không thuộc sản phẩm đã chọn', 400);
         }
     }
+    
+    private function validateProductIsSellable(array $data): void
+    {
+        $product = Product::find($data['product_id']);
+
+        if (!$product || !$product->is_active) {
+            throw new RuntimeException('Sản phẩm không còn được mở bán', 400);
+        }
+
+        if (!empty($data['product_variant_id'])) {
+            $variant = ProductVariant::where('product_id', $product->id)
+                ->where('id', $data['product_variant_id'])
+                ->first();
+
+            if (!$variant || !$variant->is_active) {
+                throw new RuntimeException('Biến thể sản phẩm không còn được mở bán', 400);
+            }
+
+            if (($variant->stock - $variant->reserved_stock) <= 0) {
+                throw new RuntimeException('Biến thể sản phẩm đã hết hàng', 400);
+            }
+        }
+    }
 
     private function formatPromotion(Promotion $promotion): array
     {
@@ -631,6 +778,70 @@ class AdminPromotionService
                 "Số lượng khuyến mãi tối đa còn có thể áp dụng cho biến thể này là {$maxAllowed}",
                 400
             );
+        }
+    }
+
+    private function generateUniqueSlug(string $title, ?int $ignoreId = null): string
+    {
+        $baseSlug = Str::slug($title);
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (
+            Promotion::query()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    private function uploadPromotionImage($promotion, $image, string $type): string
+    {
+        $folderName = Str::slug($promotion->slug ?: $promotion->title);
+
+        $folderPath = public_path('images/promotions/' . $folderName);
+
+        if (!File::exists($folderPath)) {
+            File::makeDirectory($folderPath, 0755, true);
+        }
+
+        $originalName = pathinfo(
+            $image->getClientOriginalName(),
+            PATHINFO_FILENAME
+        );
+
+        $extension = $image->getClientOriginalExtension();
+
+        $fileName = $type
+            . '-'
+            . Str::slug($originalName)
+            . '-'
+            . uniqid()
+            . '.'
+            . $extension;
+
+        $image->move($folderPath, $fileName);
+
+        return url('images/promotions/' . $folderName . '/' . $fileName);
+    }
+
+    private function deletePublicFile(?string $url): void
+    {
+        if (!$url) {
+            return;
+        }
+
+        $path = str_replace(url('/'), '', $url);
+
+        $fullPath = public_path($path);
+
+        if (File::exists($fullPath)) {
+            File::delete($fullPath);
         }
     }
 }

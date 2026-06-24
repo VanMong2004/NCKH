@@ -20,7 +20,7 @@ class UserAnalyticsExport implements WithMultipleSheets
         return [
             new AnalyticsTableSheet(
                 'Tổng quan',
-                ['Chỉ số', 'Giá trị'],
+                ['Nhóm', 'Chỉ số', 'Giá trị'],
                 $this->overviewRows($orders, $spending, $interests, $tracking)
             ),
 
@@ -49,7 +49,7 @@ class UserAnalyticsExport implements WithMultipleSheets
             ),
 
             new AnalyticsTableSheet(
-                'Chi tiêu theo danh mục',
+                'Chi tiêu danh mục',
                 ['STT', 'Danh mục', 'Tổng chi tiêu'],
                 $this->spendingByCategoryRows($spending)
             ),
@@ -71,114 +71,117 @@ class UserAnalyticsExport implements WithMultipleSheets
                 ['STT', 'Tên sản phẩm', 'Số sao', 'Nhận xét', 'Ngày đánh giá'],
                 $this->reviewedProductRows($interests)
             ),
+
+            new AnalyticsTableSheet(
+                'Đơn đang theo dõi',
+                ['STT', 'Mã đơn', 'Trạng thái', 'Tổng tiền', 'Cập nhật lần cuối'],
+                $this->trackingRows($tracking)
+            ),
         ];
     }
 
     private function overviewRows(array $orders, array $spending, array $interests, array $tracking): array
     {
         return [
-            ['Tổng số đơn hàng', $orders['total_orders'] ?? 0],
-            ['Tổng tiền đã chi', $this->money($spending['total_spent'] ?? 0)],
-            ['Sản phẩm đã mua', count($interests['most_purchased_products'] ?? [])],
-            ['Sản phẩm đã xem gần đây', count($interests['most_viewed_products'] ?? [])],
-            ['Sản phẩm đã đánh giá', count($interests['reviewed_products'] ?? [])],
-            ['Đơn hàng đang theo dõi', count($tracking['orders'] ?? [])],
-            ['Thời gian cập nhật', $tracking['last_updated_at'] ?? ''],
+            ['Đơn hàng', 'Tổng số đơn hàng', $orders['total_orders'] ?? 0],
+            ['Chi tiêu', 'Tổng tiền đã chi', $this->money($spending['total_spent'] ?? 0)],
+            ['Chi tiêu', 'Đơn hàng giá trị cao nhất', $this->money(data_get($spending, 'highest_order.total', 0))],
+            ['Sở thích', 'Sản phẩm đã mua', count($interests['most_purchased_products'] ?? [])],
+            ['Sở thích', 'Sản phẩm đã xem gần đây', count($interests['most_viewed_products'] ?? [])],
+            ['Đánh giá', 'Sản phẩm đã đánh giá', count($interests['reviewed_products'] ?? [])],
+            ['Theo dõi', 'Đơn hàng đang theo dõi', count($tracking['orders'] ?? [])],
+            ['Hệ thống', 'Thời gian cập nhật', $tracking['last_updated_at'] ?? ''],
+            ['Hệ thống', 'Ngày xuất báo cáo', $this->data['generated_at'] ?? now()->format('d/m/Y H:i')],
         ];
     }
 
     private function recentOrderRows(array $orders): array
     {
-        return $this->mapRows($orders['recent_orders'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['order_code'] ?? '',
-                $this->orderStatusLabel($item['status'] ?? ''),
-                $this->money($item['total'] ?? 0),
-                $item['updated_at'] ?? '',
-            ];
-        });
+        return $this->mapRows($orders['recent_orders'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['order_code'] ?? '',
+            $this->orderStatusLabel($item['status'] ?? ''),
+            $this->money($item['total'] ?? 0),
+            $item['updated_at'] ?? '',
+        ]);
     }
 
     private function monthlyOrderRows(array $orders): array
     {
-        return $this->mapRows($orders['monthly_orders'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['month'] ?? '',
-                $item['total'] ?? 0,
-            ];
-        });
+        return $this->mapRows($orders['monthly_orders'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['month'] ?? '',
+            $item['total'] ?? 0,
+        ]);
     }
 
     private function orderStatusRows(array $orders): array
     {
-        return $this->mapRows($orders['status_breakdown'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $this->orderStatusLabel($item['status'] ?? ''),
-                $item['total'] ?? 0,
-            ];
-        });
+        return $this->mapRows($orders['status_breakdown'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $this->orderStatusLabel($item['status'] ?? ''),
+            $item['total'] ?? 0,
+        ]);
     }
 
     private function monthlySpendingRows(array $spending): array
     {
-        return $this->mapRows($spending['monthly_spending'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['month'] ?? '',
-                $this->money($item['total'] ?? 0),
-            ];
-        });
+        return $this->mapRows($spending['monthly_spending'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['month'] ?? '',
+            $this->money($item['total'] ?? 0),
+        ]);
     }
 
     private function spendingByCategoryRows(array $spending): array
     {
-        return $this->mapRows($spending['spending_by_category'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['category_name'] ?? 'Không phân loại',
-                $this->money($item['total'] ?? 0),
-            ];
-        });
+        return $this->mapRows($spending['spending_by_category'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['category_name'] ?? 'Không phân loại',
+            $this->money($item['total'] ?? 0),
+        ]);
     }
 
     private function mostPurchasedRows(array $interests): array
     {
-        return $this->mapRows($interests['most_purchased_products'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['name'] ?? '',
-                $item['slug'] ?? '',
-                $item['total_quantity'] ?? 0,
-            ];
-        });
+        return $this->mapRows($interests['most_purchased_products'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['name'] ?? '',
+            $item['slug'] ?? '',
+            $item['total_quantity'] ?? 0,
+        ]);
     }
 
     private function mostViewedRows(array $interests): array
     {
-        return $this->mapRows($interests['most_viewed_products'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['name'] ?? '',
-                $item['slug'] ?? '',
-                $item['viewed_at'] ?? '',
-            ];
-        });
+        return $this->mapRows($interests['most_viewed_products'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['name'] ?? '',
+            $item['slug'] ?? '',
+            $item['viewed_at'] ?? '',
+        ]);
     }
 
     private function reviewedProductRows(array $interests): array
     {
-        return $this->mapRows($interests['reviewed_products'] ?? [], function ($item, $index) {
-            return [
-                $index + 1,
-                $item['product_name'] ?? '',
-                $item['rating'] ?? 0,
-                $item['comment'] ?? '',
-                $item['created_at'] ?? '',
-            ];
-        });
+        return $this->mapRows($interests['reviewed_products'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['product_name'] ?? '',
+            $item['rating'] ?? 0,
+            $item['comment'] ?? '',
+            $item['created_at'] ?? '',
+        ]);
+    }
+
+    private function trackingRows(array $tracking): array
+    {
+        return $this->mapRows($tracking['orders'] ?? [], fn ($item, $index) => [
+            $index + 1,
+            $item['order_code'] ?? '',
+            $this->orderStatusLabel($item['status'] ?? ''),
+            $this->money($item['total'] ?? 0),
+            $item['updated_at'] ?? '',
+        ]);
     }
 
     private function mapRows($items, callable $callback): array

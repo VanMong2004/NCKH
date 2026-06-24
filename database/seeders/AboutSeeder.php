@@ -2,40 +2,36 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\About;
+use Illuminate\Database\Seeder;
 
 class AboutSeeder extends Seeder
 {
     public function run(): void
     {
-        About::truncate();
-
         About::create([
-            'title' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+            'title' => 'CTUT Store',
+            'slogan' => 'Kết nối sinh viên CTUT',
+            'banner' => 'images/about/banner.jpg',
 
-            'slogan' => 'Tri thức - Công nghệ - Sáng tạo',
+            'description' =>
+                'CTUT Store là cửa hàng chính thức của Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.',
 
-            'banner' => 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1400',
+            'mission' =>
+                'Mang đến sản phẩm chất lượng cho sinh viên và giảng viên.',
 
-            'description' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ là cơ sở đào tạo định hướng ứng dụng trong lĩnh vực kỹ thuật, công nghệ và đổi mới sáng tạo.',
+            'vision' =>
+                'Trở thành hệ thống phân phối sản phẩm chính thức của CTUT.',
 
-            'mission' => 'Đào tạo nguồn nhân lực có năng lực chuyên môn, kỹ năng thực hành và khả năng thích ứng với môi trường nghề nghiệp hiện đại.',
-
-            'vision' => 'Trở thành trường đại học định hướng ứng dụng có uy tín trong lĩnh vực kỹ thuật và công nghệ tại khu vực Đồng bằng sông Cửu Long.',
-
-            'student_count' => 8000,
-
+            'student_count' => 10000,
             'major_count' => 20,
-
-            'teacher_count' => 350,
-
+            'teacher_count' => 500,
             'years_of_operation' => 12,
 
             'gallery' => [
-                'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1000',
-                'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1000',
-                'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?w=1000',
+                'images/about/1.jpg',
+                'images/about/2.jpg',
+                'images/about/3.jpg',
             ],
 
             'is_active' => true,

@@ -2,64 +2,46 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Notification;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class NotificationSeeder extends Seeder
 {
     public function run(): void
     {
-        $user = User::first();
+        foreach (
+            User::where('role', 'user')->get()
+            as $user
+        ) {
 
-        if (!$user) {
-            return;
-        }
-
-        Notification::query()->where('user_id', $user->id)->delete();
-
-        Notification::insert([
-            [
+            Notification::create([
                 'user_id' => $user->id,
                 'type' => 'order',
-                'title' => 'Đơn hàng đã thanh toán',
-                'message' => 'Đơn hàng ORD-20260518-0006 đã thanh toán thành công.',
-                'action_url' => '/profile/orders/6',
-                'meta' => json_encode([
-                    'order_id' => 6,
-                    'order_code' => 'ORD-20260518-0006',
-                ]),
-                'is_read' => false,
-                'read_at' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
+                'title' => 'Đơn hàng đã được tạo',
+                'message' => 'Đơn hàng của bạn đã được ghi nhận.',
+                'action_url' => '/orders',
+                'is_read' => true,
+                'read_at' => now()->subDays(5),
+            ]);
+
+            Notification::create([
                 'user_id' => $user->id,
                 'type' => 'payment',
                 'title' => 'Thanh toán thành công',
-                'message' => 'Thanh toán PAY-000006 thành công.',
-                'action_url' => '/transactions/6',
-                'meta' => json_encode([
-                    'payment_id' => 6,
-                ]),
-                'is_read' => true,
-                'read_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
+                'message' => 'Thanh toán cho đơn hàng đã thành công.',
+                'action_url' => '/orders',
+                'is_read' => false,
+            ]);
+
+            Notification::create([
                 'user_id' => $user->id,
                 'type' => 'system',
-                'title' => 'Thông báo hệ thống',
-                'message' => 'Hệ thống sẽ bảo trì lúc 22:00.',
-                'action_url' => null,
-                'meta' => null,
+                'title' => 'Chào mừng đến CTUT Store',
+                'message' => 'Cảm ơn bạn đã sử dụng hệ thống.',
+                'action_url' => '/',
                 'is_read' => false,
-                'read_at' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        ]);
+            ]);
+        }
     }
 }

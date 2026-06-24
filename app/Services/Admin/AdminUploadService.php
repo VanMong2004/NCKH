@@ -37,7 +37,7 @@ class AdminUploadService
             'filename' => $filename,
             'path' => '/storage/' . $storedPath,
             'storage_path' => $storedPath,
-            'url' => Storage::disk('public')->url($storedPath),
+            'url' => asset('storage/' . $storedPath),
             'mime_type' => $file->getClientMimeType(),
             'size' => $file->getSize(),
         ];

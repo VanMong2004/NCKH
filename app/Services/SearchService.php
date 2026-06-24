@@ -24,6 +24,7 @@ class SearchService
 
         return Product::query()
             ->with('images')
+            ->where('is_active', true)
             ->where(
                 'name',
                 'like',

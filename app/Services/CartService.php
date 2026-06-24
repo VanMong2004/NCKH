@@ -16,24 +16,39 @@ class CartService
         protected PromotionPriceService $promotionPriceService
     ) {}
 
-    // =========================
     // GET CART
-    // =========================
     public function getCart($user, ?string $guestToken)
     {
-        $cart = Cart::where(
-            $this->getCartOwnerCondition(
-                $user,
-                $guestToken
-            )
-        )->first();
+        // Nếu chưa đăng nhập và cũng chưa có guest token
+        // thì trả về giỏ hàng rỗng, không throw lỗi 500
+        if (!$user && empty($guestToken)) {
+            return [
+                'success' => true,
+                'message' => 'Lấy danh sách sản phẩm trong giỏ hàng thành công',
+                'data' => $this->emptyCartData(),
+            ];
+        }
 
-        $cart->load([
-            'items',
-            'items.productVariant',
-            'items.productVariant.product',
-            'items.productVariant.product.images',
-        ]);
+        $cart = Cart::where(
+            $this->getCartOwnerCondition($user, $guestToken)
+        )
+            ->with([
+                'items',
+                'items.productVariant',
+                'items.productVariant.product',
+                'items.productVariant.product.images',
+            ])
+            ->first();
+
+        // Nếu user/guest chưa từng thêm sản phẩm vào giỏ
+        // thì chưa có cart trong DB => trả về cart rỗng
+        if (!$cart) {
+            return [
+                'success' => true,
+                'message' => 'Lấy danh sách sản phẩm trong giỏ hàng thành công',
+                'data' => $this->emptyCartData(),
+            ];
+        }
 
         return [
             'success' => true,
@@ -42,9 +57,7 @@ class CartService
         ];
     }
 
-    // =========================
     // ADD TO CART
-    // =========================
     public function addToCart($user, ?string $guestToken, array $data)
     {
         // if (!$user) {
@@ -52,7 +65,8 @@ class CartService
         // }
 
         return DB::transaction(function () use ($user, $guestToken, $data) {
-            $variant = ProductVariant::lockForUpdate()
+            $variant = ProductVariant::with('product')
+                ->lockForUpdate()
                 ->find($data['product_variant_id']);
 
             if (($data['quantity'] ?? 0) <= 0) {
@@ -61,6 +75,10 @@ class CartService
 
             if (!$variant) {
                 throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+            }
+
+            if (!$variant->is_active || !$variant->product?->is_active) {
+                throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
             }
 
             $available = $variant->stock - $variant->reserved_stock;
@@ -122,9 +140,7 @@ class CartService
         });
     }
 
-    // =========================
     // UPDATE ITEM
-    // =========================
     public function updateItem($user, ?string $guestToken, $cartItemId, $quantity)
     {
         // if (!$user) {
@@ -149,7 +165,8 @@ class CartService
                 throw new RuntimeException('Sản phẩm không có trong giỏ hàng', 404);
             }
 
-            $variant = ProductVariant::lockForUpdate()
+            $variant = ProductVariant::with('product')
+                ->lockForUpdate()
                 ->find($item->product_variant_id);
 
             if (!$variant) {
@@ -158,6 +175,10 @@ class CartService
 
             if ($quantity <= 0) {
                 throw new RuntimeException('Số lượng phải lớn hơn 0', 400);
+            }
+
+            if (!$variant->is_active || !$variant->product?->is_active) {
+                throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
             }
 
             $available = $variant->stock - $variant->reserved_stock;
@@ -185,9 +206,7 @@ class CartService
         });
     }
 
-    // =========================
     // REMOVE ITEM
-    // =========================
     public function removeItem($user, ?string $guestToken, $cartItemId)
     {
         // if (!$user) {
@@ -220,9 +239,7 @@ class CartService
             'message' => 'Đã xoá sản phẩm',
         ];
     }
-    // =========================
     // FORMAT CART
-    // =========================
     private function formatCart($cart, $user = null)
     {
         $items = $cart->items->map(function ($item) use ($user) {
@@ -335,9 +352,7 @@ class CartService
         ];
     }
 
-    // =========================
     // COUNT CART 
-    // =========================
     public function getCount($user, ?string $guestToken)
     {
         $count = CartItem::whereHas('cart', function ($q) use ($user, $guestToken) {
@@ -361,9 +376,7 @@ class CartService
         ];
     }
 
-    // =========================
     // PRIVATE: GET CART OWNER CONDITION
-    // =========================
     private function getCartOwnerCondition($user, ?string $guestToken): array
     {
         if ($user) {
@@ -380,6 +393,20 @@ class CartService
         return [
             'guest_token' => $guestToken,
             'status' => 'active',
+        ];
+    }
+
+    private function emptyCartData(): array
+    {
+        return [
+            'id' => null,
+            'items' => [],
+            'total_items' => 0,
+            'total_quantity' => 0,
+            'total_price' => 0,
+            'selected_items' => [],
+            'selected_quantity' => 0,
+            'selected_total_price' => 0,
         ];
     }
 }

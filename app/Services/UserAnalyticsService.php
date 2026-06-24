@@ -220,11 +220,11 @@ class UserAnalyticsService
         $this->ensureUser($user);
 
         return [
-            'overview' => $this->overview($user),
             'orders' => $this->orders($user, 12),
             'spending' => $this->spending($user, 12),
             'interests' => $this->interests($user),
             'tracking' => $this->orderTracking($user),
+            'generated_at' => now()->format('d/m/Y H:i'),
         ];
     }
 

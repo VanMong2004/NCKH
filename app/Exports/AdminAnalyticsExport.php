@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class AdminAnalyticsExport implements WithMultipleSheets
@@ -19,19 +20,19 @@ class AdminAnalyticsExport implements WithMultipleSheets
         return [
             new AnalyticsTableSheet(
                 'Tổng quan',
-                ['Chỉ số', 'Giá trị'],
+                ['Nhóm', 'Chỉ số', 'Giá trị'],
                 $this->overviewRows($overview)
             ),
 
             new AnalyticsTableSheet(
                 'Top sản phẩm',
-                ['STT', 'Tên sản phẩm', 'Slug', 'Số lượng bán', 'Doanh thu'],
+                ['STT', 'ID', 'Tên sản phẩm', 'Slug', 'Số lượng bán', 'Doanh thu'],
                 $this->topProductRows($topProducts)
             ),
 
             new AnalyticsTableSheet(
-                'Doanh thu theo ngày',
-                ['STT', 'Ngày', 'Doanh thu'],
+                'Doanh thu 30 ngày',
+                ['STT', 'Ngày', 'Số đơn hàng', 'Doanh thu'],
                 $this->salesChartRows($salesChart)
             ),
         ];
@@ -40,10 +41,21 @@ class AdminAnalyticsExport implements WithMultipleSheets
     private function overviewRows(array $overview): array
     {
         return [
-            ['Tổng số đơn hàng', $overview['total_orders'] ?? 0],
-            ['Đơn hàng đã thanh toán', $overview['paid_orders'] ?? 0],
-            ['Doanh thu', $this->money($overview['revenue'] ?? 0)],
-            ['Tổng người dùng', $overview['total_users'] ?? 0],
+            ['Đơn hàng', 'Tổng số đơn hàng', $overview['total_orders'] ?? 0],
+            ['Đơn hàng', 'Đơn đang chờ xử lý', $overview['pending_orders'] ?? 0],
+            ['Đơn hàng', 'Đơn đã thanh toán', $overview['paid_orders'] ?? 0],
+            ['Đơn hàng', 'Đơn đã hủy', $overview['cancelled_orders'] ?? 0],
+            ['Đơn hàng', 'Đơn hoàn thành', $overview['completed_orders'] ?? 0],
+
+            ['Doanh thu', 'Doanh thu đơn đã thanh toán', $this->money($overview['revenue'] ?? 0)],
+            ['Doanh thu', 'Doanh thu đơn hoàn thành', $this->money($overview['completed_revenue'] ?? 0)],
+
+            ['Người dùng', 'Tổng người dùng', $overview['total_users'] ?? 0],
+
+            ['Sản phẩm', 'Tổng sản phẩm', $overview['total_products'] ?? 0],
+            ['Sản phẩm', 'Sản phẩm đang bán', $overview['active_products'] ?? 0],
+
+            ['Hệ thống', 'Ngày xuất báo cáo', $this->data['generated_at'] ?? now()->format('d/m/Y H:i')],
         ];
     }
 
@@ -52,9 +64,10 @@ class AdminAnalyticsExport implements WithMultipleSheets
         return $this->mapRows($products, function ($item, $index) {
             return [
                 $index + 1,
+                $item['id'] ?? '',
                 $item['name'] ?? '',
                 $item['slug'] ?? '',
-                $item['sold'] ?? 0,
+                (int) ($item['sold'] ?? 0),
                 $this->money($item['revenue'] ?? 0),
             ];
         });
@@ -65,7 +78,8 @@ class AdminAnalyticsExport implements WithMultipleSheets
         return $this->mapRows($items, function ($item, $index) {
             return [
                 $index + 1,
-                $item['date'] ?? '',
+                $this->formatDate($item['date'] ?? null),
+                (int) ($item['orders_count'] ?? 0),
                 $this->money($item['revenue'] ?? 0),
             ];
         });
@@ -101,5 +115,14 @@ class AdminAnalyticsExport implements WithMultipleSheets
     private function money($value): string
     {
         return number_format((float) $value, 0, ',', '.') . ' đ';
+    }
+
+    private function formatDate($date): string
+    {
+        if (!$date) {
+            return '';
+        }
+
+        return Carbon::parse($date)->format('d/m/Y');
     }
 }

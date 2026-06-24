@@ -11,153 +11,188 @@ class ProductVariantSeeder extends Seeder
 {
     public function run(): void
     {
-        $sizes = ['S', 'M', 'L', 'XL'];
-
-        $colors = [
-            'Trắng',
-            'Đen',
-            'Xanh dương',
-            'Xám',
-        ];
-
         foreach (Product::with('category')->get() as $product) {
-
-            $categoryName = mb_strtolower(
-                $product->category?->name ?? ''
-            );
-
-            /*
-            |--------------------------------------------------------------------------
-            | Chỉ áo thun và hoodie mới có size
-            |--------------------------------------------------------------------------
-            */
-            $hasSize = in_array(
-                $categoryName,
-                [
-                    'áo thun',
-                    'hoodie',
-                ]
-            );
-
-            /*
-            |--------------------------------------------------------------------------
-            | Giá cơ bản theo danh mục
-            |--------------------------------------------------------------------------
-            */
-            $basePrice = match ($categoryName) {
-
-                'áo thun'      => rand(129000, 179000),
-
-                'hoodie'       => rand(289000, 399000),
-
-                'nón'          => rand(89000, 129000),
-
-                'túi tote'     => rand(79000, 129000),
-
-                'ly giữ nhiệt' => rand(149000, 249000),
-
-                'bình nước'    => rand(99000, 159000),
-
-                'dây đeo thẻ'  => rand(19000, 39000),
-
-                'bảng tên'     => rand(29000, 49000),
-
-                'sổ tay'       => rand(39000, 69000),
-
-                'bút'          => rand(10000, 25000),
-
-                'móc khóa'     => rand(25000, 49000),
-
-                'sticker'      => rand(10000, 30000),
-
-                default        => rand(50000, 150000),
+            match ($product->name) {
+                'Áo thun CTUT K2026' => $this->clothing($product, 149000, ['Trắng', 'Xanh CTUT', 'Đen']),
+                'Áo khoa CNTT' => $this->clothing($product, 159000, ['Đen', 'Xanh CTUT']),
+                'Áo khoa Cơ khí' => $this->clothing($product, 159000, ['Đen', 'Xám']),
+                'Áo khoa Điện - Điện tử' => $this->clothing($product, 159000, ['Trắng', 'Xanh Navy']),
+                'Áo Freshman Week 2026' => $this->clothing($product, 139000, ['Trắng', 'Cam', 'Xanh CTUT']),
+                'Hoodie CTUT Premium' => $this->clothing($product, 349000, ['Đen', 'Xám']),
+                'Ly giữ nhiệt CTUT' => $this->tumbler($product),
+                'Túi tote CTUT' => $this->tote($product),
+                'Nón lưỡi trai CTUT' => $this->cap($product),
+                'Móc khóa CTUT' => $this->keychain($product),
+                'Sticker CTUT' => $this->sticker($product),
+                'Bảng tên sinh viên CTUT' => $this->badge($product),
+                'Dây đeo thẻ CTUT' => $this->lanyard($product),
+                'Sổ tay CTUT' => $this->notebook($product),
+                'Bút CTUT' => $this->pen($product),
+                default => null,
             };
+        }
+    }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Sản phẩm quần áo
-            |--------------------------------------------------------------------------
-            */
-            if ($hasSize) {
-
-                $selectedColors = collect($colors)
-                    ->shuffle()
-                    ->take(rand(2, 4));
-
-                foreach ($sizes as $size) {
-
-                    foreach ($selectedColors as $color) {
-
-                        $price = $basePrice + match ($size) {
-                            'S'  => 0,
-                            'M'  => 10000,
-                            'L'  => 20000,
-                            'XL' => 30000,
-                        };
-
-                        ProductVariant::updateOrCreate(
-                            [
-                                'product_id' => $product->id,
-                                'size'       => $size,
-                                'color'      => $color,
-                            ],
-                            [
-                                'attributes' => json_encode([
-                                    'material' => 'Cotton',
-                                ]),
-
-                                'sku' => sprintf(
-                                    'CTUT-%04d-%s-%s',
-                                    $product->id,
-                                    $size,
-                                    Str::upper(
-                                        Str::slug($color)
-                                    )
-                                ),
-
-                                'price' => $price,
-
-                                'stock' => rand(50, 300),
-
-                                'reserved_stock' => rand(0, 20),
-
-                                'sold_stock' => rand(0, 100),
-                            ]
-                        );
-                    }
-                }
-
-                continue;
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Sản phẩm không có size
-            |--------------------------------------------------------------------------
-            */
-            ProductVariant::updateOrCreate(
-                [
+    private function clothing(Product $product, int $basePrice, array $colors): void
+    {
+        foreach ($colors as $color) {
+            foreach (['S', 'M', 'L', 'XL'] as $size) {
+                ProductVariant::create([
                     'product_id' => $product->id,
-                    'size'       => null,
-                    'color'      => null,
-                ],
-                [
-                    'attributes' => null,
+                    'size' => $size,
+                    'color' => $color,
+                    'attributes' => ['material' => 'Cotton 65/35'],
+                    'sku' => sprintf('CTUT-%d-%s-%s', $product->id, $size, Str::upper(Str::slug($color))),
+                    'price' => $basePrice + match ($size) {
+                        'S' => 0,
+                        'M' => 10000,
+                        'L' => 20000,
+                        'XL' => 30000,
+                    },
+                    'stock' => 60,
+                    'reserved_stock' => 0,
+                    'sold_stock' => 0,
+                ]);
+            }
+        }
+    }
 
-                    'sku' => sprintf(
-                        'CTUT-%04d',
-                        $product->id
-                    ),
+    private function tumbler(Product $product): void
+    {
+        foreach ([['500ml', 169000], ['750ml', 199000], ['1000ml', 249000]] as [$capacity, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'attributes' => ['capacity' => $capacity, 'material' => 'Inox 304'],
+                'sku' => 'CTUT-TUMBLER-' . str_replace('ml', '', $capacity),
+                'price' => $price,
+                'stock' => 80,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
 
-                    'price' => $basePrice,
+    private function tote(Product $product): void
+    {
+        foreach ([['Canvas Standard', 89000], ['Canvas Premium', 129000]] as [$type, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'attributes' => ['material' => $type],
+                'sku' => 'CTUT-TOTE-' . Str::upper(Str::slug($type)),
+                'price' => $price,
+                'stock' => 100,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
 
-                    'stock' => rand(30, 200),
+    private function cap(Product $product): void
+    {
+        foreach (['Đen', 'Xanh Navy', 'Trắng'] as $color) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'color' => $color,
+                'attributes' => ['adjustable' => true],
+                'sku' => 'CTUT-CAP-' . Str::upper(Str::slug($color)),
+                'price' => 119000,
+                'stock' => 70,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
 
-                    'reserved_stock' => rand(0, 10),
+    private function keychain(Product $product): void
+    {
+        foreach ([['Acrylic', 29000], ['Kim loại', 39000]] as [$material, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'attributes' => ['material' => $material],
+                'sku' => 'CTUT-KEY-' . Str::upper(Str::slug($material)),
+                'price' => $price,
+                'stock' => 200,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
 
-                    'sold_stock' => rand(0, 50),
-                ]
-            );
+    private function sticker(Product $product): void
+    {
+        foreach ([['Combo 10 sticker', 19000], ['Combo 20 sticker', 29000]] as [$package, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'attributes' => ['package' => $package],
+                'sku' => 'CTUT-STICKER-' . Str::upper(Str::slug($package)),
+                'price' => $price,
+                'stock' => 300,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
+
+    private function badge(Product $product): void
+    {
+        foreach ([['Sinh viên', 39000], ['Cán bộ', 49000]] as [$type, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'attributes' => ['type' => $type],
+                'sku' => 'CTUT-ID-' . Str::upper(Str::slug($type)),
+                'price' => $price,
+                'stock' => 500,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
+
+    private function lanyard(Product $product): void
+    {
+        foreach ([['Xanh CTUT', 25000], ['Đen', 25000]] as [$color, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'color' => $color,
+                'attributes' => ['material' => 'Polyester'],
+                'sku' => 'CTUT-LANYARD-' . Str::upper(Str::slug($color)),
+                'price' => $price,
+                'stock' => 250,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
+
+    private function notebook(Product $product): void
+    {
+        foreach ([['A5', 49000], ['B5', 69000]] as [$size, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'size' => $size,
+                'attributes' => ['pages' => 120],
+                'sku' => 'CTUT-NOTEBOOK-' . $size,
+                'price' => $price,
+                'stock' => 120,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
+        }
+    }
+
+    private function pen(Product $product): void
+    {
+        foreach ([['Mực xanh', 12000], ['Mực đen', 12000]] as [$color, $price]) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'color' => $color,
+                'attributes' => ['type' => 'Bút bi'],
+                'sku' => 'CTUT-PEN-' . Str::upper(Str::slug($color)),
+                'price' => $price,
+                'stock' => 500,
+                'reserved_stock' => 0,
+                'sold_stock' => 0,
+            ]);
         }
     }
 }

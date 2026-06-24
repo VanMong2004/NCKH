@@ -18,12 +18,6 @@ class AdminProductController extends Controller
         $this->adminProductService = $adminProductService;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | LIST
-    |--------------------------------------------------------------------------
-    */
-
     public function index(Request $request)
     {
         try {
@@ -43,12 +37,6 @@ class AdminProductController extends Controller
             ], 500);
         }
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | SHOW
-    |--------------------------------------------------------------------------
-    */
 
     public function show($id)
     {
@@ -77,12 +65,6 @@ class AdminProductController extends Controller
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | STORE
-    |--------------------------------------------------------------------------
-    */
-
     public function store(Request $request)
     {
         try {
@@ -107,6 +89,7 @@ class AdminProductController extends Controller
                 'variants.*.color' => 'nullable|string|max:50',
                 'variants.*.price' => 'required|numeric|min:0',
                 'variants.*.stock' => 'required|integer|min:0',
+                'variants.*.is_active' => 'nullable|boolean',
 
             ])->validate();
 
@@ -127,12 +110,6 @@ class AdminProductController extends Controller
             ], 400);
         }
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE
-    |--------------------------------------------------------------------------
-    */
 
     public function update(Request $request, $id)
     {
@@ -158,6 +135,7 @@ class AdminProductController extends Controller
                 'variants.*.color' => 'nullable|string|max:50',
                 'variants.*.price' => 'nullable|numeric|min:0',
                 'variants.*.stock' => 'nullable|integer|min:0',
+                'variants.*.is_active' => 'nullable|boolean',
                 
             ])->validate();
 
@@ -187,12 +165,6 @@ class AdminProductController extends Controller
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE
-    |--------------------------------------------------------------------------
-    */
-
     public function destroy($id)
     {
         try {
@@ -216,6 +188,59 @@ class AdminProductController extends Controller
                 'error' => app()->environment('local')
                     ? $e->getMessage()
                     : null,
+            ], 400);
+        }
+    }
+
+    public function toggleProductSale(Request $request, $id)
+    {
+        try {
+            validator($request->all(), [
+                'is_active' => 'required|boolean',
+            ])->validate();
+
+            return response()->json(
+                $this->adminProductService->toggleProductSale($id, $request->boolean('is_active'))
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 400);
+        }
+    }
+
+    public function toggleVariantSale(Request $request, $id)
+    {
+        try {
+            validator($request->all(), [
+                'is_active' => 'required|boolean',
+            ])->validate();
+
+            return response()->json(
+                $this->adminProductService->toggleVariantSale($id, $request->boolean('is_active'))
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 400);
+        }
+    }
+
+    public function postFacebook($id)
+    {
+        try {
+            return response()->json(
+                $this->adminProductService->postFacebook($id)
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 400);
         }
     }

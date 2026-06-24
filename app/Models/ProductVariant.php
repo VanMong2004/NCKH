@@ -20,6 +20,7 @@ class ProductVariant extends Model
         'stock',
         'reserved_stock',
         'sold_stock',
+        'is_active',
     ];
 
     protected $casts = [

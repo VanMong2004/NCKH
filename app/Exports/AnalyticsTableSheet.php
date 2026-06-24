@@ -4,13 +4,11 @@ namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -52,15 +50,11 @@ class AnalyticsTableSheet implements
                 'font' => [
                     'bold' => true,
                     'size' => 12,
-                    'color' => [
-                        'rgb' => 'FFFFFF',
-                    ],
+                    'color' => ['rgb' => 'FFFFFF'],
                 ],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
-                    'startColor' => [
-                        'rgb' => '1F4E78',
-                    ],
+                    'startColor' => ['rgb' => '1F4E78'],
                 ],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
@@ -76,41 +70,51 @@ class AnalyticsTableSheet implements
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet;
 
-                $highestRow = $sheet->getHighestRow();
+                $highestRow = max($sheet->getHighestRow(), 2);
                 $highestColumn = $sheet->getHighestColumn();
 
                 $sheet->freezePane('A2');
 
-                $sheet->getDefaultRowDimension()
-                    ->setRowHeight(22);
+                $sheet->getRowDimension(1)->setRowHeight(28);
 
-                $sheet->getStyle('A1:' . $highestColumn . $highestRow)
-                    ->applyFromArray([
-                        'borders' => [
-                            'allBorders' => [
-                                'borderStyle' => Border::BORDER_THIN,
-                                'color' => [
-                                    'rgb' => 'D9E2F3',
-                                ],
-                            ],
+                for ($row = 2; $row <= $highestRow; $row++) {
+                    $sheet->getRowDimension($row)->setRowHeight(24);
+                }
+
+                $range = 'A1:' . $highestColumn . $highestRow;
+
+                $sheet->getStyle($range)->applyFromArray([
+                    'font' => [
+                        'name' => 'Arial',
+                        'size' => 11,
+                    ],
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['rgb' => 'D9E2F3'],
                         ],
-                    ]);
+                    ],
+                    'alignment' => [
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                        'wrapText' => true,
+                    ],
+                ]);
 
-                $sheet->getStyle('A1:' . $highestColumn . $highestRow)
-                    ->getAlignment()
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
-                $sheet->getStyle('A1:' . $highestColumn . '1')
-                    ->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-
-                $sheet->getStyle('A2:A' . $highestRow)
-                    ->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-
-                $sheet->getStyle('A1:' . $highestColumn . $highestRow)
-                    ->getAlignment()
-                    ->setWrapText(true);
+                $sheet->getStyle('A1:' . $highestColumn . '1')->applyFromArray([
+                    'font' => [
+                        'bold' => true,
+                        'size' => 12,
+                        'color' => ['rgb' => 'FFFFFF'],
+                    ],
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => '1F4E78'],
+                    ],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
+                ]);
 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     if ($row % 2 === 0) {
@@ -122,17 +126,29 @@ class AnalyticsTableSheet implements
                     }
                 }
 
-                if ($highestRow === 1) {
+                $sheet->getStyle('A2:A' . $highestRow)
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+                $sheet->getStyle($range)
+                    ->getAlignment()
+                    ->setVertical(Alignment::VERTICAL_CENTER);
+
+                $sheet->setAutoFilter('A1:' . $highestColumn . '1');
+
+                if (empty($this->rows)) {
                     $sheet->setCellValue('A2', 'Không có dữ liệu');
                     $sheet->mergeCells('A2:' . $highestColumn . '2');
 
-                    $sheet->getStyle('A2')
-                        ->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-
-                    $sheet->getStyle('A2')
-                        ->getFont()
-                        ->setItalic(true);
+                    $sheet->getStyle('A2')->applyFromArray([
+                        'font' => [
+                            'italic' => true,
+                            'color' => ['rgb' => '6B7280'],
+                        ],
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        ],
+                    ]);
                 }
             },
         ];

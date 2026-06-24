@@ -11,10 +11,11 @@ class CategorySeeder extends Seeder
     public function run(): void
     {
         $parents = [
-            'Đồng phục' => 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800',
-            'Phụ kiện' => 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800',
-            'Bảng tên' => 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=800',
-            'Sự kiện' => 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
+            'Đồng phục' => 'images/categories/dong-phuc.jpg',
+            'Phụ kiện' => 'images/categories/phu-kien.jpg',
+            'Học tập' => 'images/categories/hoc-tap.jpg',
+            'Sự kiện' => 'images/categories/su-kien.jpg',
+            'Quà tặng' => 'images/categories/qua-tang.jpg',
         ];
 
         foreach ($parents as $name => $image) {
@@ -31,8 +32,11 @@ class CategorySeeder extends Seeder
         }
 
         $children = [
-            'Đồng phục' => ['Áo thun', 'Áo khoác', 'Hoodie'],
-            'Phụ kiện' => ['Móc khóa', 'Ly giữ nhiệt', 'Túi tote', 'Nón'],
+            'Đồng phục' => ['Áo thun', 'Hoodie', 'Áo khoác', 'Nón'],
+            'Phụ kiện' => ['Móc khóa', 'Ly giữ nhiệt', 'Túi tote', 'Sticker', 'Dây đeo thẻ'],
+            'Học tập' => ['Sổ tay', 'Bút', 'Bảng tên'],
+            'Sự kiện' => ['Freshman Week', 'Ngày hội việc làm'],
+            'Quà tặng' => ['Combo quà tặng'],
         ];
 
         foreach ($children as $parentName => $items) {
@@ -45,8 +49,8 @@ class CategorySeeder extends Seeder
                         'name' => $name,
                         'parent_id' => $parent?->id,
                         'icon' => null,
-                        'image' => 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800',
-                        'thumbnail' => 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800',
+                        'image' => 'images/categories/' . Str::slug($name) . '.jpg',
+                        'thumbnail' => 'images/categories/' . Str::slug($name) . '.jpg',
                     ]
                 );
             }

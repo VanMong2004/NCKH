@@ -106,7 +106,6 @@ class CategoryService
     | CATEGORY PRODUCTS
     |--------------------------------------------------------------------------
     */
-
     public function products($id, array $filters)
     {
         $category = Category::find($id);

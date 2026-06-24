@@ -75,6 +75,10 @@ class OrderService
                     throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
                 }
 
+                if (!$variant->is_active || !$variant->product?->is_active) {
+                    throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
+                }
+
                 $available = $variant->stock - $variant->reserved_stock;
 
                 if ($available < $item->quantity) {
@@ -130,6 +134,10 @@ class OrderService
                     throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
                 }
 
+                if (!$variant->is_active || !$variant->product?->is_active) {
+                    throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
+                }
+
                 $before = clone $variant;
 
                 $variant->increment('reserved_stock', $item->quantity);
@@ -170,10 +178,16 @@ class OrderService
                     : null;
 
                 if ($promotionItemId) {
-                    $promotionItem = PromotionItem::lockForUpdate()
+                    $promotionItem = PromotionItem::with('promotion')
+                        ->lockForUpdate()
                         ->find($promotionItemId);
 
-                    if (!$promotionItem || !$promotionItem->is_active) {
+                    if (
+                        !$promotionItem
+                        || !$promotionItem->is_active
+                        || !$promotionItem->promotion
+                        || !$promotionItem->promotion->isRunning()
+                    ) {
                         throw new RuntimeException('Khuyến mãi không còn hiệu lực', 400);
                     }
 

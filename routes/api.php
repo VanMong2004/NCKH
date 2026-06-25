@@ -161,7 +161,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // USER PROFILE
     Route::get('/me', [AuthController::class, 'me']); // Lấy thông tin người dùng hiện tại
-    Route::put('/me', [AuthController::class, 'update']); // Cập nhật thông tin người dùng hiện tại (name, email, password)
+    Route::put('/me', [AuthController::class, 'update']);
+    Route::post('/me', [AuthController::class, 'update']); // Cập nhật thông tin người dùng hiện tại (name, email, password)
     Route::post('/refresh-token', [AuthController::class, 'refresh']); // Làm mới token (nếu có refresh token, hoặc chỉ đơn giản là tạo token mới)
     Route::post('/logout', [AuthController::class, 'logout']); // Đăng xuất
 

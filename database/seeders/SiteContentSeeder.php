@@ -15,6 +15,7 @@ class SiteContentSeeder extends Seeder
         $this->seedBottomNavigation();
         $this->seedFooter();
         $this->seedHeroSlider();
+        $this->seedAuthBanner();
     }
 
     private function seedNavbar(): void
@@ -25,9 +26,9 @@ class SiteContentSeeder extends Seeder
             'component_key' => 'navbar',
             'component_name' => 'Thanh điều hướng PC',
             'component_type' => 'navigation',
-            'title' => 'CTUT Shop',
-            'subtitle' => 'Cùng nhau phát triển',
-            'image' => '/images/logo.png',
+            'title' => 'CTUT STORE',
+            'subtitle' => 'Official Store of Can Tho University of Technology',
+            'image' => '/storage/uploads/site-content/logo-20260624131441-foZ2w58N.png',
             'payload' => [
                 'category_button_label' => '☰ Tất cả danh mục',
                 'search_placeholder' => 'Tìm sản phẩm...',
@@ -45,12 +46,13 @@ class SiteContentSeeder extends Seeder
 
         $links = [
             ['home', 'Trang chủ', '/', 1],
-            ['shop', 'Cửa hàng', '/shop', 2],
-            ['blog', 'Blog', '/blog', 3],
-            ['faq', 'FAQ', '/faq', 4],
-            ['about', 'Giới thiệu', '/about', 5],
-            ['contact', 'Liên hệ', '/contact', 6],
-            ['policy', 'Chính sách', '/policy', 7],
+            ['shop', 'Sản phẩm', '/shop', 2],
+            ['promotions', 'Khuyến mãi', '/promotions', 3],
+            ['blog', 'Blog', '/blog', 4],
+            ['faq', 'FAQ', '/faq', 5],
+            ['about', 'Giới thiệu', '/about', 6],
+            ['contact', 'Liên hệ', '/contact', 7],
+            ['policy', 'Chính sách', '/policy', 8],
         ];
 
         foreach ($links as [$key, $label, $url, $order]) {
@@ -91,8 +93,8 @@ class SiteContentSeeder extends Seeder
             'component_key' => 'mobile_menu',
             'component_name' => 'Menu mobile',
             'component_type' => 'navigation',
-            'title' => 'CTUT Shop',
-            'subtitle' => 'Cùng nhau phát triển',
+            'title' => 'CTUT STORE',
+            'subtitle' => 'Official Store of Can Tho University of Technology',
             'image' => '/storage/uploads/site-content/logo-20260624131441-foZ2w58N.png',
             'payload' => [
                 'login_label' => 'Đăng nhập',
@@ -104,13 +106,14 @@ class SiteContentSeeder extends Seeder
 
         $links = [
             ['home', 'Trang chủ', '/', 1],
-            ['shop', 'Cửa hàng', '/shop', 2],
-            ['orders', 'Đơn hàng', '/account/orders', 3],
-            ['blog', 'Blog', '/blog', 4],
-            ['faq', 'FAQ', '/faq', 5],
-            ['about', 'Giới thiệu', '/about', 6],
-            ['contact', 'Liên hệ', '/contact', 7],
-            ['policy', 'Chính sách', '/policy', 8],
+            ['shop', 'Sản phẩm', '/shop', 2],
+            ['promotions', 'Khuyến mãi', '/promotions', 3],
+            ['orders', 'Đơn hàng', '/account/orders', 4],
+            ['blog', 'Blog', '/blog', 5],
+            ['faq', 'FAQ', '/faq', 6],
+            ['about', 'Giới thiệu', '/about', 7],
+            ['contact', 'Liên hệ', '/contact', 8],
+            ['policy', 'Chính sách', '/policy', 9],
         ];
 
         foreach ($links as [$key, $label, $url, $order]) {
@@ -167,12 +170,12 @@ class SiteContentSeeder extends Seeder
             'component_key' => 'footer',
             'component_name' => 'Chân trang',
             'component_type' => 'footer',
-            'title' => 'CTUT Shop',
-            'subtitle' => 'Cùng nhau phát triển',
-            'content' => 'Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của nhà trường.',
+            'title' => 'CTUT STORE',
+            'subtitle' => 'Official Store of Can Tho University of Technology',
+            'content' => 'Nơi cung cấp các sản phẩm chính hãng, đồng hành cùng sinh viên và giảng viên CTUT.',
             'image' => '/storage/uploads/site-content/logo-20260624131441-foZ2w58N.png',
             'payload' => [
-                'copyright' => '© 2026 CTUT Shop. All rights reserved.',
+                'copyright' => '© 2026 CTUT STORE. All rights reserved.',
             ],
             'sort_order' => 4,
             'is_active' => true,
@@ -182,16 +185,16 @@ class SiteContentSeeder extends Seeder
             'group_key' => 'footer_columns',
             'item_key' => 'footer_column_links',
             'item_type' => 'footer_column',
-            'title' => 'Liên kết',
+            'title' => 'Khám phá',
             'sort_order' => 1,
             'is_active' => true,
         ]);
 
         $quickLinks = [
             ['home', 'Trang chủ', '/', 1],
-            ['shop', 'Cửa hàng', '/shop', 2],
-            ['blog', 'Blog', '/blog', 3],
-            ['faq', 'FAQ', '/faq', 4],
+            ['shop', 'Sản phẩm', '/shop', 2],
+            ['promotions', 'Khuyến mãi', '/promotions', 3],
+            ['blog', 'Blog', '/blog', 4],
         ];
 
         foreach ($quickLinks as [$key, $label, $url, $order]) {
@@ -237,9 +240,9 @@ class SiteContentSeeder extends Seeder
         }
 
         $contacts = [
-            ['address', 'Cần Thơ, Việt Nam', 'map-pin', 1],
-            ['phone', '02923 xxx xxx', 'phone', 2],
-            ['email', 'contact@ctut.edu.vn', 'mail', 3],
+            ['address', '256 Nguyễn Văn Cừ - Phường Ninh Kiều - TPCT, Can Tho, Vietnam, 900000', 'map-pin', 1],
+            ['phone', '+84 292 3898 167', 'phone', 2],
+            ['email', 'pdt@ctuet.edu.vn', 'mail', 3],
         ];
 
         foreach ($contacts as [$key, $label, $icon, $order]) {
@@ -260,7 +263,7 @@ class SiteContentSeeder extends Seeder
             'item_type' => 'social',
             'label' => 'Facebook',
             'icon_key' => 'facebook',
-            'link_url' => '#',
+            'link_url' => 'https://www.facebook.com/CTUT.CT',
             'target' => '_blank',
             'sort_order' => 1,
             'is_active' => true,
@@ -353,6 +356,31 @@ class SiteContentSeeder extends Seeder
             'link_text' => 'Khám phá cửa hàng',
             'link_url' => '/shop',
             'sort_order' => 1,
+            'is_active' => true,
+        ]);
+    }
+
+    private function seedAuthBanner(): void
+    {
+        $this->component([
+            'page_key' => 'home',
+            'page_name' => 'Trang chủ',
+            'component_key' => 'auth_banner',
+            'component_name' => 'Banner đăng nhập / đăng ký',
+            'component_type' => 'banner',
+            'title' => 'Chào mừng quay lại',
+            'subtitle' => 'CTUT STORE',
+            'content' => 'Đăng nhập để nhận thêm nhiều ưu đãi và theo dõi đơn hàng của bạn.',
+            'image' => '/images/bg-sign.png',
+            'payload' => [
+                'feature_1_title' => 'Khuyến mãi hấp dẫn',
+                'feature_1_desc' => 'Nhận các chương trình khuyến mãi và ưu đãi dành riêng cho cộng đồng CTUT.',
+                'feature_2_title' => 'Sản phẩm chất lượng',
+                'feature_2_desc' => 'Đồng phục, phụ kiện và quà lưu niệm chính hãng.',
+                'feature_3_title' => 'Tin tức mới nhất',
+                'feature_3_desc' => 'Cập nhật hoạt động, thông báo và sự kiện mới nhất từ nhà trường.',
+            ],
+            'sort_order' => 6,
             'is_active' => true,
         ]);
     }

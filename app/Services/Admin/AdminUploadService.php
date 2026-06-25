@@ -83,6 +83,8 @@ class AdminUploadService
             'png',
             'webp',
             'gif',
+            'svg',
+            'avif',
         ];
     }
 }

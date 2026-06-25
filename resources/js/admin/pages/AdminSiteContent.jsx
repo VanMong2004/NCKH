@@ -17,6 +17,7 @@ import SiteQuickEditModal from '../components/site-content/SiteQuickEditModal';
 const COMPONENT_ORDER = [
     'navbar',
     'hero_slider',
+    'auth_banner',
     'mobile_menu',
     'bottom_navigation',
     'footer',
@@ -140,11 +141,17 @@ export default function AdminSiteContent() {
                             component={componentMap.hero_slider}
                             onEdit={() => openEditor(componentMap.hero_slider)}
                             onQuickEdit={openQuickEdit}
-                        />
+                        />                        
 
                         <FooterPreview
                             component={componentMap.footer}
                             onEdit={() => openEditor(componentMap.footer)}
+                            onQuickEdit={openQuickEdit}
+                        />
+
+                        <AuthBannerPreview
+                            component={componentMap.auth_banner}
+                            onEdit={() => openEditor(componentMap.auth_banner)}
                             onQuickEdit={openQuickEdit}
                         />
                     </WebsitePreviewFrame>
@@ -354,6 +361,51 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
     );
 }
 
+function AuthBannerPreview({ component, onEdit, onQuickEdit }) {
+    const title = component?.title || 'Đăng nhập CTUT Shop';
+    const subtitle = component?.subtitle || 'Chào mừng bạn quay lại';
+    const content =
+        component?.content ||
+        'Đăng nhập để theo dõi đơn hàng, lưu sản phẩm yêu thích và nhận ưu đãi dành riêng cho sinh viên CTUT.';
+    const image = component?.image || '/images/system/auth-banner.jpg';
+
+    return (
+        <PreviewBlock label="Auth Banner" onEdit={onEdit} disabled={!component}>
+            <div
+                onClick={() => onQuickEdit('auth-banner', component)}
+                className="relative grid min-h-[280px] cursor-pointer overflow-hidden bg-blue-950 md:grid-cols-2"
+            >
+                <div className="relative z-10 flex flex-col justify-center px-8 py-10 text-white">
+                    <p className="text-sm font-black uppercase tracking-wider text-blue-100">
+                        {subtitle}
+                    </p>
+
+                    <h2 className="mt-3 text-3xl font-black">
+                        {title}
+                    </h2>
+
+                    <p className="mt-4 max-w-xl text-sm leading-6 text-white/80">
+                        {content}
+                    </p>
+
+                    <div className="mt-6 inline-flex w-fit rounded-xl bg-white px-5 py-3 text-sm font-black text-blue-950">
+                        Đăng nhập ngay
+                    </div>
+                </div>
+
+                <div className="relative hidden md:block">
+                    <img
+                        src={image}
+                        alt={title}
+                        className="h-full w-full object-cover opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-950 to-transparent" />
+                </div>
+            </div>
+        </PreviewBlock>
+    );
+}
+
 function FooterPreview({ component, onEdit, onQuickEdit }) {
     const columns = component?.items?.filter((item) => item.groupKey === 'footer_columns') || [];
     const contacts = component?.items?.filter((item) => item.groupKey === 'footer_contacts') || [];
@@ -525,6 +577,11 @@ function getComponentConfig(key) {
         hero_slider: {
             title: 'Slider trang chủ',
             description: 'Quản lý banner lớn, ảnh nền, tiêu đề và nút bấm.',
+            icon: Image,
+        },
+        auth_banner: {
+            title: 'Banner đăng nhập / đăng ký',
+            description: 'Đổi ảnh, tiêu đề và mô tả ở trang đăng nhập, đăng ký.',
             icon: Image,
         },
         mobile_menu: {

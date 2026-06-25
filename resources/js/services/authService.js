@@ -34,7 +34,13 @@ const authService = {
     },
 
     async updateProfile(payload) {
-        const res = await api.put('/me', payload);
+        const res = await api.post('/me', payload, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            transformRequest: [(data) => data],
+        });
+
         return mapMeResponse(res.data);
     },
 };

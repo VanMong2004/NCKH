@@ -44,7 +44,7 @@ class AdminUploadController extends Controller
     {
         try {
             $data = $request->validate([
-                'image' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:20480',
+                'image' => 'required|file|mimes:jpg,jpeg,png,webp,gif,svg,avif|max:20480',
                 'folder' => 'nullable|string|max:120',
             ]);
 

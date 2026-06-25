@@ -154,10 +154,7 @@ export default function Home() {
     }
 
     return (
-        // <MainLayout>
-        <MainLayout
-            siteContent={home?.siteContent}
-        >
+        <MainLayout>
             <main className="bg-slate-50 pb-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
                 <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
                     <HeroSection heroSlider={home.heroSlider} />

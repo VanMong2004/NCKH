@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Menu, Moon, Search, ShoppingCart, Sun, User, X } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Menu, Moon, Search, ShoppingCart, Sun, User, X } from 'lucide-react';
 
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
@@ -24,6 +24,11 @@ export default function Navbar({ siteContent }) {
     const { theme, toggleTheme } = useTheme();
 
     //thêm
+    const isAdmin =
+        user?.role === 'admin' ||
+        user?.role?.name === 'admin' ||
+        (Array.isArray(user?.roles) && user.roles.includes('admin'));
+
     const navbar = siteContent?.navbar || {};
     const mobileMenu = siteContent?.mobile_menu || {};
     const site = siteContent?.site || {};
@@ -325,6 +330,16 @@ export default function Navbar({ siteContent }) {
                             <span className="hidden lg:inline">{theme === 'dark' ? 'Sáng' : 'Tối'}</span>
                         </button>
 
+                        {isAdmin && (
+                            <Link
+                                to="/admin/dashboard"
+                                className="hidden h-10 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-700 hover:bg-blue-100 md:inline-flex dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+                            >
+                                <LayoutDashboard size={16} />
+                                Quản trị
+                            </Link>
+                        )}
+
                         <NotificationDropdown />
 
                         <Link
@@ -489,6 +504,7 @@ export default function Navbar({ siteContent }) {
                 // />
                 <MobileMenu
                     user={user}
+                    isAdmin={isAdmin}
                     totalItems={totalItems}
                     siteName={siteName}
                     tagline={tagline}
@@ -518,7 +534,7 @@ function DesktopNavLink({ to, children }) {
 }
 
 // function MobileMenu({ user, totalItems, onClose, onLogout }) {
-function MobileMenu({ user, totalItems, siteName, tagline, logo, links = [], onClose, onLogout }) {
+function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links = [], onClose, onLogout }) {
     return (
         <div className="fixed inset-0 z-50 md:hidden">
             <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Đóng menu" />
@@ -594,6 +610,17 @@ function MobileMenu({ user, totalItems, siteName, tagline, logo, links = [], onC
                 </div>
 
                 <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
+                    {isAdmin && (
+                        <Link
+                            to="/admin/dashboard"
+                            onClick={onClose}
+                            className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-blue-950 px-4 py-3 text-sm font-bold text-white"
+                        >
+                            <LayoutDashboard size={18} />
+                            Vào trang quản trị
+                        </Link>
+                    )}
+                    
                     {user ? (
                         <button
                             type="button"

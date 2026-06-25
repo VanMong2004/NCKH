@@ -1,5 +1,5 @@
 import { Camera, Mail, Phone, UserRound } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 
 import authService from '../../services/authService';
@@ -8,8 +8,11 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function ProfileForm({ user }) {
     const { refreshUser } = useAuth();
 
+    const fileInputRef = useRef(null);
+
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [avatarFile, setAvatarFile] = useState(null);
 
     const [form, setForm] = useState({
         name: '',
@@ -28,6 +31,8 @@ export default function ProfileForm({ user }) {
                 mssv: user.mssv || '',
                 avatar: user.avatar || '',
             });
+
+            setAvatarFile(null);
         }
     }, [user]);
 
@@ -46,6 +51,29 @@ export default function ProfileForm({ user }) {
         setErrors((prev) => ({
             ...prev,
             [field]: '',
+        }));
+    }
+
+    function handleAvatarChange(e) {
+        const file = e.target.files?.[0];
+
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            toast.error('Vui lòng chọn file hình ảnh');
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Avatar không được vượt quá 2MB');
+            return;
+        }
+
+        setAvatarFile(file);
+
+        setForm((prev) => ({
+            ...prev,
+            avatar: URL.createObjectURL(file),
         }));
     }
 
@@ -83,20 +111,23 @@ export default function ProfileForm({ user }) {
         try {
             setLoading(true);
 
-            const payload = {
-                name: form.name.trim(),
-                email: form.email.trim(),
-                phone: form.phone.trim(),
-                mssv: form.mssv.trim(),
-            };
+            const payload = new FormData();
 
-            if (form.avatar) {
-                payload.avatar = form.avatar;
+            payload.append('_method', 'PUT');
+            payload.append('name', form.name.trim());
+            payload.append('email', form.email.trim());
+            payload.append('phone', form.phone.trim());
+            payload.append('mssv', form.mssv.trim());
+
+            if (avatarFile) {
+                payload.append('avatar', avatarFile);
             }
 
             await authService.updateProfile(payload);
 
             await refreshUser();
+
+            setAvatarFile(null);
 
             toast.success('Đã cập nhật thông tin');
         } catch (error) {
@@ -126,14 +157,28 @@ export default function ProfileForm({ user }) {
 
                         <button
                             type="button"
-                            onClick={() => toast.info('Chức năng tải ảnh đại diện sẽ được bổ sung sau')}
+                            onClick={() => fileInputRef.current?.click()}
                             className="absolute bottom-1 right-1 rounded-full bg-white p-2 text-blue-950 shadow transition hover:bg-slate-50 dark:bg-slate-800 dark:text-blue-300"
                         >
                             <Camera size={18} />
                         </button>
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                            className="hidden"
+                        />
                     </div>
 
-                    <p className="mt-3 text-sm font-bold text-blue-950 dark:text-white">{form.name || 'Người dùng'}</p>
+                    <p className="mt-3 text-sm font-bold text-blue-950 dark:text-white">
+                        {form.name || 'Người dùng'}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                        Bấm icon camera để đổi ảnh
+                    </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -169,7 +214,7 @@ export default function ProfileForm({ user }) {
                         onChange={(v) => handleChange('email', v)}
                     />
 
-                    <div className="md:col-span-2 flex justify-end">
+                    <div className="flex justify-end md:col-span-2">
                         <button
                             type="submit"
                             disabled={loading}

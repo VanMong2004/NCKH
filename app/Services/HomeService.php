@@ -90,6 +90,7 @@ class HomeService
         $bottomNavigation = $components->get('bottom_navigation');
         $footer = $components->get('footer');
         $heroSlider = $components->get('hero_slider');
+        $authBanner = $components->get('auth_banner');
 
         return [
             'site' => $this->formatSiteInfo($navbar, $footer),
@@ -103,6 +104,8 @@ class HomeService
             'footer' => $this->formatFooter($footer),
 
             'hero_slider' => $this->formatHeroSlider($heroSlider),
+
+            'auth_banner' => $this->formatAuthBanner($authBanner),
         ];
     }
 
@@ -302,6 +305,30 @@ class HomeService
                 ->map(fn ($item) => $this->formatSimpleItem($item))
                 ->values()
                 ->toArray(),
+        ];
+    }
+
+    protected function formatAuthBanner($component = null): array
+    {
+        if (!$component) {
+            return [
+                'title' => 'Chào mừng quay lại',
+                'subtitle' => 'CTUT Shop',
+                'description' => 'Đăng nhập để mua hàng, quản lý giỏ hàng và theo dõi đơn hàng.',
+                'image' => '/images/bg-sign.png',
+                'mobile_image' => null,
+                'payload' => [],
+            ];
+        }
+
+        return [
+            'id' => $component->id,
+            'title' => $component->title,
+            'subtitle' => $component->subtitle,
+            'description' => $component->content,
+            'image' => $component->image,
+            'mobile_image' => $component->mobile_image,
+            'payload' => $component->payload ?? [],
         ];
     }
 

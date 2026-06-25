@@ -12,6 +12,9 @@ class AdminSiteContentService
     public function index(array $filters = [])
     {
         $query = SiteComponent::query()
+            ->with([
+                'rootItems.children',
+            ])
             ->withCount('items')
             ->orderBy('sort_order')
             ->orderBy('id');
@@ -453,6 +456,9 @@ class AdminSiteContentService
             'sort_order' => (int) $component->sort_order,
             'is_active' => (bool) $component->is_active,
             'items_count' => (int) ($component->items_count ?? 0),
+            'items' => $component->rootItems
+                ->map(fn ($item) => $this->formatItemDetail($item))
+                ->values(),
             'updated_at' => optional($component->updated_at)->format('d/m/Y H:i'),
         ];
     }

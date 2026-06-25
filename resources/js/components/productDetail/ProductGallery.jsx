@@ -9,22 +9,44 @@ import 'swiper/css/navigation';
 const FALLBACK_IMAGE = '/images/no-image.png';
 
 function normalizeImage(value) {
+    let image = '';
+
     if (!value) return '';
 
     if (typeof value === 'string') {
-        return value.trim();
+        image = value.trim();
+    } else {
+        image = value.url || value.image || value.path || '';
     }
 
-    return value.url || value.image || value.path || '';
+    if (!image) return '';
+
+    if (
+        image.startsWith('http://') ||
+        image.startsWith('https://') ||
+        image.startsWith('/') ||
+        image.startsWith('data:image') ||
+        image.startsWith('blob:')
+    ) {
+        return image;
+    }
+
+    return `/${image.replace(/^public\//, '')}`;
 }
 
 export default function ProductGallery({ product }) {
     const swiperRef = useRef(null);
 
     const images = useMemo(() => {
-        const productImages = Array.isArray(product.images) ? product.images.map(normalizeImage) : [];
+        const productImages = Array.isArray(product.images)
+            ? product.images.map(normalizeImage)
+            : [];
 
-        const list = productImages.length ? productImages : [product.image || product.thumbnail];
+        const list = productImages.length
+            ? productImages
+            : [
+                normalizeImage(product.image || product.thumbnail),
+            ];
 
         const uniqueImages = [...new Set(list.filter(Boolean))];
 

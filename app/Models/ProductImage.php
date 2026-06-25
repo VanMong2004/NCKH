@@ -21,4 +21,21 @@ class ProductImage extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function getUrlAttribute($value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if (
+            str_starts_with($value, 'http://') ||
+            str_starts_with($value, 'https://') ||
+            str_starts_with($value, '/')
+        ) {
+            return $value;
+        }
+
+        return '/' . ltrim(str_replace('public/', '', $value), '/');
+    }
 }

@@ -41,25 +41,6 @@ export default function Footer({ footer }) {
                         </p>
                     </div>
 
-                    {/* <FooterColumn
-                        title="Liên kết"
-                        links={[
-                            { label: 'Trang chủ', to: '/' },
-                            { label: 'Sản phẩm', to: '/shop' },
-                            { label: 'Khuyến mãi', to: '/promotions' },
-                            { label: 'Blog', to: '/blog' },
-                        ]}
-                    />
-
-                    <FooterColumn
-                        title="Hỗ trợ"
-                        links={[
-                            { label: 'Tài khoản', to: '/account/profile' },
-                            { label: 'Đơn hàng', to: '/account/orders' },
-                            { label: 'Giỏ hàng', to: '/cart' },
-                            { label: 'Liên hệ', to: '/contact' },
-                        ]}
-                    /> */}
                     {columns.length > 0 ? (
                         columns.map((column) => (
                             <FooterColumn
@@ -74,7 +55,7 @@ export default function Footer({ footer }) {
                     ) : (
                         <>
                             <FooterColumn
-                                title="Liên kết"
+                                title="Khám phá"
                                 links={[
                                     { label: 'Trang chủ', to: '/' },
                                     { label: 'Sản phẩm', to: '/shop' },
@@ -149,7 +130,7 @@ export default function Footer({ footer }) {
                                         </a>
                                     ))
                                 ) : (
-                                    <a href="#" className="rounded-full border border-slate-200 p-2 text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-slate-700 dark:text-white" aria-label="Facebook">
+                                    <a href="https://www.facebook.com/CTUT.CT" className="rounded-full border border-slate-200 p-2 text-blue-950 transition hover:bg-blue-950 hover:text-white dark:border-slate-700 dark:text-white" aria-label="Facebook">
                                         <Facebook size={18} />
                                     </a>
                                 )}

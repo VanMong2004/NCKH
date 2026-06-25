@@ -22,9 +22,7 @@ class AuthController extends Controller
         $this->authService = $authService;
     }
 
-    // =========================
     // LOGIN
-    // =========================
     public function login(Request $request)
     {
         try {
@@ -66,9 +64,7 @@ class AuthController extends Controller
         }
     }
 
-    // =========================
     // REGISTER
-    // =========================
     public function register(Request $request)
     {
         try {
@@ -77,7 +73,7 @@ class AuthController extends Controller
                 'email' => 'required|email|unique:users,email',
                 'password' => 'required|min:6|confirmed',
                 'phone' => 'nullable|string|max:20',
-                'avatar' => 'nullable|string',
+                // 'avatar' => 'nullable|image|max:2048',
             ], [
                 'name.required' => 'Vui lòng nhập họ tên',
                 'name.max' => 'Họ tên không được vượt quá 255 ký tự',
@@ -126,9 +122,7 @@ class AuthController extends Controller
         }
     }
 
-    // =========================
     // ME
-    // =========================
     public function me(Request $request)
     {
         try {
@@ -154,9 +148,7 @@ class AuthController extends Controller
         }
     }
 
-    // =========================
     // LOGOUT
-    // =========================
     public function logout(Request $request)
     {
         try {
@@ -182,9 +174,7 @@ class AuthController extends Controller
         }
     }
 
-    // =========================
     // UPDATE PROFILE
-    // =========================
     public function update(Request $request)
     {
         try {
@@ -212,7 +202,7 @@ class AuthController extends Controller
                     Rule::unique('users', 'mssv')->ignore($user->id),
                 ],
 
-                'avatar' => 'nullable|string',
+                'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             ], [
                 'name.max' => 'Họ tên không được vượt quá 255 ký tự',
 
@@ -223,9 +213,13 @@ class AuthController extends Controller
 
                 'mssv.max' => 'Mã số sinh viên không được vượt quá 50 ký tự',
                 'mssv.unique' => 'Mã số sinh viên đã được sử dụng',
+
+                'avatar.image' => 'Avatar phải là hình ảnh',
+                'avatar.mimes' => 'Avatar chỉ hỗ trợ jpg, jpeg, png, webp',
+                'avatar.max' => 'Avatar không được vượt quá 2MB',
             ]);
 
-            $result = $this->authService->updateProfile($user, $data);
+            $result = $this->authService->updateProfile($user, $data, $request);
 
             return response()->json($result);
 
@@ -264,9 +258,7 @@ class AuthController extends Controller
         }
     }
 
-    // =========================
     // REFRESH TOKEN
-    // =========================
     public function refresh(Request $request)
     {
         try {

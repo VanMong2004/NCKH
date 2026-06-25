@@ -54,9 +54,7 @@ class User extends Authenticatable
         'deleted_at' => 'datetime',
     ];
 
-    // ======================
     // RELATIONSHIPS
-    // ======================
 
     public function addresses()
     {
@@ -134,20 +132,19 @@ class User extends Authenticatable
         });
     }
 
-    public function getAvatarUrlAttribute()
+    public function getAvatarUrlAttribute(): ?string
     {
         if (!$this->avatar) {
-            return null;
+            return asset('images/user/default_avatar.png');
         }
 
         if (
             str_starts_with($this->avatar, 'http://') ||
-            str_starts_with($this->avatar, 'https://') ||
-            str_starts_with($this->avatar, 'data:image')
+            str_starts_with($this->avatar, 'https://')
         ) {
             return $this->avatar;
         }
 
-        return asset('storage/' . $this->avatar);
+        return asset(ltrim($this->avatar, '/'));
     }
 }

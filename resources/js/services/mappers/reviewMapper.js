@@ -24,9 +24,11 @@ export function mapReview(item = {}) {
 
         images: rawImages
             .map((image) => {
-                if (typeof image === 'string') return image;
+                if (typeof image === 'string') {
+                    return normalizeReviewImage(image);
+                }
 
-                return image.image_url || image.url || '';
+                return normalizeReviewImage(image.image_url || image.url || '');
             })
             .filter(Boolean),
 
@@ -60,4 +62,16 @@ export function mapReviewListResponse(response = {}) {
 
         raw: response,
     };
+}
+
+function normalizeReviewImage(url) {
+    const value = String(url || '').trim();
+
+    if (!value) return '';
+
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return value;
+    }
+
+    return `/${value.replace(/^public\//, '')}`;
 }

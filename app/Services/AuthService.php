@@ -8,6 +8,8 @@ use Illuminate\Validation\ValidationException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Exception;
 use RuntimeException;
 
@@ -15,9 +17,7 @@ class AuthService
 {
     protected $defaultAvatar = 'data:image/png;base64,DEFAULT_AVATAR_BASE64';
 
-    // =========================
     // LOGIN
-    // =========================
     public function login(array $data)
     {
         $user = User::where('email', $data['email'])->first();
@@ -51,13 +51,11 @@ class AuthService
         ];
     }
 
-    // =========================
     // REGISTER
-    // =========================
     public function register(array $data)
     {
  
-        $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
+        // $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
 
         $user = User::create([
             'name' => $data['name'],
@@ -65,7 +63,7 @@ class AuthService
             'password' => Hash::make($data['password']),
             'phone' => $data['phone'] ?? null,
             'role' => 'user',
-            'avatar' => $avatar,
+            'avatar' => $this->getDefaultAvatar(),
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -87,9 +85,7 @@ class AuthService
         ];
     }
 
-    // =========================
     // ME
-    // =========================
     public function me($user)
     {
         if (!$user) {
@@ -110,33 +106,53 @@ class AuthService
         ];
     }
 
-    // =========================
     // UPDATE PROFILE
-    // =========================
-    public function updateProfile($user, array $data)
+    public function updateProfile($user, array $data, Request $request)
     {
         if (!$user) {
             throw new RuntimeException('Vui lòng đăng nhập');
         }
 
-        if (isset($data['name'])) {
+        if (array_key_exists('name', $data)) {
             $user->name = $data['name'];
         }
 
-        if (isset($data['email'])) {
+        if (array_key_exists('email', $data)) {
             $user->email = $data['email'];
         }
 
-        if (isset($data['phone'])) {
+        if (array_key_exists('phone', $data)) {
             $user->phone = $data['phone'];
         }
 
-        if (isset($data['mssv'])) {
+        if (array_key_exists('mssv', $data)) {
             $user->mssv = $data['mssv'];
         }
 
-        if (isset($data['avatar'])) {
-            $user->avatar = $data['avatar'];
+        if ($request->hasFile('avatar')) {
+
+            // Xóa avatar cũ nếu không phải avatar mặc định
+            if (
+                $user->avatar &&
+                $user->avatar !== '/images/user/default_avatar.png'
+            ) {
+                $oldPath = public_path(ltrim($user->avatar, '/'));
+
+                if (file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+
+            $file = $request->file('avatar');
+
+            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+
+            $file->move(
+                public_path('images/user'),
+                $fileName
+            );
+
+            $user->avatar = '/images/user/' . $fileName;
         }
 
         $user->save();
@@ -156,9 +172,7 @@ class AuthService
         ];
     }
 
-    // =========================
     // REFRESH TOKEN
-    // =========================
     public function refreshToken($user)
     {
         if (!$user) {
@@ -178,9 +192,7 @@ class AuthService
         ];
     }
 
-    // =========================
     // LOGOUT
-    // =========================
     public function logout($user)
     {
         if (!$user) {
@@ -245,19 +257,23 @@ class AuthService
         });
     }
 
-    // =========================
     // DEFAULT AVATAR
-    // =========================
-    private function getDefaultAvatar()
+    // private function getDefaultAvatar()
+    // {
+    //     $path = public_path('images/user/default_avatar.png');
+
+    //     if (!file_exists($path)) {
+    //         return null;
+    //     }
+
+    //     $image = base64_encode(file_get_contents($path));
+
+    //     return 'data:image/png;base64,' . $image;
+    // }
+    private function getDefaultAvatar(): ?string
     {
-        $path = resource_path('images/user/default_avatar.png');
-
-        if (!file_exists($path)) {
-            return null;
-        }
-
-        $image = base64_encode(file_get_contents($path));
-
-        return 'data:image/png;base64,' . $image;
+        return file_exists(public_path('images/users/default_avatar.png'))
+            ? '/images/users/default_avatar.png'
+            : null;
     }
 }

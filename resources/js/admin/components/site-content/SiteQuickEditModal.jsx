@@ -67,6 +67,7 @@ export default function SiteQuickEditModal({
         if (type === 'navbar-text') return 'Chỉnh tên website';
         if (type === 'navbar-menu') return 'Chỉnh menu';
         if (type === 'hero-slide') return 'Chỉnh slide';
+        if (type === 'auth-banner') return 'Chỉnh banner đăng nhập/đăng ký';
         if (type === 'hero-slides-manager') return 'Quản lý slider trang chủ';
         if (type === 'footer-brand') return 'Chỉnh footer';
         return 'Chỉnh nội dung';
@@ -231,6 +232,15 @@ export default function SiteQuickEditModal({
                                 <SlideFields form={form} updateField={updateField} uploadImage={uploadImage} uploading={uploading} />
                             )}
 
+                            {type === 'auth-banner' && (
+                                <AuthBannerFields
+                                    form={form}
+                                    updateField={updateField}
+                                    uploadImage={uploadImage}
+                                    uploading={uploading}
+                                />
+                            )}
+
                             {type === 'hero-slides-manager' && (
                                 <SlidesManagerFields
                                     component={component}
@@ -283,7 +293,14 @@ function LogoFields({ form, updateField, uploadImage, uploading }) {
                 value={form.image || ''}
                 uploading={uploading}
                 onChange={(value) => updateField('image', value)}
-                onUpload={(file) => uploadSlideImage(index, file, 'image')}
+                onUpload={async (file) => {
+                    const uploaded = await uploadImage(file);
+
+                    updateField(
+                        'image',
+                        uploaded?.path || uploaded?.url || ''
+                    );
+                }}
             />
 
             <ImageInput
@@ -291,7 +308,14 @@ function LogoFields({ form, updateField, uploadImage, uploading }) {
                 value={form.mobile_image || ''}
                 uploading={uploading}
                 onChange={(value) => updateField('mobile_image', value)}
-                onUpload={(file) => uploadSlideImage(index, file, 'image')}
+                onUpload={async (file) => {
+                    const uploaded = await uploadImage(file);
+
+                    updateField(
+                        'image',
+                        uploaded?.path || uploaded?.url || ''
+                    );
+                }}
             />
         </div>
     );
@@ -327,7 +351,14 @@ function SlideFields({ form, updateField, uploadImage, uploading }) {
                 value={form.image || ''}
                 uploading={uploading}
                 onChange={(value) => updateField('image', value)}
-                onUpload={(file) => uploadSlideImage(index, file, 'image')}
+                onUpload={async (file) => {
+                    const uploaded = await uploadImage(file);
+
+                    updateField(
+                        'image',
+                        uploaded?.path || uploaded?.url || ''
+                    );
+                }}
             />
 
             <Field label="Nhãn nhỏ">
@@ -361,7 +392,14 @@ function FooterFields({ form, updateField, uploadImage, uploading }) {
                 value={form.image || ''}
                 uploading={uploading}
                 onChange={(value) => updateField('image', value)}
-                onUpload={(file) => uploadSlideImage(index, file, 'image')}
+                onUpload={async (file) => {
+                    const uploaded = await uploadImage(file);
+
+                    updateField(
+                        'image',
+                        uploaded?.path || uploaded?.url || ''
+                    );
+                }}
             />
 
             <Field label="Tên website">
@@ -511,6 +549,36 @@ function QuickPreview({ type, form }) {
                         <div className="mt-6 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-black text-blue-950">
                             {form.link_text || 'Xem cửa hàng'}
                         </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (type === 'auth-banner') {
+        return (
+            <div className="relative min-h-[420px] overflow-hidden rounded-2xl bg-blue-950">
+                <img
+                    src={form.image || '/images/system/auth-banner.jpg'}
+                    alt={form.title || 'Auth banner'}
+                    className="absolute inset-0 h-full w-full object-cover opacity-50"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-950 via-blue-950/80 to-transparent" />
+
+                <div className="relative z-10 flex min-h-[420px] items-center px-8">
+                    <div className="max-w-xl text-white">
+                        <p className="text-sm font-black uppercase tracking-wider text-blue-100">
+                            {form.subtitle || 'Chào mừng bạn quay lại'}
+                        </p>
+
+                        <h2 className="mt-4 text-4xl font-black">
+                            {form.title || 'Đăng nhập CTUT Shop'}
+                        </h2>
+
+                        <p className="mt-4 text-sm leading-6 text-white/80">
+                            {form.content || 'Mô tả auth banner sẽ hiển thị ở đây.'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -753,6 +821,52 @@ function SlidesManagerFields({ form, setForm, uploadImage, uploading }) {
                     </div>
                 ))
             )}
+        </div>
+    );
+}
+
+function AuthBannerFields({ form, updateField, uploadImage, uploading }) {
+    return (
+        <div className="space-y-4">
+            <ImageInput
+                label="Ảnh auth banner"
+                value={form.image || ''}
+                uploading={uploading}
+                onChange={(value) => updateField('image', value)}
+                onUpload={async (file) => {
+                    const uploaded = await uploadImage(file);
+
+                    updateField(
+                        'image',
+                        uploaded?.path || uploaded?.url || ''
+                    );
+                }}
+            />
+
+            <Field label="Tiêu đề">
+                <input
+                    value={form.title || ''}
+                    onChange={(e) => updateField('title', e.target.value)}
+                    className={inputClass}
+                />
+            </Field>
+
+            <Field label="Dòng phụ">
+                <input
+                    value={form.subtitle || ''}
+                    onChange={(e) => updateField('subtitle', e.target.value)}
+                    className={inputClass}
+                />
+            </Field>
+
+            <Field label="Mô tả">
+                <textarea
+                    value={form.content || ''}
+                    onChange={(e) => updateField('content', e.target.value)}
+                    rows={5}
+                    className={textareaClass}
+                />
+            </Field>
         </div>
     );
 }

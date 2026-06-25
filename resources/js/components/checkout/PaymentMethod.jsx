@@ -1,6 +1,6 @@
 import { Banknote, CreditCard, Landmark } from 'lucide-react';
 
-export default function PaymentMethod({ value, onChange, error, disabled = false }) {
+export default function PaymentMethod({ value, onChange, error, disabled = false, grandTotal = 0 }) {
     const methods = [
         {
             value: 'cod',
@@ -31,25 +31,31 @@ export default function PaymentMethod({ value, onChange, error, disabled = false
                     const Icon = method.icon;
                     const active = value === method.value;
 
+                    const codDisabled = method.value === 'cod' && Number(grandTotal) > 500000;
+                    const itemDisabled = disabled || codDisabled;
+
                     return (
                         <button
                             key={method.value}
                             type="button"
-                            disabled={disabled}
-                            onClick={() => onChange(method.value)}
+                            disabled={itemDisabled}
+                            onClick={() => {
+                                if (itemDisabled) return;
+                                onChange(method.value);
+                            }}
                             className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-70 ${
                                 active
                                     ? 'border-blue-950 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40'
                                     : 'border-slate-200 bg-white hover:border-blue-300 dark:border-slate-700 dark:bg-slate-950'
                             }`}
-                        >
+                            >
                             <div
                                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                                     active
-                                        ? 'bg-blue-950 text-white dark:bg-blue-600'
-                                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                                    ? 'bg-blue-950 text-white dark:bg-blue-600'
+                                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
                                 }`}
-                            >
+                                >
                                 <Icon size={21} />
                             </div>
 
@@ -58,6 +64,12 @@ export default function PaymentMethod({ value, onChange, error, disabled = false
 
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{method.desc}</p>
                             </div>
+                            
+                            {method.value === 'cod' && (
+                                <p className={`mt-1 text-xs font-semibold ${codDisabled ? 'text-red-500' : 'text-emerald-600'}`}>
+                                    COD chỉ áp dụng cho đơn hàng ≤ 500.000đ
+                                </p>
+                            )}
                         </button>
                     );
                 })}

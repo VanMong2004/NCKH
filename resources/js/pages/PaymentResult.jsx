@@ -2,10 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, XCircle } from 'lucide-react';
 
+import { useAuth } from '../contexts/AuthContext';
+
 import MainLayout from '../layout/MainLayout';
+
 import paymentService from '../services/paymentService';
 
 export default function PaymentResult() {
+    const { user } = useAuth();
+
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
@@ -14,6 +19,7 @@ export default function PaymentResult() {
     useEffect(() => {
         async function handleResult() {
             const paymentId = searchParams.get('payment_id');
+            const orderId = searchParams.get('order_id');
             const status = searchParams.get('status');
 
             if (!paymentId) {
@@ -22,12 +28,39 @@ export default function PaymentResult() {
             }
 
             try {
+                if (orderId) {
+                    const guestOrder = JSON.parse(
+                        sessionStorage.getItem('guest_order_success') || '{}'
+                    );
+
+                    navigate(`/order-success/${orderId}`, {
+                        replace: true,
+                        state: {
+                            isGuest: !user,
+                            orderCode: guestOrder.orderCode,
+                            guestPhone: guestOrder.guestPhone,
+                            paymentStatus: status,
+                            paymentId,
+                        },
+                    });
+
+                    return;
+                }
+
+                if (!user) {
+                    setError('Không đủ thông tin đơn hàng khách.');
+                    return;
+                }
+
                 const payment = await paymentService.getPaymentDetail(paymentId);
 
-                const orderId = payment.orderId || payment.raw?.order_id || payment.raw?.order?.id;
+                const fallbackOrderId =
+                    payment.orderId ||
+                    payment.raw?.order_id ||
+                    payment.raw?.order?.id;
 
-                if (orderId) {
-                    navigate(`/order-success/${orderId}`, {
+                if (fallbackOrderId) {
+                    navigate(`/order-success/${fallbackOrderId}`, {
                         replace: true,
                         state: {
                             paymentStatus: status || payment.status,
@@ -47,7 +80,7 @@ export default function PaymentResult() {
         }
 
         handleResult();
-    }, [navigate, searchParams]);
+    }, [navigate, searchParams, user]);
 
     if (error) {
         return (

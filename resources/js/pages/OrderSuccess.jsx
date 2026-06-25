@@ -2,10 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 
+import { useAuth } from '../contexts/AuthContext';
+
 import MainLayout from '../layout/MainLayout';
+
 import orderService from '../services/orderService';
+import guestOrderService from '../services/guestOrderService';
 
 export default function OrderSuccess() {
+    const { user } = useAuth();
+
     const { orderId } = useParams();
     const location = useLocation();
 
@@ -21,6 +27,32 @@ export default function OrderSuccess() {
         try {
             setLoading(true);
             setError('');
+
+            const state = location.state || {};
+
+            const savedGuestOrder = JSON.parse(
+                sessionStorage.getItem('guest_order_success') || '{}'
+            );
+
+            const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;
+
+            if (isGuestOrder) {
+                const orderCode = state.orderCode || savedGuestOrder.orderCode;
+                const guestPhone = state.guestPhone || savedGuestOrder.guestPhone;
+
+                if (!orderCode || !guestPhone) {
+                    setError('Không đủ thông tin để tra cứu đơn hàng khách.');
+                    return;
+                }
+
+                const result = await guestOrderService.lookup({
+                    order_code: orderCode,
+                    phone: guestPhone,
+                });
+
+                setOrder(result);
+                return;
+            }
 
             const result = await orderService.getOrderDetail(orderId);
 

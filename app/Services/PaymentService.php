@@ -26,6 +26,8 @@ class PaymentService
         $this->vnpayGateway = $vnpayGateway;
     }
 
+    private const COD_MAX_AMOUNT = 500000;
+
     /**
      * Create payment
      */
@@ -76,6 +78,13 @@ class PaymentService
                 throw new RuntimeException('Đơn hàng đang có payment đang xử lý', 409);
             }
 
+            if ($method === 'cod' && $order->total > self::COD_MAX_AMOUNT) {
+                throw new RuntimeException(
+                    'COD chỉ áp dụng cho đơn hàng từ 500.000đ trở xuống',
+                    400
+                );
+            }
+
             $payment = Payment::create([
                 'order_id' => $order->id,
                 'method' => $method,
@@ -96,6 +105,23 @@ class PaymentService
 
             case 'vnpay':
                 return $this->vnpayGateway->create($payment);
+            
+            case 'cod':
+                $payment->update([
+                    'status' => 'pending',
+                    'response_data' => [
+                        'message' => 'Thanh toán khi nhận hàng',
+                    ],
+                ]);
+
+                return [
+                    'payment_id' => $payment->id,
+                    'method' => 'cod',
+                    'status' => 'pending',
+                    'amount' => (float) $payment->amount,
+                    'message' => 'Đơn hàng đã được ghi nhận. Khách hàng sẽ thanh toán khi nhận hàng.',
+                    'redirect_url' => null,
+                ];
 
             default:
                 throw new \Exception('Payment method không hỗ trợ');

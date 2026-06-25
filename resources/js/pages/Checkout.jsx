@@ -11,6 +11,7 @@ import PaymentMethod from '../components/checkout/PaymentMethod';
 import ReceiverForm from '../components/checkout/ReceiverForm';
 
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 
 import orderService from '../services/orderService';
 import paymentService from '../services/paymentService';
@@ -19,9 +20,26 @@ export default function Checkout() {
     const navigate = useNavigate();
     const location = useLocation();
 
+    const { user } = useAuth();
+    const isGuest = !user;
+
     const { cartItems, fetchCart } = useCart();
 
+    // const [selectedAddressId, setSelectedAddressId] = useState('');
     const [selectedAddressId, setSelectedAddressId] = useState('');
+    const [saveAddress, setSaveAddress] = useState(false);
+
+    const [receiver, setReceiver] = useState({
+        guest_name: '',
+        guest_email: user?.email || '',
+        guest_phone: user?.phone || '',
+        province: '',
+        district: '',
+        ward: '',
+        address_line: '',
+        postal_code: '',
+    });
+
     const [paymentMethod, setPaymentMethod] = useState('cod');
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -32,6 +50,17 @@ export default function Checkout() {
     useEffect(() => {
         fetchCart();
     }, []);
+
+    useEffect(() => {
+        if (user) {
+            setReceiver((prev) => ({
+                ...prev,
+                guest_name: prev.guest_name || user.name || '',
+                guest_email: prev.guest_email || user.email || '',
+                guest_phone: prev.guest_phone || user.phone || '',
+            }));
+        }
+    }, [user]);
 
     const checkoutItems = useMemo(() => {
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
@@ -98,7 +127,37 @@ export default function Checkout() {
         }
 
         if (!pendingPaymentOrder && !selectedAddressId) {
-            nextErrors.address = 'Vui lòng chọn địa chỉ nhận hàng';
+            if (!receiver.guest_name.trim()) {
+                nextErrors.guest_name = 'Vui lòng nhập họ tên người nhận';
+            }
+
+            if (isGuest && !receiver.guest_email.trim()) {
+                nextErrors.guest_email = 'Vui lòng nhập email';
+            }
+
+            if (receiver.guest_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())) {
+                nextErrors.guest_email = 'Email không hợp lệ';
+            }
+
+            if (!receiver.guest_phone.trim()) {
+                nextErrors.guest_phone = 'Vui lòng nhập số điện thoại';
+            }
+
+            if (!receiver.province.trim()) {
+                nextErrors.province = 'Vui lòng nhập tỉnh/thành phố';
+            }
+
+            if (!receiver.district.trim()) {
+                nextErrors.district = 'Vui lòng nhập quận/huyện';
+            }
+
+            if (!receiver.ward.trim()) {
+                nextErrors.ward = 'Vui lòng nhập phường/xã';
+            }
+
+            if (!receiver.address_line.trim()) {
+                nextErrors.address_line = 'Vui lòng nhập địa chỉ cụ thể';
+            }
         }
 
         if (!paymentMethod) {
@@ -122,6 +181,20 @@ export default function Checkout() {
         return Object.keys(nextErrors).length === 0;
     }
 
+    function saveGuestOrderToSession(order) {
+        if (user) return;
+
+        sessionStorage.setItem(
+            'guest_order_success',
+            JSON.stringify({
+                isGuest: true,
+                orderId: order.id,
+                orderCode: order.orderCode,
+                guestPhone: receiver.guest_phone,
+            })
+        );
+    }
+
     async function handleCheckout() {
         if (loading) return;
 
@@ -135,11 +208,26 @@ export default function Checkout() {
                 return;
             }
 
-            const order = await orderService.checkout({
-                address_id: Number(selectedAddressId),
+            const payload = {
                 payment_method: paymentMethod,
                 cart_item_ids: checkoutCartItemIds,
-            });
+            };
+
+            if (selectedAddressId) {
+                payload.address_id = Number(selectedAddressId);
+            } else {
+                payload.guest_name = receiver.guest_name.trim();
+                payload.guest_email = receiver.guest_email.trim();
+                payload.guest_phone = receiver.guest_phone.trim();
+                payload.province = receiver.province.trim();
+                payload.district = receiver.district.trim();
+                payload.ward = receiver.ward.trim();
+                payload.address_line = receiver.address_line.trim();
+                payload.postal_code = receiver.postal_code.trim();
+                payload.save_address = Boolean(user && saveAddress);
+            }
+
+            const order = await orderService.checkout(payload);
 
             if (!order.id) {
                 toast.error('Không lấy được mã đơn hàng');
@@ -151,12 +239,16 @@ export default function Checkout() {
             if (method === 'cod') {
                 await fetchCart();
 
+                saveGuestOrderToSession(order);
+
                 toast.success('Đặt hàng thành công');
 
                 navigate(`/order-success/${order.id}`, {
                     replace: true,
                     state: {
+                        isGuest: !user,
                         orderCode: order.orderCode,
+                        guestPhone: receiver.guest_phone,
                         paymentMethod: method,
                     },
                 });
@@ -187,16 +279,21 @@ export default function Checkout() {
             await fetchCart();
 
             if (payment.redirectUrl) {
+                saveGuestOrderToSession(order);
                 window.location.href = payment.redirectUrl;
                 return;
             }
 
             toast.success('Đặt hàng và tạo thanh toán thành công');
 
+            saveGuestOrderToSession(order);
+
             navigate(`/order-success/${order.id}`, {
                 replace: true,
                 state: {
+                    isGuest: !user,
                     orderCode: order.orderCode,
+                    guestPhone: receiver.guest_phone,
                     paymentMethod: method,
                 },
             });
@@ -223,6 +320,9 @@ export default function Checkout() {
                 <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
                     <div className="space-y-6">
                         <ReceiverForm
+                            user={user}
+                            receiver={receiver}
+                            setReceiver={setReceiver}
                             selectedAddressId={selectedAddressId}
                             onSelectAddress={(id) => {
                                 setSelectedAddressId(id);
@@ -232,13 +332,16 @@ export default function Checkout() {
                                     address: '',
                                 }));
                             }}
-                            error={errors.address}
+                            saveAddress={saveAddress}
+                            onSaveAddressChange={setSaveAddress}
+                            errors={errors}
                         />
 
                         <PaymentMethod
                             value={paymentMethod}
                             error={errors.paymentMethod}
                             disabled={Boolean(pendingPaymentOrder)}
+                            grandTotal={grandTotal}
                             onChange={(method) => {
                                 if (pendingPaymentOrder) return;
 

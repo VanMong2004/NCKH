@@ -41,7 +41,7 @@ class PaymentController extends Controller
 
             $data = $request->validate([
                 'order_id' => 'required|integer|min:1',
-                'method' => 'required|in:vnpay,mock',
+                'method' => 'required|in:cod,vnpay,mock',
             ], [
                 'order_id.required' => 'Đơn hàng không hợp lệ',
                 'order_id.integer' => 'Đơn hàng không hợp lệ',
@@ -114,7 +114,7 @@ class PaymentController extends Controller
     {
         try {
             $request->validate([
-                'method' => 'nullable|in:mock,vnpay',
+                'method' => 'nullable|in:mock,vnpay,cod',
             ], [
                 'method.in' => 'Callback không hợp lệ',
             ]);
@@ -130,14 +130,16 @@ class PaymentController extends Controller
             );
 
             $paymentId = $result['payment_id'] ?? $request->payment_id ?? $request->vnp_TxnRef ?? null;
-            $status = $result['status'] ?? $request->status ?? 'unknown';
+            $orderId   = $result['order_id'] ?? null;
+            $status    = $result['status'] ?? $request->status ?? 'unknown';
 
             $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
 
             return redirect()->away(
                 $frontendUrl . '/payment/result?' . http_build_query([
                     'payment_id' => $paymentId,
-                    'status' => $status,
+                    'order_id'   => $orderId,
+                    'status'     => $status,
                 ])
             );
 

@@ -23,9 +23,10 @@ class OrderService
     public function __construct(
         protected PromotionPriceService $promotionPriceService
     ) {}
-    // =========================
+
+    private const COD_MAX_AMOUNT = 500000;
+
     // CHECKOUT
-    // =========================
     public function checkout($user, ?string $guestToken, array $data)
     {
         if (!$user && !$guestToken) {
@@ -248,13 +249,19 @@ class OrderService
 
             $order->update([
                 'sub_total' => $total + $totalDiscount,
-
                 'discount_total' => $totalDiscount,
-
                 'grand_total' => $total,
-
                 'total' => $total,
             ]);
+
+            $paymentMethod = $data['payment_method'] ?? 'mock';
+
+            if ($paymentMethod === 'cod' && $total > self::COD_MAX_AMOUNT) {
+                throw new RuntimeException(
+                    'COD chỉ áp dụng cho đơn hàng từ 500.000đ trở xuống',
+                    400
+                );
+            }
 
             $order->refresh();
 
@@ -330,9 +337,7 @@ class OrderService
         ];
     }
 
-    // =========================
     // GENERATE ORDER CODE
-    // =========================
     private function generateOrderCode(int $orderId): string
     {
         return 'ORD-'
@@ -341,134 +346,128 @@ class OrderService
             . str_pad($orderId, 6, '0', STR_PAD_LEFT);
     }
 
-    // =========================
     // RESOLVE SHIPPING INFO
-    // =========================
     private function resolveShippingInfo($user, array $data): array
     {
-        /*
-        |--------------------------------------------------------------------------
-        | User đăng nhập
-        |--------------------------------------------------------------------------
-        */
         if ($user) {
+            if (!empty($data['address_id'])) {
+                $address = Address::query()
+                    ->where('user_id', $user->id)
+                    ->whereKey($data['address_id'])
+                    ->first();
 
-            if (empty($data['address_id'])) {
-                throw new RuntimeException(
-                    'Vui lòng chọn địa chỉ giao hàng',
-                    422
-                );
+                if (!$address) {
+                    throw new RuntimeException('Địa chỉ giao hàng không tồn tại', 404);
+                }
+
+                return [
+                    'name' => $address->full_name,
+                    'phone' => $address->phone,
+                    'address' => implode(', ', [
+                        $address->address_line,
+                        $address->ward,
+                        $address->district,
+                        $address->province,
+                    ]),
+                    'guest_name' => null,
+                    'guest_email' => null,
+                    'guest_phone' => null,
+                ];
             }
 
-            $address = Address::query()
-                ->where('user_id', $user->id)
-                ->whereKey($data['address_id'])
-                ->first();
+            $this->validateInlineAddress($data, false);
 
-            if (!$address) {
-                throw new RuntimeException(
-                    'Địa chỉ giao hàng không tồn tại',
-                    404
-                );
+            if (!empty($data['save_address'])) {
+                $hasAddress = Address::query()
+                    ->where('user_id', $user->id)
+                    ->exists();
+
+                $isDefault = !$hasAddress || !empty($data['is_default']);
+
+                if ($isDefault) {
+                    Address::query()
+                        ->where('user_id', $user->id)
+                        ->update(['is_default' => false]);
+                }
+
+                Address::create([
+                    'user_id' => $user->id,
+                    'full_name' => $data['guest_name'],
+                    'phone' => $data['guest_phone'],
+                    'province' => $data['province'],
+                    'district' => $data['district'],
+                    'ward' => $data['ward'],
+                    'address_line' => $data['address_line'],
+                    'postal_code' => $data['postal_code'] ?? null,
+                    'is_default' => $isDefault,
+                ]);
             }
 
             return [
-                'name' => $address->full_name,
-
-                'phone' => $address->phone,
-
+                'name' => $data['guest_name'],
+                'phone' => $data['guest_phone'],
                 'address' => implode(', ', [
-                    $address->address_line,
-                    $address->ward,
-                    $address->district,
-                    $address->province,
+                    $data['address_line'],
+                    $data['ward'],
+                    $data['district'],
+                    $data['province'],
                 ]),
-
                 'guest_name' => null,
                 'guest_email' => null,
                 'guest_phone' => null,
             ];
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Guest checkout
-        |--------------------------------------------------------------------------
-        */
-        if (empty($data['guest_name'])) {
-            throw new RuntimeException(
-                'Vui lòng nhập tên người nhận',
-                422
-            );
-        }
-
-        if (empty($data['guest_email'])) {
-            throw new RuntimeException(
-                'Vui lòng nhập email',
-                422
-            );
-        }
-
-        if (!filter_var($data['guest_email'], FILTER_VALIDATE_EMAIL)) {
-            throw new RuntimeException(
-                'Email không đúng định dạng',
-                422
-            );
-        }
-
-        if (empty($data['guest_phone'])) {
-            throw new RuntimeException(
-                'Vui lòng nhập số điện thoại người nhận',
-                422
-            );
-        }
-
-        if (empty($data['address_line'])) {
-            throw new RuntimeException(
-                'Vui lòng nhập địa chỉ giao hàng',
-                422
-            );
-        }
-
-        if (empty($data['ward'])) {
-            throw new RuntimeException(
-                'Vui lòng chọn phường/xã',
-                422
-            );
-        }
-
-        if (empty($data['district'])) {
-            throw new RuntimeException(
-                'Vui lòng chọn quận/huyện',
-                422
-            );
-        }
-
-        if (empty($data['province'])) {
-            throw new RuntimeException(
-                'Vui lòng chọn tỉnh/thành phố',
-                422
-            );
-        }
+        $this->validateInlineAddress($data, true);
 
         return [
             'name' => $data['guest_name'],
-
             'phone' => $data['guest_phone'],
-
             'address' => implode(', ', [
                 $data['address_line'],
                 $data['ward'],
                 $data['district'],
                 $data['province'],
             ]),
-
             'guest_name' => $data['guest_name'],
-
             'guest_email' => $data['guest_email'],
-
             'guest_phone' => $data['guest_phone'],
         ];
+    }
+
+    private function validateInlineAddress(array $data, bool $requireEmail): void
+    {
+        if (empty($data['guest_name'])) {
+            throw new RuntimeException('Vui lòng nhập tên người nhận', 422);
+        }
+
+        if ($requireEmail && empty($data['guest_email'])) {
+            throw new RuntimeException('Vui lòng nhập email', 422);
+        }
+
+        if (!empty($data['guest_email']) && !filter_var($data['guest_email'], FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Email không đúng định dạng', 422);
+        }
+
+        if (empty($data['guest_phone'])) {
+            throw new RuntimeException('Vui lòng nhập số điện thoại người nhận', 422);
+        }
+
+        if (empty($data['address_line'])) {
+            throw new RuntimeException('Vui lòng nhập địa chỉ giao hàng', 422);
+        }
+
+        if (empty($data['ward'])) {
+            throw new RuntimeException('Vui lòng chọn phường/xã', 422);
+        }
+
+        if (empty($data['district'])) {
+            throw new RuntimeException('Vui lòng chọn quận/huyện', 422);
+        }
+
+        if (empty($data['province'])) {
+            throw new RuntimeException('Vui lòng chọn tỉnh/thành phố', 422);
+        }
     }
 
     private function getOrderAutoCancelMinutes(): int

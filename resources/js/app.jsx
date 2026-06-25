@@ -101,27 +101,27 @@ createRoot(document.getElementById('app')).render(
                             <Route
                                 path="/checkout"
                                 element={
-                                    <ProtectedRoute>
+                                    // <ProtectedRoute>
                                         <Checkout />
-                                    </ProtectedRoute>
+                                    // </ProtectedRoute>
                                 }
                             />
 
                             <Route
                                 path="/order-success/:orderId"
                                 element={
-                                    <ProtectedRoute>
+                                    // <ProtectedRoute>
                                         <OrderSuccess />
-                                    </ProtectedRoute>
+                                    // </ProtectedRoute>
                                 }
                             />
 
                             <Route
                                 path="/payment/result"
                                 element={
-                                    <ProtectedRoute>
+                                    // <ProtectedRoute>
                                         <PaymentResult />
-                                    </ProtectedRoute>
+                                    // </ProtectedRoute>
                                 }
                             />
 

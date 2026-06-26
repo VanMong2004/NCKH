@@ -71,7 +71,7 @@ class AdminOrderController extends Controller
     {
         try {
             $data = $request->validate([
-                'status' => 'required|string|in:processing,shipped,completed,cancelled',
+                'status'=>'required|string|in:paid,processing,shipped,completed,cancelled',
                 'cancel_reason' => 'nullable|string|max:255',
                 'note' => 'nullable|string|max:500',
             ]);
@@ -90,11 +90,15 @@ class AdminOrderController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 401, 403, 404, 409, 422], true)
+                ? $e->getCode()
+                : 400;
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], $e->getCode() ?: 400);
+            ], $statusCode);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,

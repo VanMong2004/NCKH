@@ -64,8 +64,8 @@ class OrderSeeder extends Seeder
                 ],
             ],
             ['email' => 'nhat.b2200001@ctuet.edu.vn', 'status' => 'shipped', 'items' => [['Sổ tay CTUT', 'A5', null, 2], ['Bút CTUT', null, 'Mực xanh', 3]]],
-            ['email' => 'anh.b2200102@ctuet.edu.vn', 'status' => 'processing', 'items' => [['Ly giữ nhiệt CTUT', null, null, 1]]],
-            ['email' => 'bao.b2300221@ctuet.edu.vn', 'status' => 'paid', 'items' => [['Túi tote CTUT', null, null, 1], ['Sticker CTUT', null, null, 1]]],
+            ['email' => 'anh.b2200102@ctuet.edu.vn', 'status' => 'paid', 'items' => [['Ly giữ nhiệt CTUT', null, null, 1]]],
+            ['email' => 'bao.b2300221@ctuet.edu.vn', 'status' => 'completed', 'items' => [['Túi tote CTUT', null, null, 1], ['Sticker CTUT', null, null, 1]]],
             ['email' => 'vy.b2400305@ctuet.edu.vn', 'status' => 'pending', 'items' => [['Áo thun CTUT K2026', 'M', 'Xanh CTUT', 1]]],
             ['email' => 'han.b2500411@ctuet.edu.vn', 'status' => 'cancelled', 'items' => [['Hoodie CTUT Premium', 'M', 'Xám', 1]]],
         ];
@@ -140,7 +140,7 @@ class OrderSeeder extends Seeder
                     ] : null,
                 ]);
 
-                if (in_array($data['status'], ['paid', 'processing', 'shipped', 'completed'], true)) {
+                if (in_array($data['status'], ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'completed'], true)) {
                     $variant->increment('sold_stock', $quantity);
                 }
 

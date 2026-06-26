@@ -28,6 +28,12 @@ return new class extends Migration
 
             $table->text('message');
 
+            $table->string('icon', 50)
+                ->nullable();
+
+            $table->string('color', 30)
+                ->nullable();
+
             // link FE
             $table->string('action_url')
                 ->nullable();

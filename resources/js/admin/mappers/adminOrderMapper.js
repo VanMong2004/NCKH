@@ -22,11 +22,11 @@ export function formatMoney(value) {
 
 export function getOrderStatusText(status) {
     const map = {
-        pending: 'Chờ xử lý',
+        pending: 'Chờ xác nhận',
         paid: 'Đã thanh toán',
         processing: 'Đang xử lý',
-        shipped: 'Đã giao hàng',
-        completed: 'Hoàn tất',
+        shipped: 'Đang giao',
+        completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };
 
@@ -36,10 +36,8 @@ export function getOrderStatusText(status) {
 export function getPaymentStatusText(status) {
     const map = {
         pending: 'Chờ thanh toán',
-        paid: 'Đã thanh toán',
-        success: 'Thành công',
+        success: 'Thanh toán thành công',
         failed: 'Thất bại',
-        cancelled: 'Đã hủy',
         refunded: 'Đã hoàn tiền',
     };
 
@@ -60,11 +58,27 @@ export function getPaymentMethodText(method) {
 
 export function getNextOrderStatuses(status) {
     const map = {
-        pending: ['cancelled'],
-        paid: ['processing', 'cancelled'],
-        processing: ['shipped', 'cancelled'],
-        shipped: ['completed'],
+        pending: [
+            'processing',
+            'cancelled',
+        ],
+
+        paid: [
+            'processing',
+            'cancelled',
+        ],
+
+        processing: [
+            'shipped',
+            'cancelled',
+        ],
+
+        shipped: [
+            'completed',
+        ],
+
         completed: [],
+
         cancelled: [],
     };
 

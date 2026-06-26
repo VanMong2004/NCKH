@@ -62,4 +62,40 @@ class GuestOrderController extends Controller
             ], 500);
         }
     }
+
+    public function showByCode(Request $request, string $orderCode): JsonResponse
+    {
+        try {
+            $user = auth('sanctum')->user();
+
+            $guestToken = $request->header('X-Guest-Token')
+                ?: $request->query('guest_token');
+
+            $order = $this->service->showByCode(
+                $user,
+                $guestToken,
+                $orderCode
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tra cứu đơn hàng thành công',
+                'data' => $order,
+            ]);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], in_array($e->getCode(), [400, 401, 403, 404]) ? $e->getCode() : 400);
+
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
 }

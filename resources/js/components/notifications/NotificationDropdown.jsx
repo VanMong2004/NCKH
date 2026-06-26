@@ -1,15 +1,19 @@
 import { Bell, ExternalLink } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 
 import notificationService from '../../services/notificationService';
 import { useAuth } from '../../contexts/AuthContext';
+import NotificationIcon from './NotificationIcon';
 
-export default function NotificationDropdown() {
+export default function NotificationDropdown({
+    unreadCount = 0,
+    refreshKey = 0,
+}) {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
 
     const dropdownRef = useRef(null);
 
@@ -17,7 +21,7 @@ export default function NotificationDropdown() {
         if (!user) return;
 
         loadNotifications();
-    }, [user]);
+    }, [user, refreshKey]);
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -36,23 +40,28 @@ export default function NotificationDropdown() {
     async function loadNotifications() {
         try {
             const result = await notificationService.getNotifications();
-
             setNotifications(result.notifications.slice(0, 5));
-
-            const count = await notificationService.getUnreadCount();
-
-            setUnreadCount(count);
         } catch {}
     }
 
     async function handleRead(item) {
-        if (!item.isRead) {
-            await notificationService.markRead(item.id);
+        try {
+            if (!item.isRead) {
+                await notificationService.markRead(item.id);
 
-            loadData();
+                window.dispatchEvent(
+                    new Event('notification-updated')
+                );
+            }
+
+            setOpen(false);
+
+            if (item.actionUrl) {
+                navigate(item.actionUrl);
+            }
+        } catch {
+            setOpen(false);
         }
-
-        setOpen(false);
     }
 
     return (
@@ -76,7 +85,7 @@ export default function NotificationDropdown() {
                     <div className="flex items-center justify-between border-b p-4 dark:border-slate-800">
                         <h2 className="font-bold text-blue-950 dark:text-white">Thông báo</h2>
 
-                        <span className="text-xs font-bold text-red-500">{unreadCount} mới</span>
+                        <span className="text-xs font-bold text-red-500">{unreadCount > 0 ? `${unreadCount} chưa đọc` : 'Đã đọc tất cả'}</span>
                     </div>
 
                     {notifications.length === 0 && (
@@ -106,12 +115,22 @@ export default function NotificationDropdown() {
                                 ${!item.isRead && 'bg-blue-50 dark:bg-blue-950/20'}
                                 `}
                         >
-                            <div className="text-2xl">{item.icon}</div>
+                            <NotificationIcon
+                                icon={item.icon}
+                                color={item.color}
+                                size={18}
+                                className="h-10 w-10 rounded-xl"
+                            />
 
                             <div className="min-w-0 flex-1">
                                 <p className="truncate font-bold text-blue-950 dark:text-white">{item.title}</p>
 
                                 <p className="mt-1 line-clamp-2 text-xs text-slate-500">{item.message}</p>
+                                {item.timeAgo && (
+                                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                                        {item.timeAgo}
+                                    </p>
+                                )}
                             </div>
                         </button>
                     ))}

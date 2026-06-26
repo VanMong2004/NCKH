@@ -191,6 +191,7 @@ export default function Checkout() {
                 orderId: order.id,
                 orderCode: order.orderCode,
                 guestPhone: receiver.guest_phone,
+                guestToken: order.guestToken,
             })
         );
     }
@@ -236,25 +237,28 @@ export default function Checkout() {
 
             const method = order.paymentMethod || paymentMethod;
 
-            if (method === 'cod') {
-                await fetchCart();
+            // if (method === 'cod') {
+            //     await fetchCart();
 
-                saveGuestOrderToSession(order);
+            //     saveGuestOrderToSession(order);
 
-                toast.success('Đặt hàng thành công');
+            //     toast.success('Đặt hàng thành công');
 
-                navigate(`/order-success/${order.id}`, {
-                    replace: true,
-                    state: {
-                        isGuest: !user,
-                        orderCode: order.orderCode,
-                        guestPhone: receiver.guest_phone,
-                        paymentMethod: method,
-                    },
-                });
+            //     navigate(
+            //         `/order-success?order_code=${encodeURIComponent(order.orderCode)}`,
+            //         {
+            //             replace: true,
+            //             state: {
+            //                 isGuest: !user,
+            //                 orderCode: order.orderCode,
+            //                 guestPhone: receiver.guest_phone,
+            //                 paymentMethod: method,
+            //             },
+            //         }
+            //     );
 
-                return;
-            }
+            //     return;
+            // }
 
             setPendingPaymentOrder(order);
 
@@ -288,15 +292,18 @@ export default function Checkout() {
 
             saveGuestOrderToSession(order);
 
-            navigate(`/order-success/${order.id}`, {
-                replace: true,
-                state: {
-                    isGuest: !user,
-                    orderCode: order.orderCode,
-                    guestPhone: receiver.guest_phone,
-                    paymentMethod: method,
-                },
-            });
+            navigate(
+                `/order-success?order_code=${encodeURIComponent(order.orderCode)}`,
+                {
+                    replace: true,
+                    state: {
+                        isGuest: !user,
+                        orderCode: order.orderCode,
+                        guestPhone: receiver.guest_phone,
+                        paymentMethod: method,
+                    },
+                }
+            );
         } catch (paymentError) {
             console.error('Payment error:', paymentError);
 

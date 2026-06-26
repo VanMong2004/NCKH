@@ -104,6 +104,7 @@ Route::prefix('orders')->group(function () {
 // GUEST ORDER LOOKUP (DÙNG CHO VIỆC KHÁCH HÀNG KIỂM TRA TÌNH TRẠNG ĐƠN HÀNG MÀ KHÔNG CẦN ĐĂNG NHẬP, CHỈ CẦN CÓ ORDER CODE VÀ SĐT LIÊN KẾT VỚI ĐƠN HÀNG) - PUBLIC
 Route::prefix('guest/orders')->group(function () {
     Route::post('/lookup', [GuestOrderController::class,'lookup']);
+    Route::get('/{orderCode}', [GuestOrderController::class, 'showByCode']);
 });
 
 // PAYMENT CALLBACK PUBLIC (DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN, KHÔNG CẦN XÁC THỰC TOKEN VÌ CỔNG THANH TOÁN SẼ GỬI CALLBACK VÀO ĐÂY) - IGNORE

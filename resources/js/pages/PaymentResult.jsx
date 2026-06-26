@@ -2,85 +2,43 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, XCircle } from 'lucide-react';
 
-import { useAuth } from '../contexts/AuthContext';
-
 import MainLayout from '../layout/MainLayout';
 
-import paymentService from '../services/paymentService';
-
 export default function PaymentResult() {
-    const { user } = useAuth();
-
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     const [error, setError] = useState('');
 
     useEffect(() => {
-        async function handleResult() {
-            const paymentId = searchParams.get('payment_id');
-            const orderId = searchParams.get('order_id');
+        function handleResult() {
+            const orderCode = searchParams.get('order_code');
             const status = searchParams.get('status');
 
-            if (!paymentId) {
-                setError('Không tìm thấy mã thanh toán.');
+            if (!orderCode) {
+                setError('Không tìm thấy mã đơn hàng.');
                 return;
             }
 
-            try {
-                if (orderId) {
-                    const guestOrder = JSON.parse(
-                        sessionStorage.getItem('guest_order_success') || '{}'
-                    );
+            const guestOrder = JSON.parse(
+                sessionStorage.getItem('guest_order_success') || '{}'
+            );
 
-                    navigate(`/order-success/${orderId}`, {
-                        replace: true,
-                        state: {
-                            isGuest: !user,
-                            orderCode: guestOrder.orderCode,
-                            guestPhone: guestOrder.guestPhone,
-                            paymentStatus: status,
-                            paymentId,
-                        },
-                    });
-
-                    return;
+            navigate(
+                `/order-success?order_code=${encodeURIComponent(orderCode)}&status=${encodeURIComponent(status || '')}`,
+                {
+                    replace: true,
+                    state: {
+                        paymentStatus: status,
+                        guestPhone: guestOrder.guestPhone,
+                        isGuest: guestOrder.isGuest || false,
+                    },
                 }
-
-                if (!user) {
-                    setError('Không đủ thông tin đơn hàng khách.');
-                    return;
-                }
-
-                const payment = await paymentService.getPaymentDetail(paymentId);
-
-                const fallbackOrderId =
-                    payment.orderId ||
-                    payment.raw?.order_id ||
-                    payment.raw?.order?.id;
-
-                if (fallbackOrderId) {
-                    navigate(`/order-success/${fallbackOrderId}`, {
-                        replace: true,
-                        state: {
-                            paymentStatus: status || payment.status,
-                            paymentId,
-                        },
-                    });
-
-                    return;
-                }
-
-                setError('Không tìm thấy đơn hàng tương ứng với thanh toán.');
-            } catch (err) {
-                console.error('Payment result error:', err);
-
-                setError(err?.message || err?.response?.data?.message || 'Không thể kiểm tra kết quả thanh toán.');
-            }
+            );
         }
 
         handleResult();
-    }, [navigate, searchParams, user]);
+    }, [navigate, searchParams]);
 
     if (error) {
         return (
@@ -97,10 +55,10 @@ export default function PaymentResult() {
                     <p className="mt-3 text-slate-600 dark:text-slate-400">{error}</p>
 
                     <Link
-                        to="/account/orders"
+                        to="/shop"
                         className="mt-6 inline-flex rounded-xl bg-blue-950 px-5 py-3 font-bold text-white dark:bg-blue-700"
                     >
-                        Xem đơn hàng của tôi
+                        Tiếp tục mua sắm
                     </Link>
                 </main>
             </MainLayout>
@@ -114,9 +72,13 @@ export default function PaymentResult() {
                     <Loader2 size={34} className="animate-spin" />
                 </div>
 
-                <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">Đang xử lý kết quả thanh toán</h1>
+                <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">
+                    Đang xử lý kết quả thanh toán
+                </h1>
 
-                <p className="mt-3 text-slate-600 dark:text-slate-400">Vui lòng chờ trong giây lát...</p>
+                <p className="mt-3 text-slate-600 dark:text-slate-400">
+                    Vui lòng chờ trong giây lát...
+                </p>
             </main>
         </MainLayout>
     );

@@ -75,10 +75,31 @@ class PaymentService
                 ->first();
 
             if ($pendingPayment) {
-                throw new RuntimeException('Đơn hàng đang có payment đang xử lý', 409);
+
+                // COD chỉ tạo 1 payment duy nhất
+                if ($pendingPayment->method === 'cod') {
+
+                    return [
+                        'payment_id'   => $pendingPayment->id,
+                        'order_id'     => $order->id,
+                        'order_code'   => $order->order_code,
+                        'method'       => 'cod',
+                        'status'       => 'pending',
+                        'need_callback'=> false,
+                        'redirect_url' => null,
+                    ];
+                }
+
+                throw new RuntimeException(
+                    'Đơn hàng đang có giao dịch chờ thanh toán',
+                    409
+                );
             }
 
-            if ($method === 'cod' && $order->total > self::COD_MAX_AMOUNT) {
+            if (
+                $method === 'cod'
+                && $order->total > self::COD_MAX_AMOUNT
+            ) {
                 throw new RuntimeException(
                     'COD chỉ áp dụng cho đơn hàng từ 500.000đ trở xuống',
                     400
@@ -90,7 +111,10 @@ class PaymentService
                 'method' => $method,
                 'status' => 'pending',
                 'amount' => $order->total,
-                'transaction_id' => Str::uuid(),
+                'transaction_id' =>
+                    $method === 'cod'
+                        ? null
+                        : Str::uuid(),
             ]);
 
             return $this->resolveGateway($payment);
@@ -107,22 +131,27 @@ class PaymentService
                 return $this->vnpayGateway->create($payment);
             
             case 'cod':
-                $payment->update([
-                    'status' => 'pending',
-                    'response_data' => [
-                        'message' => 'Thanh toán khi nhận hàng',
-                    ],
-                ]);
+
+                $payment->load('order');
 
                 return [
                     'payment_id' => $payment->id,
-                    'method' => 'cod',
-                    'status' => 'pending',
-                    'amount' => (float) $payment->amount,
-                    'message' => 'Đơn hàng đã được ghi nhận. Khách hàng sẽ thanh toán khi nhận hàng.',
-                    'redirect_url' => null,
-                ];
+                    'order_id' => $payment->order_id,
+                    'order_code' => $payment->order->order_code,
 
+                    'method' => 'cod',
+
+                    'status' => 'pending',
+
+                    'need_callback' => false,
+
+                    'amount' => (float) $payment->amount,
+
+                    'redirect_url' => null,
+
+                    'message' => 'Đơn hàng đã được tạo thành công.',
+                ];
+            
             default:
                 throw new \Exception('Payment method không hỗ trợ');
         }

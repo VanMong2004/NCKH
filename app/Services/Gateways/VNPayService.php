@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
 use App\Services\Admin\OrderReleaseService;
+use App\Services\NotificationService;
 
 class VNPayService
 {
@@ -42,7 +43,7 @@ class VNPayService
 
             $payment = Payment::lockForUpdate()->findOrFail($data['vnp_TxnRef']);
 
-            if ($payment->status === 'success') {
+            if (in_array($payment->status, ['success', 'refunded'])) {
                 return [
                     'message' => 'Payment đã xử lý',
                     'payment_id' => $payment->id,
@@ -70,6 +71,12 @@ class VNPayService
                     'status' => 'cancelled',
                     'cancel_reason' => 'payment_timeout',
                 ]);
+
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        'cancelled'
+                    );
 
                 return [
                     'message' => 'Đơn hàng đã hết hạn thanh toán',
@@ -108,6 +115,12 @@ class VNPayService
                     'status' => 'paid'
                 ]);
 
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        'paid'
+                    );
+
                 $order->load('items.productVariant');
 
                 if (!$wasPaid) {
@@ -117,13 +130,22 @@ class VNPayService
                 event(new OrderPaid($order));
             } else {
 
-                app(OrderReleaseService::class)
-                    ->release($order->load('items.productVariant'));
-
                 $order->update([
-                    'status' => 'cancelled',
-                    'cancel_reason' => 'payment_failed',
+                    'status'=>'cancelled',
+                    'cancel_reason'=>'payment_failed',
                 ]);
+
+                app(OrderReleaseService::class)
+                    ->release(
+                        $order->load('items.productVariant')
+                    );
+
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        'cancelled'
+                    );
+
             }
 
             return [

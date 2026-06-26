@@ -9,6 +9,9 @@ export function mapNotification(item = {}) {
         isRead: Boolean(item.is_read),
         readAt: item.read_at || '',
         createdAt: item.created_at || '',
+        icon: item.icon || getIcon(item.type),
+        color: item.color || 'blue',
+        timeAgo: item.time_ago || '',
         icon: getIcon(item.type),
         raw: item,
     };

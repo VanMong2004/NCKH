@@ -115,6 +115,7 @@ createRoot(document.getElementById('app')).render(
                                     // </ProtectedRoute>
                                 }
                             />
+                            <Route path="/order-success" element={<OrderSuccess />} />
 
                             <Route
                                 path="/payment/result"

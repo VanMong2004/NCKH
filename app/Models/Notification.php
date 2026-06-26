@@ -10,22 +10,16 @@ class Notification extends Model
     use HasFactory;
 
     protected $fillable = [
-
         'user_id',
-
         'type',
-
         'title',
-
         'message',
-
+        'icon',
+        'color',
         'action_url',
-
         'meta',
-
         'is_read',
-
-        'read_at'
+        'read_at',
     ];
 
     protected $casts = [
@@ -44,3 +38,17 @@ class Notification extends Model
         );
     }
 }
+/*
+| Trạng thái | icon             | color     |
+| ---------- | ---------------- | --------- |
+| Đặt hàng   | `shopping-bag`   | `blue`    |
+| Thanh toán | `credit-card`    | `green`   |
+| Đang xử lý | `package`        | `amber`   |
+| Đang giao  | `truck`          | `indigo`  |
+| Hoàn thành | `circle-check`   | `emerald` |
+| Đã hủy     | `circle-x`       | `red`     |
+| Voucher    | `ticket-percent` | `orange`  |
+| Khuyến mãi | `badge-percent`  | `pink`    |
+| Hệ thống   | `bell`           | `slate`   |
+| AI Chat    | `bot`            | `violet`  |
+*/

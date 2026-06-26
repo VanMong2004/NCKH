@@ -1,5 +1,6 @@
 import { Inbox } from 'lucide-react';
 import { notificationTypeText } from '../../services/mappers/notificationMapper';
+import NotificationIcon from './NotificationIcon';
 
 export default function NotificationList({ notifications = [], selectedId, loading, onSelect }) {
     return (
@@ -20,12 +21,18 @@ export default function NotificationList({ notifications = [], selectedId, loadi
                             type="button"
                             onClick={() => onSelect(item)}
                             className={`flex w-full items-start gap-4 p-4 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                                selectedId === item.id ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                                selectedId === item.id
+                                    ? 'bg-blue-50 dark:bg-blue-950/30'
+                                    : !item.isRead
+                                        ? 'bg-blue-50/60 dark:bg-blue-950/10'
+                                        : ''
                             }`}
                         >
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-2xl dark:bg-slate-800">
-                                {item.icon}
-                            </div>
+                            <NotificationIcon
+                                icon={item.icon}
+                                color={item.color}
+                                size={21}
+                            />
 
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
@@ -41,7 +48,7 @@ export default function NotificationList({ notifications = [], selectedId, loadi
                                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                                     <span>{notificationTypeText(item.type)}</span>
                                     <span>•</span>
-                                    <span>{formatDate(item.createdAt)}</span>
+                                    <span>{item.timeAgo || formatDate(item.createdAt)}</span>
                                 </div>
                             </div>
                         </button>

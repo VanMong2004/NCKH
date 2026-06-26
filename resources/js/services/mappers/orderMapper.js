@@ -79,6 +79,7 @@ export function mapCheckoutOrderResponse(response = {}) {
 
         code: item.order_code || '',
         orderCode: item.order_code || '',
+        guestToken: item.guestToken || item.guest_token || '',
 
         status: item.status || '',
         statusText: orderStatusText(item.status),
@@ -206,11 +207,31 @@ export function mapOrderDetailResponse(response = {}) {
         expiredAt: item.expired_at || '',
         cancelReason: item.cancel_reason || '',
 
-        receiver: mapReceiver(item.receiver),
+        receiver: mapReceiver(
+            item.receiver || {
+                name: item.shipping_name,
+                phone: item.shipping_phone,
+                address: item.shipping_address,
+            }
+        ),
 
-        payment: item.payment ? mapPayment(item.payment) : null,
+        payment: item.payment
+            ? mapPayment(item.payment)
+            : {
+                status: item.payment_status || '',
+                statusText: paymentStatusText(item.payment_status),
+                method: item.payment_method || '',
+                methodText: paymentMethodText(item.payment_method),
+            },
 
-        summary: mapSummary(item.summary),
+        summary: mapSummary(
+            item.summary || {
+                sub_total: item.sub_total || item.total,
+                shipping_fee: item.shipping_fee,
+                discount: item.discount_total,
+                grand_total: item.grand_total || item.total,
+            }
+        ),
 
         items: Array.isArray(item.items) ? item.items.map(mapOrderItem) : [],
 
@@ -274,4 +295,26 @@ export function mapOrderListResponse(response = {}) {
 
         raw: response,
     };
+}
+
+function paymentStatusText(status) {
+    const map = {
+        pending: 'Đang chờ thanh toán',
+        processing: 'Đang xử lý',
+        success: 'Đã thanh toán',
+        failed: 'Thanh toán thất bại',
+        refunded: 'Đã hoàn tiền',
+    };
+
+    return map[status] || status || 'Chưa tạo thanh toán';
+}
+
+function paymentMethodText(method) {
+    const map = {
+        cod: 'Thanh toán khi nhận hàng',
+        mock: 'Thanh toán giả lập',
+        vnpay: 'VNPay',
+    };
+
+    return map[method] || method || 'Chưa tạo thanh toán';
 }

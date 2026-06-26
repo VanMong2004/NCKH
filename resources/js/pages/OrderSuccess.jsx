@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
 
@@ -12,7 +12,9 @@ import guestOrderService from '../services/guestOrderService';
 export default function OrderSuccess() {
     const { user } = useAuth();
 
-    const { orderId } = useParams();
+    const [searchParams] = useSearchParams();
+    const orderCode = searchParams.get('order_code');
+
     const location = useLocation();
 
     const [order, setOrder] = useState(null);
@@ -21,7 +23,7 @@ export default function OrderSuccess() {
 
     useEffect(() => {
         loadOrder();
-    }, [orderId]);
+    }, [orderCode]);
 
     async function loadOrder() {
         try {
@@ -34,27 +36,14 @@ export default function OrderSuccess() {
                 sessionStorage.getItem('guest_order_success') || '{}'
             );
 
-            const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;
+            const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;            
 
-            if (isGuestOrder) {
-                const orderCode = state.orderCode || savedGuestOrder.orderCode;
-                const guestPhone = state.guestPhone || savedGuestOrder.guestPhone;
-
-                if (!orderCode || !guestPhone) {
-                    setError('Không đủ thông tin để tra cứu đơn hàng khách.');
-                    return;
-                }
-
-                const result = await guestOrderService.lookup({
-                    order_code: orderCode,
-                    phone: guestPhone,
-                });
-
-                setOrder(result);
+            if (!orderCode) {
+                setError('Không tìm thấy mã đơn hàng.');
                 return;
             }
 
-            const result = await orderService.getOrderDetail(orderId);
+            const result = await guestOrderService.getByCode(orderCode);
 
             setOrder(result);
         } catch (err) {

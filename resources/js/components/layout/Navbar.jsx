@@ -13,7 +13,7 @@ import NotificationDropdown from '../notifications/NotificationDropdown';
 import SearchSuggestionDropdown from '../search/SearchSuggestionDropdown';
 
 // export default function Navbar() {
-export default function Navbar({ siteContent }) {
+export default function Navbar({ siteContent, unreadCount = 0, notificationRefreshKey = 0 }) {
     const navigate = useNavigate();
 
     const desktopSearchRef = useRef(null);
@@ -340,7 +340,10 @@ export default function Navbar({ siteContent }) {
                             </Link>
                         )}
 
-                        <NotificationDropdown />
+                        <NotificationDropdown
+                            unreadCount={unreadCount}
+                            refreshKey={notificationRefreshKey}
+                        />
 
                         <Link
                             to="/cart"

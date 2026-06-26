@@ -6,6 +6,7 @@ use RuntimeException;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationService;
 
 class AdminOrderService
 {
@@ -103,7 +104,10 @@ class AdminOrderService
             $oldStatus = $order->status;
             $newStatus = $data['status'];
 
-            $this->validateStatusTransition($order->status, $newStatus);
+            $this->validateStatusTransition(
+                $order,
+                $newStatus
+            );
 
             if ($newStatus === 'cancelled') {
                 $this->cancelOrder($order, $data['cancel_reason'] ?? 'admin_cancelled');
@@ -113,6 +117,11 @@ class AdminOrderService
                 $order->update([
                     'status' => $newStatus,
                 ]);
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        $newStatus
+                    );
             }
 
             $this->createStatusHistory(
@@ -136,20 +145,48 @@ class AdminOrderService
         });
     }
 
-    private function validateStatusTransition(string $current, string $next): void
+    private function validateStatusTransition(Order $order, string $next): void
     {
+        $payment = $order->payments
+            ->sortByDesc('created_at')
+            ->first();
+
+        $isCod = !$payment || $payment->method === 'cod';
+
         $allowed = [
-            'pending' => ['cancelled'],
-            'paid' => ['processing', 'cancelled'],
-            'processing' => ['shipped', 'cancelled'],
-            'shipped' => ['completed'],
+
+            'pending'=>$isCod
+                ? [
+                    'processing',
+                    'cancelled',
+                ]
+                : [
+                    'paid',
+                    'cancelled',
+                ],
+
+            'paid' => [
+                'processing',
+                'cancelled',
+            ],
+
+            'processing' => [
+                'shipped',
+                'cancelled',
+            ],
+
+            'shipped' => [
+                'completed',
+            ],
+
             'completed' => [],
+
             'cancelled' => [],
         ];
 
-        if (!in_array($next, $allowed[$current] ?? [], true)) {
+        if (!in_array($next, $allowed[$order->status] ?? [], true)) {
             throw new RuntimeException(
-                "Không thể chuyển trạng thái từ {$current} sang {$next}",
+                "Không thể chuyển trạng thái từ {$order->status} sang {$next}",
                 400
             );
         }
@@ -157,14 +194,40 @@ class AdminOrderService
 
     private function cancelOrder(Order $order, string $reason): void
     {
-        if ($order->status === 'pending') {
-            app(OrderReleaseService::class)->release($order);
+        if (
+            in_array($order->status, [
+                'pending',
+                'paid',
+            ], true)
+        ) {
+            app(OrderReleaseService::class)
+                ->release($order);
+        }
+
+        $payment = $order->payments
+            ->sortByDesc('created_at')
+            ->first();
+
+        if ($payment) {
+
+            if ($payment->status === 'pending') {
+                $payment->update([
+                    'status' => 'failed',
+                ]);
+            }
+
         }
 
         $order->update([
             'status' => 'cancelled',
             'cancel_reason' => $reason,
         ]);
+
+        app(NotificationService::class)
+            ->order(
+                $order->fresh(),
+                'cancelled'
+            );
     }
 
     private function completeOrder(Order $order): void
@@ -214,6 +277,27 @@ class AdminOrderService
         $order->update([
             'status' => 'completed',
         ]);
+
+        app(NotificationService::class)
+            ->order(
+                $order->fresh(),
+                'completed'
+            );
+
+        $payment = $order->payments
+            ->sortByDesc('created_at')
+            ->first();
+
+        if (
+            $payment &&
+            $payment->status === 'pending'
+        ) {
+
+            $payment->update([
+                'status' => 'success',
+            ]);
+
+        }
     }
 
     private function formatListItem(Order $order): array

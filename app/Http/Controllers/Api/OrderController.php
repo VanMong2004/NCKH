@@ -23,9 +23,7 @@ class OrderController extends Controller
         $this->orderQueryService = $orderQueryService;
     }
 
-    // =========================
     // POST /api/orders/checkout
-    // =========================
     public function checkout(Request $request)
     {
         try {
@@ -174,9 +172,7 @@ class OrderController extends Controller
         }
     }
 
-    // =========================
     // GET /api/orders/my-orders
-    // =========================
     public function myOrders(Request $request)
     {
         try {
@@ -266,9 +262,7 @@ class OrderController extends Controller
         }
     }
 
-    // =========================
     // GET /api/orders/{id}
-    // =========================
     public function show(Request $request, $id)
     {
         try {
@@ -338,9 +332,7 @@ class OrderController extends Controller
         }
     }
 
-    // =========================
     // POST /api/orders/{id}/cancel
-    // =========================
     public function cancel(Request $request, $id)
     {
         try {

@@ -9,6 +9,7 @@ use Illuminate\Support\Carbon;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
 use App\Services\Admin\OrderReleaseService;
+use App\Services\NotificationService;
 
 class MockPaymentGatewayService
 {
@@ -33,7 +34,7 @@ class MockPaymentGatewayService
             $payment = Payment::lockForUpdate()->findOrFail($data['payment_id']);
 
             // 🔥 chống double callback
-            if ($payment->status === 'success') {
+            if (in_array($payment->status, ['success', 'refunded'])) {
                 return [
                     'message' => 'Payment đã xử lý',
                     'payment_id' => $payment->id,
@@ -61,6 +62,12 @@ class MockPaymentGatewayService
                     'status' => 'cancelled',
                     'cancel_reason' => 'payment_timeout',
                 ]);
+
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        'cancelled'
+                    );
 
                 return [
                     'message' => 'Đơn hàng đã hết hạn thanh toán',
@@ -99,6 +106,12 @@ class MockPaymentGatewayService
                     'status' => 'paid'
                 ]);
 
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        'paid'
+                    );
+
                 $order->load('items.productVariant');
 
                 if (!$wasPaid) {
@@ -106,15 +119,24 @@ class MockPaymentGatewayService
                 }
 
                 event(new OrderPaid($order));
-            } else {
-
-                app(OrderReleaseService::class)
-                    ->release($order->load('items.productVariant'));
+            }else{
 
                 $order->update([
-                    'status' => 'cancelled',
-                    'cancel_reason' => 'payment_failed',
+                    'status'=>'cancelled',
+                    'cancel_reason'=>'payment_failed',
                 ]);
+
+                app(OrderReleaseService::class)
+                    ->release(
+                        $order->load('items.productVariant')
+                    );
+
+                app(NotificationService::class)
+                    ->order(
+                        $order->fresh(),
+                        'cancelled'
+                    );
+
             }
 
             return [

@@ -107,9 +107,9 @@ class OrderService
 
                 'order_code' => 'TEMP-' . uniqid(),
                 'status' => 'pending',
-                'expired_at' => now()->addMinutes(
-                    $autoCancelMinutes
-                ),
+                'expired_at' => in_array($data['payment_method'], ['mock','vnpay'])
+                    ? now()->addMinutes($autoCancelMinutes)
+                    : null,
 
                 'total' => 0,
                 'shipping_fee' => 0,
@@ -117,11 +117,21 @@ class OrderService
                 'shipping_name' => $shipping['name'],
                 'shipping_phone' => $shipping['phone'],
                 'shipping_address' => $shipping['address'],
-            ]);
+            ]);            
 
             $order->update([
                 'order_code' => $this->generateOrderCode($order->id),
             ]);
+
+            if ($order->user_id) {
+
+                app(NotificationService::class)
+                    ->order(
+                        $order,
+                        'pending'
+                    );
+
+            }
 
             $total = 0;
             $totalDiscount = 0;
@@ -278,14 +288,18 @@ class OrderService
             return $order;
         });
 
-        try {
-            CancelPendingOrderJob::dispatch($order->id)
-                ->delay($order->expired_at ?? now()->addMinutes($autoCancelMinutes));
-        } catch (\Throwable $e) {
-            Log::error('Dispatch cancel pending order job failed', [
-                'order_id' => $order->id,
-                'error' => $e->getMessage(),
-            ]);
+        $paymentMethod = $data['payment_method'] ?? 'mock';
+
+        if (in_array($paymentMethod, ['mock', 'vnpay'])) {
+            try {
+                CancelPendingOrderJob::dispatch($order->id)
+                    ->delay($order->expired_at ?? now()->addMinutes($autoCancelMinutes));
+            } catch (\Throwable $e) {
+                Log::error('Dispatch cancel pending order job failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $order->load('items');
@@ -303,6 +317,7 @@ class OrderService
 
         return [
             'user_id' => $order->user_id,
+            'guestToken' => $order->guest_token,
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,

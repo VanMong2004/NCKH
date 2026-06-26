@@ -1,5 +1,7 @@
 import { Bell } from 'lucide-react';
 import { notificationTypeText } from '../../services/mappers/notificationMapper';
+import NotificationIcon from './NotificationIcon';
+import { Link } from 'react-router-dom';
 
 export default function NotificationDetail({ selected }) {
     if (!selected) {
@@ -20,8 +22,13 @@ export default function NotificationDetail({ selected }) {
 
     return (
         <aside className="h-max rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:sticky xl:top-28">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-50 text-5xl dark:bg-slate-800">
-                {selected.icon}
+            <div className="flex justify-center">
+                <NotificationIcon
+                    icon={selected.icon}
+                    color={selected.color}
+                    size={34}
+                    className="h-20 w-20 rounded-2xl"
+                />
             </div>
 
             <h2 className="mt-5 text-center text-xl font-extrabold text-blue-950 dark:text-white">{selected.title}</h2>
@@ -30,17 +37,17 @@ export default function NotificationDetail({ selected }) {
 
             <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
                 <InfoRow label="Loại thông báo" value={notificationTypeText(selected.type)} />
-                <InfoRow label="Thời gian" value={formatDate(selected.createdAt)} />
+                <InfoRow label="Thời gian" value={selected.timeAgo || formatDate(selected.createdAt)} />
                 <InfoRow label="Trạng thái" value={selected.isRead ? 'Đã đọc' : 'Chưa đọc'} />
             </div>
 
             {selected.actionUrl && (
-                <a
-                    href={selected.actionUrl}
+                <Link
+                    to={selected.actionUrl}
                     className="mt-5 block rounded-xl bg-blue-950 px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 dark:bg-blue-700"
                 >
                     Xem chi tiết
-                </a>
+                </Link>
             )}
         </aside>
     );

@@ -349,6 +349,8 @@ class NotificationController extends Controller
                 'type' => 'required|string|max:100',
                 'title' => 'required|string|max:255',
                 'message' => 'required|string|max:1000',
+                'icon' => 'nullable|string|max:50',
+                'color' => 'nullable|string|max:30',
                 'action_url' => 'nullable|string|max:500',
                 'meta' => 'nullable|array',
             ], [
@@ -367,7 +369,9 @@ class NotificationController extends Controller
                 $data['title'],
                 $data['message'],
                 $data['action_url'] ?? null,
-                $data['meta'] ?? null
+                $data['meta'] ?? null,
+                $data['icon'] ?? null,
+                $data['color'] ?? null
             );
 
             return response()->json([

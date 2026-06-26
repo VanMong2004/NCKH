@@ -99,7 +99,7 @@ class PaymentQueryService
                 'receipt_code' => 'PAY-' . str_pad($payment->id, 6, '0', STR_PAD_LEFT),
             ],
 
-            'can_retry' => in_array($payment->status, ['pending', 'failed']),
+            'can_retry' => $payment->status==='failed'&&in_array($payment->method,['mock','vnpay']),
         ];
     }
 
@@ -178,8 +178,8 @@ class PaymentQueryService
             ->where('status', 'failed')
             ->count();
 
-        $pendingTransactions = (clone $query)
-            ->whereIn('status', ['pending', 'processing'])
+        $pendingTransactions=(clone $query)
+            ->where('status','pending')
             ->count();
 
         $refundedTransactions = (clone $query)

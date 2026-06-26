@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Notification;
+use App\Models\Order;
 use RuntimeException;
 
 class NotificationService
@@ -111,17 +112,99 @@ class NotificationService
         string $title,
         string $message,
         ?string $actionUrl = null,
-        ?array $meta = null
+        ?array $meta = null,
+        ?string $icon = null,
+        ?string $color = null
     ) {
         return Notification::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
             'message' => $message,
+            'icon' => $icon,
+            'color' => $color,
             'action_url' => $actionUrl,
             'meta' => $meta,
             'is_read' => false,
         ]);
+    }
+
+    public function order(Order $order, string $status): ?Notification
+    {
+        if (!$order->user_id) {
+            return null;
+        }
+
+        $map = [
+            'pending' => [
+                'type' => 'order',
+                'title' => 'Đặt hàng thành công',
+                'message' => "Đơn hàng {$order->order_code} đã được ghi nhận.",
+                'icon' => 'shopping-bag',
+                'color' => 'blue',
+            ],
+
+            'paid' => [
+                'type' => 'payment',
+                'title' => 'Thanh toán thành công',
+                'message' => "Đơn hàng {$order->order_code} đã được thanh toán thành công.",
+                'icon' => 'credit-card',
+                'color' => 'green',
+            ],
+
+            'processing' => [
+                'type' => 'order',
+                'title' => 'Đơn hàng đang được xử lý',
+                'message' => "Đơn hàng {$order->order_code} đang được chuẩn bị.",
+                'icon' => 'package',
+                'color' => 'amber',
+            ],
+
+            'shipped' => [
+                'type' => 'order',
+                'title' => 'Đơn hàng đang giao',
+                'message' => "Đơn hàng {$order->order_code} đang được giao đến bạn.",
+                'icon' => 'truck',
+                'color' => 'indigo',
+            ],
+
+            'completed' => [
+                'type' => 'order',
+                'title' => 'Đơn hàng hoàn tất',
+                'message' => "Đơn hàng {$order->order_code} đã hoàn tất. Cảm ơn bạn đã mua hàng tại CTUT Store.",
+                'icon' => 'circle-check',
+                'color' => 'emerald',
+            ],
+
+            'cancelled' => [
+                'type' => 'order',
+                'title' => 'Đơn hàng đã hủy',
+                'message' => "Đơn hàng {$order->order_code} đã bị hủy.",
+                'icon' => 'circle-x',
+                'color' => 'red',
+            ],
+        ];
+
+        if (!isset($map[$status])) {
+            return null;
+        }
+
+        $item = $map[$status];
+
+        return $this->createForUser(
+            $order->user_id,
+            $item['type'],
+            $item['title'],
+            $item['message'],
+            "/account/orders/{$order->id}",
+            [
+                'order_id' => $order->id,
+                'order_code' => $order->order_code,
+                'status' => $status,
+            ],
+            $item['icon'],
+            $item['color']
+        );
     }
 
     private function format($notification)
@@ -131,11 +214,84 @@ class NotificationService
             'type' => $notification->type,
             'title' => $notification->title,
             'message' => $notification->message,
+            'icon' => $notification->icon,
+            'color' => $notification->color,
             'action_url' => $notification->action_url,
             'meta' => $notification->meta,
             'is_read' => (bool) $notification->is_read,
             'read_at' => optional($notification->read_at)->format('d/m/Y H:i'),
             'created_at' => optional($notification->created_at)->format('d/m/Y H:i'),
+            'time_ago' => optional($notification->created_at)
+                ? $notification->created_at->diffForHumans()
+                : '',
         ];
     }
+
+    // public function order(
+    //     Order $order,
+    //     string $status
+    // ): void
+    // {
+    //     if (!$order->user_id) {
+    //         return;
+    //     }
+
+    //     $messages = [
+
+    //         'pending' => [
+    //             'title' => 'Đặt hàng thành công',
+    //             'message' => "Đơn hàng {$order->order_code} đã được tạo thành công.",
+    //         ],
+
+    //         'paid' => [
+    //             'title' => 'Thanh toán thành công',
+    //             'message' => "Đơn hàng {$order->order_code} đã được thanh toán.",
+    //         ],
+
+    //         'processing' => [
+    //             'title' => 'Đơn hàng đang được xử lý',
+    //             'message' => "Đơn hàng {$order->order_code} đang được chuẩn bị.",
+    //         ],
+
+    //         'shipped' => [
+    //             'title' => 'Đơn hàng đang giao',
+    //             'message' => "Đơn hàng {$order->order_code} đang được giao.",
+    //         ],
+
+    //         'completed' => [
+    //             'title' => 'Hoàn thành đơn hàng',
+    //             'message' => "Cảm ơn bạn đã mua hàng tại CTUT Store.",
+    //         ],
+
+    //         'cancelled' => [
+    //             'title' => 'Đơn hàng đã hủy',
+    //             'message' => "Đơn hàng {$order->order_code} đã bị hủy.",
+    //         ],
+
+    //     ];
+
+    //     if (!isset($messages[$status])) {
+    //         return;
+    //     }
+
+    //     $item = $messages[$status];
+
+    //     Notification::create([
+    //         'user_id' => $order->user_id,
+
+    //         'type' => 'order',
+
+    //         'title' => $item['title'],
+
+    //         'message' => $item['message'],
+
+    //         'action_url' => "/account/orders/{$order->id}",
+
+    //         'meta' => [
+    //             'order_id' => $order->id,
+    //             'order_code' => $order->order_code,
+    //             'status' => $status,
+    //         ],
+    //     ]);
+    // }
 }

@@ -129,16 +129,20 @@ class PaymentController extends Controller
                 $request->all()
             );
 
-            $paymentId = $result['payment_id'] ?? $request->payment_id ?? $request->vnp_TxnRef ?? null;
+            $orderCode = $result['order_code'] ?? null;
             $orderId   = $result['order_id'] ?? null;
             $status    = $result['status'] ?? $request->status ?? 'unknown';
-
             $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
-
+            
+            if (!$orderCode && $orderId) {
+                $orderCode = Order::find($orderId)?->order_code;
+            }
+                
+            $order = Order::find($orderId);
+                
             return redirect()->away(
-                $frontendUrl . '/payment/result?' . http_build_query([
-                    'payment_id' => $paymentId,
-                    'order_id'   => $orderId,
+                $frontendUrl . '/order-success?' . http_build_query([
+                    'order_code' => $orderCode,
                     'status'     => $status,
                 ])
             );
@@ -337,7 +341,7 @@ class PaymentController extends Controller
         try {
 
             $filters = $request->validate([
-                'status' => 'nullable|in:pending,processing,success,failed,refunded',
+                'status'=>'nullable|in:pending,success,failed,refunded',
                 'method' => 'nullable|in:vnpay,momo,banking,baokim,mock',
             ]);
 

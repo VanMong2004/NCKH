@@ -335,11 +335,21 @@ function ChatPair({ item }) {
 
             {item.answer ? (
                 <div className="max-w-[90%] rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm leading-6 text-slate-700 shadow-sm dark:bg-slate-950 dark:text-slate-200">
-                    <div className="whitespace-pre-line">{item.answer}</div>
+                    <div className="whitespace-pre-line">
+                        {item.answer}
+                    </div>
 
-                    <ChatSources sources={item.sources || []} />
+                    <ChatProducts
+                        products={item.products}
+                    />
 
-                    <ChatToolCalls toolCalls={item.toolCalls || []} />
+                    <ChatSources
+                        sources={item.sources}
+                    />
+
+                    <ChatToolCalls
+                        toolCalls={item.toolCalls}
+                    />
                 </div>
             ) : (
                 <div className="max-w-[90%] rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm leading-6 text-slate-400 shadow-sm dark:bg-slate-950 dark:text-slate-500">
@@ -347,6 +357,89 @@ function ChatPair({ item }) {
                 </div>
             )}
         </div>
+    );
+}
+
+function ChatAnswer({ text = '' }) {
+    const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
+    const linkRegex = /\[(.*?)\]\((.*?)\)/g;
+
+    const imageMatch = [...text.matchAll(imageRegex)];
+    const linkMatch = [...text.matchAll(linkRegex)];
+
+    let content = text;
+
+    imageMatch.forEach((m) => {
+        content = content.replace(m[0], '');
+    });
+
+    linkMatch.forEach((m) => {
+        content = content.replace(m[0], '');
+    });
+
+    const productLink = linkMatch.find((m) =>
+        m[2].includes('/product/')
+    )?.[2];
+
+    return (
+        <>
+            <div className="whitespace-pre-line">
+                {content.trim()}
+            </div>
+
+            {imageMatch.map((m, index) => (
+                <ChatImage
+                    key={index}
+                    src={m[2]}
+                    alt={m[1]}
+                    productLink={productLink}
+                />
+            ))}
+
+            {productLink && (
+                <a
+                    href={productLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex rounded-xl bg-blue-950 px-4 py-2 text-sm font-bold text-white hover:bg-blue-900"
+                >
+                    Xem sản phẩm
+                </a>
+            )}
+        </>
+    );
+}
+
+function ChatImage({ src, alt, productLink }) {
+    const [error, setError] = useState(false);
+
+    if (error) {
+        return (
+            <a
+                href={src}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 block text-sm font-semibold text-blue-700 underline"
+            >
+                Xem ảnh sản phẩm
+            </a>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            onError={() => setError(true)}
+            onClick={() => {
+                if (productLink) {
+                    window.open(productLink, '_blank');
+                } else {
+                    window.open(src, '_blank');
+                }
+            }}
+            className="mt-3 w-full cursor-pointer rounded-xl border border-slate-200 object-cover transition hover:opacity-90 dark:border-slate-700"
+        />
     );
 }
 
@@ -386,6 +479,74 @@ function ChatToolCalls({ toolCalls = [] }) {
                 <DatabaseZap size={14} />
                 Đã tra cứu dữ liệu hệ thống
             </div>
+        </div>
+    );
+}
+
+function formatPrice(product) {
+    const min = Number(product.min_price || 0);
+    const max = Number(product.max_price || 0);
+
+    if (!min && !max) return 'Liên hệ';
+
+    const formatter = new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+    });
+
+    if (min && max && min !== max) {
+        return `${formatter.format(min)} - ${formatter.format(max)}`;
+    }
+
+    return formatter.format(min || max);
+}
+
+function ChatProducts({ products = [] }) {
+    if (!products.length) return null;
+
+    return (
+        <div className="mt-3 space-y-3">
+            {products.slice(0, 3).map((product) => {
+                const productUrl = product.product_url || `/product/${product.slug}`;
+                const imageUrl = product.image_url || product.thumbnail || '/images/no-image.png';
+
+                return (
+                    <a
+                        key={product.id}
+                        href={productUrl}
+                        className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 transition hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-blue-500/10"
+                    >
+                        <img
+                            src={imageUrl}
+                            alt={product.name}
+                            className="h-20 w-20 shrink-0 rounded-xl border border-slate-200 object-cover dark:border-slate-700"
+                            onError={(e) => {
+                                e.currentTarget.src = '/images/no-image.png';
+                            }}
+                        />
+
+                        <div className="min-w-0 flex-1">
+                            <div className="line-clamp-2 text-sm font-black text-blue-950 dark:text-white">
+                                {product.name}
+                            </div>
+
+                            <div className="mt-1 text-sm font-black text-red-600">
+                                {formatPrice(product)}
+                            </div>
+
+                            <div className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                {product.in_stock || product.available_stock > 0
+                                    ? `Còn ${product.available_stock || product.stock || 0} sản phẩm`
+                                    : 'Hết hàng'}
+                            </div>
+
+                            <div className="mt-2 inline-flex rounded-lg bg-blue-950 px-3 py-1.5 text-xs font-bold text-white">
+                                Xem chi tiết
+                            </div>
+                        </div>
+                    </a>
+                );
+            })}
         </div>
     );
 }

@@ -10,6 +10,7 @@ use App\Models\RecentlyViewedProduct;
 use App\Models\Review;
 use RuntimeException;
 use App\Services\PromotionPriceService;
+use Illuminate\Support\Str;
 
 
 class ProductService
@@ -21,9 +22,7 @@ class ProductService
     private const MAX_PAGE_SIZE = 50;
     private const RELATED_PRODUCTS_LIMIT = 8;
 
-    // =========================
     // LIST + FILTER
-    // =========================
     public function getList(array $filters = [], $user = null)
     {
         $perPage = min(
@@ -47,11 +46,35 @@ class ProductService
             });
 
         if (!empty($filters['keyword'])) {
-            $keyword = $filters['keyword'];
+            $keyword = trim($filters['keyword']);
 
-            $query->where(function ($q) use ($keyword) {
+            $words = collect(preg_split('/\s+/', $keyword))
+                ->map(fn ($word) => trim($word))
+                ->filter(fn ($word) => mb_strlen($word) >= 3)
+                ->unique()
+                ->values();
+
+            $query->where(function ($q) use ($keyword, $words) {
+                // Tìm đúng cụm
                 $q->where('name', 'like', "%{$keyword}%")
-                    ->orWhere('description', 'like', "%{$keyword}%");
+                    ->orWhere('description', 'like', "%{$keyword}%")
+
+                    // Tìm theo danh mục trực tiếp
+                    ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
+                        $categoryQuery->where('name', 'like', "%{$keyword}%")
+                            ->orWhere('slug', 'like', "%{$keyword}%");
+                    })
+
+                    // Tìm theo danh mục cha
+                    ->orWhereHas('category.parent', function ($parentQuery) use ($keyword) {
+                        $parentQuery->where('name', 'like', "%{$keyword}%")
+                            ->orWhere('slug', 'like', "%{$keyword}%");
+                    });
+
+                // Chỉ tìm từng từ trong tên sản phẩm, không tìm trong description
+                foreach ($words as $word) {
+                    $q->orWhere('name', 'like', "%{$word}%");
+                }
             });
         }
 
@@ -234,9 +257,7 @@ class ProductService
         ];
     }
 
-    // =========================
     // DETAIL
-    // =========================
     public function show(string $slug, $user = null)
     {
         $product = Product::query()
@@ -453,9 +474,7 @@ class ProductService
         ];
     }
 
-    // =========================
     // VARIANTS
-    // =========================
     public function getVariants($productId)
     {
         $product = Product::with([
@@ -476,9 +495,7 @@ class ProductService
         ];
     }
 
-    // =========================
     // REVIEWS
-    // =========================
     public function getReviews($productId)
     {
         $product = Product::find($productId);
@@ -499,9 +516,7 @@ class ProductService
         ];
     }
 
-    // =========================
     // FORMAT PRODUCT
-    // =========================
     public function formatProduct($product, $user = null)
     {
         $availableStock = $product->variants->sum(function ($variant) {
@@ -600,12 +615,27 @@ class ProductService
                     'code' => $product->department->code,
                 ]
                 : null,
+
+            'image_url' => $this->absoluteImageUrl(
+                optional(
+                    $product->images
+                        ->where('type', 'thumbnail')
+                        ->first()
+                )->url
+                ?? optional($product->images->first())->url
+            ),
+
+            'product_url' => url('/product/' . $product->slug),
+
+            'product_slug' => $product->slug,
+
+            'category_name' => $product->category?->name,
+
+            'description' => Str::limit(strip_tags($product->description), 150),
         ];
     }
 
-    // =========================
     // GROUP VARIANTS (🔥 UI)
-    // =========================
     private function groupVariants($variants)
     {
         $sizes = [];
@@ -628,9 +658,7 @@ class ProductService
         ];
     }
 
-    // =========================
     // CATEGORY TREE
-    // =========================
     private function getAllChildCategoryIds($categoryId)
     {
         $ids = [$categoryId];
@@ -685,5 +713,21 @@ class ProductService
                 })
                 ->values(),
         ];
+    }
+
+    private function absoluteImageUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        if (
+            str_starts_with($url, 'http://') ||
+            str_starts_with($url, 'https://')
+        ) {
+            return $url;
+        }
+
+        return asset(ltrim($url, '/'));
     }
 }

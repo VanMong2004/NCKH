@@ -240,9 +240,9 @@ class SiteContentSeeder extends Seeder
         }
 
         $contacts = [
-            ['address', '256 Nguyễn Văn Cừ - Phường Ninh Kiều - TPCT, Can Tho, Vietnam, 900000', 'map-pin', 1],
-            ['phone', '+84 292 3898 167', 'phone', 2],
-            ['email', 'pdt@ctuet.edu.vn', 'mail', 3],
+            ['address', '256 Nguyễn Văn Cừ, Phường Cái Khế, Thành phố Cần Thơ', 'map-pin', 1],
+            ['phone', '02923 894 050', 'phone', 2],
+            ['email', 'phonghanhchinh@ctuet.edu.vn', 'mail', 3],
         ];
 
         foreach ($contacts as [$key, $label, $icon, $order]) {

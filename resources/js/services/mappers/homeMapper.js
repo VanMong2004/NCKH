@@ -104,6 +104,20 @@ function mapHomeProduct(product = {}) {
 }
 
 function mapHomeCategory(category = {}) {
+    const children = Array.isArray(category.children)
+        ? category.children.map((child) => ({
+            id: child.id,
+            name: child.name || '',
+            slug: child.slug || '',
+
+            icon: child.icon || '',
+            image: normalizeImage(child.image),
+            thumbnail: normalizeImage(child.thumbnail),
+
+            raw: child,
+        }))
+        : [];
+
     return {
         id: category.id,
         name: category.name || '',
@@ -113,7 +127,8 @@ function mapHomeCategory(category = {}) {
         image: normalizeImage(category.image),
         thumbnail: normalizeImage(category.thumbnail),
 
-        childrenCount: toNumber(category.children_count),
+        childrenCount: toNumber(category.children_count || children.length),
+        children,
 
         raw: category,
     };

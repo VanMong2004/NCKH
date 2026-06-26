@@ -1,11 +1,12 @@
-import { Loader2, RefreshCcw } from 'lucide-react';
+import { Loader2, RefreshCcw, Sparkles, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 import CategoryList from '../components/home/CategoryList';
 import HeroSection from '../components/home/HeroSection';
 import HomePromotionGrid from '../components/home/HomePromotionGrid';
-import HomeSearchSection from '../components/home/HomeSearchSection';
+// import HomeSearchSection from '../components/home/HomeSearchSection';
 import NewsList from '../components/home/NewsList';
 import ProductGrid from '../components/product/ProductGrid';
 import SectionHeader from '../components/ui/SectionHeader';
@@ -39,10 +40,21 @@ export default function Home() {
     const [promotions, setPromotions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeProductTab, setActiveProductTab] = useState('featuredProducts');
+    const navigate = useNavigate();
 
     useEffect(() => {
         loadHome();
     }, []);
+
+    function goSearch(value) {
+        const text = String(value || '')
+            .replace(/^#/, '')
+            .trim();
+
+        if (!text) return;
+
+        navigate(`/shop?keyword=${encodeURIComponent(text)}`);
+    }
 
     async function loadHome() {
         try {
@@ -159,9 +171,18 @@ export default function Home() {
                 <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
                     <HeroSection heroSlider={home.heroSlider} />
 
-                    <HomeSearchSection trendingKeywords={home.trendingKeywords} />
+                    {/* <HomeSearchSection trendingKeywords={home.trendingKeywords} /> */}
 
-                    <HomePromotionGrid promotions={promotions} />
+                    <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                        <HomePromotionGrid promotions={promotions} />
+
+                        <TrendingKeywordsCard
+                            keywords={home.trendingKeywords}
+                            onSearch={goSearch}
+                        />
+                    </section>
+
+                    
 
                     <section className="mt-4 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
                         <CategoryList categories={home.categories} />
@@ -217,5 +238,46 @@ function EmptyBlock({ message }) {
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-950">
             <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{message}</p>
         </div>
+    );
+}
+
+function TrendingKeywordsCard({ keywords = [], onSearch }) {
+    const displayKeywords =
+        keywords.length > 0
+            ? keywords
+            : ['đồng phục', 'áo thun', 'phụ kiện', 'bảng tên', 'móc khóa'];
+
+    return (
+        <aside className="rounded-[1.5rem] border border-blue-100 bg-blue-50 p-5 shadow-sm dark:border-blue-500/20 dark:bg-blue-500/10">
+            <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm dark:bg-slate-950 dark:text-blue-300">
+                    <TrendingUp size={18} />
+                </div>
+
+                <div>
+                    <h2 className="font-black text-blue-950 dark:text-white">
+                        Từ khóa nổi bật
+                    </h2>
+
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Nhấn để xem nhanh sản phẩm
+                    </p>
+                </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+                {displayKeywords.map((item) => (
+                    <button
+                        key={item}
+                        type="button"
+                        onClick={() => onSearch(item)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm transition hover:bg-blue-950 hover:text-white dark:bg-slate-950 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white"
+                    >
+                        <Sparkles size={12} />
+                        {String(item).startsWith('#') ? item : `#${item}`}
+                    </button>
+                ))}
+            </div>
+        </aside>
     );
 }

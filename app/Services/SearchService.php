@@ -12,7 +12,11 @@ class SearchService
     {
         $keyword = trim($keyword);
 
-        if ($user && strlen($keyword) >= 2) {
+        if (mb_strlen($keyword) < 2) {
+            return collect();
+        }
+
+        if ($user) {
             SearchHistory::updateOrCreate(
                 [
                     'user_id' => $user->id,
@@ -22,37 +26,47 @@ class SearchService
             );
         }
 
+        $words = collect(preg_split('/\s+/', $keyword))
+            ->map(fn ($word) => trim($word))
+            ->filter(fn ($word) => mb_strlen($word) >= 1)
+            ->unique()
+            ->values();
+
         return Product::query()
             ->with('images')
             ->where('is_active', true)
-            ->where(
-                'name',
-                'like',
-                '%' . $keyword . '%'
+            ->where(function ($query) use ($keyword, $words) {
+                $query->where('name', 'like', '%' . $keyword . '%');
+
+                foreach ($words as $word) {
+                    $query->orWhere('name', 'like', '%' . $word . '%');
+                }
+            })
+            ->orderByRaw(
+                "CASE 
+                    WHEN name LIKE ? THEN 1
+                    ELSE 2
+                END",
+                ['%' . $keyword . '%']
             )
+            ->latest()
             ->limit(8)
             ->get()
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
-
                     'name' => $product->name,
-
                     'slug' => $product->slug,
 
                     'thumbnail' =>
                         optional(
                             $product->images
-                                ?->where(
-                                    'type',
-                                    'thumbnail'
-                                )
+                                ?->where('type', 'thumbnail')
                                 ->first()
                         )->url
                         ??
                         optional(
-                            $product->images
-                                ?->first()
+                            $product->images?->first()
                         )->url,
 
                     'average_rating' => (float) $product->average_rating,

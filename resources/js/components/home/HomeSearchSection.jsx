@@ -56,6 +56,7 @@ export default function HomeSearchSection({ trendingKeywords = [] }) {
 
         if (!text) return;
 
+        setKeyword(text);
         navigate(`/shop?keyword=${encodeURIComponent(text)}`);
     }
 

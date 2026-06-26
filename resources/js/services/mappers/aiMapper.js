@@ -33,6 +33,7 @@ export function mapAiMessage(item = {}) {
         source: item.source || 'openai_rag',
         sources: normalizeArray(item.sources).map(mapAiSource),
         toolCalls: normalizeArray(item.tool_calls || item.toolCalls).map(mapAiToolCall),
+        products: normalizeArray(item.products),
         conversationId: item.conversation_id || item.conversationId || null,
         guestToken: item.guest_token || item.guestToken || '',
         createdAt: item.created_at || item.createdAt || '',
@@ -50,6 +51,7 @@ export function mapAiChatResponse(response = {}, question = '') {
         source: 'openai_rag',
         sources: data.sources || [],
         tool_calls: data.tool_calls || [],
+        products: data.products || [],
         conversation_id: data.conversation_id || null,
         guest_token: data.guest_token || '',
         created_at: data.created_at || '',
@@ -93,6 +95,7 @@ export function mapAiConversationDetailResponse(response = {}) {
                 source: 'history',
                 sources: [],
                 toolCalls: [],
+                products: [],
                 conversationId: data.id || null,
                 guestToken: data.guest_token || '',
                 createdAt: message.created_at || '',
@@ -114,6 +117,7 @@ export function mapAiConversationDetailResponse(response = {}) {
                     source: 'history',
                     sources: normalizeArray(message.sources).map(mapAiSource),
                     toolCalls: normalizeArray(message.tool_calls).map(mapAiToolCall),
+                    products: normalizeArray(message.products),
                     conversationId: data.id || null,
                     guestToken: data.guest_token || '',
                     createdAt: message.created_at || '',
@@ -131,6 +135,7 @@ export function mapAiConversationDetailResponse(response = {}) {
             currentPair.answer = message.content || '';
             currentPair.sources = normalizeArray(message.sources).map(mapAiSource);
             currentPair.toolCalls = normalizeArray(message.tool_calls).map(mapAiToolCall);
+            currentPair.products = normalizeArray(message.products);
             currentPair.raw.assistantMessage = message;
 
             pairs.push(currentPair);

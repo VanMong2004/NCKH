@@ -14,9 +14,9 @@ class ContactService
     {
         return [
             'school_name' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
-            'address' => '256 Nguyễn Văn Cừ, Quận Ninh Kiều, TP. Cần Thơ',
-            'email' => 'contact@ctuet.edu.vn',
-            'phone' => '0292 3891 698',
+            'address' => '256 Nguyễn Văn Cừ, Phường Cái Khế, Thành phố Cần Thơ',
+            'email' => 'phonghanhchinh@ctuet.edu.vn',
+            'phone' => '02923 894 050',
             'website' => 'https://ctuet.edu.vn/',
             'map_url' => 'https://maps.app.goo.gl/uArkPsittm4Eu4NS6',
         ];

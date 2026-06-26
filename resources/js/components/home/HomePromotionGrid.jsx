@@ -4,13 +4,19 @@ import { Link } from 'react-router-dom';
 import SectionHeader from '../ui/SectionHeader';
 
 export default function HomePromotionGrid({ promotions = [] }) {
+    const displayPromotions = promotions.slice(0, 3);
+
     return (
-        <section className="mt-2 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <SectionHeader title="Đợt khuyến mãi" to="/promotions" actionText="Xem tất cả" />
-            {promotions.length > 0 ? (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                    {promotions.map((promotion) => (
-                        <PromotionCard key={promotion.id} promotion={promotion} />
+
+            {displayPromotions.length > 0 ? (
+                <div className="mt-4 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                    {displayPromotions.map((promotion) => (
+                        <PromotionCard
+                            key={promotion.id}
+                            promotion={promotion}
+                        />
                     ))}
                 </div>
             ) : (
@@ -31,7 +37,7 @@ export default function HomePromotionGrid({ promotions = [] }) {
 function PromotionCard({ promotion }) {
     return (
         <article className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950">
-            <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-800">
+            <div className="relative aspect-[16/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <img
                     src={promotion.thumbnail || promotion.banner || '/images/no-image.png'}
                     alt={promotion.title}
@@ -53,13 +59,13 @@ function PromotionCard({ promotion }) {
                 </span>
             </div>
 
-            <div className="p-4">
+            <div className="p-3.5">
                 <h3 className="line-clamp-2 min-h-[44px] text-base font-black text-blue-950 dark:text-white">
                     {promotion.title}
                 </h3>
 
                 {promotion.description && (
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    <p className="mt-2 line-clamp-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                         {promotion.description}
                     </p>
                 )}

@@ -64,6 +64,7 @@ class OpenAiHybridRagChatService
                 'answer' => $assistantMessage->content,
                 'sources' => $assistantMessage->sources ?? [],
                 'tool_calls' => $assistantMessage->tool_calls ?? [],
+                'products' => $openAiResult['products'] ?? [],
             ];
         });
     }
@@ -218,6 +219,7 @@ class OpenAiHybridRagChatService
             'answer' => $answer,
             'sources' => $this->extractSources($response),
             'tool_calls' => $allToolCalls,
+            'products' => $this->extractProductsFromToolCalls($allToolCalls),
         ];
     }
 
@@ -387,6 +389,31 @@ class OpenAiHybridRagChatService
         ];
     }
 
+    private function extractProductsFromToolCalls(array $toolCalls): array
+    {
+        $products = collect($toolCalls)
+            ->flatMap(function ($toolCall) {
+                $result = $toolCall['result'] ?? [];
+
+                if (!empty($result['product'])) {
+                    return [$result['product']];
+                }
+
+                if (!empty($result['products']) && is_array($result['products'])) {
+                    return $result['products'];
+                }
+
+                return [];
+            })
+            ->filter(fn ($product) => !empty($product['id']))
+            ->unique('id')
+            ->take(3)
+            ->values()
+            ->toArray();
+
+        return $products;
+    }
+
     private function extractFunctionCalls(array $response): array
     {
         $calls = [];
@@ -456,7 +483,7 @@ class OpenAiHybridRagChatService
         return <<<PROMPT
     Bạn là trợ lý bán hàng chính thức của CTUT Store.
 
-    Nhiệm vụ:
+    NHIỆM VỤ:
     - Tư vấn sản phẩm cho khách hàng.
     - Trả lời câu hỏi về giá, kích thước, màu sắc, tồn kho.
     - Gợi ý sản phẩm phù hợp với nhu cầu khách hàng.
@@ -498,6 +525,97 @@ class OpenAiHybridRagChatService
     6. Trả lời ngắn gọn, thân thiện, rõ ràng như nhân viên chăm sóc khách hàng.
 
     7. Nếu có nhiều sản phẩm phù hợp, hãy liệt kê tối đa 5 sản phẩm, kèm tên, giá nếu có, và tình trạng tồn kho nếu tool cung cấp.
+
+    8. Nếu tool trả về product_url thì luôn sử dụng đúng product_url. Không tự tạo URL. Không tự tạo link sản phẩm. Không tự tạo link ảnh.
+
+    9. Không cần hiển thị link sản phẩm trong câu trả lời.
+
+    10. Không cần hiển thị ảnh sản phẩm trong câu trả lời.
+
+    11. Frontend sẽ tự hiển thị card sản phẩm từ dữ liệu tool trả về.
+
+    12. Khi có sản phẩm phù hợp, chỉ trả lời phần tư vấn ngắn gọn, không tự tạo Markdown link hoặc Markdown ảnh.
+
     PROMPT;
     }
+    // NGUYÊN TẮC:
+    // - Luôn trả lời bằng tiếng Việt.
+    // - Trả lời tự nhiên như nhân viên tư vấn.
+    // - Ngắn gọn.
+    // - Không lan man.
+    // - Không giải thích dài nếu khách không hỏi.
+
+    // ĐỊNH DẠNG:
+    //     Không sử dụng Markdown.
+    //     Không dùng:
+    //     *
+    //     **
+    //     #
+    //     ##
+    //     ###
+    //     __
+    //     ---
+    //     >
+    //     `
+    //     Không tạo bảng.
+    //     Không dùng code block.
+    //     Không in ký tự Markdown.
+    //     Chỉ dùng xuống dòng và dấu "-" khi cần.
+
+    // SẢN PHẨM:
+    //     Nếu tool trả về nhiều sản phẩm:
+    //         - Chỉ giới thiệu tối đa 3 sản phẩm phù hợp nhất.
+    //     Mỗi sản phẩm chỉ cần:
+    //         Tên
+    //         Giá
+    //         Khuyến mãi (nếu có)
+    //         Tồn kho
+    //         Màu
+    //         Size
+    //         Không liệt kê toàn bộ dữ liệu.
+
+    // HÌNH ẢNH
+    //     Nếu sản phẩm có image_url
+    //     hãy trả:
+    //     <image>
+    //     image_url
+    //     </image>
+    //     Không tự tạo URL.
+    //     Không suy đoán URL.
+
+    // LINK
+    //     Nếu có product_url
+    //     hãy trả:
+    //     <link>
+    //     product_url
+    //     </link>
+    //     Không tự tạo link.
+
+    // KHÔNG TÌM THẤY
+    //     Nếu không có dữ liệu:
+    //     "Xin lỗi, hiện mình chưa tìm thấy sản phẩm phù hợp."
+    //     Không được tự bịa.
+
+    // GIỌNG ĐIỆU
+    //     Không dùng:
+    //     "Dưới đây là..."
+    //     "Theo dữ liệu..."
+    //     "Tôi tìm thấy..."
+    //     "Thông tin như sau..."
+    //     Hãy trả lời như nhân viên bán hàng.
+    //     Ví dụ:
+    //     "Hiện shop có một số mẫu áo CTUT phù hợp với nhu cầu của bạn."
+
+    // QUAN TRỌNG
+    //     Chỉ sử dụng dữ liệu từ:
+    //     - File Search
+    //     - Function Tool
+    //     Không được tự tạo:
+    //     Giá
+    //     Khuyến mãi
+    //     Ảnh
+    //     Link
+    //     Tồn kho
+    //     Tên sản phẩm
+    
 }

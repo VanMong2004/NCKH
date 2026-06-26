@@ -34,10 +34,12 @@ class HomeService
 
             'trending_keywords' => [
                 'đồng phục',
+                'áo thun',
+                'áo polo',
                 'phụ kiện',
                 'bảng tên',
-                'sản phẩm mới',
-                'CTUT Shop',
+                'móc khóa',
+                'dây đeo',
             ],
         ];
     }
@@ -458,6 +460,11 @@ class HomeService
     {
         return Category::query()
             ->whereNull('parent_id')
+            ->with([
+                'children' => function ($q) {
+                    $q->latest();
+                },
+            ])
             ->withCount('children')
             ->latest()
             ->get()
@@ -469,7 +476,21 @@ class HomeService
                     'icon' => $category->icon,
                     'image' => $category->image,
                     'thumbnail' => $category->thumbnail,
+
                     'children_count' => (int) $category->children_count,
+
+                    'children' => $category->children
+                        ->map(function ($child) {
+                            return [
+                                'id' => $child->id,
+                                'name' => $child->name,
+                                'slug' => $child->slug,
+                                'icon' => $child->icon,
+                                'image' => $child->image,
+                                'thumbnail' => $child->thumbnail,
+                            ];
+                        })
+                        ->values(),
                 ];
             });
     }

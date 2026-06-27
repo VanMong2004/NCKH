@@ -17,7 +17,7 @@ export default function Footer({ footer }) {
     const copyright = payload.copyright || '© 2026 CTUT Shop. All rights reserved.';
     //
     return (
-        <footer className="mt-10 border-t border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+        <footer className="border-t border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
             <div className="mx-auto max-w-7xl px-4 py-10 md:py-12">
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
                     <div>

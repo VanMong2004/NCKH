@@ -31,6 +31,7 @@ class User extends Authenticatable
         'mssv',
         'role',
         'avatar',
+        'locked_at',
     ];
 
     protected $appends = [
@@ -52,6 +53,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'deleted_at' => 'datetime',
+        'locked_at' => 'datetime',
     ];
 
     // RELATIONSHIPS

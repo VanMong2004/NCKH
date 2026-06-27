@@ -28,6 +28,8 @@ return new class extends Migration
             $table->enum('role', ['user', 'admin'])->default('user');
 
             $table->longText('avatar')->nullable();
+            
+            $table->timestamp('locked_at')->nullable();
 
             $table->rememberToken();
             $table->timestamps();

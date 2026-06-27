@@ -63,6 +63,11 @@ export function mapAdminUser(item = {}) {
         reviewsCount: toNumber(item.reviews_count),
 
         isDeleted: toBoolean(item.is_deleted),
+
+        isLocked: toBoolean(item.is_locked),
+
+        lockedAt: item.locked_at || '',
+
         createdAt: item.created_at || '',
 
         raw: item,

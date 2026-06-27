@@ -274,6 +274,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/{id}', [AdminUserController::class, 'show']);
         Route::patch('/{id}/role', [AdminUserController::class, 'updateRole']);
         Route::patch('/{id}/restore', [AdminUserController::class, 'restore']);
+        Route::patch('/{id}/lock', [AdminUserController::class, 'lock']);
+        Route::patch('/{id}/unlock', [AdminUserController::class, 'unlock']);
         Route::delete('/{id}', [AdminUserController::class, 'destroy']);
     });
 

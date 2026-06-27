@@ -113,18 +113,73 @@ class AdminUserService
         }
 
         if ($user->id === auth()->id()) {
-            throw new RuntimeException(
-                'Không thể khóa tài khoản của chính mình',
-                400
-            );
+            throw new RuntimeException('Không thể xóa tài khoản của chính mình', 400);
         }
 
         $user->delete();
 
         return [
             'success' => true,
-            'message' => 'Khóa tài khoản người dùng thành công',
+            'message' => 'Xóa tài khoản người dùng thành công',
             'data' => null,
+        ];
+    }
+
+    public function lock(int $id): array
+    {
+        $user = User::withTrashed()->find($id);
+
+        if (!$user) {
+            throw new RuntimeException('Người dùng không tồn tại', 404);
+        }
+
+        if ($user->trashed()) {
+            throw new RuntimeException('Tài khoản đã bị xóa, không thể khóa', 400);
+        }
+
+        if ($user->id === auth()->id()) {
+            throw new RuntimeException('Không thể khóa tài khoản của chính mình', 400);
+        }
+
+        if ($user->locked_at) {
+            throw new RuntimeException('Tài khoản này đã bị khóa', 400);
+        }
+
+        $user->update([
+            'locked_at' => now(),
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Khóa tài khoản người dùng thành công',
+            'data' => $this->formatDetail($user->fresh()),
+        ];
+    }
+
+    public function unlock(int $id): array
+    {
+        $user = User::withTrashed()->find($id);
+
+        if (!$user) {
+            throw new RuntimeException('Người dùng không tồn tại', 404);
+        }
+
+        if ($user->trashed()) {
+            throw new RuntimeException('Tài khoản đã bị xóa, không thể mở khóa', 400);
+        }
+
+        if (!$user->locked_at) {
+            throw new RuntimeException('Tài khoản này chưa bị khóa', 400);
+        }
+
+        $user->update([
+            'locked_at' => null,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Mở khóa tài khoản người dùng thành công',
+            'data' => $this->formatDetail($user->fresh()),
         ];
     }
 
@@ -142,6 +197,8 @@ class AdminUserService
             'reviews_count' => $user->reviews_count ?? 0,
             'is_deleted' => !is_null($user->deleted_at),
             'created_at' => optional($user->created_at)->format('d/m/Y H:i'),
+            'is_locked' => !is_null($user->locked_at),
+            'locked_at' => optional($user->locked_at)->format('d/m/Y H:i'),
         ];
     }
 
@@ -177,14 +234,14 @@ class AdminUserService
         }
 
         if (!$user->trashed()) {
-            throw new RuntimeException('Tài khoản này chưa bị khóa', 400);
+            throw new RuntimeException('Tài khoản này chưa bị xóa', 400);
         }
 
         $user->restore();
 
         return [
             'success' => true,
-            'message' => 'Mở khóa tài khoản người dùng thành công',
+            'message' => 'Khôi phục tài khoản người dùng thành công',
             'data' => $this->formatDetail($user->fresh()),
         ];
     }

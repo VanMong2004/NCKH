@@ -135,7 +135,7 @@ export default function AdminUsers() {
             total: meta.total,
             customers: users.filter((item) => item.role === 'user').length,
             admins: users.filter((item) => item.role === 'admin').length,
-            locked: users.filter((item) => item.isDeleted).length,
+            locked: users.filter((item) => item.isLocked).length,
             orders: users.reduce((sum, item) => sum + Number(item.ordersCount || 0), 0),
         };
     }, [users, meta.total]);
@@ -166,7 +166,7 @@ export default function AdminUsers() {
                 <StatCard label="Tổng tài khoản" value={summary.total} tone="blue" />
                 <StatCard label="Admin" value={summary.admins} tone="violet" />
                 <StatCard label="Tổng đơn mua hàng" value={summary.orders} tone="rose" />
-                <StatCard label="Người dùng" value={summary.normal} tone="emerald" />
+                <StatCard label="Người dùng" value={summary.customers} tone="emerald" />
                 <StatCard label="Đã khóa" value={summary.locked} tone="slate" />
             </div>
             <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -303,7 +303,7 @@ export default function AdminUsers() {
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4">
-                                            <AccountStatusBadge locked={user.isDeleted} />
+                                            <AccountStatusBadge locked={user.isLocked} deleted={user.isDeleted}/>
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4 text-slate-500">
@@ -421,7 +421,15 @@ function RoleBadge({ role, children }) {
     );
 }
 
-function AccountStatusBadge({ locked }) {
+function AccountStatusBadge({ locked, deleted }) {
+    if (deleted) {
+        return (
+            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Đã xóa
+            </span>
+        );
+    }
+
     if (locked) {
         return (
             <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 dark:bg-red-500/10 dark:text-red-300">

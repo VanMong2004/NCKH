@@ -1,4 +1,4 @@
-import { Lock, Loader2, MapPin, Package, RotateCcw, Save, ShieldCheck, Star, Unlock, X } from 'lucide-react';
+import { Lock, Loader2, MapPin, Package, RotateCcw, Save, ShieldCheck, Star, Trash2, Undo2, Unlock, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -13,6 +13,8 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
     const [role, setRole] = useState('user');
     const [savingRole, setSavingRole] = useState(false);
     const [locking, setLocking] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [restoring, setRestoring] = useState(false);
 
     const [confirmDialog, setConfirmDialog] = useState({
         open: false,
@@ -137,17 +139,17 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
             description: 'Sau khi mở khóa, tài khoản có thể hoạt động lại bình thường.',
             confirmText: 'Mở khóa',
             type: 'success',
-            onConfirm: restoreUser,
+            onConfirm: unlockUser,
         });
     }
 
-    async function restoreUser() {
+    async function unlockUser() {
         if (!user) return;
 
         try {
             setLocking(true);
 
-            const result = await adminUserService.restoreUser(user.id);
+            const result = await adminUserService.unlockUser(user.id);
 
             setUser(result);
             setRole(result.role || role);
@@ -158,6 +160,74 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
             toast.error(error?.message || 'Không thể mở khóa tài khoản');
         } finally {
             setLocking(false);
+        }
+    }
+
+    function handleDelete() {
+        if (!user) return;
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xóa tài khoản',
+            message: `Bạn muốn xóa tài khoản "${user.name}"?`,
+            description: 'Tài khoản sẽ bị xóa mềm khỏi hệ thống. Bạn vẫn có thể khôi phục lại sau.',
+            confirmText: 'Xóa tài khoản',
+            type: 'danger',
+            onConfirm: deleteUser,
+        });
+    }
+
+    async function deleteUser() {
+        if (!user) return;
+
+        try {
+            setDeleting(true);
+
+            const result = await adminUserService.deleteUser(user.id);
+
+            toast.success(result.message || 'Đã xóa tài khoản');
+
+            onUpdated?.();
+
+            onClose();
+        } catch (error) {
+            toast.error(error?.message || 'Không thể xóa tài khoản');
+        } finally {
+            setDeleting(false);
+        }
+    }
+
+    function handleRestoreDeleted() {
+        if (!user) return;
+
+        setConfirmDialog({
+            open: true,
+            title: 'Khôi phục tài khoản',
+            message: `Bạn muốn khôi phục tài khoản "${user.name}"?`,
+            description: 'Sau khi khôi phục, tài khoản sẽ quay lại danh sách người dùng và có thể sử dụng bình thường nếu không bị khóa.',
+            confirmText: 'Khôi phục',
+            type: 'success',
+            onConfirm: restoreDeletedUser,
+        });
+    }
+
+    async function restoreDeletedUser() {
+        if (!user) return;
+
+        try {
+            setRestoring(true);
+
+            const result = await adminUserService.restoreUser(user.id);
+
+            setUser(result);
+            setRole(result.role || role);
+
+            toast.success('Đã khôi phục tài khoản');
+            onUpdated?.();
+        } catch (error) {
+            toast.error(error?.message || 'Không thể khôi phục tài khoản');
+        } finally {
+            setRestoring(false);
         }
     }
 
@@ -218,7 +288,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
 
                                             <div className="mt-3 flex flex-wrap gap-2">
                                                 <RoleBadge role={user.role}>{user.roleText}</RoleBadge>
-                                                <AccountStatusBadge locked={user.isDeleted} />
+                                                <AccountStatusBadge locked={user.isLocked} deleted={user.isDeleted} />
                                             </div>
                                         </div>
                                     </div>
@@ -229,7 +299,10 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
                                         <InfoLine label="Email" value={user.email || '—'} />
                                         <InfoLine label="Số điện thoại" value={user.phone || '—'} />
                                         <InfoLine label="Ngày tạo" value={user.createdAt || '—'} />
-                                        <InfoLine label="Trạng thái" value={user.isDeleted ? 'Đã khóa' : 'Hoạt động'} />
+                                        <InfoLine
+                                            label="Trạng thái"
+                                            value={user.isDeleted ? 'Đã xóa' : user.isLocked ? 'Đã khóa' : 'Hoạt động'}
+                                        />
                                     </div>
                                 </Section>
 
@@ -328,7 +401,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
                                         <Field label="Vai trò">
                                             <select
                                                 value={role}
-                                                disabled={user.isDeleted || savingRole}
+                                                disabled={user.isLocked || user.isDeleted || savingRole}
                                                 onChange={(e) => setRole(e.target.value)}
                                                 className={controlClass}
                                             >
@@ -339,7 +412,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
 
                                         <button
                                             type="submit"
-                                            disabled={user.isDeleted || savingRole || role === user.role}
+                                            disabled={user.isLocked || user.isDeleted || savingRole || role === user.role}
                                             className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                                         >
                                             {savingRole ? (
@@ -361,38 +434,76 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
 
                                 <Section title="Trạng thái tài khoản">
                                     {user.isDeleted ? (
-                                        <button
-                                            type="button"
-                                            disabled={locking}
-                                            onClick={handleRestore}
-                                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
-                                        >
-                                            {locking ? (
-                                                <Loader2 size={16} className="animate-spin" />
-                                            ) : (
-                                                <Unlock size={16} />
-                                            )}
-                                            Mở khóa tài khoản
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            disabled={locking}
-                                            onClick={handleLock}
-                                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-500/10"
-                                        >
-                                            {locking ? (
-                                                <Loader2 size={16} className="animate-spin" />
-                                            ) : (
-                                                <Lock size={16} />
-                                            )}
-                                            Khóa tài khoản
-                                        </button>
-                                    )}
+                                        <>
+                                            <button
+                                                type="button"
+                                                disabled={restoring}
+                                                onClick={handleRestoreDeleted}
+                                                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                            >
+                                                {restoring ? (
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                ) : (
+                                                    <Undo2 size={16} />
+                                                )}
+                                                Khôi phục tài khoản
+                                            </button>
 
-                                    <p className="mt-3 text-sm text-slate-500">
-                                        Khóa tài khoản sẽ tạm ngưng hoạt động của người dùng. Có thể mở lại sau.
-                                    </p>
+                                            <p className="mt-3 text-sm text-slate-500">
+                                                Tài khoản đã bị xóa. Không thể khóa hoặc mở khóa cho đến khi được khôi phục.
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {user.isLocked ? (
+                                                <button
+                                                    type="button"
+                                                    disabled={locking}
+                                                    onClick={handleRestore}
+                                                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                                                >
+                                                    {locking ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <Unlock size={16} />
+                                                    )}
+                                                    Mở khóa tài khoản
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    disabled={locking}
+                                                    onClick={handleLock}
+                                                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-500/10"
+                                                >
+                                                    {locking ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : (
+                                                        <Lock size={16} />
+                                                    )}
+                                                    Khóa tài khoản
+                                                </button>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                disabled={deleting}
+                                                onClick={handleDelete}
+                                                className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                                            >
+                                                {deleting ? (
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                ) : (
+                                                    <Trash2 size={16} />
+                                                )}
+                                                Xóa tài khoản
+                                            </button>
+
+                                            <p className="mt-3 text-sm text-slate-500">
+                                                Khóa tài khoản sẽ tạm ngưng đăng nhập. Xóa tài khoản sẽ đưa vào trạng thái đã xóa và có thể khôi phục sau.
+                                            </p>
+                                        </>
+                                    )}
                                 </Section>
 
                                 <button
@@ -538,7 +649,15 @@ function RoleBadge({ role, children }) {
     );
 }
 
-function AccountStatusBadge({ locked }) {
+function AccountStatusBadge({ locked, deleted }) {
+    if (deleted) {
+        return (
+            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                Đã xóa
+            </span>
+        );
+    }
+
     if (locked) {
         return (
             <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 dark:bg-red-500/10 dark:text-red-300">

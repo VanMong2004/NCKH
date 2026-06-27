@@ -363,6 +363,7 @@ class AdminOrderService
                     'created_at' => optional($history->created_at)->format('d/m/Y H:i'),
                 ])
                 ->values(),
+            'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
             'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
             'cancel_reason' => $order->cancel_reason,
 

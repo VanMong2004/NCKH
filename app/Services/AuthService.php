@@ -26,6 +26,13 @@ class AuthService
             throw new RuntimeException('Email hoặc mật khẩu không đúng', 401);
         }
 
+        if ($user->locked_at) {
+            throw new RuntimeException(
+                'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+                403
+            );
+        }
+
         $this->mergeGuestCart(
             $user,
             $data['guest_token'] ?? null

@@ -117,6 +117,48 @@ class AdminUserController extends Controller
         }
     }
 
+    public function lock($id)
+    {
+        try {
+            return response()->json(
+                $this->service->lock((int) $id)
+            );
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $e->getCode() ?: 400);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi khóa tài khoản người dùng',
+                'data' => null,
+            ], 500);
+        }
+    }
+
+    public function unlock($id)
+    {
+        try {
+            return response()->json(
+                $this->service->unlock((int) $id)
+            );
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $e->getCode() ?: 400);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi mở khóa tài khoản người dùng',
+                'data' => null,
+            ], 500);
+        }
+    }
+
     public function restore($id)
     {
         try {

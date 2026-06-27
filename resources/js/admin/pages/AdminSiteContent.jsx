@@ -147,14 +147,14 @@ export default function AdminSiteContent() {
                             component={componentMap.footer}
                             onEdit={() => openEditor(componentMap.footer)}
                             onQuickEdit={openQuickEdit}
-                        />
-
-                        <AuthBannerPreview
-                            component={componentMap.auth_banner}
-                            onEdit={() => openEditor(componentMap.auth_banner)}
-                            onQuickEdit={openQuickEdit}
-                        />
+                        />                        
                     </WebsitePreviewFrame>
+
+                    <AuthBannerPreview
+                        component={componentMap.auth_banner}
+                        onEdit={() => openEditor(componentMap.auth_banner)}
+                        onQuickEdit={openQuickEdit}
+                    />
 
                     <section className="grid gap-4 lg:grid-cols-2">
                         {sortedComponents.map((component) => (
@@ -364,42 +364,34 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
 function AuthBannerPreview({ component, onEdit, onQuickEdit }) {
     const title = component?.title || 'Đăng nhập CTUT Shop';
     const subtitle = component?.subtitle || 'Chào mừng bạn quay lại';
-    const content =
+    const content = 
         component?.content ||
-        'Đăng nhập để theo dõi đơn hàng, lưu sản phẩm yêu thích và nhận ưu đãi dành riêng cho sinh viên CTUT.';
+        'Đăng nhập để nhận thêm nhiều ưu đãi và theo dõi đơn hàng của bạn.';
     const image = component?.image || '/images/system/auth-banner.jpg';
 
     return (
         <PreviewBlock label="Auth Banner" onEdit={onEdit} disabled={!component}>
             <div
                 onClick={() => onQuickEdit('auth-banner', component)}
-                className="relative grid min-h-[280px] cursor-pointer overflow-hidden bg-blue-950 md:grid-cols-2"
+                className="relative h-[600px] cursor-pointer overflow-hidden rounded-3xl"
             >
-                <div className="relative z-10 flex flex-col justify-center px-8 py-10 text-white">
-                    <p className="text-sm font-black uppercase tracking-wider text-blue-100">
-                        {subtitle}
-                    </p>
+                {/* Background Image */}
+                <img
+                    src={image}
+                    alt={title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-white/15" />
 
-                    <h2 className="mt-3 text-3xl font-black">
+                {/* Nội dung */}
+                <div className="relative z-10 flex h-full flex-col justify-start px-10 pt-12">
+                    <h2 className="mt-2 max-w-xl text-4xl font-extrabold leading-tight text-indigo-950">
                         {title}
                     </h2>
 
-                    <p className="mt-4 max-w-xl text-sm leading-6 text-white/80">
+                    <p className="mt-4 max-w-md text-base leading-8 text-slate-700">
                         {content}
                     </p>
-
-                    <div className="mt-6 inline-flex w-fit rounded-xl bg-white px-5 py-3 text-sm font-black text-blue-950">
-                        Đăng nhập ngay
-                    </div>
-                </div>
-
-                <div className="relative hidden md:block">
-                    <img
-                        src={image}
-                        alt={title}
-                        className="h-full w-full object-cover opacity-90"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-950 to-transparent" />
                 </div>
             </div>
         </PreviewBlock>

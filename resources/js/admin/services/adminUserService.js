@@ -22,6 +22,16 @@ const adminUserService = {
     },
 
     async lockUser(id) {
+        const res = await api.patch(`/admin/users/${id}/lock`);
+        return res.data;
+    },
+
+    async unlockUser(id) {
+        const res = await api.patch(`/admin/users/${id}/unlock`);
+        return mapAdminUserDetailResponse(res.data);
+    },
+
+    async deleteUser(id) {
         const res = await api.delete(`/admin/users/${id}`);
         return res.data;
     },

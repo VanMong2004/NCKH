@@ -93,6 +93,28 @@ const guestOrderService = {
 
         return res.data?.data || null;
     },
+
+    async downloadVatInvoice(orderCode, options = {}) {
+        const guest = JSON.parse(
+            sessionStorage.getItem('guest_order_success') || '{}'
+        );
+
+        const guestToken = options.guestToken || guest.guestToken;
+
+        const res = await api.get(
+            `/guest/orders/${encodeURIComponent(orderCode)}/vat-invoice`,
+            {
+                responseType: 'blob',
+                headers: guestToken
+                    ? {
+                          'X-Guest-Token': guestToken,
+                      }
+                    : {},
+            }
+        );
+
+        downloadBlob(res.data, `vat-invoice-${orderCode}.pdf`);
+    },
 };
 
 function downloadBlob(blob, filename) {

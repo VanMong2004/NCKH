@@ -14,8 +14,10 @@ export default function VatInvoiceRequestModal({
     existingRequest,
     defaultEmail = '',
     submitting = false,
+    downloading = false,
     onClose,
     onSubmit,
+    onDownload,
 }) {
     const [form, setForm] = useState(defaultForm);
     const [errors, setErrors] = useState({});
@@ -121,6 +123,18 @@ export default function VatInvoiceRequestModal({
                                 <Info label="Email nhận" value={existingRequest.invoice_email} />
                                 <Info label="Ngày yêu cầu" value={existingRequest.created_at} />
                             </div>
+
+                            {existingRequest.status !== 'rejected' && (
+                                <button
+                                    type="button"
+                                    disabled={downloading}
+                                    onClick={onDownload}
+                                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-60"
+                                >
+                                    {downloading && <Loader2 size={16} className="animate-spin" />}
+                                    Tải PDF hóa đơn đỏ
+                                </button>
+                            )}
                         </div>
                     </div>
                 ) : (

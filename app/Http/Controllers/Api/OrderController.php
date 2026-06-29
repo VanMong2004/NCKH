@@ -503,6 +503,50 @@ class OrderController extends Controller
         }
     }
 
+    public function downloadVatInvoice(Request $request, $id)
+    {
+        try {
+            $request->merge([
+                'order_id' => $id,
+            ]);
+
+            $data = $request->validate([
+                'order_id' => 'required|integer|min:1',
+            ]);
+
+            return $this->vatInvoiceRequestService->downloadForUser(
+                $request->user(),
+                $data['order_id']
+            );
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu đơn hàng không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
+
+        } catch (Throwable $e) {
+            Log::error('Download VAT invoice error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
+
     // POST /api/orders/{id}/cancel
     public function cancel(Request $request, $id)
     {

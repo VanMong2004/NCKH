@@ -107,6 +107,7 @@ Route::prefix('guest/orders')->group(function () {
     Route::get('/{orderCode}/bill', [GuestOrderController::class, 'bill']);
     Route::get('/{orderCode}/vat-invoice-request', [GuestOrderController::class, 'vatInvoiceRequest']);
     Route::post('/{orderCode}/vat-invoice-request', [GuestOrderController::class, 'storeVatInvoiceRequest']);
+    Route::get('/{orderCode}/vat-invoice', [GuestOrderController::class, 'downloadVatInvoice']);
     Route::get('/{orderCode}', [GuestOrderController::class, 'showByCode']);
 });
 
@@ -177,6 +178,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/bill', [OrderController::class, 'bill']);
         Route::get('/{id}/vat-invoice-request', [OrderController::class, 'vatInvoiceRequest']);
         Route::post('/{id}/vat-invoice-request', [OrderController::class, 'storeVatInvoiceRequest']);
+        Route::get('/{id}/vat-invoice', [OrderController::class, 'downloadVatInvoice']);
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']); // Hủy đơn hàng (nếu chưa thanh toán)
         Route::get('/{id}/payments', [PaymentController::class, 'list']); // Lấy danh sách payment của đơn hàng (có hỗ trợ filter theo status)
     });

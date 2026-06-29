@@ -51,4 +51,8 @@ return [
         'vector_store_id' => env('OPENAI_VECTOR_STORE_ID'),
         'chat_max_history' => (int) env('OPENAI_CHAT_MAX_HISTORY', 12),
     ],
+
+    'misa_invoice' => [
+        'mode' => env('MISA_INVOICE_MODE', 'mock'),
+    ],
 ];

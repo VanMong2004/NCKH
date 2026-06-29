@@ -4,11 +4,16 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\VatInvoiceRequest;
+use App\Services\Invoices\MockMisaInvoiceProvider;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class VatInvoiceRequestService
 {
+    public function __construct(
+        protected MockMisaInvoiceProvider $mockMisaInvoiceProvider
+    ) {}
+
     public function showForUser($user, int $orderId): ?array
     {
         $order = $this->resolveUserOrder($user, $orderId);
@@ -39,6 +44,20 @@ class VatInvoiceRequestService
         $order = $this->resolveGuestOrder($user, $guestToken, $orderCode);
 
         return $this->create($order, $data);
+    }
+
+    public function downloadForUser($user, int $orderId)
+    {
+        $order = $this->resolveUserOrder($user, $orderId);
+
+        return $this->download($order);
+    }
+
+    public function downloadForGuest($user, ?string $guestToken, string $orderCode)
+    {
+        $order = $this->resolveGuestOrder($user, $guestToken, $orderCode);
+
+        return $this->download($order);
     }
 
     private function resolveUserOrder($user, int $orderId): Order
@@ -105,6 +124,31 @@ class VatInvoiceRequestService
 
             return $this->format($request);
         });
+    }
+
+    private function download(Order $order)
+    {
+        $request = VatInvoiceRequest::where('order_id', $order->id)->first();
+
+        if (!$request) {
+            throw new RuntimeException('Vui lòng gửi yêu cầu hóa đơn đỏ trước khi tải PDF', 404);
+        }
+
+        if ($request->status === 'rejected') {
+            throw new RuntimeException('Yêu cầu hóa đơn đỏ đã bị từ chối', 409);
+        }
+
+        if ($request->status !== 'issued') {
+            $request->update([
+                'status' => 'issued',
+                'issued_at' => now(),
+                'admin_note' => $request->admin_note ?: 'Hóa đơn đỏ được phát hành mô phỏng qua MISA mock provider.',
+            ]);
+
+            $request = $request->fresh();
+        }
+
+        return $this->mockMisaInvoiceProvider->download($request);
     }
 
     private function format(?VatInvoiceRequest $request): ?array

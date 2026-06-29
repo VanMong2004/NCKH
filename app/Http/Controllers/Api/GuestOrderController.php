@@ -223,4 +223,34 @@ class GuestOrderController extends Controller
             ], 500);
         }
     }
+
+    public function downloadVatInvoice(Request $request, string $orderCode)
+    {
+        try {
+            $user = auth('sanctum')->user();
+
+            $guestToken = $request->header('X-Guest-Token')
+                ?: $request->query('guest_token');
+
+            return $this->vatInvoiceRequestService->downloadForGuest(
+                $user,
+                $guestToken,
+                $orderCode
+            );
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
+
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
 }

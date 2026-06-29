@@ -26,6 +26,7 @@ export default function OrderSuccess() {
     const [vatInvoiceModalOpen, setVatInvoiceModalOpen] = useState(false);
     const [vatInvoiceRequest, setVatInvoiceRequest] = useState(null);
     const [submittingVatInvoice, setSubmittingVatInvoice] = useState(false);
+    const [downloadingVatInvoice, setDownloadingVatInvoice] = useState(false);
 
     useEffect(() => {
         if (authLoading) return;
@@ -122,6 +123,32 @@ export default function OrderSuccess() {
             toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
         } finally {
             setSubmittingVatInvoice(false);
+        }
+    }
+
+    async function downloadVatInvoice() {
+        if (!order?.code) return;
+
+        try {
+            setDownloadingVatInvoice(true);
+
+            const savedGuestOrder = JSON.parse(
+                sessionStorage.getItem('guest_order_success') || '{}'
+            );
+
+            await guestOrderService.downloadVatInvoice(order.code, {
+                guestToken: savedGuestOrder.guestToken,
+            });
+
+            const result = await guestOrderService.getVatInvoiceRequest(order.code, {
+                guestToken: savedGuestOrder.guestToken,
+            });
+
+            setVatInvoiceRequest(result);
+        } catch (err) {
+            toast.error(err.message || 'Không thể tải PDF hóa đơn đỏ');
+        } finally {
+            setDownloadingVatInvoice(false);
         }
     }
 
@@ -383,9 +410,11 @@ export default function OrderSuccess() {
                     open={vatInvoiceModalOpen}
                     existingRequest={vatInvoiceRequest}
                     submitting={submittingVatInvoice}
+                    downloading={downloadingVatInvoice}
                     defaultEmail={order.raw?.guest_email || ''}
                     onClose={() => setVatInvoiceModalOpen(false)}
                     onSubmit={submitVatInvoiceRequest}
+                    onDownload={downloadVatInvoice}
                 />
             </main>
         </MainLayout>

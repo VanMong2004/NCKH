@@ -230,11 +230,35 @@ class AdminProductController extends Controller
         }
     }
 
-    public function postFacebook($id)
+    public function generateFacebookCaption(Request $request, $id)
     {
         try {
+            $data = validator($request->all(), [
+                'style' => 'nullable|string|in:intro,promotion,sales',
+            ])->validate();
+
             return response()->json(
-                $this->adminProductService->postFacebook($id)
+                $this->adminProductService->generateFacebookCaption($id, $data['style'] ?? 'intro')
+            );
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => app()->environment('local') ? $e->getMessage() : null,
+            ], 400);
+        }
+    }
+
+    public function postFacebook(Request $request, $id)
+    {
+        try {
+            $data = validator($request->all(), [
+                'content' => 'nullable|string|max:5000',
+                'style' => 'nullable|string|in:intro,promotion,sales',
+            ])->validate();
+
+            return response()->json(
+                $this->adminProductService->postFacebook($id, $data)
             );
         } catch (Exception $e) {
             return response()->json([

@@ -42,6 +42,7 @@ return [
         'social_webhook_url' => env('N8N_SOCIAL_WEBHOOK_URL'),
         'social_webhook_secret' => env('N8N_SOCIAL_WEBHOOK_SECRET'),
         'social_callback_secret' => env('N8N_SOCIAL_CALLBACK_SECRET'),
+        'social_public_url' => env('N8N_SOCIAL_PUBLIC_URL'),
     ],
 
     'openai' => [

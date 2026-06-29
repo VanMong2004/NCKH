@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
 import notificationService from '../../services/notificationService';
+import { useAuth } from '../../contexts/AuthContext';
+import useRealtimeNotifications from '../../hooks/useRealtimeNotifications';
 
 import NotificationHeader from '../../components/notifications/NotificationHeader';
 import NotificationTabs from '../../components/notifications/NotificationTabs';
@@ -10,6 +12,7 @@ import NotificationDetail from '../../components/notifications/NotificationDetai
 import { ChevronRight, Home } from 'lucide-react';
 
 export default function AccountNotifications() {
+    const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [selected, setSelected] = useState(null);
     const [activeTab, setActiveTab] = useState('');
@@ -18,6 +21,10 @@ export default function AccountNotifications() {
     useEffect(() => {
         loadData();
     }, []);
+
+    useRealtimeNotifications(user, () => {
+        loadData();
+    });
 
     const filteredNotifications = useMemo(() => {
         if (activeTab === 'unread') {
@@ -91,4 +98,3 @@ export default function AccountNotifications() {
         </div>
     );
 }
-

@@ -11,9 +11,9 @@ use Throwable;
 
 class N8nSocialAutomationService
 {
-    public function createProductCreatedLog(Product $product): SocialAutomationLog
+    public function createProductCreatedLog(Product $product, ?string $caption = null, ?string $style = null): SocialAutomationLog
     {
-        $payload = $this->buildProductCreatedPayload($product);
+        $payload = $this->buildProductCreatedPayload($product, $caption, $style);
 
         return SocialAutomationLog::create([
             'trigger_type' => 'product_created',
@@ -136,7 +136,7 @@ class N8nSocialAutomationService
         ];
     }
 
-    private function buildProductCreatedPayload(Product $product): array
+    private function buildProductCreatedPayload(Product $product, ?string $caption = null, ?string $style = null): array
     {
         $product->loadMissing([
             'category',
@@ -144,7 +144,10 @@ class N8nSocialAutomationService
             'variants',
         ]);
 
-        $image = $this->firstProductImage($product);
+        $images = $this->productImages($product);
+        $image = $images[0] ?? null;
+        $productUrl = $this->publicUrl('/shop/' . $product->slug);
+        $caption = $this->normalizeCaption($caption, $productUrl);
 
         $minPrice = $product->variants
             ->pluck('price')
@@ -194,7 +197,8 @@ class N8nSocialAutomationService
                     ->values()
                     ->toArray(),
                 'image' => $image,
-                'url' => url('/shop/' . $product->slug),
+                'images' => $images,
+                'url' => $productUrl,
             ],
             'caption_template' => [
                 'title' => 'Sản phẩm mới tại CTUT Store',
@@ -204,37 +208,88 @@ class N8nSocialAutomationService
                     '#SanPhamMoi',
                 ],
             ],
+            'caption' => [
+                'source' => $caption ? 'admin_approved_ai' : 'template',
+                'style' => $style,
+                'content' => $caption,
+            ],
         ];
     }
 
     private function firstProductImage(Product $product): ?string
     {
-        $image = $product->images->first();
+        return $this->productImages($product)[0] ?? null;
+    }
 
-        if (!$image) {
-            return null;
-        }
+    private function productImages(Product $product): array
+    {
+        return $product->images
+            ->sortBy('position')
+            ->map(function ($image) {
+                $path = $image->image_url
+                    ?? $image->url
+                    ?? $image->path
+                    ?? $image->image
+                    ?? null;
 
-        $path = $image->image_url
-            ?? $image->url
-            ?? $image->path
-            ?? $image->image
-            ?? null;
+                return $this->publicUrl($path);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+    }
 
+    public function publicProductUrl(Product $product): ?string
+    {
+        return $this->publicUrl('/shop/' . $product->slug);
+    }
+
+    public function publicPromotionUrl(Promotion $promotion): ?string
+    {
+        return $this->publicUrl('/promotions/' . $promotion->slug);
+    }
+
+    private function publicUrl(?string $path): ?string
+    {
         if (!$path) {
             return null;
         }
 
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
+        $publicBaseUrl = rtrim((string) config('services.n8n.social_public_url'), '/');
+
+        if ($publicBaseUrl === '') {
+            return str_starts_with($path, 'http://') || str_starts_with($path, 'https://')
+                ? $path
+                : url($path);
         }
 
-        return url($path);
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            $parsed = parse_url($path);
+            $path = ($parsed['path'] ?? '') . (isset($parsed['query']) ? '?' . $parsed['query'] : '');
+        }
+
+        return $publicBaseUrl . '/' . ltrim($path, '/');
     }
 
-    public function createPromotionCreatedLog(Promotion $promotion): SocialAutomationLog
+    private function normalizeCaption(?string $caption, ?string $productUrl): ?string
     {
-        $payload = $this->buildPromotionCreatedPayload($promotion);
+        if (!$caption) {
+            return null;
+        }
+
+        $caption = trim($caption);
+
+        if ($productUrl) {
+            $caption = str_replace('[link sản phẩm]', $productUrl, $caption);
+        }
+
+        return $caption;
+    }
+
+    public function createPromotionCreatedLog(Promotion $promotion, ?string $caption = null, ?string $style = null): SocialAutomationLog
+    {
+        $payload = $this->buildPromotionCreatedPayload($promotion, $caption, $style);
 
         return SocialAutomationLog::create([
             'trigger_type' => 'promotion_created',
@@ -246,7 +301,7 @@ class N8nSocialAutomationService
         ]);
     }
 
-    private function buildPromotionCreatedPayload(Promotion $promotion): array
+    private function buildPromotionCreatedPayload(Promotion $promotion, ?string $caption = null, ?string $style = null): array
     {
         $promotion->loadMissing([
             'items.product',
@@ -285,6 +340,9 @@ class N8nSocialAutomationService
             ->values()
             ->toArray();
 
+        $promotionUrl = $this->publicPromotionUrl($promotion);
+        $caption = $this->normalizeCaption($caption, $promotionUrl);
+
         return [
             'promotion' => [
                 'id' => $promotion->id,
@@ -293,13 +351,19 @@ class N8nSocialAutomationService
                 'description' => $promotion->description,
                 'banner' => $this->normalizePublicUrl($promotion->banner ?? null),
                 'thumbnail' => $this->normalizePublicUrl($promotion->thumbnail ?? null),
+                'image' => $this->normalizePublicUrl($promotion->banner ?? null)
+                    ?: $this->normalizePublicUrl($promotion->thumbnail ?? null),
+                'images' => array_values(array_filter(array_unique([
+                    $this->normalizePublicUrl($promotion->banner ?? null),
+                    $this->normalizePublicUrl($promotion->thumbnail ?? null),
+                ]))),
                 'discount_type' => $promotion->discount_type,
                 'discount_value' => $promotion->discount_value ? (float) $promotion->discount_value : null,
                 'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
                 'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
                 'status' => $promotion->status,
                 'is_active' => (bool) $promotion->is_active,
-                'url' => url('/promotions/' . $promotion->slug),
+                'url' => $promotionUrl,
                 'products' => $products,
                 'products_count' => $promotion->items->count(),
             ],
@@ -311,6 +375,11 @@ class N8nSocialAutomationService
                     '#KhuyenMai',
                 ],
             ],
+            'caption' => [
+                'source' => $caption ? 'admin_approved_ai' : 'template',
+                'style' => $style,
+                'content' => $caption,
+            ],
         ];
     }
 
@@ -320,10 +389,6 @@ class N8nSocialAutomationService
             return null;
         }
 
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        return url($path);
+        return $this->publicUrl($path);
     }
 }

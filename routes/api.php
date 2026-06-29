@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\GuestOrderController;
 use App\Http\Controllers\Api\PromotionController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\AnalyticsEventController;
 
 use App\Http\Controllers\Api\Admin\AdminProductController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
@@ -60,6 +61,9 @@ Route::prefix('auth')->group(function () {
 Route::prefix('home')->group(function () {
     Route::get('/', [HomeController::class,'getHomeData']); // Lấy dữ liệu cho trang chủ Home Page 
 });
+
+Route::middleware('throttle:120,1')
+    ->post('/analytics/events', [AnalyticsEventController::class, 'store']);
 
 // PRODUCTS (PUBLIC)
 Route::prefix('products')->group(function () {
@@ -305,6 +309,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::post('/{id}/toggle-sale', [AdminProductController::class, 'toggleProductSale']);
         Route::post('/variants/{id}/toggle-sale', [AdminProductController::class, 'toggleVariantSale']);
         
+        Route::post('/{id}/facebook-caption', [AdminProductController::class, 'generateFacebookCaption']);
         Route::post('/{id}/post-facebook', [AdminProductController::class, 'postFacebook']);
     });
 
@@ -343,12 +348,16 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::put('/items/{itemId}', [AdminPromotionController::class, 'updateItem']);
         Route::delete('/items/{itemId}', [AdminPromotionController::class, 'destroyItem']);
     
+        Route::post('/{id}/facebook-caption', [AdminPromotionController::class, 'generateFacebookCaption']);
         Route::post('/{id}/publish-social', [AdminPromotionController::class, 'publishSocial']);
     });
 
     // ADMIN ANALYTICS
     Route::prefix('analytics')->middleware('admin')->group(function () {
         Route::get('/overview', [AdminAnalyticsController::class, 'overview']);
+        Route::get('/behavior-overview', [AdminAnalyticsController::class, 'behaviorOverview']);
+        Route::get('/behavior-chart', [AdminAnalyticsController::class, 'behaviorChart']);
+        Route::get('/revenue-by-category', [AdminAnalyticsController::class, 'revenueByCategory']);
         Route::get('/top-products', [AdminAnalyticsController::class, 'topProducts']);
         Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);
         Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);

@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\PromotionItem;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\SendPromotionSocialAutomationJob;
+use App\Services\Social\AiSocialCaptionService;
 use App\Services\Social\N8nSocialAutomationService;
 use App\Models\SocialAutomationLog;
 use Illuminate\Support\Str;
@@ -265,7 +266,34 @@ class AdminPromotionService
         ];
     }
 
-    public function publishSocial($id): array
+    public function generateFacebookCaption($id, string $style = 'promotion'): array
+    {
+        $promotion = Promotion::query()
+            ->with([
+                'items.product',
+                'items.productVariant',
+            ])
+            ->find($id);
+
+        if (!$promotion) {
+            throw new RuntimeException('Đợt khuyến mãi không tồn tại', 404);
+        }
+
+        if ($promotion->items->count() <= 0) {
+            throw new RuntimeException('Vui lòng thêm sản phẩm vào đợt khuyến mãi trước khi tạo nội dung Facebook', 422);
+        }
+
+        $caption = app(AiSocialCaptionService::class)
+            ->generatePromotionCaption($promotion, $style);
+
+        return [
+            'success' => true,
+            'message' => 'Đã tạo nội dung khuyến mãi bằng AI',
+            'data' => $caption,
+        ];
+    }
+
+    public function publishSocial($id, array $data = []): array
     {
         $promotion = Promotion::query()
             ->with([
@@ -304,8 +332,11 @@ class AdminPromotionService
             );
         }
 
+        $caption = trim((string) ($data['content'] ?? ''));
+        $style = $data['style'] ?? null;
+
         $socialLog = app(N8nSocialAutomationService::class)
-            ->createPromotionCreatedLog($promotion);
+            ->createPromotionCreatedLog($promotion, $caption !== '' ? $caption : null, $style);
 
         SendPromotionSocialAutomationJob::dispatch($socialLog->id);
 

@@ -1,4 +1,4 @@
-import { Edit3, Loader2, Plus, Power, PowerOff, RefreshCcw, Search, Send, Star, Trash2 } from 'lucide-react';
+import { Edit3, Loader2, Plus, Power, PowerOff, RefreshCcw, Search, Send, Sparkles, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -29,6 +29,12 @@ const sortOptions = [
     { value: 'name_desc', label: 'Tên Z-A' },
 ];
 
+const facebookStyleOptions = [
+    { value: 'intro', label: 'Giới thiệu sản phẩm' },
+    { value: 'promotion', label: 'Khuyến mãi' },
+    { value: 'sales', label: 'Bán hàng' },
+];
+
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -37,6 +43,14 @@ export default function AdminProducts() {
     const [deletingId, setDeletingId] = useState(null);
     const [saleActionId, setSaleActionId] = useState(null);
     const [facebookActionId, setFacebookActionId] = useState(null);
+    const [facebookModal, setFacebookModal] = useState({
+        open: false,
+        product: null,
+        style: 'intro',
+        content: '',
+        loadingPreview: false,
+        submitting: false,
+    });
 
     const [filters, setFilters] = useState({
         keyword: '',
@@ -254,7 +268,18 @@ export default function AdminProducts() {
     }
 
     function handlePostFacebook(product) {
-        setConfirmDialog({
+        setFacebookModal({
+            open: true,
+            product,
+            style: 'intro',
+            content: '',
+            loadingPreview: true,
+            submitting: false,
+        });
+        generateFacebookCaption(product.id, 'intro');
+        return;
+
+        setFacebookModal({
             open: true,
             title: 'Đăng sản phẩm lên Facebook',
             message: `Đăng sản phẩm "${product.name}" lên Facebook?`,
@@ -279,6 +304,77 @@ export default function AdminProducts() {
         } finally {
             setFacebookActionId(null);
         }
+    }
+
+    async function generateFacebookCaption(productId, style) {
+        try {
+            setFacebookModal((current) => ({
+                ...current,
+                style,
+                loadingPreview: true,
+            }));
+
+            const result = await adminProductService.generateFacebookCaption(productId, { style });
+
+            setFacebookModal((current) => ({
+                ...current,
+                content: result?.data?.content || '',
+                style: result?.data?.style || style,
+            }));
+        } catch (error) {
+            toast.error(error?.message || 'Không thể tạo nội dung Facebook bằng AI');
+        } finally {
+            setFacebookModal((current) => ({
+                ...current,
+                loadingPreview: false,
+            }));
+        }
+    }
+
+    async function submitFacebookPost() {
+        const product = facebookModal.product;
+
+        if (!product) return;
+
+        if (!facebookModal.content.trim()) {
+            toast.error('Vui lòng nhập nội dung bài đăng Facebook');
+            return;
+        }
+
+        try {
+            setFacebookModal((current) => ({
+                ...current,
+                submitting: true,
+            }));
+            setFacebookActionId(product.id);
+
+            const result = await adminProductService.postFacebook(product.id, {
+                content: facebookModal.content,
+                style: facebookModal.style,
+            });
+
+            toast.success(result.message || 'Đã gửi yêu cầu đăng Facebook');
+            closeFacebookModal();
+        } catch (error) {
+            toast.error(error?.message || 'Không thể gửi yêu cầu đăng Facebook');
+        } finally {
+            setFacebookActionId(null);
+            setFacebookModal((current) => ({
+                ...current,
+                submitting: false,
+            }));
+        }
+    }
+
+    function closeFacebookModal() {
+        setFacebookModal({
+            open: false,
+            product: null,
+            style: 'intro',
+            content: '',
+            loadingPreview: false,
+            submitting: false,
+        });
     }
 
     const summary = useMemo(() => {
@@ -627,6 +723,19 @@ export default function AdminProducts() {
                 onSaved={handleSavedProduct}
             />
 
+            <FacebookCaptionModal
+                state={facebookModal}
+                onClose={closeFacebookModal}
+                onChange={(field, value) => {
+                    setFacebookModal((current) => ({
+                        ...current,
+                        [field]: value,
+                    }));
+                }}
+                onRegenerate={() => generateFacebookCaption(facebookModal.product?.id, facebookModal.style)}
+                onSubmit={submitFacebookPost}
+            />
+
             <ConfirmDialog
                 open={confirmDialog.open}
                 title={confirmDialog.title}
@@ -642,6 +751,105 @@ export default function AdminProducts() {
                     }));
                 }}
             />
+        </div>
+    );
+}
+
+function FacebookCaptionModal({ state, onClose, onChange, onRegenerate, onSubmit }) {
+    if (!state.open) return null;
+
+    const isBusy = state.loadingPreview || state.submitting;
+
+    return (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-3">
+            <div className="w-full max-w-3xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4 dark:border-slate-800">
+                    <div>
+                        <p className="text-xs font-bold uppercase text-blue-600 dark:text-blue-300">AI Facebook</p>
+                        <h2 className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">
+                            Tạo nội dung bài đăng
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            {state.product?.name || 'Sản phẩm'}
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isBusy}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+
+                <div className="space-y-4 p-4">
+                    <div className="grid gap-3 sm:grid-cols-[220px_auto] sm:items-end">
+                        <label className="block">
+                            <span className="mb-1 block text-xs font-bold uppercase text-slate-500">
+                                Phong cách viết
+                            </span>
+                            <select
+                                value={state.style}
+                                onChange={(event) => onChange('style', event.target.value)}
+                                disabled={isBusy}
+                                className={controlClass}
+                            >
+                                {facebookStyleOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <button
+                            type="button"
+                            onClick={onRegenerate}
+                            disabled={isBusy}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-60 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+                        >
+                            {state.loadingPreview ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                            Tạo lại bằng AI
+                        </button>
+                    </div>
+
+                    <label className="block">
+                        <span className="mb-1 block text-xs font-bold uppercase text-slate-500">
+                            Nội dung sẽ đăng
+                        </span>
+                        <textarea
+                            value={state.content}
+                            onChange={(event) => onChange('content', event.target.value)}
+                            rows={10}
+                            disabled={state.loadingPreview || state.submitting}
+                            className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-700 outline-none focus:border-blue-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                            placeholder="Nội dung AI sẽ hiển thị ở đây, admin có thể chỉnh trước khi đăng."
+                        />
+                    </label>
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 p-4 sm:flex-row sm:justify-end dark:border-slate-800">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isBusy}
+                        className="h-10 rounded-lg border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                        Hủy
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onSubmit}
+                        disabled={isBusy || !state.content.trim()}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                    >
+                        {state.submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                        Đăng Facebook
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

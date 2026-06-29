@@ -2,6 +2,9 @@ import api from '../../services/api';
 
 import {
     mapAdminAnalyticsOverviewResponse,
+    mapAdminAnalyticsBehaviorOverviewResponse,
+    mapAdminAnalyticsBehaviorChartResponse,
+    mapAdminAnalyticsCategoryRevenueResponse,
     mapAdminAnalyticsSalesChartResponse,
     mapAdminAnalyticsTopProductsResponse,
 } from '../mappers/adminAnalyticMapper';
@@ -12,19 +15,53 @@ const adminAnalyticsService = {
         return mapAdminAnalyticsOverviewResponse(res.data);
     },
 
-    async getTopProducts() {
-        const res = await api.get('/admin/analytics/top-products');
+    async getTopProducts(params = {}) {
+        const res = await api.get('/admin/analytics/top-products', { params });
         return mapAdminAnalyticsTopProductsResponse(res.data);
     },
 
-    async getSalesChart(days = 30) {
+    async getSalesChart(days = 30, params = {}) {
         const res = await api.get('/admin/analytics/sales-chart', {
             params: {
                 days,
+                ...params,
             },
         });
 
         return mapAdminAnalyticsSalesChartResponse(res.data);
+    },
+
+    async getBehaviorOverview(days = 30, params = {}) {
+        const res = await api.get('/admin/analytics/behavior-overview', {
+            params: {
+                days,
+                ...params,
+            },
+        });
+
+        return mapAdminAnalyticsBehaviorOverviewResponse(res.data);
+    },
+
+    async getBehaviorChart(days = 30, params = {}) {
+        const res = await api.get('/admin/analytics/behavior-chart', {
+            params: {
+                days,
+                ...params,
+            },
+        });
+
+        return mapAdminAnalyticsBehaviorChartResponse(res.data);
+    },
+
+    async getRevenueByCategory(limit = 8, params = {}) {
+        const res = await api.get('/admin/analytics/revenue-by-category', {
+            params: {
+                limit,
+                ...params,
+            },
+        });
+
+        return mapAdminAnalyticsCategoryRevenueResponse(res.data);
     },
 
     async exportPdf() {

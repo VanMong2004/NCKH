@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Notification;
 use App\Models\Order;
+use App\Events\NotificationCreated;
 use RuntimeException;
 
 class NotificationService
@@ -116,7 +117,7 @@ class NotificationService
         ?string $icon = null,
         ?string $color = null
     ) {
-        return Notification::create([
+        $notification = Notification::create([
             'user_id' => $userId,
             'type' => $type,
             'title' => $title,
@@ -127,6 +128,13 @@ class NotificationService
             'meta' => $meta,
             'is_read' => false,
         ]);
+
+        broadcast(new NotificationCreated(
+            $notification,
+            $this->format($notification)
+        ))->toOthers();
+
+        return $notification;
     }
 
     public function order(Order $order, string $status): ?Notification

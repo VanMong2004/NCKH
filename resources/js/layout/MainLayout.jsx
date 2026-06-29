@@ -7,6 +7,7 @@ import FloatingAIChat from '../components/ai/FloatingAIChat';
 import homeService from '../services/homeService';
 import notificationService from '../services/notificationService';
 import { useAuth } from '../contexts/AuthContext';
+import useRealtimeNotifications from '../hooks/useRealtimeNotifications';
 
 export default function MainLayout({
     children,
@@ -16,6 +17,11 @@ export default function MainLayout({
     const [siteContent, setSiteContent] = useState(initialSiteContent || null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
+
+    useRealtimeNotifications(user, () => {
+        setUnreadCount((count) => count + 1);
+        setNotificationRefreshKey((key) => key + 1);
+    });
 
     useEffect(() => {
         if (initialSiteContent) {

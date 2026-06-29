@@ -37,10 +37,20 @@ class AdminAnalyticsController extends Controller
     public function topProducts(Request $request)
     {
         try {
+            $data = $request->validate([
+                'limit' => 'nullable|integer|min:1|max:20',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date',
+            ]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Top products',
-                'data' => $this->service->topProducts($request->user()),
+                'data' => $this->service->topProducts(
+                    $request->user(),
+                    $data['limit'] ?? 10,
+                    $data
+                ),
             ]);
         } catch (RuntimeException $e) {
             return $this->businessError($e);
@@ -53,7 +63,10 @@ class AdminAnalyticsController extends Controller
     {
         try {
             $data = $request->validate([
-                'days' => 'nullable|integer|min:1|max:365',
+                'days' => 'nullable|integer|in:7,30,90,365',
+                'group_by' => 'nullable|in:day,week,month,year',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date',
             ]);
 
             return response()->json([
@@ -61,7 +74,8 @@ class AdminAnalyticsController extends Controller
                 'message' => 'Sales chart',
                 'data' => $this->service->salesChart(
                     $request->user(),
-                    $data['days'] ?? 7
+                    $data['days'] ?? 7,
+                    $data
                 ),
             ]);
         } catch (ValidationException $e) {
@@ -70,6 +84,88 @@ class AdminAnalyticsController extends Controller
             return $this->businessError($e);
         } catch (Throwable $e) {
             return $this->systemError($e, 'Admin sales chart analytics error');
+        }
+    }
+
+    public function behaviorOverview(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'days' => 'nullable|integer|min:1|max:365',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Behavior overview',
+                'data' => $this->service->behaviorOverview(
+                    $request->user(),
+                    $data['days'] ?? 30,
+                    $data
+                ),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'Admin behavior analytics overview error');
+        }
+    }
+
+    public function behaviorChart(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'days' => 'nullable|integer|in:7,30,90,365',
+                'group_by' => 'nullable|in:day,week,month,year',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Behavior chart',
+                'data' => $this->service->behaviorChart(
+                    $request->user(),
+                    $data['days'] ?? 30,
+                    $data
+                ),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'Admin behavior analytics chart error');
+        }
+    }
+
+    public function revenueByCategory(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'limit' => 'nullable|integer|min:1|max:20',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Revenue by category',
+                'data' => $this->service->revenueByCategory(
+                    $request->user(),
+                    $data['limit'] ?? 8,
+                    $data
+                ),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'Admin revenue by category analytics error');
         }
     }
 

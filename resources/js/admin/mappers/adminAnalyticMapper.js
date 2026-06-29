@@ -75,10 +75,68 @@ export function mapAdminAnalyticsSalesChartResponse(response = {}) {
         message: response.message || '',
         chart: raw.map((item) => ({
             date: item.date || '',
+            label: item.label || item.date || '',
             revenue: toNumber(item.revenue),
             ordersCount: toNumber(item.orders_count),
             raw: item,
         })),
+        raw: response,
+    };
+}
+
+export function mapAdminAnalyticsBehaviorChartResponse(response = {}) {
+    const raw = Array.isArray(response.data) ? response.data : [];
+
+    return {
+        success: Boolean(response.success),
+        message: response.message || '',
+        chart: raw.map((item) => ({
+            date: item.date || '',
+            label: item.label || item.date || '',
+            visitors: toNumber(item.visitors),
+            pageViews: toNumber(item.page_views),
+            productViews: toNumber(item.product_views),
+            raw: item,
+        })),
+        raw: response,
+    };
+}
+
+export function mapAdminAnalyticsCategoryRevenueResponse(response = {}) {
+    const raw = Array.isArray(response.data) ? response.data : [];
+
+    return {
+        success: Boolean(response.success),
+        message: response.message || '',
+        categories: raw.map((item) => ({
+            id: item.id,
+            name: item.name || 'Chưa phân loại',
+            revenue: toNumber(item.revenue),
+            sold: toNumber(item.sold),
+            raw: item,
+        })),
+        raw: response,
+    };
+}
+
+export function mapAdminAnalyticsBehaviorOverviewResponse(response = {}) {
+    const data = response.data || {};
+
+    return {
+        visitors: toNumber(data.visitors),
+        sessions: toNumber(data.sessions),
+        pageViews: toNumber(data.page_views),
+        productViews: toNumber(data.product_views),
+        addToCart: toNumber(data.add_to_cart),
+        checkoutStarted: toNumber(data.checkout_started),
+        purchases: toNumber(data.purchases),
+        bounceSessions: toNumber(data.bounce_sessions),
+        addToCartRate: toNumber(data.add_to_cart_rate),
+        checkoutRate: toNumber(data.checkout_rate),
+        purchaseRate: toNumber(data.purchase_rate),
+        conversionRate: toNumber(data.conversion_rate),
+        bounceRate: toNumber(data.bounce_rate),
+        repeatPurchaseRate: toNumber(data.repeat_purchase_rate),
         raw: response,
     };
 }

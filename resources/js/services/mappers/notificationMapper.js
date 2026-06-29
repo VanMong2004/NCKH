@@ -12,7 +12,6 @@ export function mapNotification(item = {}) {
         icon: item.icon || getIcon(item.type),
         color: item.color || 'blue',
         timeAgo: item.time_ago || '',
-        icon: getIcon(item.type),
         raw: item,
     };
 }

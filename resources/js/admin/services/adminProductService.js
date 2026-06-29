@@ -56,8 +56,13 @@ const adminProductService = {
         return res.data;
     },
 
-    async postFacebook(id) {
-        const res = await api.post(`/admin/products/${id}/post-facebook`);
+    async generateFacebookCaption(id, payload = {}) {
+        const res = await api.post(`/admin/products/${id}/facebook-caption`, payload);
+        return res.data;
+    },
+
+    async postFacebook(id, payload = {}) {
+        const res = await api.post(`/admin/products/${id}/post-facebook`, payload);
         return res.data;
     },
 };

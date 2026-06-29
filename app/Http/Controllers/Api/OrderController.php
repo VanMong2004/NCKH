@@ -7,6 +7,8 @@ use App\Services\OrderService;
 use App\Services\OrderQueryService;
 use App\Services\OrderBillService;
 use App\Services\VatInvoiceRequestService;
+use App\Models\Order;
+use App\Services\Analytics\AnalyticsEventService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -20,18 +22,21 @@ class OrderController extends Controller
     protected $orderQueryService;
     protected $orderBillService;
     protected $vatInvoiceRequestService;
+    protected $analyticsEventService;
 
     public function __construct(
         OrderService $orderService,
         OrderQueryService $orderQueryService,
         OrderBillService $orderBillService,
-        VatInvoiceRequestService $vatInvoiceRequestService
+        VatInvoiceRequestService $vatInvoiceRequestService,
+        AnalyticsEventService $analyticsEventService
     )
     {
         $this->orderService = $orderService;
         $this->orderQueryService = $orderQueryService;
         $this->orderBillService = $orderBillService;
         $this->vatInvoiceRequestService = $vatInvoiceRequestService;
+        $this->analyticsEventService = $analyticsEventService;
     }
 
     // POST /api/orders/checkout
@@ -128,11 +133,22 @@ class OrderController extends Controller
                 'cart_item_ids.*.exists' => 'Có sản phẩm không tồn tại trong giỏ hàng.',
             ]);
 
+            $this->analyticsEventService->trackCheckoutStarted(
+                $request,
+                array_map('intval', $data['cart_item_ids'])
+            );
+
             $result = $this->orderService->checkout(
                 $user,
                 $request->header('X-Guest-Token'),
                 $data
             );
+
+            $order = Order::query()->find($result['order_id'] ?? null);
+
+            if ($order) {
+                $this->analyticsEventService->trackPurchaseCompleted($request, $order);
+            }
 
             return response()->json([
                 'success' => true,

@@ -1,9 +1,10 @@
 import React, { Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { ToastContainer } from 'react-toastify';
 
+import './bootstrap';
 import '../css/app.css';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -13,6 +14,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 
 import ProtectedRoute from './components/ui/ProtectedRoute';
 import AdminPromotionDetail from './admin/pages/AdminPromotionDetail';
+import siteAnalyticsService from './services/siteAnalyticsService';
 
 const Home = lazy(() => import('./pages/Home'));
 const Shop = lazy(() => import('./pages/Shop'));
@@ -72,8 +74,21 @@ function PageLoader() {
     );
 }
 
+function AnalyticsRouteTracker() {
+    const location = useLocation();
+
+    React.useEffect(() => {
+        if (location.pathname.startsWith('/admin')) return;
+
+        siteAnalyticsService.trackPageView(location.pathname);
+    }, [location.pathname]);
+
+    return null;
+}
+
 createRoot(document.getElementById('app')).render(
     <BrowserRouter>
+        <AnalyticsRouteTracker />
         <ThemeProvider>
             <AuthProvider>
                 <CartProvider>

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\CartService;
+use App\Models\ProductVariant;
+use App\Services\Analytics\AnalyticsEventService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
@@ -14,10 +16,15 @@ use Throwable;
 class CartController extends Controller
 {
     protected $cartService;
+    protected $analyticsEventService;
 
-    public function __construct(CartService $cartService)
+    public function __construct(
+        CartService $cartService,
+        AnalyticsEventService $analyticsEventService
+    )
     {
         $this->cartService = $cartService;
+        $this->analyticsEventService = $analyticsEventService;
     }
 
     // GET CART
@@ -86,6 +93,19 @@ class CartController extends Controller
                 $request->header('X-Guest-Token'),
                 $data
             );
+
+            if (($result['success'] ?? false) === true) {
+                $variant = ProductVariant::query()
+                    ->find($data['product_variant_id']);
+
+                if ($variant) {
+                    $this->analyticsEventService->trackAddToCart(
+                        $request,
+                        $variant,
+                        (int) $data['quantity']
+                    );
+                }
+            }
 
             return response()->json($result);
 

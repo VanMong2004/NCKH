@@ -13,6 +13,7 @@ use App\Models\ProductVariant;
 use Illuminate\Support\Facades\File;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Jobs\SendProductSocialAutomationJob;
+use App\Services\Social\AiSocialCaptionService;
 use App\Services\Social\N8nSocialAutomationService;
 
 class AdminProductService
@@ -698,7 +699,28 @@ class AdminProductService
         ];
     }
 
-    public function postFacebook($id): array
+    public function generateFacebookCaption($id, string $style = 'intro'): array
+    {
+        $product = Product::with([
+            'category',
+            'variants',
+        ])->findOrFail($id);
+
+        if (!$product->is_active) {
+            throw new Exception('Không thể tạo nội dung Facebook vì sản phẩm đang tắt bán');
+        }
+
+        $caption = app(AiSocialCaptionService::class)
+            ->generateProductCaption($product, $style);
+
+        return [
+            'success' => true,
+            'message' => 'Đã tạo nội dung bài đăng bằng AI',
+            'data' => $caption,
+        ];
+    }
+
+    public function postFacebook($id, array $data = []): array
     {
         $product = Product::with([
             'category',
@@ -718,8 +740,11 @@ class AdminProductService
             throw new Exception('Không thể đăng Facebook vì sản phẩm không có biến thể đang mở bán');
         }
 
+        $caption = trim((string) ($data['content'] ?? ''));
+        $style = $data['style'] ?? null;
+
         $socialLog = app(N8nSocialAutomationService::class)
-            ->createProductCreatedLog($product);
+            ->createProductCreatedLog($product, $caption !== '' ? $caption : null, $style);
 
         SendProductSocialAutomationJob::dispatch($socialLog->id);
 

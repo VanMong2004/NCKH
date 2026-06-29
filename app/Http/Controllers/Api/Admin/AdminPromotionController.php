@@ -164,11 +164,38 @@ class AdminPromotionController extends Controller
         }
     }
 
-    public function publishSocial($id): JsonResponse
+    public function generateFacebookCaption(Request $request, $id): JsonResponse
     {
         try {
+            $data = $request->validate([
+                'style' => 'nullable|string|in:intro,promotion,sales',
+            ]);
+
             return response()->json(
-                $this->service->publishSocial($id)
+                $this->service->generateFacebookCaption($id, $data['style'] ?? 'promotion')
+            );
+
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+
+        } catch (Throwable $e) {
+            return $this->systemError(
+                $e,
+                'Admin promotion generate Facebook caption error'
+            );
+        }
+    }
+
+    public function publishSocial(Request $request, $id): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'content' => 'nullable|string|max:5000',
+                'style' => 'nullable|string|in:intro,promotion,sales',
+            ]);
+
+            return response()->json(
+                $this->service->publishSocial($id, $data)
             );
 
         } catch (RuntimeException $e) {

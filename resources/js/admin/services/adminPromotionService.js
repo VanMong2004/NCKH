@@ -56,8 +56,13 @@ const adminPromotionService = {
         return res.data;
     },
 
-    async publishSocial(id) {
-        const res = await api.post(`/admin/promotions/${id}/publish-social`);
+    async generateFacebookCaption(id, payload = {}) {
+        const res = await api.post(`/admin/promotions/${id}/facebook-caption`, payload);
+        return res.data;
+    },
+
+    async publishSocial(id, payload = {}) {
+        const res = await api.post(`/admin/promotions/${id}/publish-social`, payload);
         return res.data;
     },
 

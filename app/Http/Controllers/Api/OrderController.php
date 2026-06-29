@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\OrderService;
 use App\Services\OrderQueryService;
+use App\Services\OrderBillService;
+use App\Services\VatInvoiceRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -16,11 +18,20 @@ class OrderController extends Controller
 {
     protected $orderService;
     protected $orderQueryService;
+    protected $orderBillService;
+    protected $vatInvoiceRequestService;
 
-    public function __construct(OrderService $orderService, OrderQueryService $orderQueryService)
+    public function __construct(
+        OrderService $orderService,
+        OrderQueryService $orderQueryService,
+        OrderBillService $orderBillService,
+        VatInvoiceRequestService $vatInvoiceRequestService
+    )
     {
         $this->orderService = $orderService;
         $this->orderQueryService = $orderQueryService;
+        $this->orderBillService = $orderBillService;
+        $this->vatInvoiceRequestService = $vatInvoiceRequestService;
     }
 
     // POST /api/orders/checkout
@@ -321,6 +332,166 @@ class OrderController extends Controller
 
         } catch (Throwable $e) {
             Log::error('Get order detail system error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
+
+    public function bill(Request $request, $id)
+    {
+        try {
+            $request->merge([
+                'order_id' => $id,
+            ]);
+
+            $data = $request->validate([
+                'order_id' => 'required|integer|min:1',
+            ], [
+                'order_id.required' => 'Đơn hàng không hợp lệ',
+                'order_id.integer' => 'Đơn hàng không hợp lệ',
+                'order_id.min' => 'Đơn hàng không hợp lệ',
+            ]);
+
+            return $this->orderBillService->downloadForUser(
+                $request->user(),
+                $data['order_id']
+            );
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu đơn hàng không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 401, 403, 404])
+                ? $e->getCode()
+                : 400;
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
+
+        } catch (Throwable $e) {
+            Log::error('Download order bill error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
+
+    public function vatInvoiceRequest(Request $request, $id)
+    {
+        try {
+            $request->merge([
+                'order_id' => $id,
+            ]);
+
+            $data = $request->validate([
+                'order_id' => 'required|integer|min:1',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy yêu cầu hóa đơn đỏ thành công',
+                'data' => $this->vatInvoiceRequestService->showForUser(
+                    $request->user(),
+                    $data['order_id']
+                ),
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu đơn hàng không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], in_array($e->getCode(), [400, 401, 403, 404]) ? $e->getCode() : 400);
+
+        } catch (Throwable $e) {
+            Log::error('Get VAT invoice request error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
+
+    public function storeVatInvoiceRequest(Request $request, $id)
+    {
+        try {
+            $request->merge([
+                'order_id' => $id,
+            ]);
+
+            $data = $request->validate([
+                'order_id' => 'required|integer|min:1',
+                'company_name' => 'required|string|max:255',
+                'tax_code' => 'required|string|max:50',
+                'company_address' => 'required|string|max:500',
+                'invoice_email' => 'required|email|max:255',
+                'note' => 'nullable|string|max:1000',
+            ], [
+                'company_name.required' => 'Vui lòng nhập tên đơn vị xuất hóa đơn',
+                'tax_code.required' => 'Vui lòng nhập mã số thuế',
+                'company_address.required' => 'Vui lòng nhập địa chỉ xuất hóa đơn',
+                'invoice_email.required' => 'Vui lòng nhập email nhận hóa đơn',
+                'invoice_email.email' => 'Email nhận hóa đơn không đúng định dạng',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Gửi yêu cầu hóa đơn đỏ thành công',
+                'data' => $this->vatInvoiceRequestService->createForUser(
+                    $request->user(),
+                    $data['order_id'],
+                    $data
+                ),
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu hóa đơn đỏ không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
+
+        } catch (Throwable $e) {
+            Log::error('Store VAT invoice request error', [
                 'message' => $e->getMessage(),
             ]);
 

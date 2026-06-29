@@ -68,4 +68,9 @@ class Order extends Model
     {
         return $this->hasMany(OrderStatusHistory::class);
     }
+
+    public function vatInvoiceRequest()
+    {
+        return $this->hasOne(VatInvoiceRequest::class);
+    }
 }

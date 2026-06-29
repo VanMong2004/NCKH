@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 import { useAuth } from '../contexts/AuthContext';
 
 import MainLayout from '../layout/MainLayout';
+import VatInvoiceRequestModal from '../components/order/VatInvoiceRequestModal';
 
 import orderService from '../services/orderService';
 import guestOrderService from '../services/guestOrderService';
@@ -20,6 +22,10 @@ export default function OrderSuccess() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [downloadingBill, setDownloadingBill] = useState(false);
+    const [vatInvoiceModalOpen, setVatInvoiceModalOpen] = useState(false);
+    const [vatInvoiceRequest, setVatInvoiceRequest] = useState(null);
+    const [submittingVatInvoice, setSubmittingVatInvoice] = useState(false);
 
     useEffect(() => {
         if (authLoading) return;
@@ -54,6 +60,68 @@ export default function OrderSuccess() {
             setError(err.message || 'Không thể tải thông tin đơn hàng');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleDownloadBill() {
+        if (!order?.code) return;
+
+        try {
+            setDownloadingBill(true);
+
+            const savedGuestOrder = JSON.parse(
+                sessionStorage.getItem('guest_order_success') || '{}'
+            );
+
+            await guestOrderService.downloadBill(order.code, {
+                guestToken: savedGuestOrder.guestToken,
+            });
+        } catch (err) {
+            toast.error(err.message || 'Không thể tải bill đơn hàng');
+        } finally {
+            setDownloadingBill(false);
+        }
+    }
+
+    async function openVatInvoiceModal() {
+        if (!order?.code) return;
+
+        try {
+            const savedGuestOrder = JSON.parse(
+                sessionStorage.getItem('guest_order_success') || '{}'
+            );
+
+            const result = await guestOrderService.getVatInvoiceRequest(order.code, {
+                guestToken: savedGuestOrder.guestToken,
+            });
+
+            setVatInvoiceRequest(result);
+            setVatInvoiceModalOpen(true);
+        } catch (err) {
+            toast.error(err.message || 'Không thể kiểm tra yêu cầu hóa đơn đỏ');
+        }
+    }
+
+    async function submitVatInvoiceRequest(payload) {
+        if (!order?.code) return;
+
+        try {
+            setSubmittingVatInvoice(true);
+
+            const savedGuestOrder = JSON.parse(
+                sessionStorage.getItem('guest_order_success') || '{}'
+            );
+
+            const result = await guestOrderService.createVatInvoiceRequest(order.code, payload, {
+                guestToken: savedGuestOrder.guestToken,
+            });
+
+            setVatInvoiceRequest(result);
+            toast.success('Đã gửi yêu cầu hóa đơn đỏ');
+        } catch (err) {
+            toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
+        } finally {
+            setSubmittingVatInvoice(false);
         }
     }
 
@@ -286,6 +354,23 @@ export default function OrderSuccess() {
                         Xem chi tiết đơn hàng
                     </Link>
 
+                    <button
+                        type="button"
+                        disabled={downloadingBill}
+                        onClick={handleDownloadBill}
+                        className="rounded-xl border border-blue-200 bg-blue-50 px-6 py-3 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300"
+                    >
+                        {downloadingBill ? 'Đang tải bill...' : 'Tải bill'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={openVatInvoiceModal}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    >
+                        Yêu cầu hóa đơn đỏ
+                    </button>
+
                     <Link
                         to="/shop"
                         className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-center text-sm font-bold text-blue-950 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
@@ -293,6 +378,15 @@ export default function OrderSuccess() {
                         Tiếp tục mua sắm
                     </Link>
                 </div>
+
+                <VatInvoiceRequestModal
+                    open={vatInvoiceModalOpen}
+                    existingRequest={vatInvoiceRequest}
+                    submitting={submittingVatInvoice}
+                    defaultEmail={order.raw?.guest_email || ''}
+                    onClose={() => setVatInvoiceModalOpen(false)}
+                    onSubmit={submitVatInvoiceRequest}
+                />
             </main>
         </MainLayout>
     );

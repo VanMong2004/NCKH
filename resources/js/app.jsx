@@ -20,6 +20,7 @@ const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Cart = lazy(() => import('./pages/Cart'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
+const MockPaymentQr = lazy(() => import('./pages/MockPaymentQr'));
 const PaymentResult = lazy(() => import('./pages/PaymentResult'));
 
 const Promotions = lazy(() => import('./pages/Promotions'));
@@ -116,6 +117,8 @@ createRoot(document.getElementById('app')).render(
                                 }
                             />
                             <Route path="/order-success" element={<OrderSuccess />} />
+
+                            <Route path="/payment/qr" element={<MockPaymentQr />} />
 
                             <Route
                                 path="/payment/result"

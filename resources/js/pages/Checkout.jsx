@@ -272,6 +272,32 @@ export default function Checkout() {
 
             if (payment.redirectUrl) {
                 saveGuestOrderToSession(order);
+
+                if (method === 'mock') {
+                    sessionStorage.setItem(
+                        'mock_payment_qr',
+                        JSON.stringify({
+                            order,
+                            payment,
+                            callbackUrl: payment.redirectUrl,
+                            guestPhone: receiver.guest_phone,
+                            isGuest: !user,
+                        }),
+                    );
+
+                    navigate('/payment/qr', {
+                        state: {
+                            order,
+                            payment,
+                            callbackUrl: payment.redirectUrl,
+                            guestPhone: receiver.guest_phone,
+                            isGuest: !user,
+                        },
+                    });
+
+                    return;
+                }
+
                 window.location.href = payment.redirectUrl;
                 return;
             }

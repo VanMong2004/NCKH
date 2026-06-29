@@ -54,21 +54,21 @@ class OrderController extends Controller
             // Guest chưa đăng nhập thì bắt buộc nhập thông tin nhận hàng
             if (!$user) {
                 $rules['guest_name'] = 'required|string|max:255';
-                $rules['guest_email'] = 'required|email|max:255';
+                $rules['guest_email'] = 'nullable|email|max:255';
                 $rules['guest_phone'] = 'required|string|max:20';
 
-                $rules['province'] = 'required|string|max:255';
-                $rules['district'] = 'required|string|max:255';
-                $rules['ward'] = 'required|string|max:255';
-                $rules['address_line'] = 'required|string|max:500';
+                $rules['province'] = 'nullable|string|max:255';
+                $rules['district'] = 'nullable|string|max:255';
+                $rules['ward'] = 'nullable|string|max:255';
+                $rules['address_line'] = 'nullable|string|max:500';
             }
 
             // User login nhưng không chọn address_id thì phải nhập địa chỉ mới
             if ($user && !$request->filled('address_id')) {
-                $rules['province'] = 'required|string|max:255';
-                $rules['district'] = 'required|string|max:255';
-                $rules['ward'] = 'required|string|max:255';
-                $rules['address_line'] = 'required|string|max:500';
+                $rules['province'] = 'nullable|string|max:255';
+                $rules['district'] = 'nullable|string|max:255';
+                $rules['ward'] = 'nullable|string|max:255';
+                $rules['address_line'] = 'nullable|string|max:500';
             }
 
             $data = $request->validate($rules, [

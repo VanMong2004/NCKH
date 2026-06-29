@@ -378,7 +378,7 @@ class OrderService
                 return [
                     'name' => $address->full_name,
                     'phone' => $address->phone,
-                    'address' => implode(', ', [
+                    'address' => $this->formatAddress([
                         $address->address_line,
                         $address->ward,
                         $address->district,
@@ -392,7 +392,13 @@ class OrderService
 
             $this->validateInlineAddress($data, false);
 
-            if (!empty($data['save_address'])) {
+            $canSaveAddress =
+                !empty($data['province'])
+                && !empty($data['district'])
+                && !empty($data['ward'])
+                && !empty($data['address_line']);
+
+            if (!empty($data['save_address']) && $canSaveAddress) {
                 $hasAddress = Address::query()
                     ->where('user_id', $user->id)
                     ->exists();
@@ -421,11 +427,11 @@ class OrderService
             return [
                 'name' => $data['guest_name'],
                 'phone' => $data['guest_phone'],
-                'address' => implode(', ', [
-                    $data['address_line'],
-                    $data['ward'],
-                    $data['district'],
-                    $data['province'],
+                'address' => $this->formatAddress([
+                    $data['address_line'] ?? null,
+                    $data['ward'] ?? null,
+                    $data['district'] ?? null,
+                    $data['province'] ?? null,
                 ]),
                 'guest_name' => null,
                 'guest_email' => null,
@@ -438,14 +444,14 @@ class OrderService
         return [
             'name' => $data['guest_name'],
             'phone' => $data['guest_phone'],
-            'address' => implode(', ', [
-                $data['address_line'],
-                $data['ward'],
-                $data['district'],
-                $data['province'],
+            'address' => $this->formatAddress([
+                $data['address_line'] ?? null,
+                $data['ward'] ?? null,
+                $data['district'] ?? null,
+                $data['province'] ?? null,
             ]),
             'guest_name' => $data['guest_name'],
-            'guest_email' => $data['guest_email'],
+            'guest_email' => $data['guest_email'] ?? null,
             'guest_phone' => $data['guest_phone'],
         ];
     }
@@ -456,10 +462,6 @@ class OrderService
             throw new RuntimeException('Vui lòng nhập tên người nhận', 422);
         }
 
-        if ($requireEmail && empty($data['guest_email'])) {
-            throw new RuntimeException('Vui lòng nhập email', 422);
-        }
-
         if (!empty($data['guest_email']) && !filter_var($data['guest_email'], FILTER_VALIDATE_EMAIL)) {
             throw new RuntimeException('Email không đúng định dạng', 422);
         }
@@ -468,21 +470,14 @@ class OrderService
             throw new RuntimeException('Vui lòng nhập số điện thoại người nhận', 422);
         }
 
-        if (empty($data['address_line'])) {
-            throw new RuntimeException('Vui lòng nhập địa chỉ giao hàng', 422);
-        }
+    }
 
-        if (empty($data['ward'])) {
-            throw new RuntimeException('Vui lòng chọn phường/xã', 422);
-        }
-
-        if (empty($data['district'])) {
-            throw new RuntimeException('Vui lòng chọn quận/huyện', 422);
-        }
-
-        if (empty($data['province'])) {
-            throw new RuntimeException('Vui lòng chọn tỉnh/thành phố', 422);
-        }
+    private function formatAddress(array $parts): string
+    {
+        return collect($parts)
+            ->map(fn ($part) => is_string($part) ? trim($part) : $part)
+            ->filter()
+            ->implode(', ');
     }
 
     private function getOrderAutoCancelMinutes(): int

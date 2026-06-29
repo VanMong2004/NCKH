@@ -8,17 +8,19 @@ const guestOrderService = {
         return mapOrderDetailResponse(res.data);
     },
 
-    async getByCode(orderCode) {
+    async getByCode(orderCode, options = {}) {
         const guest = JSON.parse(
             sessionStorage.getItem('guest_order_success') || '{}'
         );
 
+        const guestToken = options.guestToken || guest.guestToken;
+
         const res = await api.get(
             `/guest/orders/${encodeURIComponent(orderCode)}`,
             {
-                headers: guest.guestToken
+                headers: guestToken
                     ? {
-                          'X-Guest-Token': guest.guestToken,
+                          'X-Guest-Token': guestToken,
                       }
                     : {},
             }

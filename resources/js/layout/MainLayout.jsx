@@ -6,11 +6,13 @@ import BottomNavigation from '../components/layout/BottomNavigation';
 import FloatingAIChat from '../components/ai/FloatingAIChat';
 import homeService from '../services/homeService';
 import notificationService from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function MainLayout({
     children,
     siteContent: initialSiteContent,
 }) {
+    const { user, isLoading } = useAuth();
     const [siteContent, setSiteContent] = useState(initialSiteContent || null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
@@ -22,8 +24,12 @@ export default function MainLayout({
             loadSiteContent();
         }
 
-        loadUnread();
-    }, [initialSiteContent]);
+        if (!isLoading && user) {
+            loadUnread();
+        } else {
+            setUnreadCount(0);
+        }
+    }, [initialSiteContent, isLoading, user]);
 
     useEffect(() => {
 
@@ -63,6 +69,11 @@ export default function MainLayout({
     }
 
     async function loadUnread(){
+
+        if (!user) {
+            setUnreadCount(0);
+            return;
+        }
 
         try{
 

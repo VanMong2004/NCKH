@@ -1,5 +1,5 @@
 import { ListFilter } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import ProductGrid from '../components/product/ProductGrid';
@@ -60,6 +60,7 @@ export default function Shop() {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const requestIdRef = useRef(0);
 
     const hasActiveFilter = useMemo(() => {
         return Boolean(
@@ -86,6 +87,9 @@ export default function Shop() {
     }, [filters]);
 
     async function loadProducts(currentFilters) {
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
+
         try {
             setLoading(true);
             setError('');
@@ -97,16 +101,26 @@ export default function Shop() {
 
             const result = await productService.getProducts(params);
 
+            if (requestId !== requestIdRef.current) {
+                return;
+            }
+
             setProducts(result.products || []);
             setMeta(result.meta || defaultMeta);
             setFilterOptions(result.filters || defaultFilterOptions);
         } catch (err) {
+            if (requestId !== requestIdRef.current || err.canceled) {
+                return;
+            }
+
             console.error(err);
 
             setProducts([]);
             setError(err.message || 'Không thể tải danh sách sản phẩm.');
         } finally {
-            setLoading(false);
+            if (requestId === requestIdRef.current) {
+                setLoading(false);
+            }
         }
     }
 

@@ -131,10 +131,6 @@ export default function Checkout() {
                 nextErrors.guest_name = 'Vui lòng nhập họ tên người nhận';
             }
 
-            if (isGuest && !receiver.guest_email.trim()) {
-                nextErrors.guest_email = 'Vui lòng nhập email';
-            }
-
             if (receiver.guest_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())) {
                 nextErrors.guest_email = 'Email không hợp lệ';
             }
@@ -143,21 +139,6 @@ export default function Checkout() {
                 nextErrors.guest_phone = 'Vui lòng nhập số điện thoại';
             }
 
-            if (!receiver.province.trim()) {
-                nextErrors.province = 'Vui lòng nhập tỉnh/thành phố';
-            }
-
-            if (!receiver.district.trim()) {
-                nextErrors.district = 'Vui lòng nhập quận/huyện';
-            }
-
-            if (!receiver.ward.trim()) {
-                nextErrors.ward = 'Vui lòng nhập phường/xã';
-            }
-
-            if (!receiver.address_line.trim()) {
-                nextErrors.address_line = 'Vui lòng nhập địa chỉ cụ thể';
-            }
         }
 
         if (!paymentMethod) {
@@ -225,7 +206,14 @@ export default function Checkout() {
                 payload.ward = receiver.ward.trim();
                 payload.address_line = receiver.address_line.trim();
                 payload.postal_code = receiver.postal_code.trim();
-                payload.save_address = Boolean(user && saveAddress);
+                payload.save_address = Boolean(
+                    user &&
+                        saveAddress &&
+                        receiver.province.trim() &&
+                        receiver.district.trim() &&
+                        receiver.ward.trim() &&
+                        receiver.address_line.trim(),
+                );
             }
 
             const order = await orderService.checkout(payload);

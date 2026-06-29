@@ -10,7 +10,7 @@ import orderService from '../services/orderService';
 import guestOrderService from '../services/guestOrderService';
 
 export default function OrderSuccess() {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
 
     const [searchParams] = useSearchParams();
     const orderCode = searchParams.get('order_code');
@@ -22,8 +22,10 @@ export default function OrderSuccess() {
     const [error, setError] = useState('');
 
     useEffect(() => {
+        if (authLoading) return;
+
         loadOrder();
-    }, [orderCode]);
+    }, [authLoading, orderCode, user]);
 
     async function loadOrder() {
         try {
@@ -43,7 +45,9 @@ export default function OrderSuccess() {
                 return;
             }
 
-            const result = await guestOrderService.getByCode(orderCode);
+            const result = await guestOrderService.getByCode(orderCode, {
+                guestToken: isGuestOrder ? savedGuestOrder.guestToken : null,
+            });
 
             setOrder(result);
         } catch (err) {

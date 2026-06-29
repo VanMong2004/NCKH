@@ -192,7 +192,6 @@ export default function ReceiverForm({
                     value={receiver.guest_email}
                     error={errors.guest_email}
                     onChange={(value) => updateField('guest_email', value)}
-                    required={isGuest}
                     disabled={!isGuest && Boolean(user?.email)}
                 />
 
@@ -201,7 +200,6 @@ export default function ReceiverForm({
                     value={receiver.province}
                     error={errors.province}
                     onChange={(value) => updateField('province', value)}
-                    required
                 />
 
                 <Input
@@ -209,7 +207,6 @@ export default function ReceiverForm({
                     value={receiver.district}
                     error={errors.district}
                     onChange={(value) => updateField('district', value)}
-                    required
                 />
 
                 <Input
@@ -217,7 +214,6 @@ export default function ReceiverForm({
                     value={receiver.ward}
                     error={errors.ward}
                     onChange={(value) => updateField('ward', value)}
-                    required
                 />
 
                 <Input
@@ -235,7 +231,6 @@ export default function ReceiverForm({
                         error={errors.address_line}
                         onChange={(value) => updateField('address_line', value)}
                         icon={<MapPin size={17} />}
-                        required
                     />
                 </div>
             </div>

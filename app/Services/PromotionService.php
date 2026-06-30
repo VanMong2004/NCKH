@@ -49,7 +49,9 @@ class PromotionService
             default => $query->latest(),
         };
 
-        $promotions = $query->paginate($filters['per_page'] ?? 10);
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
+
+        $promotions = $query->paginate($perPage);
 
         $promotions->setCollection(
             $promotions->getCollection()
@@ -112,6 +114,8 @@ class PromotionService
             ->unique()
             ->values();
 
+        $perPage = min(max((int) ($filters['per_page'] ?? 12), 1), 50);
+
         $products = Product::query()
             ->with([
                 'images',
@@ -120,7 +124,7 @@ class PromotionService
             ])
             ->whereIn('id', $productIds)
             ->where('is_active', true)
-            ->paginate($filters['per_page'] ?? 12);
+            ->paginate($perPage);
 
         $products->setCollection(
             $products->getCollection()

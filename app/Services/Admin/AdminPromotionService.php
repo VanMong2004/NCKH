@@ -39,9 +39,11 @@ class AdminPromotionService
             }
         }
 
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 100);
+
         $promotions = $query
             ->latest()
-            ->paginate($filters['per_page'] ?? 10);
+            ->paginate($perPage);
 
         $promotions->setCollection(
             $promotions->getCollection()
@@ -385,7 +387,7 @@ class AdminPromotionService
         }
 
         $keyword = $request->keyword;
-        $perPage = $request->per_page ?? 10;
+        $perPage = min(max((int) ($request->per_page ?? 10), 1), 100);
 
         $query = Product::query()
             ->with([

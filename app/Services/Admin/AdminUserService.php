@@ -38,7 +38,9 @@ class AdminUserService
             ? $query->oldest()
             : $query->latest();
 
-        $users = $query->paginate($filters['per_page'] ?? 10);
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 100);
+
+        $users = $query->paginate($perPage);
 
         $users->setCollection(
             $users->getCollection()

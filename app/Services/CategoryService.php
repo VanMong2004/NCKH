@@ -116,6 +116,8 @@ class CategoryService
 
         $categoryIds = $this->getAllChildIds($id);
 
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
+
         $products = Product::query()
             ->with([
                 'images',
@@ -127,9 +129,7 @@ class CategoryService
                 $categoryIds
             )
             ->where('is_active', true)
-            ->paginate(
-                $filters['per_page'] ?? 10
-            );
+            ->paginate($perPage);
 
         $data = collect($products->items())
             ->map(function ($product) {

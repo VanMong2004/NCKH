@@ -41,7 +41,9 @@ class OrderQueryService
             ? $query->oldest()
             : $query->latest();
 
-        $orders = $query->paginate($filters['per_page'] ?? 10);
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
+
+        $orders = $query->paginate($perPage);
 
         $orders->setCollection(
             $orders->getCollection()->map(function ($order) {

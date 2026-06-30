@@ -28,7 +28,7 @@ class BlogService
             });
         }
 
-        $perPage = $filters['per_page'] ?? 10;
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
 
         $blogs = $query->paginate($perPage);
 

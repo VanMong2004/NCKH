@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\SiteComponent;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 class HomeService
 {
     const HOME_PRODUCT_LIMIT = 8;
+    private const HOME_CACHE_MINUTES = 5;
 
     /*
     | HOME
@@ -44,6 +46,11 @@ class HomeService
         ];
     }
 
+    public function getSiteContent(string $pageKey = 'home'): array
+    {
+        return $this->siteContent($pageKey);
+    }
+
     protected function cartCount($user = null): int
     {
         if (!$user) {
@@ -76,39 +83,45 @@ class HomeService
 
     protected function siteContent(string $pageKey = 'home'): array
     {
-        $components = SiteComponent::query()
-            ->with([
-                'activeRootItems.activeChildren',
-            ])
-            ->where('page_key', $pageKey)
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->keyBy('component_key');
+        return Cache::remember(
+            "home:site_content:{$pageKey}",
+            now()->addMinutes(self::HOME_CACHE_MINUTES),
+            function () use ($pageKey) {
+                $components = SiteComponent::query()
+                    ->with([
+                        'activeRootItems.activeChildren',
+                    ])
+                    ->where('page_key', $pageKey)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get()
+                    ->keyBy('component_key');
 
-        $navbar = $components->get('navbar');
-        $mobileMenu = $components->get('mobile_menu');
-        $bottomNavigation = $components->get('bottom_navigation');
-        $footer = $components->get('footer');
-        $heroSlider = $components->get('hero_slider');
-        $authBanner = $components->get('auth_banner');
+                $navbar = $components->get('navbar');
+                $mobileMenu = $components->get('mobile_menu');
+                $bottomNavigation = $components->get('bottom_navigation');
+                $footer = $components->get('footer');
+                $heroSlider = $components->get('hero_slider');
+                $authBanner = $components->get('auth_banner');
 
-        return [
-            'site' => $this->formatSiteInfo($navbar, $footer),
+                return [
+                    'site' => $this->formatSiteInfo($navbar, $footer),
 
-            'navbar' => $this->formatNavbar($navbar),
+                    'navbar' => $this->formatNavbar($navbar),
 
-            'mobile_menu' => $this->formatMobileMenu($mobileMenu),
+                    'mobile_menu' => $this->formatMobileMenu($mobileMenu),
 
-            'bottom_navigation' => $this->formatBottomNavigation($bottomNavigation),
+                    'bottom_navigation' => $this->formatBottomNavigation($bottomNavigation),
 
-            'footer' => $this->formatFooter($footer),
+                    'footer' => $this->formatFooter($footer),
 
-            'hero_slider' => $this->formatHeroSlider($heroSlider),
+                    'hero_slider' => $this->formatHeroSlider($heroSlider),
 
-            'auth_banner' => $this->formatAuthBanner($authBanner),
-        ];
+                    'auth_banner' => $this->formatAuthBanner($authBanner),
+                ];
+            }
+        );
     }
 
     protected function formatSiteInfo($navbar = null, $footer = null): array
@@ -403,10 +416,7 @@ class HomeService
             ->limit(self::HOME_PRODUCT_LIMIT)
             ->get();
 
-        return $products->map(
-            fn ($product) => app(ProductService::class)
-                ->formatProduct($product, $user)
-        );
+        return $this->formatProducts($products, $user);
     }
 
     protected function newProducts($user = null)
@@ -418,10 +428,7 @@ class HomeService
             ->limit(self::HOME_PRODUCT_LIMIT)
             ->get();
 
-        return $products->map(
-            fn ($product) => app(ProductService::class)
-                ->formatProduct($product, $user)
-        );
+        return $this->formatProducts($products, $user);
     }
 
     protected function bestSellingProducts($user = null)
@@ -434,10 +441,7 @@ class HomeService
             ->limit(self::HOME_PRODUCT_LIMIT)
             ->get();
 
-        return $products->map(
-            fn ($product) => app(ProductService::class)
-                ->formatProduct($product, $user)
-        );
+        return $this->formatProducts($products, $user);
     }
 
     protected function topRatedProducts($user = null)
@@ -450,58 +454,71 @@ class HomeService
             ->limit(self::HOME_PRODUCT_LIMIT)
             ->get();
 
-        return $products->map(
-            fn ($product) => app(ProductService::class)
-                ->formatProduct($product, $user)
-        );
+        return $this->formatProducts($products, $user);
     }
 
     protected function categories()
     {
-        return Category::query()
-            ->whereNull('parent_id')
-            ->with([
-                'children' => function ($q) {
-                    $q->latest();
-                },
-            ])
-            ->withCount('children')
-            ->latest()
-            ->get()
-            ->map(function ($category) {
-                return [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'slug' => $category->slug,
-                    'icon' => $category->icon,
-                    'image' => $category->image,
-                    'thumbnail' => $category->thumbnail,
+        return Cache::remember(
+            'home:categories:v1',
+            now()->addMinutes(self::HOME_CACHE_MINUTES),
+            fn () => Category::query()
+                ->select(['id', 'name', 'slug', 'icon', 'image', 'thumbnail', 'parent_id', 'created_at'])
+                ->whereNull('parent_id')
+                ->with([
+                    'children' => function ($q) {
+                        $q->select(['id', 'name', 'slug', 'icon', 'image', 'thumbnail', 'parent_id', 'created_at'])
+                            ->latest();
+                    },
+                ])
+                ->withCount('children')
+                ->latest()
+                ->get()
+                ->map(function ($category) {
+                    return [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'slug' => $category->slug,
+                        'icon' => $category->icon,
+                        'image' => $category->image,
+                        'thumbnail' => $category->thumbnail,
 
-                    'children_count' => (int) $category->children_count,
+                        'children_count' => (int) $category->children_count,
 
-                    'children' => $category->children
-                        ->map(function ($child) {
-                            return [
-                                'id' => $child->id,
-                                'name' => $child->name,
-                                'slug' => $child->slug,
-                                'icon' => $child->icon,
-                                'image' => $child->image,
-                                'thumbnail' => $child->thumbnail,
-                            ];
-                        })
-                        ->values(),
-                ];
-            });
+                        'children' => $category->children
+                            ->map(function ($child) {
+                                return [
+                                    'id' => $child->id,
+                                    'name' => $child->name,
+                                    'slug' => $child->slug,
+                                    'icon' => $child->icon,
+                                    'image' => $child->image,
+                                    'thumbnail' => $child->thumbnail,
+                                ];
+                            })
+                            ->values(),
+                    ];
+                })
+        );
+    }
+
+    protected function formatProducts($products, $user = null)
+    {
+        $productService = app(ProductService::class);
+
+        return $products->map(
+            fn ($product) => $productService->formatProduct($product, $user)
+        );
     }
 
     protected function productRelations(): array
     {
         return [
-            'images',
-            'variants',
-            'category.parent',
-            'department',
+            'images:id,product_id,url,type,position',
+            'variants:id,product_id,size,color,price,stock,reserved_stock,sold_stock,is_active',
+            'category:id,parent_id,name,slug',
+            'category.parent:id,parent_id,name,slug',
+            'department:id,name,slug,code',
         ];
     }
 }

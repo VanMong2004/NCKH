@@ -26,7 +26,7 @@ export default function BlogSidebar({ posts = [] }) {
                 <h2 className="mt-4 text-lg font-black text-blue-950 dark:text-white">Đăng ký nhận tin</h2>
 
                 <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Theo dõi các bài viết, sự kiện và chiến dịch mới nhất.
+                    Theo dõi các bài viết, sự kiện và khuyến mãi mới nhất.
                 </p>
 
                 <div className="mt-4 space-y-3">

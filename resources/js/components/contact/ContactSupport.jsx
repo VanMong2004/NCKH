@@ -14,8 +14,8 @@ const SUPPORT_TOPICS = [
     },
     {
         icon: Tag,
-        title: 'Chiến dịch',
-        desc: 'Tư vấn đăng ký, điều kiện tham gia và nhận sản phẩm chiến dịch.',
+        title: 'Khuyến mãi',
+        desc: 'Tư vấn chương trình ưu đãi, điều kiện áp dụng và sản phẩm khuyến mãi.',
     },
     {
         icon: UserRound,

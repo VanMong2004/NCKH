@@ -59,6 +59,30 @@ class AdminAnalyticsController extends Controller
         }
     }
 
+    public function topViewedProducts(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'limit' => 'nullable|integer|min:1|max:20',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Top viewed products',
+                'data' => $this->service->topViewedProducts(
+                    $request->user(),
+                    $data['limit'] ?? 10
+                ),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'Admin top viewed products analytics error');
+        }
+    }
+
     public function salesChart(Request $request)
     {
         try {

@@ -41,34 +41,6 @@ export function mapStatusItem(item = {}) {
     };
 }
 
-export function mapRegisteredCampaignProduct(item = {}) {
-    return {
-        userCampaignItemId: item.user_campaign_item_id,
-        productId: item.product_id,
-        productName: item.product_name || '',
-        sku: item.sku || '',
-        size: item.size || '',
-        color: item.color || '',
-        quantity: toNumber(item.quantity),
-        approvedQuantity: toNumber(item.approved_quantity),
-        paidQuantity: toNumber(item.paid_quantity),
-        status: item.status || '',
-        raw: item,
-    };
-}
-
-export function mapCampaignHistory(item = {}) {
-    return {
-        id: item.id,
-        campaignId: item.campaign_id,
-        title: item.title || '',
-        slug: item.slug || '',
-        registrationStatus: item.registration_status || '',
-        createdAt: item.created_at || '',
-        raw: item,
-    };
-}
-
 export function mapSpendingByCategory(item = {}) {
     return {
         categoryId: item.category_id,
@@ -137,19 +109,6 @@ export function mapOrdersAnalytics(data = {}) {
     };
 }
 
-export function mapCampaignsAnalytics(data = {}) {
-    return {
-        totalCampaigns: toNumber(data.total_campaigns),
-        activeCampaigns: toNumber(data.active_campaigns),
-        completedCampaigns: toNumber(data.completed_campaigns),
-        registeredProducts: Array.isArray(data.registered_products)
-            ? data.registered_products.map(mapRegisteredCampaignProduct)
-            : [],
-        history: Array.isArray(data.history) ? data.history.map(mapCampaignHistory) : [],
-        raw: data,
-    };
-}
-
 export function mapSpendingAnalytics(data = {}) {
     return {
         totalSpent: toNumber(data.total_spent),
@@ -188,14 +147,12 @@ export function mapUserAnalyticsOverviewResponse(response = {}) {
     const data = response.data || {};
 
     const orders = mapOrdersAnalytics(data.orders || {});
-    const campaigns = mapCampaignsAnalytics(data.campaigns || {});
     const spending = mapSpendingAnalytics(data.spending || {});
     const interests = mapInterestsAnalytics(data.interests || {});
     const tracking = mapTrackingAnalytics(data.tracking || {});
 
     return {
         orders,
-        campaigns,
         spending,
         interests,
         tracking,
@@ -203,8 +160,6 @@ export function mapUserAnalyticsOverviewResponse(response = {}) {
         summary: {
             totalOrders: orders.totalOrders,
             totalSpent: spending.totalSpent,
-            totalCampaigns: campaigns.totalCampaigns,
-            activeCampaigns: campaigns.activeCampaigns,
         },
 
         success: Boolean(response.success),
@@ -215,10 +170,6 @@ export function mapUserAnalyticsOverviewResponse(response = {}) {
 
 export function mapOrdersAnalyticsResponse(response = {}) {
     return mapOrdersAnalytics(response.data || {});
-}
-
-export function mapCampaignsAnalyticsResponse(response = {}) {
-    return mapCampaignsAnalytics(response.data || {});
 }
 
 export function mapSpendingAnalyticsResponse(response = {}) {

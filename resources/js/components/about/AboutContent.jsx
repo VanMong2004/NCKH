@@ -3,13 +3,13 @@ import { CheckCircle2, Eye, Flag, Layers3, PackageCheck, Send, ShoppingBag } fro
 const PROCESS_STEPS = [
     {
         icon: ShoppingBag,
-        title: 'Tìm sản phẩm hoặc chiến dịch',
-        desc: 'Người dùng có thể xem sản phẩm, tin tức, chiến dịch và thông tin liên quan.',
+        title: 'Tìm sản phẩm hoặc khuyến mãi',
+        desc: 'Người dùng có thể xem sản phẩm, tin tức, khuyến mãi và thông tin liên quan.',
     },
     {
         icon: PackageCheck,
         title: 'Đăng ký hoặc đặt hàng',
-        desc: 'Hệ thống hỗ trợ đặt hàng, chọn biến thể và đăng ký tham gia chiến dịch.',
+        desc: 'Hệ thống hỗ trợ đặt hàng, chọn biến thể và áp dụng khuyến mãi.',
     },
     {
         icon: Send,
@@ -27,7 +27,7 @@ export default function AboutContent({ about }) {
                     label="Sứ mệnh"
                     title="Nền tảng hỗ trợ hoạt động số trong môi trường đại học"
                     content={about?.mission}
-                    fallback="Xây dựng một nền tảng số giúp tối ưu quá trình đặt hàng, đăng ký chiến dịch, theo dõi giao dịch và nhận thông báo trong môi trường đại học."
+                    fallback="Xây dựng một nền tảng số giúp tối ưu quá trình đặt hàng, áp dụng khuyến mãi, theo dõi giao dịch và nhận thông báo trong môi trường đại học."
                 />
 
                 <InfoSection
@@ -75,7 +75,7 @@ function InfoSection({ icon: Icon, label, title, content, fallback }) {
 
 function FeatureBox() {
     const items = [
-        'Quản lý sản phẩm và chiến dịch tập trung.',
+        'Quản lý sản phẩm và khuyến mãi tập trung.',
         'Theo dõi đơn hàng, thanh toán và nhận hàng.',
         'Cập nhật tin tức, chính sách và FAQ rõ ràng.',
         'Hỗ trợ giao diện sáng/tối và trải nghiệm đa thiết bị.',

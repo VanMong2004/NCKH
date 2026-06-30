@@ -19,8 +19,11 @@ class OrderQueryService
         }
 
         $query = Order::with([
-            'items.productVariant.product.images',
-            'payments',
+            'items:id,order_id,product_variant_id,quantity',
+            'items.productVariant:id,product_id',
+            'items.productVariant.product:id,name,slug',
+            'items.productVariant.product.images:id,product_id,url,type,position',
+            'payments:id,order_id,method,status,created_at',
         ])
             ->where('user_id', $user->id);
 
@@ -280,6 +283,15 @@ class OrderQueryService
                 'status' => 'cancelled',
                 'cancel_reason' => 'user_cancelled',
             ]);
+
+            $order->payments()
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'failed',
+                    'response_data' => [
+                        'reason' => 'user_cancelled',
+                    ],
+                ]);
 
             return $order->fresh();
         });

@@ -146,7 +146,7 @@ class N8nSocialAutomationService
 
         $images = $this->productImages($product);
         $image = $images[0] ?? null;
-        $productUrl = $this->publicUrl('/shop/' . $product->slug);
+        $productUrl = $this->publicUrl('/product/' . $product->slug);
         $caption = $this->normalizeCaption($caption, $productUrl);
 
         $minPrice = $product->variants
@@ -242,7 +242,7 @@ class N8nSocialAutomationService
 
     public function publicProductUrl(Product $product): ?string
     {
-        return $this->publicUrl('/shop/' . $product->slug);
+        return $this->publicUrl('/product/' . $product->slug);
     }
 
     public function publicPromotionUrl(Promotion $promotion): ?string

@@ -130,11 +130,11 @@ function AboutCTA() {
                     </div>
 
                     <h2 className="mt-4 max-w-2xl text-2xl font-black leading-tight md:text-3xl">
-                        Khám phá sản phẩm, chiến dịch và hoạt động mới nhất
+                        Khám phá sản phẩm, khuyến mãi và hoạt động mới nhất
                     </h2>
 
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-blue-100">
-                        Hệ thống giúp người dùng dễ dàng theo dõi thông tin, đặt hàng, đăng ký chiến dịch và nhận hỗ trợ
+                        Hệ thống giúp người dùng dễ dàng theo dõi thông tin, đặt hàng, chọn khuyến mãi và nhận hỗ trợ
                         khi cần.
                     </p>
                 </div>
@@ -149,10 +149,10 @@ function AboutCTA() {
                     </Link>
 
                     <Link
-                        to="/campaigns"
+                        to="/promotions"
                         className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/30 px-5 text-sm font-black text-white transition hover:bg-white/10"
                     >
-                        Xem chiến dịch
+                        Xem khuyến mãi
                         <ArrowRight size={16} />
                     </Link>
                 </div>

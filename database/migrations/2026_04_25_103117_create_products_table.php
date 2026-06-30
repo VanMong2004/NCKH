@@ -51,6 +51,14 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->timestamps();
+
+            $table->index(['is_active', 'created_at'], 'products_active_created_idx');
+            $table->index(['is_active', 'is_featured', 'created_at'], 'products_featured_idx');
+            $table->index(['is_active', 'category_id', 'created_at'], 'products_category_idx');
+            $table->index(['is_active', 'department_id', 'created_at'], 'products_department_idx');
+            $table->index(['is_active', 'sold_count'], 'products_sold_idx');
+            $table->index(['is_active', 'average_rating'], 'products_rating_idx');
+            $table->index(['is_active', 'view_count'], 'products_view_idx');
         });
     }
 

@@ -14,12 +14,9 @@ export default function Register() {
 
     async function loadSiteContent() {
         try {
-            const data = await homeService.getHomeData();
+            const data = await homeService.getSiteContent();
 
-            console.log('HOME DATA:', data);
-            console.log('SITE CONTENT:', data.site_content);
-
-            setSiteContent(data.siteContent || data.site_content || null);
+            setSiteContent(data || null);
         } catch (error) {
             console.error('LOAD SITE CONTENT ERROR:', error);
             setSiteContent(null);

@@ -11,6 +11,7 @@ use App\Models\ProductImage;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use App\Jobs\SendProductSocialAutomationJob;
 use App\Services\Social\AiSocialCaptionService;
@@ -23,10 +24,10 @@ class AdminProductService
     {
         $query = Product::query()
             ->with([
-                'category',
-                'department',
-                'images',
-                'variants',
+                'category:id,name',
+                'department:id,name,code',
+                'images:id,product_id,url,type,position',
+                'variants:id,product_id,price,stock,is_active',
             ]);
 
         if ($request->filled('keyword')) {
@@ -96,7 +97,7 @@ class AdminProductService
                 $query->latest();
         }
 
-        $perPage = $request->per_page ?? 10;
+        $perPage = min((int) ($request->per_page ?? 10), 50);
 
         $products = $query
             ->paginate($perPage);
@@ -257,6 +258,8 @@ class AdminProductService
                 $request->variants
             );
 
+            $this->clearProductFilterCache();
+
             return [
 
                 'success' => true,
@@ -322,6 +325,8 @@ class AdminProductService
                 );
             }
 
+            $this->clearProductFilterCache();
+
             return [
 
                 'success' => true,
@@ -361,6 +366,8 @@ class AdminProductService
         }
 
         $product->delete();
+
+        $this->clearProductFilterCache();
 
         return [
 
@@ -669,6 +676,8 @@ class AdminProductService
                 ]);
         }
 
+        $this->clearProductFilterCache();
+
         return [
             'success' => true,
             'message' => $isActive
@@ -689,6 +698,8 @@ class AdminProductService
         $variant->update([
             'is_active' => $isActive,
         ]);
+
+        $this->clearProductFilterCache();
 
         return [
             'success' => true,
@@ -756,5 +767,10 @@ class AdminProductService
                 'status' => $socialLog->status,
             ],
         ];
+    }
+
+    private function clearProductFilterCache(): void
+    {
+        Cache::forget('products:filter_meta:v1');
     }
 }

@@ -194,6 +194,7 @@ export function mapProductListItem(item = {}) {
         reviews: toNumber(item.total_reviews || item.review_count),
 
         sold: toNumber(item.sold || item.sold_count),
+        viewCount: toNumber(item.view_count || item.views),
 
         inStock: Boolean(item.in_stock),
         stock: toNumber(item.available_stock || item.stock),
@@ -248,6 +249,7 @@ export function mapProductDetailItem(item = {}) {
         totalReviews: toNumber(item.total_reviews || item.review_count),
 
         sold: toNumber(item.sold || item.sold_count),
+        viewCount: toNumber(item.view_count || item.views),
 
         stock: toNumber(item.stock || item.available_stock),
         availableStock: toNumber(item.available_stock || item.stock),

@@ -4,7 +4,6 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Jobs\ExpireCampaignSlotJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -16,7 +15,6 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->command('orders:auto-complete')->hourly();
         $schedule->command('chat:expire-conversations')->dailyAt('02:10');
-        $schedule->job(new ExpireCampaignSlotJob())->hourly();
     }
 
     /**

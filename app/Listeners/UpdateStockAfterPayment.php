@@ -5,11 +5,13 @@ namespace App\Listeners;
 use App\Events\OrderPaid;
 use Illuminate\Support\Facades\Log;
 use App\Services\WebhookService;
+use App\Services\Analytics\AnalyticsEventService;
 
 class UpdateStockAfterPayment
 {
     public function __construct(
-        protected WebhookService $webhook
+        protected WebhookService $webhook,
+        protected AnalyticsEventService $analyticsEventService
     ) {}
 
     public function handle(OrderPaid $event): void
@@ -26,5 +28,7 @@ class UpdateStockAfterPayment
         Log::info('OrderPaid webhook sent', [
             'order_id' => $order->id,
         ]);
+
+        $this->analyticsEventService->trackPurchaseCompletedForOrder($order);
     }
 }

@@ -35,6 +35,11 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
 
             $table->timestamps();
+
+            $table->index(['product_id', 'is_active'], 'variants_product_active_idx');
+            $table->index(['is_active', 'price'], 'variants_active_price_idx');
+            $table->index(['is_active', 'size'], 'variants_active_size_idx');
+            $table->index(['is_active', 'color'], 'variants_active_color_idx');
         });
     }
 

@@ -11,7 +11,7 @@ import BlogToolbar from '../components/blog/BlogToolbar';
 import MainLayout from '../layout/MainLayout';
 import blogService from '../services/blogService';
 
-const DEFAULT_CATEGORIES = ['Tin tức', 'Sự kiện', 'Chiến dịch'];
+const DEFAULT_CATEGORIES = ['Tin tức', 'Sự kiện', 'Khuyến mãi'];
 
 export default function Blog() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -191,7 +191,7 @@ export default function Blog() {
                                     <section>
                                         <SectionHeading
                                             title="Bài viết nổi bật"
-                                            description="Các tin tức, sự kiện và chiến dịch đáng chú ý nhất."
+                                            description="Các tin tức, sự kiện và khuyến mãi đáng chú ý nhất."
                                         />
 
                                         <div className="mt-4 grid gap-5 md:grid-cols-2 xl:grid-cols-3">

@@ -7,6 +7,7 @@ import {
     mapAdminAnalyticsCategoryRevenueResponse,
     mapAdminAnalyticsSalesChartResponse,
     mapAdminAnalyticsTopProductsResponse,
+    mapAdminAnalyticsTopViewedProductsResponse,
 } from '../mappers/adminAnalyticMapper';
 
 const adminAnalyticsService = {
@@ -18,6 +19,11 @@ const adminAnalyticsService = {
     async getTopProducts(params = {}) {
         const res = await api.get('/admin/analytics/top-products', { params });
         return mapAdminAnalyticsTopProductsResponse(res.data);
+    },
+
+    async getTopViewedProducts(params = {}) {
+        const res = await api.get('/admin/analytics/top-viewed-products', { params });
+        return mapAdminAnalyticsTopViewedProductsResponse(res.data);
     },
 
     async getSalesChart(days = 30, params = {}) {

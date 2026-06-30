@@ -63,6 +63,8 @@ Route::prefix('home')->group(function () {
     Route::get('/', [HomeController::class,'getHomeData']); // Lấy dữ liệu cho trang chủ Home Page 
 });
 
+Route::get('/site-content', [HomeController::class, 'siteContent']);
+
 Route::middleware('throttle:120,1')
     ->post('/analytics/events', [AnalyticsEventController::class, 'store']);
 
@@ -364,6 +366,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/behavior-chart', [AdminAnalyticsController::class, 'behaviorChart']);
         Route::get('/revenue-by-category', [AdminAnalyticsController::class, 'revenueByCategory']);
         Route::get('/top-products', [AdminAnalyticsController::class, 'topProducts']);
+        Route::get('/top-viewed-products', [AdminAnalyticsController::class, 'topViewedProducts']);
         Route::get('/sales-chart', [AdminAnalyticsController::class, 'salesChart']);
         Route::get('/export/pdf', [AdminAnalyticsController::class, 'exportPdf']);
         Route::get('/export/excel', [AdminAnalyticsController::class, 'exportExcel']);

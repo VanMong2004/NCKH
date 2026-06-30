@@ -4,6 +4,7 @@ namespace App\Services\Admin;
 
 use App\Models\SiteComponent;
 use App\Models\SiteComponentItem;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -80,6 +81,7 @@ class AdminSiteContentService
             }
 
             $component = SiteComponent::create($this->normalizeComponentData($data));
+            $this->clearHomeCache();
 
             return $this->show($component->id);
         });
@@ -110,6 +112,7 @@ class AdminSiteContentService
             }
 
             $component->update($this->normalizeComponentData($data, partial: true));
+            $this->clearHomeCache();
 
             return $this->show($component->id);
         });
@@ -127,6 +130,7 @@ class AdminSiteContentService
             }
 
             $component->delete();
+            $this->clearHomeCache();
 
             return [
                 'deleted' => true,
@@ -148,6 +152,7 @@ class AdminSiteContentService
             $component->update([
                 'is_active' => !$component->is_active,
             ]);
+            $this->clearHomeCache();
 
             return $this->show($component->id);
         });
@@ -178,6 +183,7 @@ class AdminSiteContentService
             }
 
             $item = $component->items()->create($this->normalizeItemData($data));
+            $this->clearHomeCache();
 
             return $this->formatItemDetail(
                 SiteComponentItem::query()
@@ -213,6 +219,7 @@ class AdminSiteContentService
             }
 
             $item->update($this->normalizeItemData($data, partial: true));
+            $this->clearHomeCache();
 
             return $this->formatItemDetail(
                 SiteComponentItem::query()
@@ -234,6 +241,7 @@ class AdminSiteContentService
             }
 
             $item->delete();
+            $this->clearHomeCache();
 
             return [
                 'deleted' => true,
@@ -255,6 +263,7 @@ class AdminSiteContentService
             $item->update([
                 'is_active' => !$item->is_active,
             ]);
+            $this->clearHomeCache();
 
             return $this->formatItemDetail($item->fresh('children'));
         });
@@ -283,6 +292,7 @@ class AdminSiteContentService
                         'sort_order' => (int) ($row['sort_order'] ?? 0),
                     ]);
             }
+            $this->clearHomeCache();
 
             return $this->show($component->id);
         });
@@ -337,6 +347,11 @@ class AdminSiteContentService
         }
 
         return $normalized;
+    }
+
+    private function clearHomeCache(): void
+    {
+        Cache::forget('home:site_content:home');
     }
 
     private function normalizeItemData(array $data, bool $partial = false): array

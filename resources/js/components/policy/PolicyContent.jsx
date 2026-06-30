@@ -123,7 +123,7 @@ function ImportantNotes() {
                     <h2 className="text-base font-black text-blue-950 dark:text-white">Lưu ý quan trọng</h2>
 
                     <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                        <li>Người dùng nên đọc kỹ chính sách trước khi thực hiện giao dịch hoặc đăng ký chiến dịch.</li>
+                        <li>Người dùng nên đọc kỹ chính sách trước khi thực hiện giao dịch hoặc sử dụng khuyến mãi.</li>
                         <li>Một số chính sách có thể được cập nhật theo từng thời điểm.</li>
                         <li>Nếu cần hỗ trợ, vui lòng liên hệ bộ phận chăm sóc khách hàng.</li>
                     </ul>
@@ -202,7 +202,7 @@ function getFallbackSections(policy) {
             title: 'Phạm vi áp dụng',
             icon: FileText,
             items: [
-                'Chính sách này áp dụng cho các hoạt động sử dụng hệ thống, đặt hàng và tham gia chiến dịch.',
+                'Chính sách này áp dụng cho các hoạt động sử dụng hệ thống, đặt hàng và sử dụng khuyến mãi.',
                 'Người dùng cần tuân thủ các quy định được công bố trên hệ thống.',
             ],
         },

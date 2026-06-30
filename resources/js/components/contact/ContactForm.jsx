@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 const SUBJECT_OPTIONS = [
     'Hỗ trợ đơn hàng',
     'Hỗ trợ thanh toán',
-    'Tư vấn chiến dịch',
+    'Tư vấn khuyến mãi',
     'Tài khoản người dùng',
     'Góp ý hệ thống',
     'Khác',

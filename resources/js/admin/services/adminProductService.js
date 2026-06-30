@@ -2,15 +2,54 @@ import api from '../../services/api';
 
 import { mapAdminProductDetailResponse, mapAdminProductListResponse } from '../mappers/adminProductMapper';
 
+const pendingListRequests = new Map();
+const pendingDetailRequests = new Map();
+
+function requestKey(params = {}) {
+    return Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}:${String(value)}`)
+        .join('|');
+}
+
 const adminProductService = {
     async getProducts(params = {}) {
-        const res = await api.get('/admin/products', { params });
-        return mapAdminProductListResponse(res.data);
+        const key = requestKey(params);
+
+        if (pendingListRequests.has(key)) {
+            return pendingListRequests.get(key);
+        }
+
+        const request = api
+            .get('/admin/products', { params })
+            .then((res) => mapAdminProductListResponse(res.data))
+            .finally(() => {
+                pendingListRequests.delete(key);
+            });
+
+        pendingListRequests.set(key, request);
+
+        return request;
     },
 
     async getProduct(id) {
-        const res = await api.get(`/admin/products/${id}`);
-        return mapAdminProductDetailResponse(res.data);
+        const key = String(id || '');
+
+        if (pendingDetailRequests.has(key)) {
+            return pendingDetailRequests.get(key);
+        }
+
+        const request = api
+            .get(`/admin/products/${id}`)
+            .then((res) => mapAdminProductDetailResponse(res.data))
+            .finally(() => {
+                pendingDetailRequests.delete(key);
+            });
+
+        pendingDetailRequests.set(key, request);
+
+        return request;
     },
 
     async createProduct(payload) {

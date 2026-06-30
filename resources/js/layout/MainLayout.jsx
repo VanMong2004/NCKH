@@ -65,9 +65,9 @@ export default function MainLayout({
 
     async function loadSiteContent() {
         try {
-            const data = await homeService.getHomeData();
+            const data = await homeService.getSiteContent();
 
-            setSiteContent(data.siteContent || data.site_content || null);
+            setSiteContent(data || null);
         } catch (error) {
             console.error('LOAD MAIN LAYOUT SITE CONTENT ERROR:', error);
             setSiteContent(null);

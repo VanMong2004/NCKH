@@ -13,21 +13,21 @@ class ProductSeeder extends Seeder
     public function run(): void
     {
         $products = [
-            ['name' => 'Áo thun CTUT K2026', 'category' => 'Áo thun', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 12500],
-            ['name' => 'Hoodie CTUT Premium', 'category' => 'Hoodie', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 6100],
-            ['name' => 'Áo khoa CNTT', 'category' => 'Áo thun', 'department' => 'CNTT', 'author' => 'Khoa Công nghệ thông tin', 'featured' => true, 'views' => 8000],
-            ['name' => 'Áo khoa Cơ khí', 'category' => 'Áo thun', 'department' => 'CK', 'author' => 'Khoa Cơ khí', 'featured' => false, 'views' => 4200],
-            ['name' => 'Áo khoa Điện - Điện tử', 'category' => 'Áo thun', 'department' => 'DDT-VT', 'author' => 'Khoa Điện - Điện tử - Viễn thông', 'featured' => false, 'views' => 4700],
-            ['name' => 'Áo Freshman Week 2026', 'category' => 'Freshman Week', 'department' => null, 'author' => 'Freshman Week 2026', 'featured' => true, 'views' => 11000],
-            ['name' => 'Ly giữ nhiệt CTUT', 'category' => 'Ly giữ nhiệt', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 5200],
-            ['name' => 'Túi tote CTUT', 'category' => 'Túi tote', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 4500],
-            ['name' => 'Nón lưỡi trai CTUT', 'category' => 'Nón', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 3100],
-            ['name' => 'Móc khóa CTUT', 'category' => 'Móc khóa', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 3800],
-            ['name' => 'Sticker CTUT', 'category' => 'Sticker', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 2600],
-            ['name' => 'Bảng tên sinh viên CTUT', 'category' => 'Bảng tên', 'department' => null, 'author' => 'Phòng Công tác sinh viên', 'featured' => false, 'views' => 9000],
-            ['name' => 'Dây đeo thẻ CTUT', 'category' => 'Dây đeo thẻ', 'department' => null, 'author' => 'Đoàn Thanh niên CTUT', 'featured' => false, 'views' => 2400],
-            ['name' => 'Sổ tay CTUT', 'category' => 'Sổ tay', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 2100],
-            ['name' => 'Bút CTUT', 'category' => 'Bút', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 1800],
+            ['name' => 'Áo thun CTUT K2026', 'category' => 'Áo thun', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 0],
+            ['name' => 'Hoodie CTUT Premium', 'category' => 'Hoodie', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 0],
+            ['name' => 'Áo khoa CNTT', 'category' => 'Áo thun', 'department' => 'CNTT', 'author' => 'Khoa Công nghệ thông tin', 'featured' => true, 'views' => 0],
+            ['name' => 'Áo khoa Cơ khí', 'category' => 'Áo thun', 'department' => 'CK', 'author' => 'Khoa Cơ khí', 'featured' => false, 'views' => 0],
+            ['name' => 'Áo khoa Điện - Điện tử', 'category' => 'Áo thun', 'department' => 'DDT-VT', 'author' => 'Khoa Điện - Điện tử - Viễn thông', 'featured' => false, 'views' => 0],
+            ['name' => 'Áo Freshman Week 2026', 'category' => 'Freshman Week', 'department' => null, 'author' => 'Freshman Week 2026', 'featured' => true, 'views' => 0],
+            ['name' => 'Ly giữ nhiệt CTUT', 'category' => 'Ly giữ nhiệt', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 0],
+            ['name' => 'Túi tote CTUT', 'category' => 'Túi tote', 'department' => null, 'author' => 'CTUT Store', 'featured' => true, 'views' => 0],
+            ['name' => 'Nón lưỡi trai CTUT', 'category' => 'Nón', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 0],
+            ['name' => 'Móc khóa CTUT', 'category' => 'Móc khóa', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 0],
+            ['name' => 'Sticker CTUT', 'category' => 'Sticker', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 0],
+            ['name' => 'Bảng tên sinh viên CTUT', 'category' => 'Bảng tên', 'department' => null, 'author' => 'Phòng Công tác sinh viên', 'featured' => false, 'views' => 0],
+            ['name' => 'Dây đeo thẻ CTUT', 'category' => 'Dây đeo thẻ', 'department' => null, 'author' => 'Đoàn Thanh niên CTUT', 'featured' => false, 'views' => 0],
+            ['name' => 'Sổ tay CTUT', 'category' => 'Sổ tay', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 0],
+            ['name' => 'Bút CTUT', 'category' => 'Bút', 'department' => null, 'author' => 'CTUT Store', 'featured' => false, 'views' => 0],
         ];
 
         foreach ($products as $item) {

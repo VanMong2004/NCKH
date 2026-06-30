@@ -129,7 +129,7 @@ function ContactHero() {
                     </h1>
 
                     <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 md:text-base">
-                        Gửi câu hỏi, phản hồi hoặc yêu cầu hỗ trợ liên quan đến đơn hàng, thanh toán, chiến dịch và tài
+                        Gửi câu hỏi, phản hồi hoặc yêu cầu hỗ trợ liên quan đến đơn hàng, thanh toán, khuyến mãi và tài
                         khoản người dùng.
                     </p>
                 </div>
@@ -201,7 +201,7 @@ function ContactQuickNote() {
 
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 <li>Nhập đúng email để nhận phản hồi.</li>
-                <li>Nêu rõ mã đơn hàng hoặc chiến dịch nếu có.</li>
+                <li>Nêu rõ mã đơn hàng hoặc khuyến mãi nếu có.</li>
                 <li>Không gửi nhiều yêu cầu trùng nội dung trong thời gian ngắn.</li>
             </ul>
         </section>

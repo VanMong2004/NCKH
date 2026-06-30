@@ -10,6 +10,7 @@ use App\Models\RecentlyViewedProduct;
 use App\Models\Review;
 use RuntimeException;
 use App\Services\PromotionPriceService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 
@@ -21,6 +22,7 @@ class ProductService
 
     private const MAX_PAGE_SIZE = 50;
     private const RELATED_PRODUCTS_LIMIT = 8;
+    private const FILTER_META_CACHE_MINUTES = 5;
 
     // LIST + FILTER
     public function getList(array $filters = [], $user = null)
@@ -32,12 +34,23 @@ class ProductService
 
         $query = Product::query()
             ->with([
-                'images',
+                'images:id,product_id,url,type,position',
                 'variants' => function ($q) {
-                    $q->where('is_active', true);
+                    $q->select([
+                        'id',
+                        'product_id',
+                        'size',
+                        'color',
+                        'price',
+                        'stock',
+                        'reserved_stock',
+                        'sold_stock',
+                        'is_active',
+                    ])->where('is_active', true);
                 },
-                'category.parent',
-                'department',
+                'category:id,parent_id,name,slug',
+                'category.parent:id,parent_id,name,slug',
+                'department:id,name,slug,code',
             ])
             ->where('is_active', true)
             ->whereHas('variants', function ($q) {
@@ -177,64 +190,7 @@ class ProductService
             })
             ->values();
 
-        $allVariants = ProductVariant::query()
-            ->where('is_active', true)
-            ->whereHas('product', function ($q) {
-                $q->where('is_active', true);
-            });
-
-        $filterMeta = [
-            'sizes' => (clone $allVariants)
-                ->select('size')
-                ->whereNotNull('size')
-                ->distinct()
-                ->pluck('size'),
-
-            'colors' => (clone $allVariants)
-                ->select('color')
-                ->whereNotNull('color')
-                ->distinct()
-                ->pluck('color'),
-
-            'price_range' => [
-                'min' => (clone $allVariants)->min('price'),
-                'max' => (clone $allVariants)->max('price'),
-            ],
-
-            'departments' => Department::query()
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get()
-                ->map(fn ($department) => [
-                    'id' => $department->id,
-                    'name' => $department->name,
-                    'slug' => $department->slug,
-                    'code' => $department->code,
-                ]),
-
-            'categories' => Category::query()
-                ->whereNull('parent_id')
-                ->with('children')
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-
-                        'name' => $item->name,
-
-                        'slug' => $item->slug,
-
-                        'children' => $item->children->map(
-                            fn ($child) => [
-                                'id' => $child->id,
-                                'name' => $child->name,
-                                'slug' => $child->slug,
-                            ]
-                        ),
-                    ];
-                }),
-        ];
+        $filterMeta = $this->filterMeta();
 
         return [
             'success' => true,
@@ -257,6 +213,78 @@ class ProductService
         ];
     }
 
+    private function filterMeta(): array
+    {
+        return Cache::remember(
+            'products:filter_meta:v1',
+            now()->addMinutes(self::FILTER_META_CACHE_MINUTES),
+            function () {
+                $allVariants = ProductVariant::query()
+                    ->where('is_active', true)
+                    ->whereHas('product', function ($q) {
+                        $q->where('is_active', true);
+                    });
+
+                return [
+                    'sizes' => (clone $allVariants)
+                        ->select('size')
+                        ->whereNotNull('size')
+                        ->distinct()
+                        ->pluck('size'),
+
+                    'colors' => (clone $allVariants)
+                        ->select('color')
+                        ->whereNotNull('color')
+                        ->distinct()
+                        ->pluck('color'),
+
+                    'price_range' => [
+                        'min' => (clone $allVariants)->min('price'),
+                        'max' => (clone $allVariants)->max('price'),
+                    ],
+
+                    'departments' => Department::query()
+                        ->select(['id', 'name', 'slug', 'code', 'sort_order'])
+                        ->where('is_active', true)
+                        ->orderBy('sort_order')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(fn ($department) => [
+                            'id' => $department->id,
+                            'name' => $department->name,
+                            'slug' => $department->slug,
+                            'code' => $department->code,
+                        ]),
+
+                    'categories' => Category::query()
+                        ->select(['id', 'name', 'slug', 'parent_id'])
+                        ->whereNull('parent_id')
+                        ->with([
+                            'children' => fn ($q) => $q->select(['id', 'name', 'slug', 'parent_id']),
+                        ])
+                        ->get()
+                        ->map(function ($item) {
+                            return [
+                                'id' => $item->id,
+
+                                'name' => $item->name,
+
+                                'slug' => $item->slug,
+
+                                'children' => $item->children->map(
+                                    fn ($child) => [
+                                        'id' => $child->id,
+                                        'name' => $child->name,
+                                        'slug' => $child->slug,
+                                    ]
+                                ),
+                            ];
+                        }),
+                ];
+            }
+        );
+    }
+
     // DETAIL
     public function show(string $slug, $user = null)
     {
@@ -272,10 +300,6 @@ class ProductService
             ])
             ->where('slug', $slug)
             ->where('is_active', true)
-            ->whereHas('variants', function ($q) {
-                $q->where('is_active', true)
-                    ->whereRaw('(stock - reserved_stock) > 0');
-            })
             ->first();
 
         if (!$product) {
@@ -587,6 +611,7 @@ class ProductService
             'total_reviews' => $product->total_reviews,
 
             'sold' => $sold,
+            'view_count' => (int) ($product->view_count ?? 0),
             'stock' => $availableStock,
             'available_stock' => $availableStock,
             'in_stock' => $availableStock > 0,

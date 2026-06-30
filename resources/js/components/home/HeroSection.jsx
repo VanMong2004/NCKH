@@ -129,6 +129,9 @@ export default function HeroSection({ heroSlider }) {
                                 <img
                                     src={slide.image}
                                     alt={slide.title}
+                                    loading={index === 0 ? 'eager' : 'lazy'}
+                                    decoding={index === 0 ? 'sync' : 'async'}
+                                    fetchPriority={index === 0 ? 'high' : 'low'}
                                     className="h-full w-full object-cover"
                                     onError={(e) => {
                                         e.currentTarget.src = '/images/no-image.png';

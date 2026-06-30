@@ -81,4 +81,29 @@ class HomeController extends Controller
             ], 500);
         }
     }
+
+    public function siteContent()
+    {
+        try {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy nội dung site thành công',
+                'data' => [
+                    'site_content' => $this->homeService->getSiteContent('home'),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Get site content error', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
 }

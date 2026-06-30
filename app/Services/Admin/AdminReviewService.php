@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use RuntimeException;
 use App\Models\Review;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AdminReviewService
@@ -64,11 +65,11 @@ class AdminReviewService
         }
 
         if (!empty($filters['date_from'])) {
-            $query->whereDate('created_at', '>=', $filters['date_from']);
+            $query->where('created_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
         }
 
         if (!empty($filters['date_to'])) {
-            $query->whereDate('created_at', '<=', $filters['date_to']);
+            $query->where('created_at', '<=', Carbon::parse($filters['date_to'])->endOfDay());
         }
 
         switch ($filters['sort'] ?? 'latest') {
@@ -89,7 +90,9 @@ class AdminReviewService
                 break;
         }
 
-        $reviews = $query->paginate($filters['per_page'] ?? 10);
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 100);
+
+        $reviews = $query->paginate($perPage);
 
         $reviews->setCollection(
             $reviews->getCollection()

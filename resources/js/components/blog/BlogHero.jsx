@@ -23,15 +23,15 @@ export default function BlogHero({ backgroundImage }) {
             <div className="relative min-h-[250px] px-6 py-10 sm:px-10 md:min-h-[290px] md:py-14">
                 <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-wide text-blue-700 shadow-sm backdrop-blur dark:border-blue-500/20 dark:bg-slate-900/70 dark:text-blue-300">
                     <Sparkles size={14} />
-                    Tin tức - Sự kiện - Chiến dịch
+                    Tin tức - Sự kiện - Khuyến mãi
                 </div>
 
                 <h1 className="mt-6 max-w-2xl text-4xl font-black leading-tight text-blue-950 dark:text-white md:text-5xl">
-                    Tin tức, sự kiện & chiến dịch
+                    Tin tức, sự kiện & khuyến mãi
                 </h1>
 
                 <p className="mt-5 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300 md:text-base">
-                    Cập nhật những thông tin mới nhất về hoạt động, chương trình, chiến dịch và các bài viết nổi bật của
+                    Cập nhật những thông tin mới nhất về hoạt động, chương trình khuyến mãi và các bài viết nổi bật của
                     nhà trường.
                 </p>
 

@@ -15,7 +15,7 @@ export default function FaqHelpCard() {
             </p>
 
             <div className="mt-5 space-y-3">
-                <HelpItem icon={MessageCircle} title="Tư vấn nhanh" desc="Gửi câu hỏi về đơn hàng hoặc chiến dịch." />
+                <HelpItem icon={MessageCircle} title="Tư vấn nhanh" desc="Gửi câu hỏi về đơn hàng hoặc khuyến mãi." />
 
                 <HelpItem icon={Mail} title="Liên hệ qua form" desc="Điền thông tin để bộ phận hỗ trợ phản hồi." />
 

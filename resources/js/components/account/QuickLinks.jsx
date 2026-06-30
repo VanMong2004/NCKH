@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 
 export default function QuickLinks() {
-    const links = ['My Orders', 'My Transactions', 'My Campaigns', 'Addresses', 'Payment Methods'];
+    const links = ['My Orders', 'My Transactions', 'Addresses', 'Payment Methods'];
 
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">

@@ -575,7 +575,7 @@ function ChatProducts({ products = [] }) {
     return (
         <div className="mt-3 space-y-3">
             {products.slice(0, 3).map((product) => {
-                const productUrl = product.product_url || product.url || `/shop/${product.slug}`;
+                const productUrl = product.product_url || product.url || `/product/${product.slug}`;
                 const imageUrl = product.image_url || product.thumbnail || product.image || '/images/no-image.png';
                 const availableStock = Number(product.available_stock ?? product.stock?.available ?? product.stock ?? 0);
                 const inStock = Boolean(product.in_stock ?? availableStock > 0);

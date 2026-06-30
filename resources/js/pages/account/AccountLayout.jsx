@@ -78,10 +78,6 @@ function buildBreadcrumbs(pathname) {
         return [{ label: 'Đơn hàng của tôi', path: '/account/orders' }, { label: 'Chi tiết đơn hàng' }];
     }
 
-    if (/^\/account\/campaigns\/[^/]+/.test(pathname)) {
-        return [{ label: 'Chiến dịch của tôi', path: '/account/campaigns' }, { label: 'Chi tiết chiến dịch' }];
-    }
-
     const currentTab =
         accountTabs.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`)) || accountTabs[0];
 

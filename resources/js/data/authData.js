@@ -1,7 +1,7 @@
 export const authFeatures = [
     {
-        title: 'Exclusive Campaigns',
-        desc: 'Join campaigns and activities for students.',
+        title: 'Exclusive Promotions',
+        desc: 'Discover promotions and activities for students.',
         icon: '🎓',
     },
     {

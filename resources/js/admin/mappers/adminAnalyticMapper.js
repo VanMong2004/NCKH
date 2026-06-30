@@ -44,6 +44,7 @@ export function mapAdminAnalyticsOverviewResponse(response = {}) {
         totalUsers: toNumber(data.total_users),
         totalProducts: toNumber(data.total_products),
         activeProducts: toNumber(data.active_products),
+        productViewCount: toNumber(data.product_view_count),
 
         raw: response,
     };
@@ -61,6 +62,24 @@ export function mapAdminAnalyticsTopProductsResponse(response = {}) {
             slug: item.slug || '',
             sold: toNumber(item.sold),
             revenue: toNumber(item.revenue),
+            raw: item,
+        })),
+        raw: response,
+    };
+}
+
+export function mapAdminAnalyticsTopViewedProductsResponse(response = {}) {
+    const raw = Array.isArray(response.data) ? response.data : [];
+
+    return {
+        success: Boolean(response.success),
+        message: response.message || '',
+        products: raw.map((item) => ({
+            id: item.id,
+            name: item.name || '',
+            slug: item.slug || '',
+            views: toNumber(item.views || item.view_count),
+            sold: toNumber(item.sold || item.sold_count),
             raw: item,
         })),
         raw: response,

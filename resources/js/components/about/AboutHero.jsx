@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 
 const FALLBACK = {
     title: 'CTUT Shop',
-    slogan: 'Kết nối sinh viên với các sản phẩm, chiến dịch và hoạt động của trường',
+    slogan: 'Kết nối sinh viên với các sản phẩm, khuyến mãi và hoạt động của trường',
     banner: '/images/system/Rectangle_3897.jpg',
     description:
-        'CTUT Shop là hệ thống hỗ trợ sinh viên, giảng viên và người dùng tiếp cận các sản phẩm, chiến dịch, sự kiện và thông tin chính thức của nhà trường một cách thuận tiện, minh bạch và hiện đại.',
+        'CTUT Shop là hệ thống hỗ trợ sinh viên, giảng viên và người dùng tiếp cận các sản phẩm, khuyến mãi, sự kiện và thông tin chính thức của nhà trường một cách thuận tiện, minh bạch và hiện đại.',
 };
 
 export default function AboutHero({ about }) {
@@ -71,7 +71,7 @@ export default function AboutHero({ about }) {
                     <HeroMiniCard
                         icon={Building2}
                         title="Nền tảng số"
-                        desc="Quản lý sản phẩm, chiến dịch và thông tin hỗ trợ trên cùng một hệ thống."
+                        desc="Quản lý sản phẩm, khuyến mãi và thông tin hỗ trợ trên cùng một hệ thống."
                     />
 
                     <HeroMiniCard

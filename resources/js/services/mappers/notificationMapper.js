@@ -54,7 +54,7 @@ export function notificationTypeText(type) {
     const map = {
         order: 'Đơn hàng',
         payment: 'Thanh toán',
-        campaign: 'Chiến dịch',
+        promotion: 'Khuyến mãi',
         pickup: 'Nhận hàng',
         general: 'Thông báo',
     };
@@ -66,7 +66,7 @@ function getIcon(type) {
     const map = {
         order: '📦',
         payment: '💳',
-        campaign: '📢',
+        promotion: '🏷️',
         pickup: '🚚',
         general: '🔔',
     };

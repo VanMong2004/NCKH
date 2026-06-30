@@ -4,6 +4,7 @@ namespace App\Services\Admin;
 
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use Carbon\Carbon;
 use RuntimeException;
 
 class AdminChatConversationService
@@ -48,11 +49,11 @@ class AdminChatConversationService
         }
 
         if (!empty($filters['date_from'])) {
-            $query->whereDate('last_message_at', '>=', $filters['date_from']);
+            $query->where('last_message_at', '>=', Carbon::parse($filters['date_from'])->startOfDay());
         }
 
         if (!empty($filters['date_to'])) {
-            $query->whereDate('last_message_at', '<=', $filters['date_to']);
+            $query->where('last_message_at', '<=', Carbon::parse($filters['date_to'])->endOfDay());
         }
 
         $sort = $filters['sort'] ?? 'latest';
@@ -63,8 +64,10 @@ class AdminChatConversationService
             default => $query->latest('last_message_at')->latest(),
         };
 
+        $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 50);
+
         return $query
-            ->paginate((int) ($filters['per_page'] ?? 10))
+            ->paginate($perPage)
             ->through(fn (ChatConversation $conversation) => $this->formatConversation($conversation));
     }
 

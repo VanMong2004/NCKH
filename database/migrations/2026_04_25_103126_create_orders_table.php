@@ -57,6 +57,11 @@ return new class extends Migration
             $table->string('order_code')->unique();
 
             $table->timestamps();
+
+            $table->index(['user_id', 'status', 'created_at'], 'orders_user_status_created_idx');
+            $table->index(['status', 'created_at'], 'orders_status_created_idx');
+            $table->index(['expired_at'], 'orders_expired_at_idx');
+            $table->index(['created_at'], 'orders_created_at_idx');
         });
     }
 

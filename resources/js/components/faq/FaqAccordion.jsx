@@ -56,7 +56,7 @@ function getCategoryLabel(category) {
 
     const map = {
         account: 'Tài khoản',
-        campaign: 'Chiến dịch',
+        promotion: 'Khuyến mãi',
         notification: 'Thông báo',
         order: 'Đơn hàng',
         payment: 'Thanh toán',

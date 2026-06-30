@@ -41,6 +41,8 @@ function PromotionCard({ promotion }) {
                 <img
                     src={promotion.thumbnail || promotion.banner || '/images/no-image.png'}
                     alt={promotion.title}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                     onError={(e) => {
                         e.currentTarget.src = '/images/no-image.png';

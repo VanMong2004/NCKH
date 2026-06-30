@@ -46,6 +46,7 @@ export default function AdminAnalytics() {
     const [funnelBehavior, setFunnelBehavior] = useState(null);
     const [rateBehavior, setRateBehavior] = useState(null);
     const [topProducts, setTopProducts] = useState([]);
+    const [topViewedProducts, setTopViewedProducts] = useState([]);
     const [categoryRevenue, setCategoryRevenue] = useState([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState('');
@@ -98,6 +99,7 @@ export default function AdminAnalytics() {
                 ratesResult,
                 categoryResult,
                 productResult,
+                viewedProductResult,
             ] = await Promise.all([
                 adminAnalyticsService.getOverview(),
                 adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
@@ -108,6 +110,7 @@ export default function AdminAnalytics() {
                 adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
                 adminAnalyticsService.getRevenueByCategory(8, globalParams),
                 adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),
+                adminAnalyticsService.getTopViewedProducts({ limit: 10 }),
             ]);
 
             setOverview(overviewResult);
@@ -119,6 +122,7 @@ export default function AdminAnalytics() {
             setRateBehavior(ratesResult);
             setCategoryRevenue(categoryResult.categories || []);
             setTopProducts(productResult.products || []);
+            setTopViewedProducts(viewedProductResult.products || []);
         } catch (error) {
             toast.error(error?.message || 'Không thể tải thống kê');
         } finally {
@@ -241,10 +245,11 @@ export default function AdminAnalytics() {
                 <ChartFilter filter={globalFilter} onChange={updateGlobalFilter} onApply={loadAll} />
             </Panel>
 
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <MetricCard icon={ShoppingCart} label="Tổng đơn hàng" tooltip="Tổng số đơn hàng đã được tạo trong hệ thống." value={formatNumber(overview?.totalOrders || 0)} loading={loading} tone="blue" />
                 <MetricCard icon={TrendingUp} label="Doanh thu ghi nhận" tooltip="Tổng doanh thu từ các đơn đã thanh toán, đang xử lý, đã giao hoặc hoàn tất." value={formatMoney(overview?.revenue || 0)} loading={loading} tone="rose" />
                 <MetricCard icon={Package} label="Sản phẩm đang bán" tooltip="Số sản phẩm đang được bật bán trên website." value={formatNumber(overview?.activeProducts || 0)} loading={loading} tone="violet" />
+                <MetricCard icon={Eye} label="Lượt xem sản phẩm" tooltip="Tổng số lượt mở trang chi tiết sản phẩm, lấy từ cột view_count của bảng products." value={formatNumber(overview?.productViewCount || 0)} loading={loading} tone="slate" />
                 <MetricCard icon={Users} label="Người dùng" tooltip="Tổng số tài khoản người dùng trong hệ thống." value={formatNumber(overview?.totalUsers || 0)} loading={loading} tone="amber" />
                 <MetricCard icon={Percent} label="Tỷ lệ chuyển đổi" tooltip="Tỷ lệ giữa số lượt mua hàng hoàn tất và tổng lượt truy cập." value={`${formatNumber(behavior?.conversionRate || 0)}%`} loading={loading} tone="emerald" />
             </section>
@@ -288,6 +293,10 @@ export default function AdminAnalytics() {
                     {loading ? <LoadingBlock /> : <HorizontalBarChart data={topProducts} valueKey="sold" valueFormatter={formatNumber} />}
                 </Panel>
             </section>
+
+            <Panel title="Sản phẩm xem nhiều" icon={Eye}>
+                {loading ? <LoadingBlock /> : <HorizontalBarChart data={topViewedProducts} valueKey="views" valueFormatter={formatNumber} />}
+            </Panel>
 
             <Panel title="Tổng hợp kỳ đang xem" icon={FileSpreadsheet}>
                 <div className="grid gap-3 sm:grid-cols-3">

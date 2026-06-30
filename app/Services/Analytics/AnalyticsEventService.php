@@ -6,6 +6,7 @@ use App\Events\AdminAnalyticsUpdated;
 use App\Models\AnalyticsDailyMetric;
 use App\Models\AnalyticsEvent;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -64,6 +65,8 @@ class AnalyticsEventService
                     $this->isFirstSessionOfDay($sessionId, $occurredAt, $event->id)
                 );
 
+                $this->incrementProductViewCountOnce($event);
+
                 $this->broadcastSummary();
 
                 return $event;
@@ -113,6 +116,49 @@ class AnalyticsEventService
                 'status' => $order->status,
             ],
         ]);
+    }
+
+    public function trackPurchaseCompletedForOrder(Order $order): void
+    {
+        try {
+            DB::transaction(function () use ($order) {
+                if (AnalyticsEvent::query()
+                    ->where('event_type', AnalyticsEvent::PURCHASE_COMPLETED)
+                    ->where('order_id', $order->id)
+                    ->exists()
+                ) {
+                    return;
+                }
+
+                $event = AnalyticsEvent::create([
+                    'event_type' => AnalyticsEvent::PURCHASE_COMPLETED,
+                    'visitor_id' => null,
+                    'session_id' => null,
+                    'user_id' => $order->user_id,
+                    'guest_token' => $order->guest_token,
+                    'entity_type' => 'order',
+                    'entity_id' => $order->id,
+                    'order_id' => $order->id,
+                    'ip_hash' => null,
+                    'user_agent' => null,
+                    'metadata' => [
+                        'order_code' => $order->order_code,
+                        'total' => (float) $order->total,
+                        'status' => $order->status,
+                        'source' => 'order_paid_event',
+                    ],
+                    'occurred_at' => now(),
+                ]);
+
+                $this->updateDailyMetric($event, false, false);
+                $this->broadcastSummary();
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Track purchase completed from order failed', [
+                'order_id' => $order->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function summary(int $days = 30): array
@@ -223,6 +269,43 @@ class AnalyticsEventService
         }
     }
 
+    private function incrementProductViewCountOnce(AnalyticsEvent $event): void
+    {
+        if (
+            $event->event_type !== AnalyticsEvent::PRODUCT_VIEW
+            || !$event->product_id
+        ) {
+            return;
+        }
+
+        $query = AnalyticsEvent::query()
+            ->where('id', '<>', $event->id)
+            ->where('event_type', AnalyticsEvent::PRODUCT_VIEW)
+            ->where('product_id', $event->product_id)
+            ->whereBetween('occurred_at', [
+                $event->occurred_at->copy()->startOfDay(),
+                $event->occurred_at->copy()->endOfDay(),
+            ]);
+
+        if ($event->visitor_id) {
+            $query->where('visitor_id', $event->visitor_id);
+        } elseif ($event->session_id) {
+            $query->where('session_id', $event->session_id);
+        } elseif ($event->ip_hash) {
+            $query->where('ip_hash', $event->ip_hash);
+        } else {
+            return;
+        }
+
+        if ($query->exists()) {
+            return;
+        }
+
+        Product::query()
+            ->whereKey($event->product_id)
+            ->increment('view_count');
+    }
+
     private function sessionBounceDelta(AnalyticsEvent $event): int
     {
         if (!$event->session_id) {
@@ -231,7 +314,10 @@ class AnalyticsEventService
 
         $query = AnalyticsEvent::query()
             ->where('session_id', $event->session_id)
-            ->whereDate('occurred_at', $event->occurred_at->toDateString());
+            ->whereBetween('occurred_at', [
+                $event->occurred_at->copy()->startOfDay(),
+                $event->occurred_at->copy()->endOfDay(),
+            ]);
 
         $totalAfter = (clone $query)->count();
         $pageViewsAfter = (clone $query)
@@ -272,7 +358,10 @@ class AnalyticsEventService
         return !AnalyticsEvent::query()
             ->where('id', '<>', $currentEventId)
             ->where('visitor_id', $visitorId)
-            ->whereDate('occurred_at', $date->toDateString())
+            ->whereBetween('occurred_at', [
+                $date->copy()->startOfDay(),
+                $date->copy()->endOfDay(),
+            ])
             ->exists();
     }
 
@@ -285,7 +374,10 @@ class AnalyticsEventService
         return !AnalyticsEvent::query()
             ->where('id', '<>', $currentEventId)
             ->where('session_id', $sessionId)
-            ->whereDate('occurred_at', $date->toDateString())
+            ->whereBetween('occurred_at', [
+                $date->copy()->startOfDay(),
+                $date->copy()->endOfDay(),
+            ])
             ->exists();
     }
 
@@ -294,7 +386,7 @@ class AnalyticsEventService
         $buyers = Order::query()
             ->whereNotNull('user_id')
             ->whereIn('status', ['paid', 'processing', 'shipped', 'completed'])
-            ->whereDate('created_at', '>=', $from)
+            ->where('created_at', '>=', $from->copy()->startOfDay())
             ->select('user_id')
             ->groupBy('user_id')
             ->selectRaw('COUNT(*) as orders_count')

@@ -116,7 +116,7 @@ function getCategoryIcon(category) {
 
     if (value.includes('don hang') || value.includes('order')) return PackageCheck;
     if (value.includes('thanh toan') || value.includes('payment')) return CreditCard;
-    if (value.includes('chien dich') || value.includes('campaign')) return Tag;
+    if (value.includes('khuyen mai') || value.includes('promotion')) return Tag;
     if (value.includes('tai khoan') || value.includes('account')) return UserRound;
     if (value.includes('bao mat') || value.includes('security')) return ShieldCheck;
     if (value.includes('thong bao') || value.includes('notification')) return HelpCircle;
@@ -136,7 +136,7 @@ function getCategoryLabel(category) {
     if (normalized.includes('chung') || normalized.includes('general')) return 'Chung';
     if (normalized.includes('don hang') || normalized.includes('order')) return 'Đơn hàng';
     if (normalized.includes('thanh toan') || normalized.includes('payment')) return 'Thanh toán';
-    if (normalized.includes('chien dich') || normalized.includes('campaign')) return 'Chiến dịch';
+    if (normalized.includes('khuyen mai') || normalized.includes('promotion')) return 'Khuyến mãi';
     if (normalized.includes('tai khoan') || normalized.includes('account')) return 'Tài khoản';
     if (normalized.includes('thong bao') || normalized.includes('notification')) return 'Thông báo';
     if (normalized.includes('nhan hang') || normalized.includes('pickup')) return 'Nhận hàng';

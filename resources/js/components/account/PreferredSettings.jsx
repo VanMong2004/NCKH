@@ -10,7 +10,7 @@ export default function PreferredSettings() {
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="font-bold text-blue-950">Email Notifications</p>
-                        <p className="text-sm text-slate-500">Receive updates about orders, campaigns and offers.</p>
+                        <p className="text-sm text-slate-500">Receive updates about orders and offers.</p>
                     </div>
 
                     <button className="h-6 w-11 rounded-full bg-blue-600 p-1">

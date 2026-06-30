@@ -325,7 +325,7 @@ class ChatbotProductCatalogService
         $variants = $product->variants;
         $prices = $variants->pluck('price')->filter();
         $imageUrl = $this->normalizeAssetUrl($product->images->sortBy('position')->first()?->url);
-        $productUrl = url('/shop/' . $product->slug);
+        $productUrl = url('/product/' . $product->slug);
         $availableStock = $variants->sum(fn ($variant) => max(0, (int) $variant->stock - (int) $variant->reserved_stock));
         $minPrice = $prices->min() ? (float) $prices->min() : null;
         $maxPrice = $prices->max() ? (float) $prices->max() : null;

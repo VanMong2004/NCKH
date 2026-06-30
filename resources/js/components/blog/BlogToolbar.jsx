@@ -103,7 +103,7 @@ function getCategoryIcon(category) {
     const value = normalizeCategory(category);
 
     if (value.includes('su kien') || value.includes('event')) return CalendarDays;
-    if (value.includes('chien dich') || value.includes('campaign')) return Megaphone;
+    if (value.includes('khuyen mai') || value.includes('promotion')) return Megaphone;
 
     return Newspaper;
 }
@@ -117,7 +117,7 @@ function getCategoryLabel(category) {
 
     if (normalized.includes('tin tuc') || normalized.includes('news')) return 'Tin tức';
     if (normalized.includes('su kien') || normalized.includes('event')) return 'Sự kiện';
-    if (normalized.includes('chien dich') || normalized.includes('campaign')) return 'Chiến dịch';
+    if (normalized.includes('khuyen mai') || normalized.includes('promotion')) return 'Khuyến mãi';
 
     return value
         .replaceAll('-', ' ')

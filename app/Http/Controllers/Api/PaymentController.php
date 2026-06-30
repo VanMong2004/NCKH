@@ -342,7 +342,7 @@ class PaymentController extends Controller
 
             $filters = $request->validate([
                 'status'=>'nullable|in:pending,success,failed,refunded',
-                'method' => 'nullable|in:vnpay,momo,banking,baokim,mock',
+                'method' => 'nullable|in:vnpay,momo,banking,baokim,mock,cod',
             ]);
 
             $payments = $this->paymentQueryService->history(

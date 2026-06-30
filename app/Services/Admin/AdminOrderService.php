@@ -15,8 +15,11 @@ class AdminOrderService
         $query = Order::query()
             ->with([
                 'user:id,name,email',
-                'items.productVariant.product.images',
-                'payments',
+                'items:id,order_id,product_variant_id,quantity',
+                'items.productVariant:id,product_id',
+                'items.productVariant.product:id,name,slug',
+                'items.productVariant.product.images:id,product_id,url,type,position',
+                'payments:id,order_id,method,status,created_at',
             ]);
 
         if (!empty($filters['status'])) {
@@ -42,11 +45,11 @@ class AdminOrderService
         }
 
         if (!empty($filters['date_from'])) {
-            $query->whereDate('created_at', '>=', $filters['date_from']);
+            $query->where('created_at', '>=', $filters['date_from'] . ' 00:00:00');
         }
 
         if (!empty($filters['date_to'])) {
-            $query->whereDate('created_at', '<=', $filters['date_to']);
+            $query->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
         }
 
         ($filters['sort'] ?? 'latest') === 'oldest'
@@ -198,6 +201,7 @@ class AdminOrderService
             in_array($order->status, [
                 'pending',
                 'paid',
+                'processing',
             ], true)
         ) {
             app(OrderReleaseService::class)
@@ -283,6 +287,9 @@ class AdminOrderService
                 $order->fresh(),
                 'completed'
             );
+
+        app(\App\Services\Analytics\AnalyticsEventService::class)
+            ->trackPurchaseCompletedForOrder($order->fresh());
 
         $payment = $order->payments
             ->sortByDesc('created_at')

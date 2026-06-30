@@ -18,7 +18,7 @@ import FaqToolbar from '../components/faq/FaqToolbar';
 import MainLayout from '../layout/MainLayout';
 import faqService from '../services/faqService';
 
-const DEFAULT_CATEGORIES = ['Chung', 'Đơn hàng', 'Thanh toán', 'Chiến dịch', 'Tài khoản'];
+const DEFAULT_CATEGORIES = ['Chung', 'Đơn hàng', 'Thanh toán', 'Khuyến mãi', 'Tài khoản'];
 
 export default function Faq() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -239,7 +239,7 @@ function FaqHero() {
                     </h1>
 
                     <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 md:text-base">
-                        Tra cứu nhanh các câu hỏi liên quan đến tài khoản, đơn hàng, thanh toán, chiến dịch và chính
+                        Tra cứu nhanh các câu hỏi liên quan đến tài khoản, đơn hàng, thanh toán, khuyến mãi và chính
                         sách hỗ trợ.
                     </p>
                 </div>

@@ -1,7 +1,6 @@
 import api from './api';
 
 import {
-    mapCampaignsAnalyticsResponse,
     mapInterestsAnalyticsResponse,
     mapOrdersAnalyticsResponse,
     mapSpendingAnalyticsResponse,
@@ -35,11 +34,6 @@ const userAnalyticsService = {
         });
 
         return mapOrdersAnalyticsResponse(res.data);
-    },
-
-    async campaigns() {
-        const res = await api.get('/user/analytics/campaigns');
-        return mapCampaignsAnalyticsResponse(res.data);
     },
 
     async spending(months = 12) {

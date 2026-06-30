@@ -31,6 +31,8 @@ return new class extends Migration
             $table->integer('position')->default(0);
 
             $table->timestamps();
+
+            $table->index(['product_id', 'type', 'position'], 'images_product_type_position_idx');
         });
     }
 

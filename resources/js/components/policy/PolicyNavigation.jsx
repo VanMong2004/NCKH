@@ -166,7 +166,7 @@ function getPolicyIcon(policy) {
         return ShieldCheck;
     }
 
-    if (key.includes('campaign') || key.includes('chien dich')) {
+    if (key.includes('promotion') || key.includes('khuyen mai')) {
         return Gift;
     }
 
@@ -195,8 +195,8 @@ function getPolicyDescription(policy) {
         return 'Thông tin về việc bảo vệ dữ liệu và quyền riêng tư của người dùng.';
     }
 
-    if (key.includes('campaign') || key.includes('chien dich')) {
-        return 'Điều khoản tham gia, đăng ký và nhận sản phẩm trong các chiến dịch.';
+    if (key.includes('promotion') || key.includes('khuyen mai')) {
+        return 'Điều khoản áp dụng ưu đãi và nhận sản phẩm trong các chương trình khuyến mãi.';
     }
 
     return 'Thông tin chính sách liên quan đến quá trình sử dụng hệ thống.';

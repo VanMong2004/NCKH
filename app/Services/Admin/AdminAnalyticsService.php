@@ -50,6 +50,8 @@ class AdminAnalyticsService
             'total_products' => Product::count(),
 
             'active_products' => Product::where('is_active', true)->count(),
+
+            'product_view_count' => (int) Product::sum('view_count'),
         ];
     }
 
@@ -85,6 +87,7 @@ class AdminAnalyticsService
                 'shipped',
                 'completed',
             ])
+            ->whereBetween('orders.created_at', [$from, $to])
             ->groupBy([
                 'products.id',
                 'products.name',
@@ -124,8 +127,7 @@ class AdminAnalyticsService
                 'shipped',
                 'completed',
             ])
-            ->whereDate('created_at', '>=', $from)
-            ->whereDate('created_at', '<=', $to)
+            ->whereBetween('created_at', [$from, $to])
             ->groupBy(DB::raw($groupExpression))
             ->orderBy('period_key')
             ->get()
@@ -136,12 +138,32 @@ class AdminAnalyticsService
                 $row = $rows->get($period['key']);
 
                 return [
-                'date' => $period['key'],
-                'label' => $period['label'],
-                'revenue' => (float) ($row->revenue ?? 0),
-                'orders_count' => (int) ($row->orders_count ?? 0),
+                    'date' => $period['key'],
+                    'label' => $period['label'],
+                    'revenue' => (float) ($row->revenue ?? 0),
+                    'orders_count' => (int) ($row->orders_count ?? 0),
                 ];
             })
+            ->values()
+            ->toArray();
+    }
+
+    public function topViewedProducts($user, int $limit = 10): array
+    {
+        return Product::query()
+            ->select(['id', 'name', 'slug', 'view_count', 'sold_count'])
+            ->where('is_active', true)
+            ->orderByDesc('view_count')
+            ->latest()
+            ->limit($limit)
+            ->get()
+            ->map(fn ($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'views' => (int) ($product->view_count ?? 0),
+                'sold' => (int) ($product->sold_count ?? 0),
+            ])
             ->values()
             ->toArray();
     }
@@ -205,10 +227,7 @@ class AdminAnalyticsService
                 'shipped',
                 'completed',
             ])
-            ->whereDate('orders.created_at', '>=', $from)
-            ->whereDate('orders.created_at', '<=', $to)
-            ->whereDate('orders.created_at', '>=', $from)
-            ->whereDate('orders.created_at', '<=', $to)
+            ->whereBetween('orders.created_at', [$from, $to])
             ->groupBy([
                 'categories.id',
                 'categories.name',
@@ -251,7 +270,7 @@ class AdminAnalyticsService
 
             return [
                 'from' => $start,
-                'to' => Carbon::today(),
+                'to' => Carbon::today()->endOfDay(),
                 'group_expression' => 'DATE_FORMAT(created_at, "%Y-%m")',
                 'periods' => $periods,
             ];
@@ -271,7 +290,7 @@ class AdminAnalyticsService
 
             return [
                 'from' => $start,
-                'to' => Carbon::today(),
+                'to' => Carbon::today()->endOfDay(),
                 'group_expression' => 'DATE_FORMAT(created_at, "%x-%v")',
                 'periods' => $periods,
             ];
@@ -289,7 +308,7 @@ class AdminAnalyticsService
 
         return [
             'from' => $from,
-            'to' => Carbon::today(),
+            'to' => Carbon::today()->endOfDay(),
             'group_expression' => 'DATE(created_at)',
             'periods' => $periods,
         ];
@@ -298,7 +317,7 @@ class AdminAnalyticsService
     private function dateRangeFromFilters(int $days, array $filters): array
     {
         $defaultFrom = Carbon::today()->subDays(max(1, min($days, 365)) - 1);
-        $defaultTo = Carbon::today();
+        $defaultTo = Carbon::today()->endOfDay();
 
         $from = !empty($filters['date_from'])
             ? Carbon::parse($filters['date_from'])->startOfDay()

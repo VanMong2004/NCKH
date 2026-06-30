@@ -290,7 +290,7 @@ class AdminSiteContentController extends Controller
             'success' => false,
             'message' => $e->getMessage(),
             'data' => null,
-        ], $e->getCode() ?: 400);
+        ], $this->httpStatus($e));
     }
 
     private function systemError(Throwable $e, string $logMessage)
@@ -306,5 +306,14 @@ class AdminSiteContentController extends Controller
             'message' => 'Đã xảy ra lỗi hệ thống',
             'data' => null,
         ], 500);
+    }
+
+    private function httpStatus(Throwable $e, int $fallback = 400): int
+    {
+        $code = $e->getCode();
+
+        return is_int($code) && in_array($code, [400, 401, 403, 404, 409, 422, 500], true)
+            ? $code
+            : $fallback;
     }
 }

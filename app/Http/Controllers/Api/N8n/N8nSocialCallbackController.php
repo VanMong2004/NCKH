@@ -45,7 +45,7 @@ class N8nSocialCallbackController extends Controller
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], $e->getCode() ?: 400);
+            ], $this->httpStatus($e));
         } catch (Throwable $e) {
             Log::error('N8N social callback error', [
                 'message' => $e->getMessage(),
@@ -75,5 +75,13 @@ class N8nSocialCallbackController extends Controller
         if (!$givenSecret || !hash_equals($expectedSecret, (string) $givenSecret)) {
             throw new RuntimeException('Không có quyền callback social automation', 403);
         }
+    }
+    private function httpStatus(Throwable $e, int $fallback = 400): int
+    {
+        $code = $e->getCode();
+
+        return is_int($code) && in_array($code, [400, 401, 403, 404, 409, 422, 500], true)
+            ? $code
+            : $fallback;
     }
 }

@@ -113,7 +113,7 @@ class ChatKnowledgeController extends Controller
             'success' => false,
             'message' => $e->getMessage(),
             'data' => null,
-        ], $e->getCode() ?: 400);
+        ], $this->httpStatus($e));
     }
 
     private function systemError(Throwable $e, string $logMessage)
@@ -144,5 +144,13 @@ class ChatKnowledgeController extends Controller
         } catch (Throwable $e) {
             return $this->systemError($e, 'Chat knowledge delete error');
         }
+    }
+    private function httpStatus(Throwable $e, int $fallback = 400): int
+    {
+        $code = $e->getCode();
+
+        return is_int($code) && in_array($code, [400, 401, 403, 404, 409, 422, 500], true)
+            ? $code
+            : $fallback;
     }
 }

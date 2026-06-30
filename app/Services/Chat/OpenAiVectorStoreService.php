@@ -6,6 +6,7 @@ use App\Models\ChatKnowledgeFile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -64,6 +65,8 @@ class OpenAiVectorStoreService
             throw new RuntimeException('Chưa cấu hình OPENAI_VECTOR_STORE_ID', 500);
         }
 
+        $documentKey = $this->resolveDocumentKey($data, $file);
+
         $knowledgeFile = ChatKnowledgeFile::create([
             'title' => $data['title'] ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             'description' => $data['description'] ?? null,
@@ -76,6 +79,7 @@ class OpenAiVectorStoreService
             'uploaded_by' => $user?->id,
             'metadata' => [
                 'source' => 'admin_upload',
+                'document_key' => $documentKey,
             ],
         ]);
 
@@ -115,10 +119,13 @@ class OpenAiVectorStoreService
                 'error_message' => null,
                 'metadata' => [
                     'source' => 'admin_upload',
+                    'document_key' => $documentKey,
                     'openai_file' => $uploadedFile,
                     'vector_store_file' => $vectorFile,
                 ],
             ]);
+
+            $this->retirePreviousDocumentVersions($documentKey, $knowledgeFile->id);
 
             return $this->formatKnowledgeFile($knowledgeFile->fresh());
         } catch (Throwable $e) {
@@ -158,6 +165,39 @@ class OpenAiVectorStoreService
         };
     }
 
+    private function resolveDocumentKey(array $data, UploadedFile $file): string
+    {
+        $rawKey = trim((string) ($data['document_key'] ?? ''));
+
+        if ($rawKey === '') {
+            $rawKey = $data['title']
+                ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        }
+
+        $key = Str::slug($rawKey);
+
+        return $key !== '' ? $key : 'document-' . md5($file->getClientOriginalName());
+    }
+
+    private function retirePreviousDocumentVersions(string $documentKey, int $currentFileId): void
+    {
+        ChatKnowledgeFile::query()
+            ->where('id', '!=', $currentFileId)
+            ->where('is_active', true)
+            ->where('metadata->document_key', $documentKey)
+            ->orderBy('id')
+            ->get()
+            ->each(function (ChatKnowledgeFile $file) {
+                try {
+                    $this->deleteKnowledgeFile($file->id);
+                } catch (Throwable $e) {
+                    $file->update([
+                        'error_message' => 'Không thể gỡ phiên bản cũ: ' . $e->getMessage(),
+                    ]);
+                }
+            });
+    }
+
     private function formatKnowledgeFile(ChatKnowledgeFile $file): array
     {
         return [
@@ -177,6 +217,7 @@ class OpenAiVectorStoreService
             'is_active' => (bool) $file->is_active,
 
             'uploaded_by' => $file->uploaded_by,
+            'document_key' => data_get($file->metadata, 'document_key'),
 
             'created_at' => optional($file->created_at)->format('d/m/Y H:i'),
             'updated_at' => optional($file->updated_at)->format('d/m/Y H:i'),
@@ -197,7 +238,7 @@ class OpenAiVectorStoreService
 
         $response = $this->retrieveOpenAiVectorStoreFile(
             $file->vector_store_id,
-            $file->openai_file_id
+            $file->vector_store_file_id ?: $file->openai_file_id
         );
 
         $file->update([
@@ -316,7 +357,7 @@ class OpenAiVectorStoreService
         if ($file->vector_store_id && $file->openai_file_id) {
             $removeVectorResult = $this->deleteOpenAiVectorStoreFile(
                 $file->vector_store_id,
-                $file->openai_file_id
+                $file->vector_store_file_id ?: $file->openai_file_id
             );
         }
 

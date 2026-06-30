@@ -9,6 +9,7 @@ class ChatMessage extends Model
 {
     protected $fillable = [
         'conversation_id',
+        'parent_message_id',
         'role',
         'content',
         'sources',
@@ -25,5 +26,15 @@ class ChatMessage extends Model
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(ChatConversation::class, 'conversation_id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(ChatMessage::class, 'parent_message_id');
+    }
+
+    public function replies()
+    {
+        return $this->hasMany(ChatMessage::class, 'parent_message_id');
     }
 }

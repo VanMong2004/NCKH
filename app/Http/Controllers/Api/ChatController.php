@@ -27,8 +27,7 @@ class ChatController extends Controller
 
             $user = auth('sanctum')->user();
 
-            $guestToken = $request->header('X-Guest-Token')
-                ?: ($data['guest_token'] ?? null);
+            $guestToken = $this->guestToken($request);
 
             return response()->json([
                 'success' => true,
@@ -49,13 +48,97 @@ class ChatController extends Controller
         }
     }
 
+    public function current(Request $request)
+    {
+        try {
+            $user = auth('sanctum')->user();
+            $guestToken = $this->guestToken($request);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy phiên chat hiện tại thành công',
+                'data' => $this->service->currentSession($user, $guestToken),
+            ]);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'AI chat current session error');
+        }
+    }
+
+    public function currentMessages(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'limit' => 'nullable|integer|min:1|max:50',
+            ]);
+
+            $user = auth('sanctum')->user();
+            $guestToken = $this->guestToken($request);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy lịch sử chat hiện tại thành công',
+                'data' => $this->service->currentMessages(
+                    $user,
+                    $guestToken,
+                    (int) ($data['limit'] ?? 20)
+                ),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'AI chat current messages error');
+        }
+    }
+
+    public function reset(Request $request)
+    {
+        try {
+            $user = auth('sanctum')->user();
+            $guestToken = $this->guestToken($request);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tạo hội thoại mới thành công',
+                'data' => $this->service->resetSession($user, $guestToken),
+            ]);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'AI chat reset session error');
+        }
+    }
+
+    public function translate(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'text' => 'required|string|max:5000',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Dịch nội dung thành công',
+                'data' => $this->service->translateToVietnamese($data['text']),
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (RuntimeException $e) {
+            return $this->businessError($e);
+        } catch (Throwable $e) {
+            return $this->systemError($e, 'AI chat translate error');
+        }
+    }
+
     public function conversations(Request $request)
     {
         try {
             $user = auth('sanctum')->user();
 
-            $guestToken = $request->header('X-Guest-Token')
-                ?: $request->query('guest_token');
+            $guestToken = $this->guestToken($request);
 
             return response()->json([
                 'success' => true,
@@ -74,8 +157,7 @@ class ChatController extends Controller
         try {
             $user = auth('sanctum')->user();
 
-            $guestToken = $request->header('X-Guest-Token')
-                ?: $request->query('guest_token');
+            $guestToken = $this->guestToken($request);
 
             return response()->json([
                 'success' => true,
@@ -103,13 +185,24 @@ class ChatController extends Controller
         ], 422);
     }
 
+    private function guestToken(Request $request): ?string
+    {
+        return $request->header('X-Guest-Token')
+            ?: $request->query('guest_token')
+            ?: $request->input('guest_token');
+    }
+
     private function businessError(RuntimeException $e)
     {
+        $status = is_int($e->getCode()) && $e->getCode() >= 100 && $e->getCode() <= 599
+            ? $e->getCode()
+            : 400;
+
         return response()->json([
             'success' => false,
             'message' => $e->getMessage(),
             'data' => null,
-        ], $e->getCode() ?: 400);
+        ], $status);
     }
 
     private function systemError(Throwable $e, string $logMessage)

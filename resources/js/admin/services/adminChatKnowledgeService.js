@@ -40,6 +40,7 @@ const adminChatKnowledgeService = {
 
         formData.append('title', payload.title || '');
         formData.append('description', payload.description || '');
+        formData.append('document_key', payload.documentKey || '');
 
         const res = await api.post('/admin/chat/knowledge/upload', formData, {
             timeout: 180000,

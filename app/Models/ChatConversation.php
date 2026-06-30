@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ChatConversation extends Model
 {
@@ -13,11 +15,14 @@ class ChatConversation extends Model
         'title',
         'last_message_at',
         'metadata',
+        'status',
+        'expired_at',
     ];
 
     protected $casts = [
         'metadata' => 'array',
         'last_message_at' => 'datetime',
+        'expired_at' => 'datetime',
     ];
 
     public function messages(): HasMany
@@ -32,5 +37,15 @@ class ChatConversation extends Model
         return $this->hasMany(ChatMessage::class, 'conversation_id')
             ->latest()
             ->limit(20);
+    }
+
+    public function summary(): HasOne
+    {
+        return $this->hasOne(ChatConversationSummary::class, 'conversation_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

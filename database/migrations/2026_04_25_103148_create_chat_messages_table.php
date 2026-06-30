@@ -15,6 +15,11 @@ return new class extends Migration
                 ->constrained('chat_conversations')
                 ->cascadeOnDelete();
 
+            $table->foreignId('parent_message_id')
+                ->nullable()
+                ->constrained('chat_messages')
+                ->nullOnDelete();
+
             $table->enum('role', [
                 'user',
                 'assistant',
@@ -32,6 +37,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['conversation_id', 'created_at']);
+            $table->index(['conversation_id', 'parent_message_id']);
             $table->index(['role']);
         });
     }

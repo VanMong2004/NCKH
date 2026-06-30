@@ -4,6 +4,7 @@ namespace App\Services\Chat;
 
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\Jobs\SummarizeChatConversationJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -13,7 +14,8 @@ use Throwable;
 class OpenAiHybridRagChatService
 {
     public function __construct(
-        protected ProductChatToolService $productToolService
+        protected ProductChatToolService $productToolService,
+        protected ChatSessionService $sessionService
     ) {}
 
     public function sendMessage($user, ?string $guestToken, ?int $conversationId, string $message): array
@@ -24,25 +26,28 @@ class OpenAiHybridRagChatService
             throw new RuntimeException('Vui lòng nhập nội dung cần tư vấn', 422);
         }
 
-        $guestToken = $guestToken ?: (string) Str::uuid();
+        $guestToken = $this->sessionService->normalizeGuestToken($user, $guestToken);
 
-        return DB::transaction(function () use ($user, $guestToken, $conversationId, $message) {
+        [$conversation, $userMessage] = DB::transaction(function () use ($user, $guestToken, $conversationId, $message) {
             $conversation = $this->resolveConversation($user, $guestToken, $conversationId, $message);
 
-            ChatMessage::create([
+            $userMessage = ChatMessage::create([
                 'conversation_id' => $conversation->id,
                 'role' => 'user',
                 'content' => $message,
             ]);
 
-            $conversation->update([
-                'last_message_at' => now(),
-            ]);
+            $this->sessionService->touchSession($conversation);
 
-            $openAiResult = $this->askOpenAi($conversation, $user);
+            return [$conversation, $userMessage];
+        });
 
+        $openAiResult = $this->askOpenAi($conversation, $user, $message);
+
+        $result = DB::transaction(function () use ($conversation, $userMessage, $openAiResult) {
             $assistantMessage = ChatMessage::create([
                 'conversation_id' => $conversation->id,
+                'parent_message_id' => $userMessage->id,
                 'role' => 'assistant',
                 'content' => $openAiResult['answer'],
                 'sources' => $openAiResult['sources'],
@@ -50,29 +55,38 @@ class OpenAiHybridRagChatService
                 'metadata' => [
                     'response_id' => $openAiResult['response_id'],
                     'model' => config('services.openai.chat_model'),
+                    'intent' => $openAiResult['intent'] ?? 'unknown',
+                    'debug' => $openAiResult['debug'] ?? [],
+                    'products' => $openAiResult['products'] ?? [],
                 ],
             ]);
 
-            $conversation->update([
-                'last_message_at' => now(),
-            ]);
+            $this->sessionService->touchSession($conversation);
 
             return [
                 'conversation_id' => $conversation->id,
                 'guest_token' => $conversation->guest_token,
+                'parent_message_id' => $userMessage->id,
                 'message_id' => $assistantMessage->id,
                 'answer' => $assistantMessage->content,
-                'sources' => $assistantMessage->sources ?? [],
-                'tool_calls' => $assistantMessage->tool_calls ?? [],
+                'sources' => [],
+                'tool_calls' => [],
                 'products' => $openAiResult['products'] ?? [],
             ];
         });
+
+        $this->dispatchSummaryJobIfNeeded($conversation->id);
+
+        return $result;
     }
 
     public function conversations($user, ?string $guestToken = null)
     {
+        $guestToken = $this->sessionService->normalizeGuestToken($user, $guestToken);
+
         $query = ChatConversation::query()
             ->withCount('messages')
+            ->where('status', 'active')
             ->latest('last_message_at')
             ->latest();
 
@@ -86,17 +100,71 @@ class OpenAiHybridRagChatService
             ->map(fn ($conversation) => [
                 'id' => $conversation->id,
                 'title' => $conversation->title,
+                'status' => $conversation->status,
+                'guest_token' => $conversation->guest_token,
                 'last_message_at' => optional($conversation->last_message_at)->format('d/m/Y H:i'),
                 'messages_count' => (int) $conversation->messages_count,
             ])
             ->values();
     }
 
+    public function currentSession($user, ?string $guestToken = null): array
+    {
+        $conversation = $this->sessionService->currentSession($user, $guestToken);
+
+        return $this->sessionService->formatSession($conversation);
+    }
+
+    public function currentMessages($user, ?string $guestToken = null, int $limit = 20): array
+    {
+        $conversation = $this->sessionService->currentSession($user, $guestToken);
+        $messages = $this->sessionService->recentMessages($conversation, $limit);
+
+        return [
+            ...$this->sessionService->formatSession($conversation),
+            'messages' => $this->sessionService->formatMessages($messages),
+        ];
+    }
+
+    public function resetSession($user, ?string $guestToken = null): array
+    {
+        $conversation = $this->sessionService->resetSession($user, $guestToken);
+
+        return [
+            ...$this->sessionService->formatSession($conversation),
+            'messages' => [],
+        ];
+    }
+
+    public function translateToVietnamese(string $text): array
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            throw new RuntimeException('Nội dung cần dịch không hợp lệ', 422);
+        }
+
+        $response = $this->createResponse([
+            'model' => config('services.openai.chat_model'),
+            'instructions' => 'Dịch nội dung người dùng gửi sang tiếng Việt tự nhiên, rõ ràng. Chỉ trả về bản dịch, không giải thích thêm.',
+            'input' => [
+                [
+                    'role' => 'user',
+                    'content' => $text,
+                ],
+            ],
+            'max_output_tokens' => 500,
+        ]);
+
+        return [
+            'translation' => $this->extractAnswer($response),
+        ];
+    }
+
     public function conversationDetail($user, ?string $guestToken, int $conversationId): array
     {
-        $conversation = $this->ownedConversationQuery($user, $guestToken)
-            ->with('messages')
-            ->find($conversationId);
+        $conversation = $this->sessionService->findOwnedSession($user, $guestToken, $conversationId);
+        $messages = $this->sessionService->recentMessages($conversation, 20);
 
         if (!$conversation) {
             throw new RuntimeException('Không tìm thấy hội thoại', 404);
@@ -105,26 +173,16 @@ class OpenAiHybridRagChatService
         return [
             'id' => $conversation->id,
             'title' => $conversation->title,
+            'status' => $conversation->status,
             'guest_token' => $conversation->guest_token,
-            'messages' => $conversation->messages
-                ->map(fn ($message) => [
-                    'id' => $message->id,
-                    'role' => $message->role,
-                    'content' => $message->content,
-                    'sources' => $message->sources ?? [],
-                    'tool_calls' => $message->tool_calls ?? [],
-                    'created_at' => optional($message->created_at)->format('d/m/Y H:i'),
-                ])
-                ->values(),
+            'messages' => $this->sessionService->formatMessages($messages),
         ];
     }
 
     private function resolveConversation($user, string $guestToken, ?int $conversationId, string $message): ChatConversation
     {
         if ($conversationId) {
-            $conversation = $this->ownedConversationQuery($user, $guestToken)
-                ->lockForUpdate()
-                ->find($conversationId);
+            $conversation = $this->sessionService->findOwnedSession($user, $guestToken, $conversationId);
 
             if (!$conversation) {
                 throw new RuntimeException('Không tìm thấy hội thoại', 404);
@@ -133,12 +191,21 @@ class OpenAiHybridRagChatService
             return $conversation;
         }
 
-        return ChatConversation::create([
-            'user_id' => $user?->id,
-            'guest_token' => $user ? null : $guestToken,
-            'title' => Str::limit($message, 80),
-            'last_message_at' => now(),
-        ]);
+        return $this->sessionService->currentSession($user, $guestToken, $message);
+    }
+
+    private function dispatchSummaryJobIfNeeded(int $conversationId): void
+    {
+        $threshold = (int) config('services.openai.chat_summary_threshold', 30);
+
+        $messageCount = ChatMessage::query()
+            ->where('conversation_id', $conversationId)
+            ->whereIn('role', ['user', 'assistant'])
+            ->count();
+
+        if ($messageCount >= $threshold && $messageCount % 10 === 0) {
+            SummarizeChatConversationJob::dispatch($conversationId);
+        }
     }
 
     private function ownedConversationQuery($user, ?string $guestToken)
@@ -152,8 +219,10 @@ class OpenAiHybridRagChatService
         return $query->where('guest_token', $guestToken);
     }
 
-    private function askOpenAi(ChatConversation $conversation, $user): array
+    private function askOpenAi(ChatConversation $conversation, $user, string $latestMessage): array
     {
+        $startedAt = microtime(true);
+        $intent = $this->detectIntent($latestMessage);
         $tools = $this->tools();
 
         $response = $this->createResponse([
@@ -161,9 +230,11 @@ class OpenAiHybridRagChatService
             'instructions' => $this->systemPrompt(),
             'input' => $this->buildInput($conversation),
             'tools' => $tools,
+            'max_output_tokens' => 700,
         ]);
 
         $allToolCalls = [];
+        $toolDurationMs = 0;
         $loop = 0;
 
         while ($loop < 3) {
@@ -178,6 +249,7 @@ class OpenAiHybridRagChatService
             $toolOutputs = [];
 
             foreach ($toolCalls as $toolCall) {
+                $toolStartedAt = microtime(true);
                 $arguments = json_decode($toolCall['arguments'] ?? '{}', true) ?: [];
 
                 $result = $this->productToolService->execute(
@@ -190,7 +262,9 @@ class OpenAiHybridRagChatService
                     'name' => $toolCall['name'],
                     'arguments' => $arguments,
                     'result' => $result,
+                    'summary' => $this->summarizeToolResult($toolCall['name'], $result),
                 ];
+                $toolDurationMs += (int) round((microtime(true) - $toolStartedAt) * 1000);
 
                 $toolOutputs[] = [
                     'type' => 'function_call_output',
@@ -205,10 +279,14 @@ class OpenAiHybridRagChatService
                 'previous_response_id' => $response['id'] ?? null,
                 'input' => $toolOutputs,
                 'tools' => $tools,
+                'max_output_tokens' => 700,
             ]);
         }
 
         $answer = $this->extractAnswer($response);
+        $sources = $this->extractSources($response);
+        $products = $this->extractProductsFromToolCalls($allToolCalls);
+        $answer = $this->normalizeFallbackAnswer($answer, $intent, $allToolCalls, $sources);
 
         if (!$answer) {
             $answer = 'Hiện tại tôi chưa tìm thấy thông tin phù hợp trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận.';
@@ -217,9 +295,19 @@ class OpenAiHybridRagChatService
         return [
             'response_id' => $response['id'] ?? null,
             'answer' => $answer,
-            'sources' => $this->extractSources($response),
+            'intent' => $intent,
+            'sources' => $sources,
             'tool_calls' => $allToolCalls,
-            'products' => $this->extractProductsFromToolCalls($allToolCalls),
+            'products' => $products,
+            'debug' => [
+                'intent' => $intent,
+                'tool_count' => count($allToolCalls),
+                'tool_names' => collect($allToolCalls)->pluck('name')->unique()->values()->toArray(),
+                'product_count' => count($products),
+                'source_count' => count($sources),
+                'tool_duration_ms' => $toolDurationMs,
+                'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+            ],
         ];
     }
 
@@ -236,7 +324,7 @@ class OpenAiHybridRagChatService
         try {
             return Http::withToken($apiKey)
                 ->acceptJson()
-                ->timeout(120)
+                ->timeout(75)
                 ->post($baseUrl . '/responses', $payload)
                 ->throw()
                 ->json();
@@ -248,22 +336,30 @@ class OpenAiHybridRagChatService
     private function buildInput(ChatConversation $conversation): array
     {
         $limit = (int) config('services.openai.chat_max_history', 12);
+        $limit = max(12, min($limit, 16));
 
-        $messages = ChatMessage::query()
-            ->where('conversation_id', $conversation->id)
-            ->whereIn('role', ['user', 'assistant'])
-            ->latest()
-            ->limit($limit)
-            ->get()
-            ->sortBy('id')
-            ->values();
+        $conversation->loadMissing('summary');
+        $messages = $this->sessionService->recentMessages($conversation, $limit);
+        $input = [];
 
-        return $messages
+        $summary = trim((string) $conversation->summary?->summary);
+
+        if ($summary !== '') {
+            $input[] = [
+                'role' => 'system',
+                'content' => 'Tóm tắt ngữ cảnh hội thoại trước đó: ' . $summary,
+            ];
+        }
+
+        $messageInput = $messages
             ->map(fn ($message) => [
                 'role' => $message->role,
                 'content' => $message->content,
             ])
+            ->values()
             ->toArray();
+
+        return array_merge($input, $messageInput);
     }
 
     private function tools(): array
@@ -276,7 +372,7 @@ class OpenAiHybridRagChatService
             $tools[] = [
                 'type' => 'file_search',
                 'vector_store_ids' => [$vectorStoreId],
-                'max_num_results' => 5,
+                'max_num_results' => 3,
             ];
         }
 
@@ -319,6 +415,27 @@ class OpenAiHybridRagChatService
                         ],
                     ],
                     'required' => ['query'],
+                    'additionalProperties' => false,
+                ],
+            ],
+            [
+                'type' => 'function',
+                'name' => 'get_product_recommendations',
+                'description' => 'Lấy danh sách sản phẩm nổi bật, hot, phổ biến, bán chạy, mới nhất hoặc đánh giá cao từ database Laravel.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'type' => [
+                            'type' => 'string',
+                            'enum' => ['popular', 'featured', 'best_selling', 'top_rated', 'newest'],
+                            'description' => 'Loại gợi ý: popular/hot/phổ biến, featured/nổi bật, best_selling/bán chạy, top_rated/đánh giá cao, newest/mới nhất.',
+                        ],
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'Số sản phẩm tối đa cần trả về.',
+                        ],
+                    ],
+                    'required' => ['type'],
                     'additionalProperties' => false,
                 ],
             ],
@@ -387,6 +504,83 @@ class OpenAiHybridRagChatService
                 ],
             ],
         ];
+    }
+
+    private function detectIntent(string $message): string
+    {
+        $normalized = mb_strtolower(Str::ascii(trim($message)));
+
+        if ($normalized === '') {
+            return 'unknown';
+        }
+
+        if (preg_match('/\b(best selling|ban chay|hot|popular|noi bat|top rated|high rating|danh gia cao|new products|latest|moi nhat)\b/u', $normalized)) {
+            return 'product_recommendation';
+        }
+
+        if (preg_match('/\b(ao|thun|polo|hoodie|balo|tui|non|mu|binh|ly|but|sticker|moc khoa|san pham|product|price|gia|stock|ton kho|size|mau|color)\b/u', $normalized)) {
+            return 'product_search';
+        }
+
+        if (preg_match('/\b(chinh sach|doi tra|van chuyen|thanh toan|bao hanh|huong dan|faq|policy|shipping|payment|return)\b/u', $normalized)) {
+            return 'policy_question';
+        }
+
+        return 'out_of_scope';
+    }
+
+    private function summarizeToolResult(string $name, array $result): array
+    {
+        $products = [];
+
+        if (!empty($result['product']) && is_array($result['product'])) {
+            $products = [$result['product']];
+        }
+
+        if (!empty($result['products']) && is_array($result['products'])) {
+            $products = $result['products'];
+        }
+
+        return [
+            'name' => $name,
+            'found' => (bool) ($result['found'] ?? !empty($products)),
+            'product_count' => count($products),
+            'message' => $result['message'] ?? null,
+            'type' => $result['type'] ?? null,
+            'query' => $result['query'] ?? null,
+            'keywords' => $result['keywords'] ?? [],
+        ];
+    }
+
+    private function normalizeFallbackAnswer(string $answer, string $intent, array $toolCalls, array $sources): string
+    {
+        $answer = trim($answer);
+        $hasProductTool = collect($toolCalls)->contains(fn ($toolCall) => str_starts_with((string) ($toolCall['name'] ?? ''), 'get_product')
+            || ($toolCall['name'] ?? '') === 'search_products');
+        $hasFoundProduct = collect($toolCalls)->contains(fn ($toolCall) => (bool) data_get($toolCall, 'summary.found'));
+
+        if (in_array($intent, ['product_search', 'product_recommendation'], true) && $hasProductTool && !$hasFoundProduct) {
+            return 'Mình chưa tìm thấy sản phẩm phù hợp trong hệ thống CTUT Store. Bạn có thể thử nhập tên sản phẩm cụ thể hơn, ví dụ áo thun, hoodie, balo, bình giữ nhiệt hoặc sản phẩm CTUT bạn đang cần tìm.';
+        }
+
+        $badFallbacks = [
+            'tài liệu không cung cấp',
+            'dữ liệu không cung cấp',
+            'không có trong tài liệu',
+            'document does not provide',
+            'uploaded a document',
+            'solidity',
+            'smart contract',
+        ];
+
+        $normalizedAnswer = mb_strtolower(Str::ascii($answer));
+        $hasBadFallback = collect($badFallbacks)->contains(fn ($text) => str_contains($normalizedAnswer, Str::ascii($text)));
+
+        if ($intent === 'out_of_scope' && (empty($sources) || $hasBadFallback)) {
+            return 'Mình chủ yếu hỗ trợ thông tin về sản phẩm, đơn hàng, thanh toán và chính sách của CTUT Store. Với nội dung này, bạn nên xem kênh thông tin chính thức phù hợp để được tư vấn chính xác hơn nhé.';
+        }
+
+        return $answer;
     }
 
     private function extractProductsFromToolCalls(array $toolCalls): array
@@ -481,6 +675,18 @@ class OpenAiHybridRagChatService
     private function systemPrompt(): string
     {
         return <<<PROMPT
+    NGÔN NGỮ:
+    - Luôn trả lời bằng tiếng Việt, kể cả khi khách hỏi bằng tiếng Anh hoặc ngôn ngữ khác.
+    - Nếu khách hỏi tiếng Anh nhưng nội dung mơ hồ/ngoài phạm vi như "what news?", "what's new?", "tell me news", hãy trả lời ngắn gọn bằng tiếng Việt rằng mình chủ yếu hỗ trợ sản phẩm, đơn hàng, thanh toán và chính sách của CTUT Store; không tự lấy tài liệu không liên quan để trả lời.
+    - Không trả lời bằng tiếng Anh trừ khi khách yêu cầu rõ "reply in English" hoặc "answer in English".
+    - Không nhắc đến tài liệu, file, Vector Store, Solidity, smart contract hoặc nội dung ngoài CTUT Store nếu khách không hỏi đúng phạm vi đó.
+
+    QUY TẮC TRẢ LỜI NGOÀI PHẠM VI:
+    - Nếu khách hỏi nội dung không liên quan trực tiếp đến CTUT Store, sản phẩm, đơn hàng, thanh toán, vận chuyển, đổi trả, hướng dẫn mua hàng hoặc thông tin thương hiệu của shop, hãy trả lời tự nhiên và lịch sự.
+    - Không nói máy móc kiểu "tài liệu không cung cấp" hoặc "dữ liệu không cung cấp".
+    - Hãy nói rằng mình chủ yếu hỗ trợ CTUT Store và gợi ý người dùng liên hệ kênh phù hợp nếu cần thông tin chính xác.
+    - Ví dụ với câu "ngành đào tạo": "Mình chủ yếu hỗ trợ thông tin sản phẩm, đơn hàng, thanh toán và chính sách của CTUT Store. Với thông tin ngành đào tạo, bạn nên xem website chính thức của CTUT hoặc liên hệ phòng đào tạo để được tư vấn chính xác nhất."
+
     Bạn là trợ lý bán hàng chính thức của CTUT Store.
 
     NHIỆM VỤ:
@@ -500,6 +706,12 @@ class OpenAiHybridRagChatService
     - khách hỏi tên một món hàng cụ thể
     - Nếu khách hỏi tiếng Việt không dấu, viết tắt hoặc thiếu dấu như "shop ban cac loa ao nao", hãy hiểu theo nghĩa gần đúng là "shop bán các loại áo nào" và vẫn gọi tool search_products.
     - Khi gọi search_products, nên truyền từ khóa sản phẩm chính, ví dụ: "ao", "balo", "non", "binh giu nhiet", thay vì truyền nguyên câu dài nếu có thể.
+
+    Quy tắc sản phẩm theo gợi ý/xếp hạng:
+    - Nếu khách hỏi "product hot", "hot products", "popular products", "sản phẩm hot", "sản phẩm nổi bật": gọi get_product_recommendations với type="popular" hoặc "featured".
+    - Nếu khách hỏi "product high rate review", "top rated products", "high rating products", "sản phẩm đánh giá cao": gọi get_product_recommendations với type="top_rated".
+    - Nếu khách hỏi "best selling products", "sản phẩm bán chạy": gọi get_product_recommendations với type="best_selling".
+    - Nếu khách hỏi "new products", "latest products", "sản phẩm mới nhất": gọi get_product_recommendations với type="newest".
 
     Bắt buộc phải dùng tool/function gọi database Laravel trước.
 

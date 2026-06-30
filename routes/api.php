@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\Admin\AdminAnalyticsController;
 use App\Http\Controllers\Api\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
+use App\Http\Controllers\Api\Admin\AdminChatConversationController;
 use App\Http\Controllers\Api\Admin\AdminSiteContentController;
 use App\Http\Controllers\Api\Admin\AdminUploadController;
 use App\Http\Controllers\Api\Admin\ChatKnowledgeController;
@@ -160,6 +161,10 @@ Route::get('/system/state',[SystemController::class,'state']);
 
 // AI CHATBOT
 Route::prefix('chat')->group(function () {
+    Route::get('/session/current', [ChatController::class, 'current']);
+    Route::get('/session/current/messages', [ChatController::class, 'currentMessages']);
+    Route::post('/reset', [ChatController::class, 'reset']);
+    Route::post('/translate', [ChatController::class, 'translate']);
     Route::post('/send', [ChatController::class, 'send']);
     Route::get('/conversations', [ChatController::class, 'conversations']);
     Route::get('/conversations/{id}', [ChatController::class, 'show']);
@@ -381,6 +386,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::get('/{id}', [ChatKnowledgeController::class, 'show']);
         Route::patch('/{id}/toggle', [ChatKnowledgeController::class, 'toggle']);
         Route::delete('/{id}', [ChatKnowledgeController::class, 'destroy']);
+    });
+
+    // ADMIN AI CHAT CONVERSATIONS
+    Route::prefix('chat/conversations')->group(function () {
+        Route::get('/', [AdminChatConversationController::class, 'index']);
+        Route::get('/statistics', [AdminChatConversationController::class, 'statistics']);
+        Route::patch('/{id}/close', [AdminChatConversationController::class, 'close']);
+        Route::get('/{id}', [AdminChatConversationController::class, 'show']);
     });
 
     

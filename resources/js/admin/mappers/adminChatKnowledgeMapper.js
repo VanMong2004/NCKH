@@ -67,6 +67,7 @@ export function mapAdminChatKnowledgeFile(item = {}) {
         openaiFileId: item.openai_file_id || '',
         vectorStoreId: item.vector_store_id || '',
         vectorStoreFileId: item.vector_store_file_id || '',
+        documentKey: item.document_key || '',
 
         status: item.status || 'pending',
         statusText: getKnowledgeStatusText(item.status || 'pending'),

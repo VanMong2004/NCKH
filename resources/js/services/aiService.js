@@ -29,6 +29,43 @@ const aiService = {
         return mapAiConversationsResponse(res.data);
     },
 
+    async currentSession() {
+        const res = await api.get('/chat/session/current', {
+            timeout: 30000,
+        });
+
+        return res.data?.data || res.data || {};
+    },
+
+    async currentMessages(limit = 20) {
+        const res = await api.get('/chat/session/current/messages', {
+            params: {
+                limit,
+            },
+            timeout: 30000,
+        });
+
+        return mapAiConversationDetailResponse(res.data);
+    },
+
+    async reset() {
+        const res = await api.post('/chat/reset', {}, {
+            timeout: 30000,
+        });
+
+        return mapAiConversationDetailResponse(res.data);
+    },
+
+    async translateToVietnamese(text) {
+        const res = await api.post('/chat/translate', {
+            text,
+        }, {
+            timeout: 60000,
+        });
+
+        return res.data?.data?.translation || '';
+    },
+
     async conversation(conversationId) {
         const res = await api.get(`/chat/conversations/${conversationId}`, {
             timeout: 30000,
@@ -38,17 +75,7 @@ const aiService = {
     },
 
     async latestConversation() {
-        const conversations = await this.conversations();
-
-        if (!conversations.length) {
-            return {
-                conversationId: null,
-                messages: [],
-            };
-        }
-
-        const latest = conversations[0];
-        const detail = await this.conversation(latest.id);
+        const detail = await this.currentMessages(20);
 
         return {
             conversationId: detail.id,

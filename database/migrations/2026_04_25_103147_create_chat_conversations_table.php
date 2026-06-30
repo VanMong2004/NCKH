@@ -20,7 +20,13 @@ return new class extends Migration
 
             $table->string('title')->nullable();
 
+            $table->enum('status', ['active', 'expired', 'closed'])
+                ->default('active');
+
             $table->timestamp('last_message_at')->nullable();
+
+            $table->timestamp('expired_at')
+                ->nullable();
 
             $table->json('metadata')->nullable();
 
@@ -28,6 +34,10 @@ return new class extends Migration
 
             $table->index(['user_id', 'last_message_at']);
             $table->index(['guest_token', 'last_message_at']);
+            $table->index(['status', 'last_message_at']);
+            $table->index(['expired_at']);
+            $table->index(['user_id', 'status', 'last_message_at']);
+            $table->index(['guest_token', 'status', 'last_message_at']);
         });
     }
 

@@ -66,6 +66,7 @@ export default function AdminChatKnowledge() {
 
     const [form, setForm] = useState({
         title: '',
+        documentKey: '',
         description: '',
     });
 
@@ -208,6 +209,7 @@ export default function AdminChatKnowledge() {
             await adminChatKnowledgeService.uploadFile({
                 file: selectedFile,
                 title: form.title,
+                documentKey: form.documentKey,
                 description: form.description,
             });
 
@@ -216,6 +218,7 @@ export default function AdminChatKnowledge() {
             setSelectedFile(null);
             setForm({
                 title: '',
+                documentKey: '',
                 description: '',
             });
 
@@ -423,6 +426,21 @@ function UploadForm({ form, selectedFile, uploading, onSubmit, onChange, onSelec
 
                 <div>
                     <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Mô tả</label>
+
+                    <div className="mb-4">
+                        <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Mã tài liệu</label>
+
+                        <input
+                            value={form.documentKey}
+                            onChange={(event) => onChange('documentKey', event.target.value)}
+                            placeholder="VD: chinh-sach-tuyen-sinh"
+                            className={inputClass}
+                        />
+
+                        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            Dùng cùng mã này khi upload phiên bản mới để chỉ thay thế đúng tài liệu đó.
+                        </p>
+                    </div>
 
                     <textarea
                         value={form.description}

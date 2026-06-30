@@ -12,7 +12,8 @@ class ProductChatToolService
 {
     public function __construct(
         protected ProductService $productService,
-        protected PromotionPriceService $promotionPriceService
+        protected PromotionPriceService $promotionPriceService,
+        protected ChatbotProductCatalogService $catalogService
     ) {}
 
     public function execute(string $name, array $arguments, $user = null): array
@@ -25,6 +26,12 @@ class ProductChatToolService
 
             'search_products' => $this->searchProducts(
                 (string) ($arguments['query'] ?? ''),
+                (int) ($arguments['limit'] ?? 5),
+                $user
+            ),
+
+            'get_product_recommendations' => $this->getProductRecommendations(
+                (string) ($arguments['type'] ?? 'popular'),
                 (int) ($arguments['limit'] ?? 5),
                 $user
             ),
@@ -56,6 +63,8 @@ class ProductChatToolService
 
     public function getProductByName(string $name, $user = null): array
     {
+        return $this->catalogService->getProductByName($name, $user);
+
         $name = trim($name);
 
         if ($name === '') {
@@ -87,8 +96,15 @@ class ProductChatToolService
         ];
     }
 
+    public function getProductRecommendations(string $type = 'popular', int $limit = 5, $user = null): array
+    {
+        return $this->catalogService->getProductRecommendations($type, $limit, $user);
+    }
+
     public function searchProducts(string $query, int $limit = 5, $user = null): array
     {
+        return $this->catalogService->searchProducts($query, $limit, $user);
+
         $query = trim($query);
         $limit = max(1, min($limit, 10));
 
@@ -182,6 +198,8 @@ class ProductChatToolService
 
     public function getProductStock(string $productName, ?string $size = null, ?string $color = null): array
     {
+        return $this->catalogService->getProductStock($productName, $size, $color);
+
         $product = $this->findProduct($productName);
 
         if (!$product) {
@@ -233,6 +251,8 @@ class ProductChatToolService
 
     public function getProductPrice(string $productName, ?string $size = null, ?string $color = null, $user = null): array
     {
+        return $this->catalogService->getProductPrice($productName, $size, $color, $user);
+
         $product = $this->findProduct($productName);
 
         if (!$product) {
@@ -284,6 +304,8 @@ class ProductChatToolService
 
     public function getProductVariants(string $productName, $user = null): array
     {
+        return $this->catalogService->getProductVariants($productName, $user);
+
         $product = $this->findProduct($productName);
 
         if (!$product) {

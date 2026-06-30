@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('orders:auto-complete')->hourly();
+        $schedule->command('chat:expire-conversations')->dailyAt('02:10');
         $schedule->job(new ExpireCampaignSlotJob())->hourly();
     }
 

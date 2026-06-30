@@ -172,15 +172,26 @@ export default function FloatingAIChat() {
         }, 50);
     }
 
-    function handleNewChat() {
-        setMessages([]);
-        setConversationId(null);
-        setHistoryLoaded(true);
-        setMessage('');
+    async function handleNewChat() {
+        if (loading) return;
 
-        window.setTimeout(() => {
-            inputRef.current?.focus();
-        }, 50);
+        try {
+            setLoading(true);
+            const session = await aiService.reset();
+
+            setMessages(session.messages || []);
+            setConversationId(session.id || null);
+            setHistoryLoaded(true);
+            setMessage('');
+
+            window.setTimeout(() => {
+                inputRef.current?.focus();
+            }, 50);
+        } catch (error) {
+            toast.error(error.message || 'Chưa thể tạo hội thoại mới');
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -339,12 +350,10 @@ function ChatPair({ item }) {
                         {item.answer}
                     </div>
 
+                    <TranslateToVietnamese text={item.answer} />
+
                     <ChatProducts
                         products={item.products}
-                    />
-
-                    <ChatSources
-                        sources={item.sources}
                     />
 
                     <ChatToolCalls
@@ -354,6 +363,65 @@ function ChatPair({ item }) {
             ) : (
                 <div className="max-w-[90%] rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm leading-6 text-slate-400 shadow-sm dark:bg-slate-950 dark:text-slate-500">
                     Đang chờ AI phản hồi.
+                </div>
+            )}
+        </div>
+    );
+}
+
+function looksEnglish(text = '') {
+    const value = String(text || '').trim();
+
+    if (!value) return false;
+
+    const asciiLetters = (value.match(/[a-zA-Z]/g) || []).length;
+    const vietnameseLetters = (value.match(/[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]/gi) || []).length;
+
+    return asciiLetters >= 20 && vietnameseLetters === 0;
+}
+
+function TranslateToVietnamese({ text = '' }) {
+    const [translation, setTranslation] = useState('');
+    const [loadingTranslate, setLoadingTranslate] = useState(false);
+    const [open, setOpen] = useState(false);
+
+    if (!looksEnglish(text)) return null;
+
+    async function handleTranslate() {
+        if (translation) {
+            setOpen((current) => !current);
+            return;
+        }
+
+        try {
+            setLoadingTranslate(true);
+            const result = await aiService.translateToVietnamese(text);
+            setTranslation(result);
+            setOpen(true);
+        } catch (error) {
+            toast.error(error.message || 'Chưa thể dịch câu trả lời');
+        } finally {
+            setLoadingTranslate(false);
+        }
+    }
+
+    return (
+        <div className="mt-3">
+            <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={loadingTranslate}
+                className="rounded-lg border border-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/20 dark:text-blue-300 dark:hover:bg-blue-500/10"
+            >
+                {loadingTranslate ? 'Đang dịch...' : open ? 'Ẩn bản dịch' : 'Dịch sang tiếng Việt'}
+            </button>
+
+            {open && translation && (
+                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                    <div className="mb-1 text-xs font-black uppercase text-slate-500 dark:text-slate-400">
+                        Bản dịch tiếng Việt
+                    </div>
+                    <div className="whitespace-pre-line">{translation}</div>
                 </div>
             )}
         </div>
@@ -484,8 +552,8 @@ function ChatToolCalls({ toolCalls = [] }) {
 }
 
 function formatPrice(product) {
-    const min = Number(product.min_price || 0);
-    const max = Number(product.max_price || 0);
+    const min = Number(product.min_price || product.price?.min || 0);
+    const max = Number(product.max_price || product.price?.max || 0);
 
     if (!min && !max) return 'Liên hệ';
 
@@ -507,8 +575,10 @@ function ChatProducts({ products = [] }) {
     return (
         <div className="mt-3 space-y-3">
             {products.slice(0, 3).map((product) => {
-                const productUrl = product.product_url || `/product/${product.slug}`;
-                const imageUrl = product.image_url || product.thumbnail || '/images/no-image.png';
+                const productUrl = product.product_url || product.url || `/shop/${product.slug}`;
+                const imageUrl = product.image_url || product.thumbnail || product.image || '/images/no-image.png';
+                const availableStock = Number(product.available_stock ?? product.stock?.available ?? product.stock ?? 0);
+                const inStock = Boolean(product.in_stock ?? availableStock > 0);
 
                 return (
                     <a
@@ -535,7 +605,7 @@ function ChatProducts({ products = [] }) {
                             </div>
 
                             <div className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                                {product.in_stock || product.available_stock > 0
+                                {inStock
                                     ? `Còn ${product.available_stock || product.stock || 0} sản phẩm`
                                     : 'Hết hàng'}
                             </div>

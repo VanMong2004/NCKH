@@ -51,6 +51,8 @@ return [
         'chat_model' => env('OPENAI_CHAT_MODEL', 'gpt-4o-mini'),
         'vector_store_id' => env('OPENAI_VECTOR_STORE_ID'),
         'chat_max_history' => (int) env('OPENAI_CHAT_MAX_HISTORY', 12),
+        'chat_summary_threshold' => (int) env('OPENAI_CHAT_SUMMARY_THRESHOLD', 30),
+        'chat_session_expire_days' => (int) env('OPENAI_CHAT_SESSION_EXPIRE_DAYS', 7),
     ],
 
     'misa_invoice' => [

@@ -61,6 +61,7 @@ class ChatKnowledgeController extends Controller
                 'file' => 'required|file|mimes:pdf,doc,docx,txt,md|max:20480',
                 'title' => 'nullable|string|max:255',
                 'description' => 'nullable|string|max:1000',
+                'document_key' => 'nullable|string|max:120',
             ]);
 
             return response()->json([

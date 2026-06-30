@@ -61,6 +61,7 @@ const AdminReviews = lazy(() => import('./admin/pages/AdminReviews'));
 const AdminSiteContent = lazy(() => import('./admin/pages/AdminSiteContent'));
 const AdminAnalytics = lazy(() => import('./admin/pages/AdminAnalytics'));
 const AdminChatKnowledge = lazy(() => import('./admin/pages/AdminChatKnowledge'));
+const AdminChatConversations = lazy(() => import('./admin/pages/AdminChatConversations'));
 
 function PageLoader() {
     return (
@@ -181,6 +182,7 @@ createRoot(document.getElementById('app')).render(
                                 <Route path="reviews" element={<AdminReviews />} />
                                 <Route path="site-content" element={<AdminSiteContent />} />
                                 <Route path="chat-knowledge" element={<AdminChatKnowledge />} />
+                                <Route path="chat-conversations" element={<AdminChatConversations />} />
                                 <Route path="analytics" element={<AdminAnalytics />} />
                             </Route>
                         </Routes>

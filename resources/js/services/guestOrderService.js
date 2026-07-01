@@ -1,4 +1,5 @@
 import api from './api';
+import guestTokenService from './guestTokenService';
 import { mapOrderDetailResponse } from './mappers/orderMapper';
 
 const guestOrderService = {
@@ -9,11 +10,7 @@ const guestOrderService = {
     },
 
     async getByCode(orderCode, options = {}) {
-        const guest = JSON.parse(
-            sessionStorage.getItem('guest_order_success') || '{}'
-        );
-
-        const guestToken = options.guestToken || guest.guestToken;
+        const guestToken = resolveGuestToken(options);
 
         const res = await api.get(
             `/guest/orders/${encodeURIComponent(orderCode)}`,
@@ -30,11 +27,7 @@ const guestOrderService = {
     },
 
     async downloadBill(orderCode, options = {}) {
-        const guest = JSON.parse(
-            sessionStorage.getItem('guest_order_success') || '{}'
-        );
-
-        const guestToken = options.guestToken || guest.guestToken;
+        const guestToken = resolveGuestToken(options);
 
         const res = await api.get(
             `/guest/orders/${encodeURIComponent(orderCode)}/bill`,
@@ -52,11 +45,7 @@ const guestOrderService = {
     },
 
     async getVatInvoiceRequest(orderCode, options = {}) {
-        const guest = JSON.parse(
-            sessionStorage.getItem('guest_order_success') || '{}'
-        );
-
-        const guestToken = options.guestToken || guest.guestToken;
+        const guestToken = resolveGuestToken(options);
 
         const res = await api.get(
             `/guest/orders/${encodeURIComponent(orderCode)}/vat-invoice-request`,
@@ -73,11 +62,7 @@ const guestOrderService = {
     },
 
     async createVatInvoiceRequest(orderCode, payload, options = {}) {
-        const guest = JSON.parse(
-            sessionStorage.getItem('guest_order_success') || '{}'
-        );
-
-        const guestToken = options.guestToken || guest.guestToken;
+        const guestToken = resolveGuestToken(options);
 
         const res = await api.post(
             `/guest/orders/${encodeURIComponent(orderCode)}/vat-invoice-request`,
@@ -95,11 +80,7 @@ const guestOrderService = {
     },
 
     async downloadVatInvoice(orderCode, options = {}) {
-        const guest = JSON.parse(
-            sessionStorage.getItem('guest_order_success') || '{}'
-        );
-
-        const guestToken = options.guestToken || guest.guestToken;
+        const guestToken = resolveGuestToken(options);
 
         const res = await api.get(
             `/guest/orders/${encodeURIComponent(orderCode)}/vat-invoice`,
@@ -116,6 +97,14 @@ const guestOrderService = {
         downloadBlob(res.data, `vat-invoice-${orderCode}.pdf`);
     },
 };
+
+function resolveGuestToken(options = {}) {
+    const guest = JSON.parse(
+        sessionStorage.getItem('guest_order_success') || '{}'
+    );
+
+    return options.guestToken || guest.guestToken || guestTokenService.peekToken() || '';
+}
 
 function downloadBlob(blob, filename) {
     const url = window.URL.createObjectURL(blob);

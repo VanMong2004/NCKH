@@ -177,7 +177,12 @@ function FakeQr({ seed }) {
         const code = seed.charCodeAt(index % seed.length) || 0;
         const active = (code + index * 7) % 5 < 2;
 
-        return <span key={index} className={active ? 'bg-blue-950 dark:bg-white' : 'bg-transparent'} />;
+        return (
+            <span
+                key={index}
+                className={active ? 'bg-blue-950 dark:bg-slate-950' : 'bg-transparent'}
+            />
+        );
     });
 
     return (

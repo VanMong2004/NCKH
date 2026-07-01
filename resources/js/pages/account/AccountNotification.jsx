@@ -4,12 +4,12 @@ import { toast } from 'react-toastify';
 import notificationService from '../../services/notificationService';
 import { useAuth } from '../../contexts/AuthContext';
 import useRealtimeNotifications from '../../hooks/useRealtimeNotifications';
+import { mapNotification } from '../../services/mappers/notificationMapper';
 
 import NotificationHeader from '../../components/notifications/NotificationHeader';
 import NotificationTabs from '../../components/notifications/NotificationTabs';
 import NotificationList from '../../components/notifications/NotificationList';
 import NotificationDetail from '../../components/notifications/NotificationDetail';
-import { ChevronRight, Home } from 'lucide-react';
 
 export default function AccountNotifications() {
     const { user } = useAuth();
@@ -22,8 +22,30 @@ export default function AccountNotifications() {
         loadData();
     }, []);
 
-    useRealtimeNotifications(user, () => {
-        loadData();
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            loadData();
+        }, 20000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, []);
+
+    useRealtimeNotifications(user, (incomingNotification) => {
+        const mapped = mapNotification(incomingNotification);
+
+        setNotifications((prev) => {
+            const exists = prev.some((item) => item.id === mapped.id);
+
+            if (exists) {
+                return prev.map((item) => (item.id === mapped.id ? mapped : item));
+            }
+
+            return [mapped, ...prev];
+        });
+
+        setSelected((prev) => prev || mapped);
     });
 
     const filteredNotifications = useMemo(() => {

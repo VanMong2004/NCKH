@@ -132,7 +132,7 @@ class NotificationService
         broadcast(new NotificationCreated(
             $notification,
             $this->format($notification)
-        ))->toOthers();
+        ));
 
         return $notification;
     }

@@ -20,16 +20,21 @@ export default function useRealtimeNotifications(user, onNotification) {
 
         const channelName = `users.${user.id}.notifications`;
 
-        const channel = window.Echo.private(channelName)
-            .listen('.notification.created', (event) => {
-                const notification = event.notification;
+        const channel = window.Echo.private(channelName).listen('.notification.created', (event) => {
+            const notification = event.notification;
 
-                if (!notification) return;
+            if (!notification) return;
 
-                onNotificationRef.current?.(notification);
+            window.dispatchEvent(
+                new CustomEvent('notification-created', {
+                    detail: notification,
+                }),
+            );
 
-                toast.info(notification.title || 'Bạn có thông báo mới');
-            });
+            onNotificationRef.current?.(notification);
+
+            toast.info(notification.title || 'Bạn có thông báo mới');
+        });
 
         return () => {
             channel.stopListening('.notification.created');

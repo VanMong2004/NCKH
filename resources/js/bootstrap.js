@@ -21,13 +21,21 @@ import Pusher from 'pusher-js';
 const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
 
 window.Pusher = Pusher;
+window.__CTUT_REALTIME__ = {
+    enabled: false,
+    provider: 'pusher',
+    reason: pusherKey ? '' : 'missing_client_key',
+    state: 'disabled',
+};
 
 if (pusherKey) {
     window.Echo = new Echo({
         broadcaster: 'pusher',
         key: pusherKey,
         cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
-        wsHost: import.meta.env.VITE_PUSHER_HOST || `ws-${import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1'}.pusher.com`,
+        wsHost:
+            import.meta.env.VITE_PUSHER_HOST
+            || `ws-${import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1'}.pusher.com`,
         wsPort: Number(import.meta.env.VITE_PUSHER_PORT || 80),
         wssPort: Number(import.meta.env.VITE_PUSHER_PORT || 443),
         forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
@@ -40,5 +48,42 @@ if (pusherKey) {
                     : '',
             },
         },
+    });
+
+    const connection = window.Echo?.connector?.pusher?.connection;
+
+    window.__CTUT_REALTIME__ = {
+        enabled: true,
+        provider: 'pusher',
+        reason: '',
+        state: connection?.state || 'initialized',
+    };
+
+    connection?.bind('connected', () => {
+        window.__CTUT_REALTIME__.state = 'connected';
+        window.dispatchEvent(
+            new CustomEvent('ctut-realtime-status', {
+                detail: { ...window.__CTUT_REALTIME__ },
+            }),
+        );
+    });
+
+    connection?.bind('state_change', (states) => {
+        window.__CTUT_REALTIME__.state = states?.current || 'unknown';
+        window.dispatchEvent(
+            new CustomEvent('ctut-realtime-status', {
+                detail: { ...window.__CTUT_REALTIME__ },
+            }),
+        );
+    });
+
+    connection?.bind('error', (error) => {
+        window.__CTUT_REALTIME__.state = 'error';
+        window.__CTUT_REALTIME__.lastError = error;
+        window.dispatchEvent(
+            new CustomEvent('ctut-realtime-status', {
+                detail: { ...window.__CTUT_REALTIME__ },
+            }),
+        );
     });
 }

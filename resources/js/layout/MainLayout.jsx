@@ -17,9 +17,10 @@ export default function MainLayout({
     const [siteContent, setSiteContent] = useState(initialSiteContent || null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [notificationRefreshKey, setNotificationRefreshKey] = useState(0);
+    const [realtimeEnabled, setRealtimeEnabled] = useState(Boolean(window.__CTUT_REALTIME__?.enabled));
 
     useRealtimeNotifications(user, () => {
-        setUnreadCount((count) => count + 1);
+        loadUnread();
         setNotificationRefreshKey((key) => key + 1);
     });
 
@@ -38,30 +39,46 @@ export default function MainLayout({
     }, [initialSiteContent, isLoading, user]);
 
     useEffect(() => {
-
-        function handleRefresh(){
-
+        function handleRefresh() {
             loadUnread();
-
-            setNotificationRefreshKey(v=>v+1);
-
+            setNotificationRefreshKey((v) => v + 1);
         }
 
-        window.addEventListener(
-            'notification-updated',
-            handleRefresh
-        );
+        window.addEventListener('notification-updated', handleRefresh);
 
-        return ()=>{
-
-            window.removeEventListener(
-                'notification-updated',
-                handleRefresh
-            );
-
+        return () => {
+            window.removeEventListener('notification-updated', handleRefresh);
         };
-
     }, []);
+
+    useEffect(() => {
+        function handleRealtimeStatus(event) {
+            const detail = event?.detail || {};
+
+            setRealtimeEnabled(Boolean(detail.enabled));
+        }
+
+        window.addEventListener('ctut-realtime-status', handleRealtimeStatus);
+
+        return () => {
+            window.removeEventListener('ctut-realtime-status', handleRealtimeStatus);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!user) {
+            return undefined;
+        }
+
+        const intervalId = window.setInterval(() => {
+            loadUnread();
+            setNotificationRefreshKey((key) => key + 1);
+        }, realtimeEnabled ? 45000 : 20000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [realtimeEnabled, user]);
 
     async function loadSiteContent() {
         try {
@@ -74,22 +91,17 @@ export default function MainLayout({
         }
     }
 
-    async function loadUnread(){
-
+    async function loadUnread() {
         if (!user) {
             setUnreadCount(0);
             return;
         }
 
-        try{
-
-            const count =
-                await notificationService.getUnreadCount();
+        try {
+            const count = await notificationService.getUnreadCount();
 
             setUnreadCount(count);
-
-        }catch{}
-
+        } catch {}
     }
 
     return (

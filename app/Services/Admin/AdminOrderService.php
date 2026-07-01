@@ -18,7 +18,8 @@ class AdminOrderService
                 'items:id,order_id,product_variant_id,quantity',
                 'items.productVariant:id,product_id',
                 'items.productVariant.product:id,name,slug',
-                'items.productVariant.product.images:id,product_id,url,type,position',
+                'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
+                'items.productVariant.product.primaryImage:id,product_id,url,type,position',
                 'payments:id,order_id,method,status,created_at',
             ]);
 
@@ -76,7 +77,8 @@ class AdminOrderService
     {
         $order = Order::with([
             'user:id,name,email,phone',
-            'items.productVariant.product.images',
+            'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
+            'items.productVariant.product.primaryImage:id,product_id,url,type,position',
             'payments',
             'statusHistories.changer:id,name,email',
         ])->find($id);
@@ -137,12 +139,16 @@ class AdminOrderService
                 $data['note'] ?? ($data['cancel_reason'] ?? null)
             );
 
+            app(\App\Services\Analytics\AnalyticsEventService::class)
+                ->broadcastDashboardRefresh();
+
             return [
                 'success' => true,
                 'message' => 'Cập nhật trạng thái đơn hàng thành công',
                 'data' => $this->formatDetail($order->fresh([
                     'user:id,name,email,phone',
-                    'items.productVariant.product.images',
+                    'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
+                    'items.productVariant.product.primaryImage:id,product_id,url,type,position',
                     'payments',
                     'statusHistories.changer:id,name,email',
                 ])),
@@ -152,15 +158,26 @@ class AdminOrderService
 
     private function validateStatusTransition(Order $order, string $next): void
     {
+        $allowed = $this->getAllowedNextStatuses($order);
+
+        if (!in_array($next, $allowed[$order->status] ?? [], true)) {
+            throw new RuntimeException(
+                "Không thể chuyển trạng thái từ {$order->status} sang {$next}",
+                400
+            );
+        }
+    }
+
+    private function getAllowedNextStatuses(Order $order): array
+    {
         $payment = $order->payments
             ->sortByDesc('created_at')
             ->first();
 
         $isCod = !$payment || $payment->method === 'cod';
 
-        $allowed = [
-
-            'pending'=>$isCod
+        return [
+            'pending' => $isCod
                 ? [
                     'processing',
                     'cancelled',
@@ -169,32 +186,20 @@ class AdminOrderService
                     'paid',
                     'cancelled',
                 ],
-
             'paid' => [
                 'processing',
                 'cancelled',
             ],
-
             'processing' => [
                 'shipped',
                 'cancelled',
             ],
-
             'shipped' => [
                 'completed',
             ],
-
             'completed' => [],
-
             'cancelled' => [],
         ];
-
-        if (!in_array($next, $allowed[$order->status] ?? [], true)) {
-            throw new RuntimeException(
-                "Không thể chuyển trạng thái từ {$order->status} sang {$next}",
-                400
-            );
-        }
     }
 
     private function cancelOrder(Order $order, string $reason): void
@@ -317,14 +322,7 @@ class AdminOrderService
 
         $firstItem = $order->items->first();
 
-        $thumbnail = optional(
-            $firstItem?->productVariant?->product?->images
-                ?->where('type', 'thumbnail')
-                ->first()
-        )->url ?? optional(
-            $firstItem?->productVariant?->product?->images
-                ?->first()
-        )->url;
+        $thumbnail = $this->productThumbnail($firstItem?->productVariant?->product);
 
         return [
             'id' => $order->id,
@@ -341,6 +339,7 @@ class AdminOrderService
             'thumbnail' => $thumbnail,
             'item_count' => $order->items->sum('quantity'),
             'total' => (float) $order->total,
+            'allowed_next_statuses' => $this->getAllowedNextStatuses($order)[$order->status] ?? [],
             'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
             'cancel_reason' => $order->cancel_reason,
             'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
@@ -396,6 +395,7 @@ class AdminOrderService
                 'amount' => (float) $payment->amount,
                 'transaction_id' => $payment->transaction_id,
             ] : null,
+            'allowed_next_statuses' => $this->getAllowedNextStatuses($order)[$order->status] ?? [],
 
             'summary' => [
                 'sub_total' => (float) $order->sub_total,
@@ -413,9 +413,7 @@ class AdminOrderService
                     'id' => $item->id,
                     'product_variant_id' => $item->product_variant_id,
                     'product_name' => $item->product_name,
-                    'thumbnail' => optional(
-                        $product?->images?->where('type', 'thumbnail')->first()
-                    )->url ?? optional($product?->images?->first())->url,
+                    'thumbnail' => $this->productThumbnail($product),
                     'variant' => $item->variant_snapshot,
                     'price' => (float) $item->final_price,
                     'original_price' => (float) $item->original_price,
@@ -445,5 +443,15 @@ class AdminOrderService
             'new_status' => $newStatus,
             'note' => $note,
         ]);
+    }
+
+    private function productThumbnail($product): ?string
+    {
+        if (!$product) {
+            return null;
+        }
+
+        return $product->thumbnailImage?->url
+            ?? $product->primaryImage?->url;
     }
 }

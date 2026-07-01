@@ -6,6 +6,8 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
+use App\Models\Payment;
 use App\Models\ProductVariant;
 use App\Models\Address;
 use App\Models\PromotionItem;
@@ -121,6 +123,14 @@ class OrderService
 
             $order->update([
                 'order_code' => $this->generateOrderCode($order->id),
+            ]);
+
+            OrderStatusHistory::create([
+                'order_id' => $order->id,
+                'changed_by' => $user?->id,
+                'old_status' => null,
+                'new_status' => 'pending',
+                'note' => 'Đơn hàng được tạo từ checkout',
             ]);
 
             if ($order->user_id) {
@@ -275,7 +285,19 @@ class OrderService
 
             $order->refresh();
 
+            Payment::create([
+                'order_id' => $order->id,
+                'method' => $paymentMethod,
+                'status' => 'pending',
+                'amount' => $order->total,
+                'transaction_id' => $paymentMethod === 'cod'
+                    ? null
+                    : Str::uuid(),
+            ]);
+
             event(new \App\Events\OrderCreated($order));
+            app(\App\Services\Analytics\AnalyticsEventService::class)
+                ->broadcastDashboardRefresh();
 
             // $cart->update([
             //     'status' => 'checked_out',

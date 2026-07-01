@@ -67,7 +67,7 @@ class AnalyticsEventService
 
                 $this->incrementProductViewCountOnce($event);
 
-                $this->broadcastSummary();
+                $this->broadcastSummary($eventType);
 
                 return $event;
             });
@@ -151,7 +151,7 @@ class AnalyticsEventService
                 ]);
 
                 $this->updateDailyMetric($event, false, false);
-                $this->broadcastSummary();
+                $this->broadcastSummary(AnalyticsEvent::PURCHASE_COMPLETED);
             });
         } catch (\Throwable $e) {
             Log::warning('Track purchase completed from order failed', [
@@ -338,10 +338,24 @@ class AnalyticsEventService
         return (int) $isBounce - (int) $wasBounce;
     }
 
-    private function broadcastSummary(): void
+    public function broadcastDashboardRefresh(): void
+    {
+        $this->broadcastSummary('dashboard_refresh', true);
+    }
+
+    private function broadcastSummary(?string $eventType = null, bool $forceRefreshDashboard = false): void
     {
         try {
-            broadcast(new AdminAnalyticsUpdated($this->summary(30)))->toOthers();
+            $shouldRefreshDashboard = $forceRefreshDashboard
+                || in_array($eventType, [
+                    AnalyticsEvent::CHECKOUT_STARTED,
+                    AnalyticsEvent::PURCHASE_COMPLETED,
+                ], true);
+
+            broadcast(new AdminAnalyticsUpdated(
+                $this->summary(30),
+                $shouldRefreshDashboard
+            ));
         } catch (\Throwable $e) {
             Log::warning('Broadcast admin analytics summary failed', [
                 'message' => $e->getMessage(),

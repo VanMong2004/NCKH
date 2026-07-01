@@ -50,6 +50,7 @@ export default function AdminAnalytics() {
     const [categoryRevenue, setCategoryRevenue] = useState([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState('');
+    const [refreshingRealtime, setRefreshingRealtime] = useState(false);
 
     const [globalFilter, setGlobalFilter] = useState({ ...defaultFilter });
     const [revenueFilter, setRevenueFilter] = useState({ ...defaultFilter });
@@ -70,18 +71,24 @@ export default function AdminAnalytics() {
         }
 
         const channelName = 'admin.analytics';
-        const channel = window.Echo.private(channelName)
-            .listen('.analytics.updated', (event) => {
-                if (event.summary) {
-                    setBehavior(mapAdminAnalyticsBehaviorOverviewResponse({ data: event.summary }));
-                }
-            });
+        const channel = window.Echo.private(channelName).listen('.analytics.updated', (event) => {
+            if (event.summary) {
+                const mapped = mapAdminAnalyticsBehaviorOverviewResponse({ data: event.summary });
+                setBehavior(mapped);
+                setFunnelBehavior(mapped);
+                setRateBehavior(mapped);
+            }
+
+            if (event.should_refresh_dashboard) {
+                refreshRealtimeDashboard();
+            }
+        });
 
         return () => {
             channel.stopListening('.analytics.updated');
             window.Echo.leave(channelName);
         };
-    }, []);
+    }, [globalFilter, revenueFilter]);
 
     async function loadAll() {
         try {
@@ -127,6 +134,42 @@ export default function AdminAnalytics() {
             toast.error(error?.message || 'Không thể tải thống kê');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function refreshRealtimeDashboard() {
+        try {
+            setRefreshingRealtime(true);
+
+            const globalParams = paramsFromFilter(globalFilter);
+            const revenueParams = paramsFromFilter(revenueFilter);
+
+            const [
+                overviewResult,
+                revenueResult,
+                ordersResult,
+                categoryResult,
+                productResult,
+                viewedProductResult,
+            ] = await Promise.all([
+                adminAnalyticsService.getOverview(),
+                adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams),
+                adminAnalyticsService.getSalesChart(globalFilter.days, globalParams),
+                adminAnalyticsService.getRevenueByCategory(8, globalParams),
+                adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),
+                adminAnalyticsService.getTopViewedProducts({ limit: 10 }),
+            ]);
+
+            setOverview(overviewResult);
+            setRevenueChart(revenueResult.chart || []);
+            setOrdersChart(ordersResult.chart || []);
+            setCategoryRevenue(categoryResult.categories || []);
+            setTopProducts(productResult.products || []);
+            setTopViewedProducts(viewedProductResult.products || []);
+        } catch (error) {
+            console.error('Realtime admin analytics refresh failed', error);
+        } finally {
+            setRefreshingRealtime(false);
         }
     }
 
@@ -181,12 +224,15 @@ export default function AdminAnalytics() {
         return { revenue, orders, average };
     }, [ordersChart, revenueChart]);
 
-    const orderStatusData = useMemo(() => ([
-        { label: 'Chờ xử lý', value: overview?.pendingOrders || 0 },
-        { label: 'Đang xử lý', value: overview?.paidOrders || 0 },
-        { label: 'Hoàn tất', value: overview?.completedOrders || 0 },
-        { label: 'Đã hủy', value: overview?.cancelledOrders || 0 },
-    ]), [overview]);
+    const orderStatusData = useMemo(
+        () => [
+            { label: 'Chờ xử lý', value: overview?.pendingOrders || 0 },
+            { label: 'Đang xử lý', value: overview?.paidOrders || 0 },
+            { label: 'Hoàn tất', value: overview?.completedOrders || 0 },
+            { label: 'Đã hủy', value: overview?.cancelledOrders || 0 },
+        ],
+        [overview],
+    );
 
     const rates = useMemo(() => {
         const source = rateBehavior || behavior;
@@ -214,10 +260,10 @@ export default function AdminAnalytics() {
                     <button
                         type="button"
                         onClick={loadAll}
-                        disabled={loading}
+                        disabled={loading || refreshingRealtime}
                         className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
-                        {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
+                        {loading || refreshingRealtime ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
                         Tải lại
                     </button>
                     <button

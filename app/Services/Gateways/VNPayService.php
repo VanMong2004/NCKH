@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
 use App\Services\Admin\OrderReleaseService;
+use App\Services\Analytics\AnalyticsEventService;
 use App\Services\NotificationService;
 
 class VNPayService
@@ -87,6 +88,9 @@ class VNPayService
                         'cancelled'
                     );
 
+                app(AnalyticsEventService::class)
+                    ->broadcastDashboardRefresh();
+
                 return [
                     'message' => 'Đơn hàng đã hết hạn thanh toán',
                     'payment_id' => $payment->id,
@@ -100,6 +104,9 @@ class VNPayService
                     'status' => 'failed',
                     'response_data' => $data,
                 ]);
+
+                app(AnalyticsEventService::class)
+                    ->broadcastDashboardRefresh();
 
                 return [
                     'message' => 'Đơn hàng đã bị hủy, không thể thanh toán',
@@ -150,6 +157,9 @@ class VNPayService
                 $order->update([
                     'cancel_reason' => null,
                 ]);
+
+                app(AnalyticsEventService::class)
+                    ->broadcastDashboardRefresh();
             }
 
             return [

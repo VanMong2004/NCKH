@@ -192,6 +192,8 @@ class GuestOrderService
             'order_code' => $order->order_code,
             'status' => $order->status,
             'qr_code' => $order->order_code,
+            'guest_email' => $order->guest_email,
+            'customer_email' => $order->user?->email ?: $order->guest_email,
             'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
             'cancel_reason' => $order->cancel_reason,
             'created_at' => optional($order->created_at)->format('d/m/Y H:i'),

@@ -490,7 +490,7 @@ export default function OrderSuccess() {
                     existingRequest={vatInvoiceRequest}
                     submitting={submittingVatInvoice}
                     downloading={downloadingVatInvoice}
-                    defaultEmail={order.raw?.guest_email || ''}
+                    defaultEmail={order.raw?.guest_email || order.raw?.customer_email || user?.email || ''}
                     onClose={() => setVatInvoiceModalOpen(false)}
                     onSubmit={submitVatInvoiceRequest}
                     onDownload={downloadVatInvoice}

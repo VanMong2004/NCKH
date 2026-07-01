@@ -292,13 +292,35 @@ class ProductService
     {
         $product = Product::query()
             ->with([
-                'images',
+                'images:id,product_id,url,type,position',
                 'variants' => function ($q) {
-                    $q->where('is_active', true);
+                    $q->select([
+                        'id',
+                        'product_id',
+                        'size',
+                        'color',
+                        'sku',
+                        'price',
+                        'stock',
+                        'reserved_stock',
+                        'sold_stock',
+                        'is_active',
+                    ])->where('is_active', true);
                 },
-                'category.parent',
-                'department',
-                'reviews.user',
+                'category:id,parent_id,name,slug',
+                'category.parent:id,parent_id,name,slug',
+                'department:id,name,slug,code',
+                'reviews' => function ($q) {
+                    $q->select([
+                        'id',
+                        'product_id',
+                        'user_id',
+                        'rating',
+                        'comment',
+                        'created_at',
+                    ])->latest()->limit(10);
+                },
+                'reviews.user:id,name,avatar',
             ])
             ->where('slug', $slug)
             ->where('is_active', true)

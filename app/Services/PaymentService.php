@@ -3,15 +3,15 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Models\Payment;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
+use App\Services\Analytics\AnalyticsEventService;
 use App\Services\Gateways\MockPaymentGatewayService;
 use App\Services\Gateways\VNPayService;
-use App\Events\OrderPaid;
+use App\Services\NotificationService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
-
 
 class PaymentService
 {
@@ -57,10 +57,37 @@ class PaymentService
                 app(\App\Services\Admin\OrderReleaseService::class)
                     ->release($order);
 
+                $oldStatus = $order->status;
+
+                $order->payments()
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'failed',
+                        'response_data' => [
+                            'reason' => 'payment_timeout',
+                        ],
+                    ]);
+
                 $order->update([
                     'status' => 'cancelled',
                     'cancel_reason' => 'expired',
                 ]);
+
+                OrderStatusHistory::create([
+                    'order_id' => $order->id,
+                    'changed_by' => $user?->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => 'cancelled',
+                    'note' => 'Đơn hàng hết hạn trước khi tạo lại thanh toán',
+                ]);
+
+                if ($order->user_id) {
+                    app(NotificationService::class)
+                        ->order($order->fresh(), 'cancelled');
+                }
+
+                app(AnalyticsEventService::class)
+                    ->broadcastDashboardRefresh();
 
                 throw new RuntimeException('Đơn hàng đã hết hạn thanh toán', 400);
             }
@@ -75,25 +102,14 @@ class PaymentService
                 ->first();
 
             if ($pendingPayment) {
-
-                // COD chỉ tạo 1 payment duy nhất
-                if ($pendingPayment->method === 'cod') {
-
-                    return [
-                        'payment_id'   => $pendingPayment->id,
-                        'order_id'     => $order->id,
-                        'order_code'   => $order->order_code,
-                        'method'       => 'cod',
-                        'status'       => 'pending',
-                        'need_callback'=> false,
-                        'redirect_url' => null,
-                    ];
+                if ($pendingPayment->method !== $method) {
+                    throw new RuntimeException(
+                        'Phương thức thanh toán không khớp với đơn hàng đã tạo',
+                        409
+                    );
                 }
 
-                throw new RuntimeException(
-                    'Đơn hàng đang có giao dịch chờ thanh toán',
-                    409
-                );
+                return $this->resolveGateway($pendingPayment);
             }
 
             if (
@@ -129,29 +145,22 @@ class PaymentService
 
             case 'vnpay':
                 return $this->vnpayGateway->create($payment);
-            
-            case 'cod':
 
+            case 'cod':
                 $payment->load('order');
 
                 return [
                     'payment_id' => $payment->id,
                     'order_id' => $payment->order_id,
                     'order_code' => $payment->order->order_code,
-
                     'method' => 'cod',
-
                     'status' => 'pending',
-
                     'need_callback' => false,
-
                     'amount' => (float) $payment->amount,
-
                     'redirect_url' => null,
-
                     'message' => 'Đơn hàng đã được tạo thành công.',
                 ];
-            
+
             default:
                 throw new \Exception('Payment method không hỗ trợ');
         }

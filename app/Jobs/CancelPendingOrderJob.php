@@ -3,7 +3,10 @@
 namespace App\Jobs;
 
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Services\Admin\OrderReleaseService;
+use App\Services\Analytics\AnalyticsEventService;
+use App\Services\NotificationService;
 use App\Services\WebhookService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Support\Facades\DB;
@@ -49,16 +52,43 @@ class CancelPendingOrderJob implements ShouldQueue
             app(OrderReleaseService::class)
                 ->release($order);
 
+            $oldStatus = $order->status;
+
             $order->update([
                 'status' => 'cancelled',
                 'cancel_reason' => 'payment_timeout',
             ]);
+
+            $order->payments()
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'failed',
+                    'response_data' => [
+                        'reason' => 'payment_timeout',
+                    ],
+                ]);
+
+            OrderStatusHistory::create([
+                'order_id' => $order->id,
+                'changed_by' => null,
+                'old_status' => $oldStatus,
+                'new_status' => 'cancelled',
+                'note' => 'Tự động hủy đơn do hết hạn thanh toán',
+            ]);
+
+            if ($order->user_id) {
+                app(NotificationService::class)
+                    ->order($order->fresh(), 'cancelled');
+            }
 
             app(WebhookService::class)->send('order_cancelled', [
                 'order_id' => $order->id,
                 'order_code' => $order->order_code,
                 'reason' => $order->cancel_reason,
             ]);
+
+            app(AnalyticsEventService::class)
+                ->broadcastDashboardRefresh();
 
             Log::info('Auto cancel order', [
                 'order_id' => $order->id,

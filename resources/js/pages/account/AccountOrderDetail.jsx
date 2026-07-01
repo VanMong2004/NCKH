@@ -86,18 +86,6 @@ export default function AccountOrderDetail() {
         });
 
         return;
-
-        if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này?')) return;
-
-        try {
-            const result = await orderService.cancelOrder(order.id);
-
-            setOrder(result);
-
-            toast.success('Đã hủy đơn hàng');
-        } catch (error) {
-            toast.error(error.message || 'Không thể hủy đơn hàng');
-        }
     }
 
     async function cancelOrder(orderId) {

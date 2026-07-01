@@ -103,15 +103,6 @@ export default function AccountOrders() {
         });
 
         return;
-        if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này?')) return;
-
-        try {
-            await orderService.cancelOrder(orderId);
-            toast.success('Đã hủy đơn hàng');
-            loadOrders(meta.currentPage);
-        } catch (error) {
-            toast.error(error.message || 'Không thể hủy đơn hàng');
-        }
     }
 
     return (

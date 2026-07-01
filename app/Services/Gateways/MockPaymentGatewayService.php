@@ -4,8 +4,8 @@ namespace App\Services\Gateways;
 
 use App\Models\Payment;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
 use App\Services\Admin\OrderReleaseService;
@@ -19,7 +19,6 @@ class MockPaymentGatewayService
 
     public function create(Payment $payment)
     {
-        // giả lập trả URL
         return [
             'payment_id' => $payment->id,
             'transaction_id' => $payment->transaction_id,
@@ -30,10 +29,8 @@ class MockPaymentGatewayService
     public function callback(array $data)
     {
         return DB::transaction(function () use ($data) {
-
             $payment = Payment::lockForUpdate()->findOrFail($data['payment_id']);
 
-            // 🔥 chống double callback
             if (in_array($payment->status, ['success', 'refunded'])) {
                 return [
                     'message' => 'Payment đã xử lý',
@@ -58,10 +55,19 @@ class MockPaymentGatewayService
                     'response_data' => $data,
                 ]);
 
+                $oldStatus = $order->status;
+
                 $order->update([
                     'status' => 'cancelled',
                     'cancel_reason' => 'payment_timeout',
                 ]);
+
+                $this->createStatusHistory(
+                    $order,
+                    $oldStatus,
+                    'cancelled',
+                    'Đơn hàng hết hạn thanh toán'
+                );
 
                 app(NotificationService::class)
                     ->order(
@@ -99,12 +105,21 @@ class MockPaymentGatewayService
             ]);
 
             if ($status === 'success') {
-
                 $wasPaid = $order->status === 'paid';
+                $oldStatus = $order->status;
 
                 $order->update([
                     'status' => 'paid'
                 ]);
+
+                if (!$wasPaid) {
+                    $this->createStatusHistory(
+                        $order,
+                        $oldStatus,
+                        'paid',
+                        'Thanh toán mock thành công'
+                    );
+                }
 
                 app(NotificationService::class)
                     ->order(
@@ -119,24 +134,10 @@ class MockPaymentGatewayService
                 }
 
                 event(new OrderPaid($order));
-            }else{
-
+            } else {
                 $order->update([
-                    'status'=>'cancelled',
-                    'cancel_reason'=>'payment_failed',
+                    'cancel_reason' => null,
                 ]);
-
-                app(OrderReleaseService::class)
-                    ->release(
-                        $order->load('items.productVariant')
-                    );
-
-                app(NotificationService::class)
-                    ->order(
-                        $order->fresh(),
-                        'cancelled'
-                    );
-
             }
 
             return [
@@ -146,5 +147,20 @@ class MockPaymentGatewayService
                 'status' => $status,
             ];
         });
+    }
+
+    private function createStatusHistory(
+        Order $order,
+        ?string $oldStatus,
+        string $newStatus,
+        ?string $note = null
+    ): void {
+        OrderStatusHistory::create([
+            'order_id' => $order->id,
+            'changed_by' => null,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'note' => $note,
+        ]);
     }
 }

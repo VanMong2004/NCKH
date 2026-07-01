@@ -4,6 +4,7 @@ namespace App\Services\Gateways;
 
 use App\Models\Payment;
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use Illuminate\Support\Facades\DB;
 use App\Events\OrderPaid;
 use App\Services\PromotionSoldService;
@@ -40,7 +41,6 @@ class VNPayService
     public function callback(array $data)
     {
         return DB::transaction(function () use ($data) {
-
             $payment = Payment::lockForUpdate()->findOrFail($data['vnp_TxnRef']);
 
             if (in_array($payment->status, ['success', 'refunded'])) {
@@ -67,10 +67,19 @@ class VNPayService
                     'response_data' => $data,
                 ]);
 
+                $oldStatus = $order->status;
+
                 $order->update([
                     'status' => 'cancelled',
                     'cancel_reason' => 'payment_timeout',
                 ]);
+
+                $this->createStatusHistory(
+                    $order,
+                    $oldStatus,
+                    'cancelled',
+                    'Đơn hàng hết hạn thanh toán VNPay'
+                );
 
                 app(NotificationService::class)
                     ->order(
@@ -108,12 +117,21 @@ class VNPayService
             ]);
 
             if ($status === 'success') {
-
                 $wasPaid = $order->status === 'paid';
+                $oldStatus = $order->status;
 
                 $order->update([
                     'status' => 'paid'
                 ]);
+
+                if (!$wasPaid) {
+                    $this->createStatusHistory(
+                        $order,
+                        $oldStatus,
+                        'paid',
+                        'Thanh toán VNPay thành công'
+                    );
+                }
 
                 app(NotificationService::class)
                     ->order(
@@ -129,23 +147,9 @@ class VNPayService
 
                 event(new OrderPaid($order));
             } else {
-
                 $order->update([
-                    'status'=>'cancelled',
-                    'cancel_reason'=>'payment_failed',
+                    'cancel_reason' => null,
                 ]);
-
-                app(OrderReleaseService::class)
-                    ->release(
-                        $order->load('items.productVariant')
-                    );
-
-                app(NotificationService::class)
-                    ->order(
-                        $order->fresh(),
-                        'cancelled'
-                    );
-
             }
 
             return [
@@ -155,5 +159,20 @@ class VNPayService
                 'status' => $status,
             ];
         });
+    }
+
+    private function createStatusHistory(
+        Order $order,
+        ?string $oldStatus,
+        string $newStatus,
+        ?string $note = null
+    ): void {
+        OrderStatusHistory::create([
+            'order_id' => $order->id,
+            'changed_by' => null,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'note' => $note,
+        ]);
     }
 }

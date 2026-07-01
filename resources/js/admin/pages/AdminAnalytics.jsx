@@ -107,6 +107,19 @@ export default function AdminAnalytics() {
         };
     }, [globalFilter, revenueFilter]);
 
+    function fetchDashboardData(globalParams, revenueParams) {
+        return Promise.all([
+            adminAnalyticsService.getOverview(),
+            adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
+            adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams),
+            adminAnalyticsService.getSalesChart(globalFilter.days, globalParams),
+            adminAnalyticsService.getBehaviorChart(globalFilter.days, globalParams),
+            adminAnalyticsService.getRevenueByCategory(8, globalParams),
+            adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),
+            adminAnalyticsService.getTopViewedProducts({ limit: 10 }),
+        ]);
+    }
+
     async function loadAll() {
         try {
             setLoading(true);
@@ -119,31 +132,18 @@ export default function AdminAnalytics() {
                 revenueResult,
                 ordersResult,
                 trafficResult,
-                funnelResult,
-                ratesResult,
                 categoryResult,
                 productResult,
                 viewedProductResult,
-            ] = await Promise.all([
-                adminAnalyticsService.getOverview(),
-                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-                adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams),
-                adminAnalyticsService.getSalesChart(globalFilter.days, globalParams),
-                adminAnalyticsService.getBehaviorChart(globalFilter.days, globalParams),
-                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-                adminAnalyticsService.getRevenueByCategory(8, globalParams),
-                adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),
-                adminAnalyticsService.getTopViewedProducts({ limit: 10 }),
-            ]);
+            ] = await fetchDashboardData(globalParams, revenueParams);
 
             setOverview(overviewResult);
             setBehavior(behaviorResult);
             setRevenueChart(revenueResult.chart || []);
             setOrdersChart(ordersResult.chart || []);
             setTrafficChart(trafficResult.chart || []);
-            setFunnelBehavior(funnelResult);
-            setRateBehavior(ratesResult);
+            setFunnelBehavior(behaviorResult);
+            setRateBehavior(behaviorResult);
             setCategoryRevenue(categoryResult.categories || []);
             setTopProducts(productResult.products || []);
             setTopViewedProducts(viewedProductResult.products || []);
@@ -183,31 +183,18 @@ export default function AdminAnalytics() {
                 revenueResult,
                 ordersResult,
                 trafficResult,
-                funnelResult,
-                ratesResult,
                 categoryResult,
                 productResult,
                 viewedProductResult,
-            ] = await Promise.all([
-                adminAnalyticsService.getOverview(),
-                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-                adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams),
-                adminAnalyticsService.getSalesChart(globalFilter.days, globalParams),
-                adminAnalyticsService.getBehaviorChart(globalFilter.days, globalParams),
-                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-                adminAnalyticsService.getRevenueByCategory(8, globalParams),
-                adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),
-                adminAnalyticsService.getTopViewedProducts({ limit: 10 }),
-            ]);
+            ] = await fetchDashboardData(globalParams, revenueParams);
 
             setOverview(overviewResult);
             setBehavior(behaviorResult);
             setRevenueChart(revenueResult.chart || []);
             setOrdersChart(ordersResult.chart || []);
             setTrafficChart(trafficResult.chart || []);
-            setFunnelBehavior(funnelResult);
-            setRateBehavior(ratesResult);
+            setFunnelBehavior(behaviorResult);
+            setRateBehavior(behaviorResult);
             setCategoryRevenue(categoryResult.categories || []);
             setTopProducts(productResult.products || []);
             setTopViewedProducts(viewedProductResult.products || []);

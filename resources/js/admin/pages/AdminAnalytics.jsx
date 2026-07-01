@@ -12,7 +12,7 @@ import {
     TrendingUp,
     Users,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { toast } from 'react-toastify';
 
@@ -51,6 +51,8 @@ export default function AdminAnalytics() {
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState('');
     const [refreshingRealtime, setRefreshingRealtime] = useState(false);
+    const realtimeRefreshTimerRef = useRef(null);
+    const realtimeRefreshingRef = useRef(false);
 
     const [globalFilter, setGlobalFilter] = useState({ ...defaultFilter });
     const [revenueFilter, setRevenueFilter] = useState({ ...defaultFilter });
@@ -79,14 +81,29 @@ export default function AdminAnalytics() {
                 setRateBehavior(mapped);
             }
 
-            if (event.should_refresh_dashboard) {
-                refreshRealtimeDashboard();
-            }
+            scheduleRealtimeRefresh();
         });
 
         return () => {
+            if (realtimeRefreshTimerRef.current) {
+                clearTimeout(realtimeRefreshTimerRef.current);
+                realtimeRefreshTimerRef.current = null;
+            }
+
             channel.stopListening('.analytics.updated');
             window.Echo.leave(channelName);
+        };
+    }, [globalFilter, revenueFilter]);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(scheduleRealtimeRefresh, 15000);
+        const handleFocus = () => scheduleRealtimeRefresh();
+
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            window.clearInterval(intervalId);
+            window.removeEventListener('focus', handleFocus);
         };
     }, [globalFilter, revenueFilter]);
 
@@ -137,8 +154,24 @@ export default function AdminAnalytics() {
         }
     }
 
+    function scheduleRealtimeRefresh() {
+        if (realtimeRefreshTimerRef.current) {
+            clearTimeout(realtimeRefreshTimerRef.current);
+        }
+
+        realtimeRefreshTimerRef.current = window.setTimeout(() => {
+            realtimeRefreshTimerRef.current = null;
+            refreshRealtimeDashboard();
+        }, 800);
+    }
+
     async function refreshRealtimeDashboard() {
+        if (realtimeRefreshingRef.current) {
+            return;
+        }
+
         try {
+            realtimeRefreshingRef.current = true;
             setRefreshingRealtime(true);
 
             const globalParams = paramsFromFilter(globalFilter);
@@ -146,29 +179,42 @@ export default function AdminAnalytics() {
 
             const [
                 overviewResult,
+                behaviorResult,
                 revenueResult,
                 ordersResult,
+                trafficResult,
+                funnelResult,
+                ratesResult,
                 categoryResult,
                 productResult,
                 viewedProductResult,
             ] = await Promise.all([
                 adminAnalyticsService.getOverview(),
+                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
                 adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams),
                 adminAnalyticsService.getSalesChart(globalFilter.days, globalParams),
+                adminAnalyticsService.getBehaviorChart(globalFilter.days, globalParams),
+                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
+                adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
                 adminAnalyticsService.getRevenueByCategory(8, globalParams),
                 adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),
                 adminAnalyticsService.getTopViewedProducts({ limit: 10 }),
             ]);
 
             setOverview(overviewResult);
+            setBehavior(behaviorResult);
             setRevenueChart(revenueResult.chart || []);
             setOrdersChart(ordersResult.chart || []);
+            setTrafficChart(trafficResult.chart || []);
+            setFunnelBehavior(funnelResult);
+            setRateBehavior(ratesResult);
             setCategoryRevenue(categoryResult.categories || []);
             setTopProducts(productResult.products || []);
             setTopViewedProducts(viewedProductResult.products || []);
         } catch (error) {
             console.error('Realtime admin analytics refresh failed', error);
         } finally {
+            realtimeRefreshingRef.current = false;
             setRefreshingRealtime(false);
         }
     }

@@ -346,11 +346,7 @@ class AnalyticsEventService
     private function broadcastSummary(?string $eventType = null, bool $forceRefreshDashboard = false): void
     {
         try {
-            $shouldRefreshDashboard = $forceRefreshDashboard
-                || in_array($eventType, [
-                    AnalyticsEvent::CHECKOUT_STARTED,
-                    AnalyticsEvent::PURCHASE_COMPLETED,
-                ], true);
+            $shouldRefreshDashboard = $forceRefreshDashboard || !empty($eventType);
 
             broadcast(new AdminAnalyticsUpdated(
                 $this->summary(30),

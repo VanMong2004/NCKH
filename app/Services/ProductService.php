@@ -23,6 +23,7 @@ class ProductService
     private const MAX_PAGE_SIZE = 50;
     private const RELATED_PRODUCTS_LIMIT = 8;
     private const FILTER_META_CACHE_MINUTES = 5;
+    private const PRODUCT_VIEW_TTL_MINUTES = 30;
 
     // LIST + FILTER
     public function getList(array $filters = [], $user = null)
@@ -34,7 +35,8 @@ class ProductService
 
         $query = Product::query()
             ->with([
-                'images:id,product_id,url,type,position',
+                'thumbnailImage:id,product_id,url,type,position',
+                'primaryImage:id,product_id,url,type,position',
                 'variants' => function ($q) {
                     $q->select([
                         'id',
@@ -49,7 +51,6 @@ class ProductService
                     ])->where('is_active', true);
                 },
                 'category:id,parent_id,name,slug',
-                'category.parent:id,parent_id,name,slug',
                 'department:id,name,slug,code',
             ])
             ->where('is_active', true)
@@ -186,7 +187,7 @@ class ProductService
 
         $data = collect($products->items())
             ->map(function ($product) use ($user) {
-                return $this->formatProduct($product, $user);
+                return $this->formatProductSummary($product, $user);
             })
             ->values();
 
@@ -306,6 +307,8 @@ class ProductService
             throw new RuntimeException('Sản phẩm không tồn tại');
         }
 
+        $this->incrementProductView($product, $user);
+
         /*
         |--------------------------------------------------------------------------
         | AUTO SAVE RECENTLY VIEWED
@@ -369,12 +372,23 @@ class ProductService
 
         $relatedProducts = Product::query()
             ->with([
-                'images',
+                'thumbnailImage:id,product_id,url,type,position',
+                'primaryImage:id,product_id,url,type,position',
                 'variants' => function ($q) {
-                    $q->where('is_active', true);
+                    $q->select([
+                        'id',
+                        'product_id',
+                        'size',
+                        'color',
+                        'price',
+                        'stock',
+                        'reserved_stock',
+                        'sold_stock',
+                        'is_active',
+                    ])->where('is_active', true);
                 },
-                'category.parent',
-                'department',
+                'category:id,parent_id,name,slug',
+                'department:id,name,slug,code',
             ])
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
@@ -391,7 +405,7 @@ class ProductService
             ->latest()
             ->limit(self::RELATED_PRODUCTS_LIMIT)
             ->get()
-            ->map(fn ($item) => $this->formatProduct($item, $user));
+            ->map(fn ($item) => $this->formatProductSummary($item, $user));
 
         return [
             'success' => true,
@@ -540,65 +554,77 @@ class ProductService
         ];
     }
 
+    private function incrementProductView(Product $product, $user = null): void
+    {
+        $cacheKey = $this->productViewCacheKey($product, $user);
+
+        if (!$cacheKey || Cache::has($cacheKey)) {
+            return;
+        }
+
+        $product->increment('view_count');
+        $product->view_count = (int) ($product->view_count ?? 0) + 1;
+        app(\App\Services\Analytics\AnalyticsEventService::class)
+            ->broadcastDashboardRefresh();
+
+        Cache::put(
+            $cacheKey,
+            true,
+            now()->addMinutes(self::PRODUCT_VIEW_TTL_MINUTES)
+        );
+    }
+
+    private function productViewCacheKey(Product $product, $user = null): ?string
+    {
+        if ($user?->id) {
+            return "product_view:{$product->id}:user:{$user->id}";
+        }
+
+        $request = request();
+        $guestToken = $request?->header('X-Guest-Token');
+
+        if ($guestToken) {
+            return "product_view:{$product->id}:guest:{$guestToken}";
+        }
+
+        $ipAddress = $request?->ip();
+        $userAgent = (string) $request?->userAgent();
+
+        if (!$ipAddress && $userAgent === '') {
+            return null;
+        }
+
+        return 'product_view:'
+            . $product->id
+            . ':fingerprint:'
+            . sha1($ipAddress . '|' . $userAgent);
+    }
+
     // FORMAT PRODUCT
     public function formatProduct($product, $user = null)
     {
-        $availableStock = $product->variants->sum(function ($variant) {
-            return max(0, $variant->stock - $variant->reserved_stock);
-        });
+        $product->loadMissing('images');
 
-        $sold = $product->variants->sum('sold_stock');
-
-        $variantPrices = $product->variants
-            ->map(function ($variant) use ($user) {
-                return $this->promotionPriceService
-                    ->calculateForVariant($variant, $user);
-            });
-
-        $minPrice = $variantPrices->min('final_price');
-        $maxPrice = $variantPrices->max('final_price');
-
-        $originalMinPrice = $variantPrices->min('original_price');
-        $originalMaxPrice = $variantPrices->max('original_price');
-
-        $promotionPrices = $variantPrices
-            ->filter(fn ($item) => !is_null($item['promotion_price']));
-
-        $promotionMinPrice = $promotionPrices->min('promotion_price');
-        $promotionMaxPrice = $promotionPrices->max('promotion_price');
-
-        $hasPromotion = $variantPrices->contains(
-            fn ($item) => $item['has_promotion']
-        );
-
-        $promotionLoginRequired = $variantPrices->contains(
-            fn ($item) => $item['promotion_login_required']
-        );
+        $summary = $this->productSummaryValues($product, $user);
 
         return [
             'id' => $product->id,
             'name' => $product->name,
             'slug' => $product->slug,
 
-            'min_price' => $minPrice,
-            'max_price' => $maxPrice,
+            'min_price' => $summary['min_price'],
+            'max_price' => $summary['max_price'],
 
-            'original_min_price' => $originalMinPrice,
-            'original_max_price' => $originalMaxPrice,
+            'original_min_price' => $summary['original_min_price'],
+            'original_max_price' => $summary['original_max_price'],
 
-            'promotion_min_price' => $promotionMinPrice,
-            'promotion_max_price' => $promotionMaxPrice,
+            'promotion_min_price' => $summary['promotion_min_price'],
+            'promotion_max_price' => $summary['promotion_max_price'],
 
-            'has_promotion' => $hasPromotion,
-            'promotion_login_required' => $promotionLoginRequired,
+            'has_promotion' => $summary['has_promotion'],
+            'promotion_login_required' => $summary['promotion_login_required'],
 
-            'thumbnail' => optional(
-                $product->images
-                    ->where('type', 'thumbnail')
-                    ->first()
-            )->url
-                ?? optional($product->images->first())->url
-                ?? 'https://placehold.co/600x600?text=CTU',
+            'thumbnail' => $this->productThumbnail($product),
 
             'images' => $product->images->map(fn ($image) => [
                 'url' => $image->url,
@@ -610,11 +636,11 @@ class ProductService
             'review_count' => $product->total_reviews,
             'total_reviews' => $product->total_reviews,
 
-            'sold' => $sold,
+            'sold' => $summary['sold'],
             'view_count' => (int) ($product->view_count ?? 0),
-            'stock' => $availableStock,
-            'available_stock' => $availableStock,
-            'in_stock' => $availableStock > 0,
+            'stock' => $summary['available_stock'],
+            'available_stock' => $summary['available_stock'],
+            'in_stock' => $summary['available_stock'] > 0,
 
             'is_featured' => (bool) $product->is_featured,
             'is_active' => (bool) $product->is_active,
@@ -657,6 +683,60 @@ class ProductService
             'category_name' => $product->category?->name,
 
             'description' => Str::limit(strip_tags($product->description), 150),
+        ];
+    }
+
+    public function formatProductSummary($product, $user = null): array
+    {
+        $summary = $this->productSummaryValues($product, $user);
+
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'slug' => $product->slug,
+
+            'min_price' => $summary['min_price'],
+            'max_price' => $summary['max_price'],
+            'original_min_price' => $summary['original_min_price'],
+            'original_max_price' => $summary['original_max_price'],
+            'promotion_min_price' => $summary['promotion_min_price'],
+            'promotion_max_price' => $summary['promotion_max_price'],
+            'has_promotion' => $summary['has_promotion'],
+            'promotion_login_required' => $summary['promotion_login_required'],
+
+            'thumbnail' => $this->productThumbnail($product),
+
+            'rating' => (float) $product->average_rating,
+            'average_rating' => (float) $product->average_rating,
+            'review_count' => $product->total_reviews,
+            'total_reviews' => $product->total_reviews,
+
+            'sold' => $summary['sold'],
+            'view_count' => (int) ($product->view_count ?? 0),
+            'stock' => $summary['available_stock'],
+            'available_stock' => $summary['available_stock'],
+            'in_stock' => $summary['available_stock'] > 0,
+
+            'is_featured' => (bool) $product->is_featured,
+            'is_active' => (bool) $product->is_active,
+
+            'category' => [
+                'id' => $product->category?->id,
+                'name' => $product->category?->name,
+                'slug' => $product->category?->slug,
+            ],
+
+            'department' => $product->department
+                ? [
+                    'id' => $product->department->id,
+                    'name' => $product->department->name,
+                    'slug' => $product->department->slug,
+                    'code' => $product->department->code,
+                ]
+                : null,
+
+            'product_slug' => $product->slug,
+            'category_name' => $product->category?->name,
         ];
     }
 
@@ -706,12 +786,23 @@ class ProductService
 
         $items = RecentlyViewedProduct::query()
             ->with([
-                'product.images',
+                'product.thumbnailImage:id,product_id,url,type,position',
+                'product.primaryImage:id,product_id,url,type,position',
                 'product.variants' => function ($q) {
-                    $q->where('is_active', true);
+                    $q->select([
+                        'id',
+                        'product_id',
+                        'size',
+                        'color',
+                        'price',
+                        'stock',
+                        'reserved_stock',
+                        'sold_stock',
+                        'is_active',
+                    ])->where('is_active', true);
                 },
-                'product.category.parent',
-                'product.department',
+                'product.category:id,parent_id,name,slug',
+                'product.department:id,name,slug,code',
             ])
             ->where('user_id', $user->id)
             ->where('is_active', true)
@@ -731,7 +822,7 @@ class ProductService
                     && $item->product->variants->isNotEmpty()
                 )
                 ->map(function ($item) use ($user) {
-                    return $this->formatProduct(
+                    return $this->formatProductSummary(
                         $item->product,
                         $user
                     );
@@ -754,5 +845,61 @@ class ProductService
         }
 
         return asset(ltrim($url, '/'));
+    }
+
+    private function productSummaryValues($product, $user = null): array
+    {
+        $availableStock = $product->variants->sum(function ($variant) {
+            return max(0, $variant->stock - $variant->reserved_stock);
+        });
+
+        $variantPrices = $product->variants
+            ->map(function ($variant) use ($user) {
+                return $this->promotionPriceService
+                    ->calculateForVariant($variant, $user);
+            });
+
+        $promotionPrices = $variantPrices
+            ->filter(fn ($item) => !is_null($item['promotion_price']));
+
+        return [
+            'min_price' => $variantPrices->min('final_price'),
+            'max_price' => $variantPrices->max('final_price'),
+            'original_min_price' => $variantPrices->min('original_price'),
+            'original_max_price' => $variantPrices->max('original_price'),
+            'promotion_min_price' => $promotionPrices->min('promotion_price'),
+            'promotion_max_price' => $promotionPrices->max('promotion_price'),
+            'has_promotion' => $variantPrices->contains(fn ($item) => $item['has_promotion']),
+            'promotion_login_required' => $variantPrices->contains(fn ($item) => $item['promotion_login_required']),
+            'sold' => $product->variants->sum('sold_stock'),
+            'available_stock' => $availableStock,
+        ];
+    }
+
+    private function productThumbnail($product): string
+    {
+        $thumbnail = $product->relationLoaded('thumbnailImage')
+            ? $product->thumbnailImage?->url
+            : null;
+
+        $primary = $product->relationLoaded('primaryImage')
+            ? $product->primaryImage?->url
+            : null;
+
+        $imageFromCollection = null;
+
+        if ($product->relationLoaded('images')) {
+            $imageFromCollection = optional(
+                $product->images
+                    ->where('type', 'thumbnail')
+                    ->first()
+            )->url
+                ?? optional($product->images->first())->url;
+        }
+
+        return $thumbnail
+            ?? $primary
+            ?? $imageFromCollection
+            ?? 'https://placehold.co/600x600?text=CTU';
     }
 }

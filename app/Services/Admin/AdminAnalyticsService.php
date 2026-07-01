@@ -19,39 +19,44 @@ class AdminAnalyticsService
 
     public function overview($user): array
     {
+        $orderOverview = Order::query()
+            ->selectRaw('COUNT(*) AS total_orders')
+            ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_orders")
+            ->selectRaw("SUM(CASE WHEN status IN ('paid', 'processing', 'shipped') THEN 1 ELSE 0 END) AS paid_orders")
+            ->selectRaw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_orders")
+            ->selectRaw("SUM(CASE WHEN status IN ('paid', 'processing', 'shipped', 'completed') THEN total ELSE 0 END) AS revenue")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN total ELSE 0 END) AS completed_revenue")
+            ->first();
+
+        $productOverview = Product::query()
+            ->selectRaw('COUNT(*) AS total_products')
+            ->selectRaw("SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_products")
+            ->selectRaw('COALESCE(SUM(view_count), 0) AS product_view_count')
+            ->first();
+
         return [
-            'total_orders' => Order::count(),
+            'total_orders' => (int) ($orderOverview->total_orders ?? 0),
 
-            'pending_orders' => Order::where('status', 'pending')->count(),
+            'pending_orders' => (int) ($orderOverview->pending_orders ?? 0),
 
-            'paid_orders' => Order::whereIn('status', [
-                'paid',
-                'processing',
-                'shipped',
-                'completed',
-            ])->count(),
+            'paid_orders' => (int) ($orderOverview->paid_orders ?? 0),
 
-            'cancelled_orders' => Order::where('status', 'cancelled')->count(),
+            'cancelled_orders' => (int) ($orderOverview->cancelled_orders ?? 0),
 
-            'completed_orders' => Order::where('status', 'completed')->count(),
+            'completed_orders' => (int) ($orderOverview->completed_orders ?? 0),
 
-            'revenue' => (float) Order::whereIn('status', [
-                'paid',
-                'processing',
-                'shipped',
-                'completed',
-            ])->sum('total'),
+            'revenue' => (float) ($orderOverview->revenue ?? 0),
 
-            'completed_revenue' => (float) Order::where('status', 'completed')
-                ->sum('total'),
+            'completed_revenue' => (float) ($orderOverview->completed_revenue ?? 0),
 
             'total_users' => User::count(),
 
-            'total_products' => Product::count(),
+            'total_products' => (int) ($productOverview->total_products ?? 0),
 
-            'active_products' => Product::where('is_active', true)->count(),
+            'active_products' => (int) ($productOverview->active_products ?? 0),
 
-            'product_view_count' => (int) Product::sum('view_count'),
+            'product_view_count' => (int) ($productOverview->product_view_count ?? 0),
         ];
     }
 

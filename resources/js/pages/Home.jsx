@@ -60,17 +60,12 @@ export default function Home() {
         try {
             setLoading(true);
 
-            const result = await homeService.getHomeData();
-
-            setHome(result);
-
-            const [blogResult, promotionResult] = await Promise.allSettled([
-                result.newsEvents?.length
-                    ? Promise.resolve({ blogs: [] })
-                    : blogService.getBlogs({
-                          page: 1,
-                          per_page: 4,
-                      }),
+            const [homeResult, blogResult, promotionResult] = await Promise.allSettled([
+                homeService.getHomeData(),
+                blogService.getBlogs({
+                    page: 1,
+                    per_page: 4,
+                }),
                 promotionService.getPromotions({
                     status: 'active',
                     sort: 'ending_soon',
@@ -78,21 +73,24 @@ export default function Home() {
                 }),
             ]);
 
-            const newsEvents = result.newsEvents?.length
-                ? result.newsEvents
+            if (homeResult.status !== 'fulfilled') {
+                throw homeResult.reason;
+            }
+
+            const newsEvents = homeResult.value.newsEvents?.length
+                ? homeResult.value.newsEvents
                 : blogResult.status === 'fulfilled'
                   ? (blogResult.value.blogs || []).map(mapBlogToHomeNews)
                   : [];
 
-            const promotionItems =
+            setPromotions(
                 promotionResult.status === 'fulfilled'
                     ? promotionResult.value.promotions || []
-                    : [];
-
-            setPromotions(promotionItems);
+                    : [],
+            );
 
             setHome({
-                ...result,
+                ...homeResult.value,
                 newsEvents,
             });
         } catch (error) {

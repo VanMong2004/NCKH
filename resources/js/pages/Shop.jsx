@@ -48,11 +48,12 @@ const defaultFilterOptions = {
 export default function Shop() {
     const navigate = useNavigate();
     const location = useLocation();
+    const initialFilters = parseFiltersFromUrl(location.search);
 
     const [openFilter, setOpenFilter] = useState(false);
 
-    const [filters, setFilters] = useState(defaultFilters);
-    const [draftFilters, setDraftFilters] = useState(defaultFilters);
+    const [filters, setFilters] = useState(initialFilters);
+    const [draftFilters, setDraftFilters] = useState(initialFilters);
 
     const [products, setProducts] = useState([]);
     const [meta, setMeta] = useState(defaultMeta);
@@ -78,8 +79,8 @@ export default function Shop() {
     useEffect(() => {
         const nextFilters = parseFiltersFromUrl(location.search);
 
-        setFilters(nextFilters);
-        setDraftFilters(nextFilters);
+        setFilters((current) => (isSameFilter(current, nextFilters) ? current : nextFilters));
+        setDraftFilters((current) => (isSameFilter(current, nextFilters) ? current : nextFilters));
     }, [location.search]);
 
     useEffect(() => {
@@ -315,6 +316,21 @@ function parseFiltersFromUrl(search) {
         sort: params.get('sort') || 'newest',
         page: toPositiveNumber(params.get('page'), 1),
     };
+}
+
+function isSameFilter(current, next) {
+    return (
+        current.keyword === next.keyword &&
+        current.category_id === next.category_id &&
+        current.min_price === next.min_price &&
+        current.max_price === next.max_price &&
+        current.sizes === next.sizes &&
+        current.colors === next.colors &&
+        current.rating === next.rating &&
+        current.in_stock === next.in_stock &&
+        current.sort === next.sort &&
+        current.page === next.page
+    );
 }
 
 function cleanParams(params) {

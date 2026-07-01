@@ -21,16 +21,18 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import orderService from '../../services/orderService';
 import paymentService from '../../services/paymentService';
 import reviewService from '../../services/reviewService';
 import VatInvoiceRequestModal from '../../components/order/VatInvoiceRequestModal';
+import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 
 export default function AccountOrderDetail() {
     const { id } = useParams();
+    const navigate = useNavigate();
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -40,6 +42,15 @@ export default function AccountOrderDetail() {
     const [vatInvoiceRequest, setVatInvoiceRequest] = useState(null);
     const [submittingVatInvoice, setSubmittingVatInvoice] = useState(false);
     const [downloadingVatInvoice, setDownloadingVatInvoice] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
 
     useEffect(() => {
         loadOrder();
@@ -62,10 +73,36 @@ export default function AccountOrderDetail() {
     async function handleCancel() {
         if (!order?.id) return;
 
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hủy đơn hàng',
+            message: `Bạn có chắc muốn hủy đơn "${order.code}"?`,
+            description: 'Đơn hàng sau khi hủy sẽ không thể khôi phục lại từ trang người dùng.',
+            confirmText: 'Hủy đơn hàng',
+            type: 'danger',
+            onConfirm: async () => {
+                await cancelOrder(order.id);
+            },
+        });
+
+        return;
+
         if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này?')) return;
 
         try {
             const result = await orderService.cancelOrder(order.id);
+
+            setOrder(result);
+
+            toast.success('Đã hủy đơn hàng');
+        } catch (error) {
+            toast.error(error.message || 'Không thể hủy đơn hàng');
+        }
+    }
+
+    async function cancelOrder(orderId) {
+        try {
+            const result = await orderService.cancelOrder(orderId);
 
             setOrder(result);
 
@@ -91,6 +128,31 @@ export default function AccountOrderDetail() {
             const payment = await paymentService.pay(order.id, method);
 
             if (payment.redirectUrl) {
+                if (method === 'mock') {
+                    sessionStorage.setItem(
+                        'mock_payment_qr',
+                        JSON.stringify({
+                            order,
+                            payment,
+                            callbackUrl: payment.redirectUrl,
+                            guestPhone: order.raw?.guest_phone || '',
+                            isGuest: false,
+                        }),
+                    );
+
+                    navigate('/payment/qr', {
+                        state: {
+                            order,
+                            payment,
+                            callbackUrl: payment.redirectUrl,
+                            guestPhone: order.raw?.guest_phone || '',
+                            isGuest: false,
+                        },
+                    });
+
+                    return;
+                }
+
                 window.location.href = payment.redirectUrl;
                 return;
             }
@@ -167,20 +229,10 @@ export default function AccountOrderDetail() {
         }
     }
 
-    const canCancel = order?.status === 'pending';
+    const canCancel = Boolean(order?.actions?.canCancel);
 
-    const canPayAgain = useMemo(() => {
-        if (!order) return false;
-
-        const method = order.payment?.method || order.raw?.payment_method || '';
-        const paymentStatus = order.payment?.status || '';
-
-        return (
-            order.status === 'pending' &&
-            ['mock', 'vnpay'].includes(method) &&
-            !['pending', 'success'].includes(paymentStatus)
-        );
-    }, [order]);
+    const canPayAgain = useMemo(() => Boolean(order?.actions?.canPayAgain), [order]);
+    const isPendingOnlinePayment = order?.payment?.status === 'pending';
 
     if (loading) {
         return <LoadingBox text="Đang tải chi tiết đơn hàng..." />;
@@ -301,14 +353,29 @@ export default function AccountOrderDetail() {
                 onSubmit={submitVatInvoiceRequest}
                 onDownload={downloadVatInvoice}
             />
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }
 
 function OrderItemsCard({ order, onReviewSubmitted }) {
     const [reviewingItem, setReviewingItem] = useState(null);
-
-    const canReviewOrder = ['completed', 'delivered'].includes(order.status);
+    const canReviewOrder = Boolean(order.actions?.canReviewOrder);
 
     return (
         <Card title="Sản phẩm trong đơn" icon={Package}>
@@ -321,7 +388,7 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                     const variant = item.variant || item.raw?.variant_snapshot || {};
                     const promotion = item.promotion || item.raw?.promotion_snapshot || null;
 
-                    const canReviewItem = canReviewOrder && item.productId && !item.reviewed;
+                    const canReviewItem = canReviewOrder && item.productId && item.canReview && !item.reviewed;
 
                     return (
                         <div

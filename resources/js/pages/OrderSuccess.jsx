@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -10,9 +10,11 @@ import VatInvoiceRequestModal from '../components/order/VatInvoiceRequestModal';
 
 import orderService from '../services/orderService';
 import guestOrderService from '../services/guestOrderService';
+import paymentService from '../services/paymentService';
 
 export default function OrderSuccess() {
     const { user, isLoading: authLoading } = useAuth();
+    const navigate = useNavigate();
 
     const [searchParams] = useSearchParams();
     const orderCode = searchParams.get('order_code');
@@ -24,6 +26,7 @@ export default function OrderSuccess() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [downloadingBill, setDownloadingBill] = useState(false);
+    const [paying, setPaying] = useState(false);
     const [vatInvoiceModalOpen, setVatInvoiceModalOpen] = useState(false);
     const [vatInvoiceRequest, setVatInvoiceRequest] = useState(null);
     const [submittingVatInvoice, setSubmittingVatInvoice] = useState(false);
@@ -153,9 +156,69 @@ export default function OrderSuccess() {
         }
     }
 
+    async function handlePayAgain() {
+        if (!order?.id) return;
+
+        const method = order.payment?.method || order.raw?.payment_method || '';
+
+        if (!['mock', 'vnpay'].includes(method)) {
+            toast.warning('Phương thức thanh toán này không hỗ trợ thanh toán lại');
+            return;
+        }
+
+        try {
+            setPaying(true);
+
+            const payment = await paymentService.pay(order.id, method);
+
+            if (payment.redirectUrl) {
+                if (method === 'mock') {
+                    const savedGuestOrder = JSON.parse(
+                        sessionStorage.getItem('guest_order_success') || '{}'
+                    );
+
+                    sessionStorage.setItem(
+                        'mock_payment_qr',
+                        JSON.stringify({
+                            order,
+                            payment,
+                            callbackUrl: payment.redirectUrl,
+                            guestPhone: savedGuestOrder.guestPhone || '',
+                            isGuest: !user,
+                        }),
+                    );
+
+                    navigate('/payment/qr', {
+                        state: {
+                            order,
+                            payment,
+                            callbackUrl: payment.redirectUrl,
+                            guestPhone: savedGuestOrder.guestPhone || '',
+                            isGuest: !user,
+                        },
+                    });
+
+                    return;
+                }
+
+                window.location.href = payment.redirectUrl;
+                return;
+            }
+
+            toast.success(payment.message || 'Đã tạo thanh toán');
+            loadOrder();
+        } catch (err) {
+            toast.error(err.message || 'Không thể tạo thanh toán');
+        } finally {
+            setPaying(false);
+        }
+    }
+
     const hero = useMemo(() => {
         return getHeroState(order, paymentStatus || location.state?.paymentStatus);
     }, [location.state, order, paymentStatus]);
+
+    const canPayAgain = Boolean(order?.actions?.canPayAgain);
 
     if (loading) {
         return (
@@ -385,6 +448,17 @@ export default function OrderSuccess() {
                         Xem chi tiết đơn hàng
                         </Link>
                     ) : null}
+
+                    {canPayAgain && (
+                        <button
+                            type="button"
+                            disabled={paying}
+                            onClick={handlePayAgain}
+                            className="rounded-xl bg-blue-950 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
+                        >
+                            {paying ? 'Đang tạo thanh toán...' : 'Thanh toán lại'}
+                        </button>
+                    )}
 
                     <button
                         type="button"

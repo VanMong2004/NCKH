@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import orderService from '../../services/orderService';
+import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả' },
@@ -29,6 +30,15 @@ export default function AccountOrders() {
         currentPage: 1,
         lastPage: 1,
         total: 0,
+    });
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
     });
 
     useEffect(() => {
@@ -67,7 +77,32 @@ export default function AccountOrders() {
         loadOrders(1);
     }
 
+    async function cancelOrder(orderId) {
+        try {
+            await orderService.cancelOrder(orderId);
+            toast.success('Đã hủy đơn hàng');
+            loadOrders(meta.currentPage);
+        } catch (error) {
+            toast.error(error.message || 'Không thể hủy đơn hàng');
+        }
+    }
+
     async function handleCancel(orderId) {
+        const order = orders.find((item) => item.id === orderId);
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hủy đơn hàng',
+            message: `Bạn có chắc muốn hủy đơn "${order?.code || orderId}"?`,
+            description: 'Đơn hàng sau khi hủy sẽ không thể khôi phục lại từ trang người dùng.',
+            confirmText: 'Hủy đơn hàng',
+            type: 'danger',
+            onConfirm: async () => {
+                await cancelOrder(orderId);
+            },
+        });
+
+        return;
         if (!window.confirm('Bạn có chắc muốn hủy đơn hàng này?')) return;
 
         try {
@@ -163,12 +198,28 @@ export default function AccountOrders() {
             )}
 
             {!loading && meta.lastPage > 1 && <Pagination meta={meta} onPageChange={loadOrders} />}
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(open) => {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open,
+                    }));
+                }}
+            />
         </div>
     );
 }
 
 function OrderCard({ order, onCancel }) {
-    const canCancel = order.status === 'pending';
+    const canCancel = Boolean(order.actions?.canCancel);
 
     return (
         <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">

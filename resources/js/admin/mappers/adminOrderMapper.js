@@ -153,8 +153,11 @@ export function mapAdminOrderDetail(item = {}) {
         expired_at: item.expired_at,
         cancel_reason: item.cancel_reason,
         created_at: item.created_at,
-        item_count: Array.isArray(item.items) ? item.items.length : item.item_count,
+        item_count: Array.isArray(item.items)
+            ? item.items.reduce((sum, orderItem) => sum + toNumber(orderItem.quantity), 0)
+            : item.item_count,
         thumbnail: item.thumbnail,
+        allowed_next_statuses: item.allowed_next_statuses,
     });
 
     return {

@@ -53,15 +53,33 @@ export function getPaymentMethodText(method) {
         mock: 'Thanh toán thử',
     };
 
-    return map[method] || method || '—';
+    return map[method] || method || '-';
 }
 
-export function getNextOrderStatuses(status) {
+export function getCancelReasonText(reason) {
     const map = {
-        pending: [
-            'processing',
-            'cancelled',
-        ],
+        user_cancelled: 'Người dùng hủy',
+        admin_cancelled: 'Admin hủy đơn',
+        expired: 'Hết hạn thanh toán',
+        payment_timeout: 'Hết hạn thanh toán',
+        payment_failed: 'Thanh toán thất bại',
+    };
+
+    return map[reason] || reason || '-';
+}
+
+export function getNextOrderStatuses(status, paymentMethod = '') {
+    const map = {
+        pending:
+            paymentMethod && paymentMethod !== 'cod'
+                ? [
+                      'paid',
+                      'cancelled',
+                  ]
+                : [
+                      'processing',
+                      'cancelled',
+                  ],
 
         paid: [
             'processing',
@@ -113,7 +131,11 @@ export function mapAdminOrder(item = {}) {
 
         expiredAt: item.expired_at || '',
         cancelReason: item.cancel_reason || '',
+        cancelReasonText: getCancelReasonText(item.cancel_reason),
         createdAt: item.created_at || '',
+        allowedNextStatuses: Array.isArray(item.allowed_next_statuses)
+            ? item.allowed_next_statuses
+            : getNextOrderStatuses(item.status, item.payment_method),
 
         raw: item,
     };

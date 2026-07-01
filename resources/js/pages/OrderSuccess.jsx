@@ -16,6 +16,7 @@ export default function OrderSuccess() {
 
     const [searchParams] = useSearchParams();
     const orderCode = searchParams.get('order_code');
+    const paymentStatus = searchParams.get('status');
 
     const location = useLocation();
 
@@ -153,8 +154,8 @@ export default function OrderSuccess() {
     }
 
     const hero = useMemo(() => {
-        return getHeroState(order, location.state?.paymentStatus);
-    }, [order, location.state]);
+        return getHeroState(order, paymentStatus || location.state?.paymentStatus);
+    }, [location.state, order, paymentStatus]);
 
     if (loading) {
         return (

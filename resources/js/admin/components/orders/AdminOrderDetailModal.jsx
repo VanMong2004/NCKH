@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 
 import {
     formatMoney,
+    getCancelReasonText,
     getNextOrderStatuses,
     getOrderStatusText,
     getPaymentMethodText,
@@ -61,8 +62,12 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
     }
 
     const nextStatuses = useMemo(() => {
-        return getNextOrderStatuses(order?.status);
-    }, [order?.status]);
+        if (Array.isArray(order?.allowedNextStatuses)) {
+            return order.allowedNextStatuses;
+        }
+
+        return getNextOrderStatuses(order?.status, order?.paymentMethod);
+    }, [order?.allowedNextStatuses, order?.paymentMethod, order?.status]);
 
     function updateStatusForm(key, value) {
         setStatusForm((prev) => ({
@@ -182,8 +187,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
 
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                                {history.oldStatusText || '—'} →{' '}
-                                                                {history.newStatusText || '—'}
+                                                                {history.oldStatusText || '—'} → {history.newStatusText || '—'}
                                                             </p>
 
                                                             {history.note && (
@@ -215,7 +219,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                         <InfoLine label="Số sản phẩm" value={order.itemCount} />
                                         {order.expiredAt && <InfoLine label="Hết hạn" value={order.expiredAt} />}
                                         {order.cancelReason && (
-                                            <InfoLine label="Lý do hủy" value={order.cancelReason} />
+                                            <InfoLine label="Lý do hủy" value={getCancelReasonText(order.cancelReason)} />
                                         )}
                                     </div>
                                 </Section>

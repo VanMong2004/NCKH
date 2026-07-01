@@ -268,6 +268,7 @@ class OrderQueryService
 
                 $review = $productId
                     ? Review::query()
+                        ->with('images')
                         ->where('order_id', $order->id)
                         ->where('user_id', $order->user_id)
                         ->where('product_id', $productId)
@@ -284,6 +285,15 @@ class OrderQueryService
                     'product_variant_id' => $productVariantId,
                     'review_id' => $review?->id,
                     'is_reviewed' => $isReviewed,
+                    'review' => $review ? [
+                        'id' => $review->id,
+                        'rating' => (int) $review->rating,
+                        'comment' => $review->comment,
+                        'images' => $review->images
+                            ? $review->images->pluck('image_url')->values()
+                            : [],
+                        'created_at' => optional($review->created_at)->format('d/m/Y H:i'),
+                    ] : null,
                     'can_review' => $order->status === 'completed'
                         && !empty($productId)
                         && !$isReviewed,

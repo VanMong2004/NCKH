@@ -16,6 +16,7 @@ import {
     ReceiptText,
     RotateCcw,
     Star,
+    Trash2,
     Truck,
     Upload,
     X,
@@ -363,7 +364,24 @@ export default function AccountOrderDetail() {
 
 function OrderItemsCard({ order, onReviewSubmitted }) {
     const [reviewingItem, setReviewingItem] = useState(null);
+    const [deletingReviewItem, setDeletingReviewItem] = useState(null);
     const canReviewOrder = Boolean(order.actions?.canReviewOrder);
+
+    async function handleDeleteReview() {
+        if (!deletingReviewItem?.reviewId) return;
+
+        try {
+            await reviewService.deleteReview(deletingReviewItem.reviewId);
+            toast.success('Đã xóa đánh giá');
+            setDeletingReviewItem(null);
+
+            if (onReviewSubmitted) {
+                await onReviewSubmitted();
+            }
+        } catch (error) {
+            toast.error(error.message || 'Không thể xóa đánh giá');
+        }
+    }
 
     return (
         <Card title="Sản phẩm trong đơn" icon={Package}>
@@ -385,20 +403,42 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                         >
                             <div className="flex min-w-0 flex-1 gap-3">
                                 <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
-                                    <img
-                                        src={item.thumbnail || '/images/no-image.png'}
-                                        alt={item.productName}
-                                        className="max-h-full max-w-full object-contain"
-                                        onError={(e) => {
-                                            e.currentTarget.src = '/images/no-image.png';
-                                        }}
-                                    />
+                                    {item.productSlug ? (
+                                        <Link to={`/product/${item.productSlug}`} className="flex h-full w-full items-center justify-center">
+                                            <img
+                                                src={item.thumbnail || '/images/no-image.png'}
+                                                alt={item.productName}
+                                                className="max-h-full max-w-full object-contain"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = '/images/no-image.png';
+                                                }}
+                                            />
+                                        </Link>
+                                    ) : (
+                                        <img
+                                            src={item.thumbnail || '/images/no-image.png'}
+                                            alt={item.productName}
+                                            className="max-h-full max-w-full object-contain"
+                                            onError={(e) => {
+                                                e.currentTarget.src = '/images/no-image.png';
+                                            }}
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                    <p className="line-clamp-2 font-bold text-blue-950 dark:text-white">
-                                        {item.productName}
-                                    </p>
+                                    {item.productSlug ? (
+                                        <Link
+                                            to={`/product/${item.productSlug}`}
+                                            className="line-clamp-2 font-bold text-blue-950 transition hover:text-blue-700 dark:text-white dark:hover:text-blue-300"
+                                        >
+                                            {item.productName}
+                                        </Link>
+                                    ) : (
+                                        <p className="line-clamp-2 font-bold text-blue-950 dark:text-white">
+                                            {item.productName}
+                                        </p>
+                                    )}
 
                                     {(variant?.sku || variant?.size || variant?.color) && (
                                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -449,10 +489,25 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                                 {canReviewOrder && (
                                     <>
                                         {item.reviewed ? (
-                                            <span className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-                                                <Star size={14} fill="currentColor" />
-                                                Đã đánh giá
-                                            </span>
+                                            <div className="flex flex-wrap justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReviewingItem(item)}
+                                                    className="inline-flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
+                                                >
+                                                    <Pencil size={14} />
+                                                    Sửa đánh giá
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeletingReviewItem(item)}
+                                                    className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
+                                                >
+                                                    <Trash2 size={14} />
+                                                    Xóa đánh giá
+                                                </button>
+                                            </div>
                                         ) : canReviewItem ? (
                                             <button
                                                 type="button"
@@ -485,14 +540,35 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                     }}
                 />
             )}
+
+            <ConfirmDialog
+                open={Boolean(deletingReviewItem)}
+                title="Xác nhận xóa đánh giá"
+                message={
+                    deletingReviewItem
+                        ? `Bạn có chắc muốn xóa đánh giá của sản phẩm "${deletingReviewItem.productName}"?`
+                        : ''
+                }
+                description="Đánh giá sau khi xóa sẽ không thể khôi phục lại."
+                confirmText="Xóa đánh giá"
+                type="danger"
+                onConfirm={handleDeleteReview}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeletingReviewItem(null);
+                    }
+                }}
+            />
         </Card>
     );
 }
 
 function ReviewModal({ order, item, onClose, onSubmitted }) {
+    const existingReview = item.raw?.review || item.review || null;
+    const isEditing = Boolean(item.reviewId && existingReview);
     const [form, setForm] = useState({
-        rating: 5,
-        comment: '',
+        rating: existingReview?.rating || 5,
+        comment: existingReview?.comment || '',
         images: [],
     });
 
@@ -535,20 +611,26 @@ function ReviewModal({ order, item, onClose, onSubmitted }) {
         try {
             setSubmitting(true);
 
-            await reviewService.createReview({
+            const payload = {
                 orderId: order.id,
                 productId: item.productId,
                 productVariantId: item.productVariantId,
                 rating: form.rating,
                 comment: form.comment,
                 images: form.images,
-            });
+            };
 
-            toast.success('Đánh giá sản phẩm thành công');
+            if (isEditing) {
+                await reviewService.updateReview(item.reviewId, payload);
+                toast.success('Đã cập nhật đánh giá');
+            } else {
+                await reviewService.createReview(payload);
+                toast.success('Đánh giá sản phẩm thành công');
+            }
 
             await onSubmitted();
         } catch (error) {
-            toast.error(error.message || 'Không thể gửi đánh giá');
+            toast.error(error.message || (isEditing ? 'Không thể cập nhật đánh giá' : 'Không thể gửi đánh giá'));
         } finally {
             setSubmitting(false);
         }
@@ -559,7 +641,9 @@ function ReviewModal({ order, item, onClose, onSubmitted }) {
             <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900">
                 <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
-                        <h3 className="text-xl font-extrabold text-blue-950 dark:text-white">Đánh giá sản phẩm</h3>
+                        <h3 className="text-xl font-extrabold text-blue-950 dark:text-white">
+                            {isEditing ? 'Sửa đánh giá sản phẩm' : 'Đánh giá sản phẩm'}
+                        </h3>
 
                         <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
                             {item.productName}
@@ -651,6 +735,33 @@ function ReviewModal({ order, item, onClose, onSubmitted }) {
                             />
                         </label>
 
+                        {isEditing && Array.isArray(existingReview?.images) && existingReview.images.length > 0 && form.images.length === 0 && (
+                            <div className="mt-3">
+                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                    Ảnh hiện tại của đánh giá
+                                </p>
+
+                                <div className="mt-2 flex flex-wrap gap-3">
+                                    {existingReview.images.map((image, index) => (
+                                        <div
+                                            key={`${image}-${index}`}
+                                            className="h-20 w-20 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700"
+                                        >
+                                            <img
+                                                src={image}
+                                                alt={`review-${index + 1}`}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    Nếu chọn ảnh mới, hệ thống sẽ cập nhật lại bộ ảnh của đánh giá này.
+                                </p>
+                            </div>
+                        )}
+
                         {form.images.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-3">
                                 {form.images.map((file, index) => (
@@ -692,7 +803,7 @@ function ReviewModal({ order, item, onClose, onSubmitted }) {
                             className="inline-flex items-center gap-2 rounded-xl bg-blue-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700"
                         >
                             <Upload size={17} />
-                            {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                            {submitting ? (isEditing ? 'Đang cập nhật...' : 'Đang gửi...') : (isEditing ? 'Lưu đánh giá' : 'Gửi đánh giá')}
                         </button>
                     </div>
                 </form>

@@ -2,6 +2,7 @@ import { Pencil, Star, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
+import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 import { useAuth } from '../../contexts/AuthContext';
 import reviewService from '../../services/reviewService';
 
@@ -40,7 +41,6 @@ export default function ProductReviews({ product }) {
             });
 
             setReviews(result.reviews || []);
-
             setSummary({
                 averageRating: result.averageRating,
                 totalReviews: result.totalReviews,
@@ -157,12 +157,11 @@ function ReviewFilters({ filter, onChange }) {
 
 function ReviewItem({ review, currentUser, onDeleted, onEdit }) {
     const [deleting, setDeleting] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
     const isMine = currentUser && Number(currentUser.id) === Number(review.user?.id);
 
-    async function handleDelete() {
-        if (!window.confirm('Bạn có chắc muốn xóa đánh giá này?')) return;
-
+    async function handleDeleteConfirmed() {
         try {
             setDeleting(true);
 
@@ -174,6 +173,7 @@ function ReviewItem({ review, currentUser, onDeleted, onEdit }) {
             toast.error(error.message || 'Không thể xóa đánh giá');
         } finally {
             setDeleting(false);
+            setConfirmOpen(false);
         }
     }
 
@@ -216,7 +216,7 @@ function ReviewItem({ review, currentUser, onDeleted, onEdit }) {
                             <button
                                 type="button"
                                 disabled={deleting}
-                                onClick={handleDelete}
+                                onClick={() => setConfirmOpen(true)}
                                 className="inline-flex text-red-500 disabled:opacity-50"
                             >
                                 <Trash2 size={16} />
@@ -245,6 +245,17 @@ function ReviewItem({ review, currentUser, onDeleted, onEdit }) {
                     ))}
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmOpen}
+                title="Xác nhận xóa đánh giá"
+                message="Bạn có chắc muốn xóa đánh giá này?"
+                description="Đánh giá đã xóa sẽ không thể khôi phục lại từ trang người dùng."
+                confirmText="Xóa đánh giá"
+                type="danger"
+                onConfirm={handleDeleteConfirmed}
+                onOpenChange={setConfirmOpen}
+            />
         </div>
     );
 }

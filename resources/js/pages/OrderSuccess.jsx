@@ -192,12 +192,14 @@ export default function OrderSuccess() {
                 <div className="mx-auto max-w-5xl px-4 py-10 text-center">
                     <p className="font-bold text-slate-600 dark:text-slate-300">Không tìm thấy thông tin đơn hàng.</p>
 
-                    <Link
+                    {user ? (
+                        <Link
                         to="/account/orders"
                         className="mt-4 inline-block rounded-xl bg-blue-950 px-5 py-3 text-white dark:bg-blue-700"
                     >
                         Xem đơn hàng của tôi
-                    </Link>
+                        </Link>
+                    ) : null}
                 </div>
             </MainLayout>
         );
@@ -375,12 +377,14 @@ export default function OrderSuccess() {
                 </section>
 
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                    <Link
+                    {user ? (
+                        <Link
                         to={`/account/orders/${order.id}`}
                         className="rounded-xl bg-blue-950 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 dark:bg-blue-700 dark:hover:bg-blue-600"
                     >
                         Xem chi tiết đơn hàng
-                    </Link>
+                        </Link>
+                    ) : null}
 
                     <button
                         type="button"

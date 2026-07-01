@@ -105,15 +105,15 @@ class GuestOrderService
     {
         $paymentMethod = $payment?->method;
         $paymentStatus = $payment?->status;
+        $supportsOnlineRepayment = in_array($paymentMethod, ['mock', 'vnpay'], true);
 
         $canCancel = false;
-        $canPayAgain = false;
+        $canPayAgain = $order->status === 'pending'
+            && $supportsOnlineRepayment
+            && $paymentStatus !== 'success';
 
         if ($order->user_id) {
             $canCancel = $order->status === 'pending';
-            $canPayAgain = $order->status === 'pending'
-                && in_array($paymentMethod, ['mock', 'vnpay'], true)
-                && $paymentStatus !== 'success';
         }
 
         return [

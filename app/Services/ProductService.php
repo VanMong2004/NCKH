@@ -24,6 +24,7 @@ class ProductService
     private const MAX_PAGE_SIZE = 50;
     private const RELATED_PRODUCTS_LIMIT = 8;
     private const FILTER_META_CACHE_MINUTES = 5;
+    private const CATEGORY_TREE_CACHE_MINUTES = 30;
     private const PRODUCT_VIEW_TTL_MINUTES = 30;
 
     // LIST + FILTER
@@ -794,15 +795,25 @@ class ProductService
     // CATEGORY TREE
     private function getAllChildCategoryIds($categoryId)
     {
-        $ids = [$categoryId];
+        $categoryId = (int) $categoryId;
 
-        $children = Category::where('parent_id', $categoryId)->pluck('id');
+        return Cache::remember(
+            "products:category_descendants:{$categoryId}",
+            now()->addMinutes(self::CATEGORY_TREE_CACHE_MINUTES),
+            function () use ($categoryId) {
+                $ids = [$categoryId];
 
-        foreach ($children as $childId) {
-            $ids = array_merge($ids, $this->getAllChildCategoryIds($childId));
-        }
+                $children = Category::query()
+                    ->where('parent_id', $categoryId)
+                    ->pluck('id');
 
-        return $ids;
+                foreach ($children as $childId) {
+                    $ids = array_merge($ids, $this->getAllChildCategoryIds($childId));
+                }
+
+                return array_values(array_unique(array_map('intval', $ids)));
+            }
+        );
     }
 
     // RECENTLY VIEWED PRODUCTS

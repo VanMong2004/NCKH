@@ -25,15 +25,17 @@ class AdminAnalyticsService
             ->selectRaw("SUM(CASE WHEN status IN ('paid', 'processing', 'shipped') THEN 1 ELSE 0 END) AS paid_orders")
             ->selectRaw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders")
             ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_orders")
-            ->selectRaw("SUM(CASE WHEN status IN ('paid', 'processing', 'shipped', 'completed') THEN total ELSE 0 END) AS revenue")
+            ->selectRaw('COALESCE(SUM(total), 0) AS revenue')
             ->selectRaw("SUM(CASE WHEN status = 'completed' THEN total ELSE 0 END) AS completed_revenue")
             ->first();
 
         $productOverview = Product::query()
             ->selectRaw('COUNT(*) AS total_products')
             ->selectRaw("SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active_products")
-            ->selectRaw('COALESCE(SUM(view_count), 0) AS product_view_count')
             ->first();
+
+        $productViewCount = AnalyticsDailyMetric::query()
+            ->sum('product_views_count');
 
         return [
             'total_orders' => (int) ($orderOverview->total_orders ?? 0),
@@ -56,7 +58,7 @@ class AdminAnalyticsService
 
             'active_products' => (int) ($productOverview->active_products ?? 0),
 
-            'product_view_count' => (int) ($productOverview->product_view_count ?? 0),
+            'product_view_count' => (int) $productViewCount,
         ];
     }
 
@@ -124,13 +126,9 @@ class AdminAnalyticsService
             ->select([
                 DB::raw("{$groupExpression} AS period_key"),
                 DB::raw('SUM(total) AS revenue'),
+                DB::raw("SUM(CASE WHEN status = 'completed' THEN total ELSE 0 END) AS completed_revenue"),
                 DB::raw('COUNT(*) AS orders_count'),
-            ])
-            ->whereIn('status', [
-                'paid',
-                'processing',
-                'shipped',
-                'completed',
+                DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_orders_count"),
             ])
             ->whereBetween('created_at', [$from, $to])
             ->groupBy(DB::raw($groupExpression))
@@ -146,7 +144,9 @@ class AdminAnalyticsService
                     'date' => $period['key'],
                     'label' => $period['label'],
                     'revenue' => (float) ($row->revenue ?? 0),
+                    'completed_revenue' => (float) ($row->completed_revenue ?? 0),
                     'orders_count' => (int) ($row->orders_count ?? 0),
+                    'completed_orders_count' => (int) ($row->completed_orders_count ?? 0),
                 ];
             })
             ->values()

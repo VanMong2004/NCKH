@@ -265,9 +265,10 @@ export default function AdminAnalytics() {
 
     const computed = useMemo(() => {
         const revenue = revenueChart.reduce((sum, item) => sum + Number(item.revenue || 0), 0);
+        const completedRevenue = revenueChart.reduce((sum, item) => sum + Number(item.completedRevenue || 0), 0);
         const orders = ordersChart.reduce((sum, item) => sum + Number(item.ordersCount || 0), 0);
         const average = orders > 0 ? revenue / orders : 0;
-        return { revenue, orders, average };
+        return { revenue, completedRevenue, orders, average };
     }, [ordersChart, revenueChart]);
 
     const orderStatusData = useMemo(
@@ -337,11 +338,12 @@ export default function AdminAnalytics() {
                 <ChartFilter filter={globalFilter} onChange={updateGlobalFilter} onApply={loadAll} />
             </Panel>
 
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
                 <MetricCard icon={ShoppingCart} label="Tổng đơn hàng" tooltip="Tổng số đơn hàng đã được tạo trong hệ thống." value={formatNumber(overview?.totalOrders || 0)} loading={loading} tone="blue" />
-                <MetricCard icon={TrendingUp} label="Doanh thu ghi nhận" tooltip="Tổng doanh thu từ các đơn đã thanh toán, đang xử lý, đã giao hoặc hoàn tất." value={formatMoney(overview?.revenue || 0)} loading={loading} tone="rose" />
+                <MetricCard icon={TrendingUp} label="Tổng doanh thu" tooltip="Tổng giá trị của tất cả đơn hàng trong hệ thống." value={formatMoney(overview?.revenue || 0)} loading={loading} tone="rose" />
+                <MetricCard icon={TrendingUp} label="Doanh thu hoàn tất" tooltip="Tổng doanh thu chỉ tính các đơn hàng đã hoàn tất." value={formatMoney(overview?.completedRevenue || 0)} loading={loading} tone="emerald" />
                 <MetricCard icon={Package} label="Sản phẩm đang bán" tooltip="Số sản phẩm đang được bật bán trên website." value={formatNumber(overview?.activeProducts || 0)} loading={loading} tone="violet" />
-                <MetricCard icon={Eye} label="Lượt xem sản phẩm" tooltip="Tổng số lượt mở trang chi tiết sản phẩm, lấy từ cột view_count của bảng products." value={formatNumber(overview?.productViewCount || 0)} loading={loading} tone="slate" />
+                <MetricCard icon={Eye} label="Lượt xem sản phẩm" tooltip="Tổng số lượt mở trang chi tiết sản phẩm, lấy từ dữ liệu thống kê theo ngày." value={formatNumber(overview?.productViewCount || 0)} loading={loading} tone="slate" />
                 <MetricCard icon={Users} label="Người dùng" tooltip="Tổng số tài khoản người dùng trong hệ thống." value={formatNumber(overview?.totalUsers || 0)} loading={loading} tone="amber" />
                 <MetricCard icon={Percent} label="Tỷ lệ chuyển đổi" tooltip="Tỷ lệ giữa số lượt mua hàng hoàn tất và tổng lượt truy cập." value={`${formatNumber(behavior?.conversionRate || 0)}%`} loading={loading} tone="emerald" />
             </section>
@@ -391,8 +393,9 @@ export default function AdminAnalytics() {
             </Panel>
 
             <Panel title="Tổng hợp kỳ đang xem" icon={FileSpreadsheet}>
-                <div className="grid gap-3 sm:grid-cols-3">
-                    <InfoLine label="Doanh thu" value={formatMoney(computed.revenue)} />
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <InfoLine label="Tổng doanh thu" value={formatMoney(computed.revenue)} />
+                    <InfoLine label="Doanh thu hoàn tất" value={formatMoney(computed.completedRevenue)} />
                     <InfoLine label="Số đơn" value={formatNumber(computed.orders)} />
                     <InfoLine label="Trung bình / đơn" value={formatMoney(computed.average)} />
                 </div>
@@ -462,7 +465,7 @@ function DonutChart({ data }) {
 }
 
 function RevenueLineChart({ data }) {
-    return <ReactApexChart type="line" height={330} series={[{ name: 'Doanh thu', data: data.map((item) => Number(item.revenue || 0)) }]} options={{ chart: { toolbar: { show: false }, zoom: { enabled: false } }, colors: ['#e11d48'], stroke: { curve: 'smooth', width: 3 }, xaxis: { categories: data.map((item) => item.label || item.date) }, yaxis: { labels: { formatter: (value) => formatShortMoney(value) } }, tooltip: { y: { formatter: (value) => formatMoney(value) } }, markers: { size: 3 } }} />;
+    return <ReactApexChart type="line" height={330} series={[{ name: 'Tổng doanh thu', data: data.map((item) => Number(item.revenue || 0)) }, { name: 'Doanh thu hoàn tất', data: data.map((item) => Number(item.completedRevenue || 0)) }]} options={{ chart: { toolbar: { show: false }, zoom: { enabled: false } }, colors: ['#e11d48', '#059669'], stroke: { curve: 'smooth', width: 3 }, xaxis: { categories: data.map((item) => item.label || item.date) }, yaxis: { labels: { formatter: (value) => formatShortMoney(value) } }, tooltip: { y: { formatter: (value) => formatMoney(value) } }, markers: { size: 3 }, legend: { position: 'top' } }} />;
 }
 
 function OrdersBarChart({ data }) {

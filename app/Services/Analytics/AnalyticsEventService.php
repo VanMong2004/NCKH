@@ -6,7 +6,6 @@ use App\Events\AdminAnalyticsUpdated;
 use App\Models\AnalyticsDailyMetric;
 use App\Models\AnalyticsEvent;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\ProductVariant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -64,8 +63,6 @@ class AnalyticsEventService
                     $this->isFirstVisitorOfDay($visitorId, $occurredAt, $event->id),
                     $this->isFirstSessionOfDay($sessionId, $occurredAt, $event->id)
                 );
-
-                $this->incrementProductViewCountOnce($event);
 
                 $this->broadcastSummary($eventType);
 
@@ -267,43 +264,6 @@ class AnalyticsEventService
                 $metric->increment($column, $value);
             }
         }
-    }
-
-    private function incrementProductViewCountOnce(AnalyticsEvent $event): void
-    {
-        if (
-            $event->event_type !== AnalyticsEvent::PRODUCT_VIEW
-            || !$event->product_id
-        ) {
-            return;
-        }
-
-        $query = AnalyticsEvent::query()
-            ->where('id', '<>', $event->id)
-            ->where('event_type', AnalyticsEvent::PRODUCT_VIEW)
-            ->where('product_id', $event->product_id)
-            ->whereBetween('occurred_at', [
-                $event->occurred_at->copy()->startOfDay(),
-                $event->occurred_at->copy()->endOfDay(),
-            ]);
-
-        if ($event->visitor_id) {
-            $query->where('visitor_id', $event->visitor_id);
-        } elseif ($event->session_id) {
-            $query->where('session_id', $event->session_id);
-        } elseif ($event->ip_hash) {
-            $query->where('ip_hash', $event->ip_hash);
-        } else {
-            return;
-        }
-
-        if ($query->exists()) {
-            return;
-        }
-
-        Product::query()
-            ->whereKey($event->product_id)
-            ->increment('view_count');
     }
 
     private function sessionBounceDelta(AnalyticsEvent $event): int

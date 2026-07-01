@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\AnalyticsDailyMetric;
 use App\Models\Category;
 use App\Models\ProductVariant;
 use App\Models\Department;
@@ -564,6 +565,11 @@ class ProductService
 
         $product->increment('view_count');
         $product->view_count = (int) ($product->view_count ?? 0) + 1;
+
+        AnalyticsDailyMetric::firstOrCreate([
+            'metric_date' => now()->toDateString(),
+        ])->increment('product_views_count');
+
         app(\App\Services\Analytics\AnalyticsEventService::class)
             ->broadcastDashboardRefresh();
 

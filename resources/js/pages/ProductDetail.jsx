@@ -12,7 +12,6 @@ import ProductReviews from '../components/productDetail/ProductReviews';
 import RelatedProducts from '../components/productDetail/RelateProducts';
 
 import productService from '../services/productService';
-import siteAnalyticsService from '../services/siteAnalyticsService';
 
 export default function ProductDetail() {
     const { slug } = useParams();
@@ -39,7 +38,6 @@ export default function ProductDetail() {
             const result = await productService.getProductBySlug(slug);
 
             setProduct(result);
-            siteAnalyticsService.trackProductView(result);
         } catch (err) {
             setError(err?.message || 'Không thể tải chi tiết sản phẩm.');
         } finally {

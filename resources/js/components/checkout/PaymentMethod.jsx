@@ -1,4 +1,4 @@
-import { Banknote, CreditCard, Landmark } from 'lucide-react';
+import { Banknote, CreditCard } from 'lucide-react';
 
 export default function PaymentMethod({ value, onChange, error, disabled = false, grandTotal = 0 }) {
     const methods = [
@@ -13,12 +13,6 @@ export default function PaymentMethod({ value, onChange, error, disabled = false
             title: 'Thanh toán giả lập banking',
             desc: 'Dùng để test luồng thanh toán trực tuyến.',
             icon: CreditCard,
-        },
-        {
-            value: 'vnpay',
-            title: 'VNPay',
-            desc: 'Thanh toán qua cổng VNPay nếu hệ thống đã cấu hình.',
-            icon: Landmark,
         },
     ];
 

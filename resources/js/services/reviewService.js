@@ -65,7 +65,7 @@ const reviewService = {
 
     async updateReview(reviewId, payload) {
         const formData = buildReviewFormData(payload);
-        const res = await api.put(`/reviews/${reviewId}`, formData, {
+        const res = await api.post(`/reviews/${reviewId}`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

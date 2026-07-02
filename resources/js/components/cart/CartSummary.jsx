@@ -74,7 +74,7 @@ export default function CartSummary({
                 <p className="mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400">Phương thức hỗ trợ</p>
 
                 <div className="grid grid-cols-4 gap-2">
-                    {['COD', 'VNPay', 'Mock', 'QR'].map((item) => (
+                    {['COD', 'Mock', 'QR'].map((item) => (
                         <div
                             key={item}
                             className="rounded-lg border border-slate-200 py-2 text-xs font-bold text-blue-950 dark:border-slate-700 dark:text-white"

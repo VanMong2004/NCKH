@@ -67,6 +67,12 @@ class ProductChatToolService
                 (int) ($arguments['limit'] ?? 5)
             ),
 
+            'get_promotion_products' => $this->catalogService->getPromotionProducts(
+                (string) ($arguments['query'] ?? ''),
+                (int) ($arguments['limit'] ?? 6),
+                $user
+            ),
+
             default => [
                 'found' => false,
                 'message' => 'Tool không hợp lệ.',

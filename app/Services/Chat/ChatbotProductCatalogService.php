@@ -327,6 +327,82 @@ class ChatbotProductCatalogService
         ];
     }
 
+    public function getPromotionProducts(string $query, int $limit = 6, $user = null): array
+    {
+        $query = trim($query);
+        $limit = max(1, min($limit, 12));
+
+        $promotion = $query === ''
+            ? $this->basePromotionQuery()->orderBy('end_date')->first()
+            : $this->basePromotionQuery()
+                ->where(function ($builder) use ($query) {
+                    $builder->where('title', 'like', "%{$query}%")
+                        ->orWhere('slug', 'like', "%{$query}%")
+                        ->orWhere('description', 'like', "%{$query}%");
+                })
+                ->orderBy('end_date')
+                ->first();
+
+        if (!$promotion) {
+            return [
+                'found' => false,
+                'message' => 'Khong tim thay chuong trinh khuyen mai phu hop trong he thong.',
+                'products' => [],
+            ];
+        }
+
+        $promotion->loadMissing([
+            'items' => function ($itemQuery) {
+                $itemQuery->where('is_active', true);
+            },
+            'items.product.images',
+            'items.product.variants' => function ($variantQuery) {
+                $variantQuery->where('is_active', true);
+            },
+            'items.product.category:id,name,slug',
+            'items.productVariant',
+        ]);
+
+        $products = $promotion->items
+            ->filter(fn ($item) => $item->product && $item->product->is_active)
+            ->take($limit)
+            ->map(function ($item) use ($promotion, $user) {
+                $product = $item->product;
+                $formattedProduct = $this->formatProduct($product, $user);
+
+                return [
+                    ...$formattedProduct,
+                    'promotion' => [
+                        'id' => $promotion->id,
+                        'title' => $promotion->title,
+                        'slug' => $promotion->slug,
+                        'discount_type' => $item->discount_type ?? $promotion->discount_type,
+                        'discount_value' => $item->discount_value !== null
+                            ? (float) $item->discount_value
+                            : ($promotion->discount_value !== null ? (float) $promotion->discount_value : null),
+                        'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
+                        'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
+                        'url' => url('/promotions/' . $promotion->slug),
+                    ],
+                    'promotion_variant' => $item->productVariant ? [
+                        'id' => $item->productVariant->id,
+                        'sku' => $item->productVariant->sku,
+                        'size' => $item->productVariant->size,
+                        'color' => $item->productVariant->color,
+                        'price' => $item->productVariant->price !== null ? (float) $item->productVariant->price : null,
+                    ] : null,
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return [
+            'found' => !empty($products),
+            'promotion' => $this->formatPromotion($promotion),
+            'products' => $products,
+        ];
+    }
+
     private function baseProductQuery()
     {
         return Product::query()

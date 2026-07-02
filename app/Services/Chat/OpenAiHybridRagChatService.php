@@ -555,6 +555,25 @@ class OpenAiHybridRagChatService
                     'additionalProperties' => false,
                 ],
             ],
+            [
+                'type' => 'function',
+                'name' => 'get_promotion_products',
+                'description' => 'Lay danh sach san pham nam trong mot chuong trinh khuyen mai dang dien ra tai CTUT Store.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => [
+                            'type' => 'string',
+                            'description' => 'Ten chuong trinh khuyen mai hoac tu khoa lien quan. De trong neu khach hoi chung ve san pham trong cac khuyen mai dang dien ra.',
+                        ],
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'So san pham toi da can tra ve.',
+                        ],
+                    ],
+                    'additionalProperties' => false,
+                ],
+            ],
         ];
     }
 
@@ -623,11 +642,12 @@ class OpenAiHybridRagChatService
             'get_promotion_by_name',
             'search_promotions',
             'get_active_promotions',
+            'get_promotion_products',
         ], true));
         $hasFoundPromotion = collect($toolCalls)->contains(function ($toolCall) {
             $result = $toolCall['result'] ?? [];
 
-            return !empty($result['promotion']) || !empty($result['promotions']);
+            return !empty($result['promotion']) || !empty($result['promotions']) || !empty($result['products']);
         });
 
         if ($intent === 'promotion_query' && $hasPromotionTool && !$hasFoundPromotion) {

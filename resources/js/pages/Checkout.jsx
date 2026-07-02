@@ -141,6 +141,24 @@ export default function Checkout() {
 
         }
 
+        if (!pendingPaymentOrder && !selectedAddressId) {
+            if (!receiver.province.trim()) {
+                nextErrors.province = 'Vui lòng chọn tỉnh/thành phố';
+            }
+
+            if (!receiver.district.trim()) {
+                nextErrors.district = 'Vui lòng nhập quận/huyện';
+            }
+
+            if (!receiver.ward.trim()) {
+                nextErrors.ward = 'Vui lòng nhập phường/xã';
+            }
+
+            if (!receiver.address_line.trim()) {
+                nextErrors.address_line = 'Vui lòng nhập số nhà, tên đường';
+            }
+        }
+
         if (!paymentMethod) {
             nextErrors.paymentMethod = 'Vui lòng chọn phương thức thanh toán';
         }

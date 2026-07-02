@@ -60,39 +60,41 @@ export default function Home() {
         try {
             setLoading(true);
 
-            const [homeResult, blogResult, promotionResult] = await Promise.allSettled([
-                homeService.getHomeData(),
-                blogService.getBlogs({
-                    page: 1,
-                    per_page: 4,
-                }),
+            const homeResult = await homeService.getHomeData();
+
+            setHome(homeResult);
+            setPromotions([]);
+            setLoading(false);
+
+            const backgroundRequests = [
                 promotionService.getPromotions({
                     status: 'active',
                     sort: 'ending_soon',
                     per_page: 4,
                 }),
-            ]);
+            ];
 
-            if (homeResult.status !== 'fulfilled') {
-                throw homeResult.reason;
+            if (!homeResult.newsEvents?.length) {
+                backgroundRequests.push(
+                    blogService.getBlogs({
+                        page: 1,
+                        per_page: 4,
+                    }),
+                );
             }
 
-            const newsEvents = homeResult.value.newsEvents?.length
-                ? homeResult.value.newsEvents
-                : blogResult.status === 'fulfilled'
-                  ? (blogResult.value.blogs || []).map(mapBlogToHomeNews)
-                  : [];
+            const [promotionResult, blogResult] = await Promise.allSettled(backgroundRequests);
 
-            setPromotions(
-                promotionResult.status === 'fulfilled'
-                    ? promotionResult.value.promotions || []
-                    : [],
-            );
+            if (promotionResult.status === 'fulfilled') {
+                setPromotions(promotionResult.value.promotions || []);
+            }
 
-            setHome({
-                ...homeResult.value,
-                newsEvents,
-            });
+            if (!homeResult.newsEvents?.length && blogResult?.status === 'fulfilled') {
+                setHome((current) => current ? {
+                    ...current,
+                    newsEvents: (blogResult.value.blogs || []).map(mapBlogToHomeNews),
+                } : current);
+            }
         } catch (error) {
             const message = error?.response?.data?.message || error.message || 'Không thể tải dữ liệu trang chủ';
 

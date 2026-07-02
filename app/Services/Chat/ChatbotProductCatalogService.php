@@ -4,6 +4,7 @@ namespace App\Services\Chat;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Promotion;
 use App\Services\PromotionPriceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -243,6 +244,89 @@ class ChatbotProductCatalogService
         });
     }
 
+    public function getPromotionByName(string $name): array
+    {
+        $name = trim($name);
+
+        if ($name === '') {
+            return [
+                'found' => false,
+                'message' => 'Ten khuyen mai khong hop le.',
+            ];
+        }
+
+        $promotion = $this->basePromotionQuery()
+            ->where(function ($query) use ($name) {
+                $query->where('title', 'like', "%{$name}%")
+                    ->orWhere('slug', 'like', "%{$name}%")
+                    ->orWhere('description', 'like', "%{$name}%");
+            })
+            ->first();
+
+        if (!$promotion) {
+            return [
+                'found' => false,
+                'message' => 'Khong tim thay khuyen mai phu hop trong he thong.',
+            ];
+        }
+
+        return [
+            'found' => true,
+            'promotion' => $this->formatPromotion($promotion),
+        ];
+    }
+
+    public function searchPromotions(string $query, int $limit = 5): array
+    {
+        $query = trim($query);
+        $limit = max(1, min($limit, 10));
+
+        if ($query === '') {
+            return [
+                'found' => false,
+                'message' => 'Tu khoa khuyen mai khong hop le.',
+                'promotions' => [],
+            ];
+        }
+
+        $promotions = $this->basePromotionQuery()
+            ->where(function ($builder) use ($query) {
+                $builder->where('title', 'like', "%{$query}%")
+                    ->orWhere('slug', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%");
+            })
+            ->orderBy('end_date')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($promotion) => $this->formatPromotion($promotion))
+            ->values()
+            ->toArray();
+
+        return [
+            'found' => !empty($promotions),
+            'query' => $query,
+            'promotions' => $promotions,
+        ];
+    }
+
+    public function getActivePromotions(int $limit = 5): array
+    {
+        $limit = max(1, min($limit, 10));
+
+        $promotions = $this->basePromotionQuery()
+            ->orderBy('end_date')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($promotion) => $this->formatPromotion($promotion))
+            ->values()
+            ->toArray();
+
+        return [
+            'found' => !empty($promotions),
+            'promotions' => $promotions,
+        ];
+    }
+
     private function baseProductQuery()
     {
         return Product::query()
@@ -279,6 +363,16 @@ class ChatbotProductCatalogService
                 },
             ])
             ->where('is_active', true);
+    }
+
+    private function basePromotionQuery()
+    {
+        return Promotion::query()
+            ->withCount('items')
+            ->where('is_active', true)
+            ->where('status', 'active')
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now());
     }
 
     private function queryProductsForIntent(string $query, array $keywords, int $limit)
@@ -384,6 +478,24 @@ class ChatbotProductCatalogService
             'name' => $product->name,
             'slug' => $product->slug,
             'short_description' => Str::limit(strip_tags((string) $product->description), 180),
+        ];
+    }
+
+    private function formatPromotion(Promotion $promotion): array
+    {
+        return [
+            'id' => $promotion->id,
+            'title' => $promotion->title,
+            'slug' => $promotion->slug,
+            'description' => Str::limit(strip_tags((string) $promotion->description), 220),
+            'discount_type' => $promotion->discount_type,
+            'discount_value' => $promotion->discount_value !== null ? (float) $promotion->discount_value : null,
+            'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
+            'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
+            'thumbnail' => $this->normalizeAssetUrl($promotion->thumbnail),
+            'banner' => $this->normalizeAssetUrl($promotion->banner),
+            'url' => url('/promotions/' . $promotion->slug),
+            'products_count' => (int) ($promotion->items_count ?? 0),
         ];
     }
 

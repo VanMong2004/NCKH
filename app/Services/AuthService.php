@@ -141,7 +141,10 @@ class AuthService
             // Xóa avatar cũ nếu không phải avatar mặc định
             if (
                 $user->avatar &&
-                $user->avatar !== '/images/user/default_avatar.png'
+                !in_array($user->avatar, [
+                    '/images/user/default_avatar.png',
+                    '/images/users/default_avatar.png',
+                ], true)
             ) {
                 $oldPath = public_path(ltrim($user->avatar, '/'));
 
@@ -155,11 +158,11 @@ class AuthService
             $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
 
             $file->move(
-                public_path('images/user'),
+                public_path('images/users'),
                 $fileName
             );
 
-            $user->avatar = '/images/user/' . $fileName;
+            $user->avatar = '/images/users/' . $fileName;
         }
 
         $user->save();

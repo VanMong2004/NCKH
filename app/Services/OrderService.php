@@ -492,6 +492,25 @@ class OrderService
             throw new RuntimeException('Vui lòng nhập số điện thoại người nhận', 422);
         }
 
+        if (empty($data['province'])) {
+            throw new RuntimeException('Vui long chon tinh/thanh pho', 422);
+        }
+
+        if (empty($data['district'])) {
+            throw new RuntimeException('Vui long nhap quan/huyen', 422);
+        }
+
+        if (empty($data['ward'])) {
+            throw new RuntimeException('Vui long nhap phuong/xa', 422);
+        }
+
+        if (empty($data['address_line'])) {
+            throw new RuntimeException('Vui long nhap so nha, ten duong', 422);
+        }
+
+        if ($requireEmail && empty($data['guest_email'])) {
+            throw new RuntimeException('Vui long nhap email', 422);
+        }
     }
 
     private function formatAddress(array $parts): string

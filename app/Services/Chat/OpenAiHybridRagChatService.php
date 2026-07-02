@@ -287,6 +287,7 @@ class OpenAiHybridRagChatService
         $sources = $this->extractSources($response);
         $products = $this->extractProductsFromToolCalls($allToolCalls);
         $answer = $this->normalizeFallbackAnswer($answer, $intent, $allToolCalls, $sources);
+        $answer = $this->sanitizeAnswer($answer);
 
         if (!$answer) {
             $answer = 'Hiện tại tôi chưa tìm thấy thông tin phù hợp trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận.';
@@ -503,6 +504,57 @@ class OpenAiHybridRagChatService
                     'additionalProperties' => false,
                 ],
             ],
+            [
+                'type' => 'function',
+                'name' => 'get_promotion_by_name',
+                'description' => 'Lay chi tiet mot chuong trinh khuyen mai dang dien ra tu database Laravel.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'name' => [
+                            'type' => 'string',
+                            'description' => 'Ten hoac mot phan ten chuong trinh khuyen mai.',
+                        ],
+                    ],
+                    'required' => ['name'],
+                    'additionalProperties' => false,
+                ],
+            ],
+            [
+                'type' => 'function',
+                'name' => 'search_promotions',
+                'description' => 'Tim danh sach chuong trinh khuyen mai dang hieu luc theo tu khoa tu database Laravel.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'query' => [
+                            'type' => 'string',
+                            'description' => 'Tu khoa khuyen mai nhu tan sinh vien, giam gia, uu dai.',
+                        ],
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'So khuyen mai toi da can tra ve.',
+                        ],
+                    ],
+                    'required' => ['query'],
+                    'additionalProperties' => false,
+                ],
+            ],
+            [
+                'type' => 'function',
+                'name' => 'get_active_promotions',
+                'description' => 'Lay danh sach khuyen mai dang dien ra tai CTUT Store tu database Laravel.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'So khuyen mai toi da can tra ve.',
+                        ],
+                    ],
+                    'additionalProperties' => false,
+                ],
+            ],
         ];
     }
 
@@ -524,6 +576,10 @@ class OpenAiHybridRagChatService
 
         if (preg_match('/\b(chinh sach|doi tra|van chuyen|thanh toan|bao hanh|huong dan|faq|policy|shipping|payment|return)\b/u', $normalized)) {
             return 'policy_question';
+        }
+
+        if (preg_match('/\b(khuyen mai|giam gia|uu dai|voucher|coupon|sale|deal|promo|promotion)\b/u', $normalized)) {
+            return 'promotion_query';
         }
 
         return 'out_of_scope';
@@ -563,6 +619,21 @@ class OpenAiHybridRagChatService
             return 'Mình chưa tìm thấy sản phẩm phù hợp trong hệ thống CTUT Store. Bạn có thể thử nhập tên sản phẩm cụ thể hơn, ví dụ áo thun, hoodie, balo, bình giữ nhiệt hoặc sản phẩm CTUT bạn đang cần tìm.';
         }
 
+        $hasPromotionTool = collect($toolCalls)->contains(fn ($toolCall) => in_array(($toolCall['name'] ?? ''), [
+            'get_promotion_by_name',
+            'search_promotions',
+            'get_active_promotions',
+        ], true));
+        $hasFoundPromotion = collect($toolCalls)->contains(function ($toolCall) {
+            $result = $toolCall['result'] ?? [];
+
+            return !empty($result['promotion']) || !empty($result['promotions']);
+        });
+
+        if ($intent === 'promotion_query' && $hasPromotionTool && !$hasFoundPromotion) {
+            return 'Hien tai minh chua tim thay khuyen mai phu hop trong he thong CTUT Store. Ban co the hoi ro hon theo ten chuong trinh hoac hoi "khuyen mai dang dien ra" de minh kiem tra giup ban.';
+        }
+
         $badFallbacks = [
             'tài liệu không cung cấp',
             'dữ liệu không cung cấp',
@@ -581,6 +652,22 @@ class OpenAiHybridRagChatService
         }
 
         return $answer;
+    }
+
+    private function sanitizeAnswer(string $answer): string
+    {
+        $answer = trim($answer);
+
+        if ($answer === '') {
+            return '';
+        }
+
+        $answer = preg_replace('/\[(.*?)\]\((https?:\/\/[^\s]+)\)/u', '$1: $2', $answer);
+        $answer = preg_replace('/[*_`#>~]+/u', '', $answer);
+        $answer = preg_replace('/[ \t]+\n/u', "\n", $answer);
+        $answer = preg_replace('/\n{3,}/u', "\n\n", $answer);
+
+        return trim($answer);
     }
 
     private function extractProductsFromToolCalls(array $toolCalls): array

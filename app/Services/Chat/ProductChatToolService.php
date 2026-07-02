@@ -54,6 +54,19 @@ class ProductChatToolService
                 $user
             ),
 
+            'get_promotion_by_name' => $this->catalogService->getPromotionByName(
+                (string) ($arguments['name'] ?? '')
+            ),
+
+            'search_promotions' => $this->catalogService->searchPromotions(
+                (string) ($arguments['query'] ?? ''),
+                (int) ($arguments['limit'] ?? 5)
+            ),
+
+            'get_active_promotions' => $this->catalogService->getActivePromotions(
+                (int) ($arguments['limit'] ?? 5)
+            ),
+
             default => [
                 'found' => false,
                 'message' => 'Tool không hợp lệ.',

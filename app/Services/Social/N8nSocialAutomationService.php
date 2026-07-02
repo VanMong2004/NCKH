@@ -232,7 +232,7 @@ class N8nSocialAutomationService
                     ?? $image->image
                     ?? null;
 
-                return $this->publicUrl($path);
+                return $this->resolvePublicImageUrl($path);
             })
             ->filter()
             ->unique()
@@ -252,6 +252,8 @@ class N8nSocialAutomationService
 
     private function publicUrl(?string $path): ?string
     {
+        $path = $this->sanitizeSocialText($path);
+
         if (!$path) {
             return null;
         }
@@ -278,7 +280,7 @@ class N8nSocialAutomationService
             return null;
         }
 
-        $caption = trim($caption);
+        $caption = $this->sanitizeSocialText($caption);
 
         if ($productUrl) {
             $caption = str_replace('[link sản phẩm]', $productUrl, $caption);
@@ -349,13 +351,13 @@ class N8nSocialAutomationService
                 'title' => $promotion->title,
                 'slug' => $promotion->slug,
                 'description' => $promotion->description,
-                'banner' => $this->normalizePublicUrl($promotion->banner ?? null),
-                'thumbnail' => $this->normalizePublicUrl($promotion->thumbnail ?? null),
-                'image' => $this->normalizePublicUrl($promotion->banner ?? null)
-                    ?: $this->normalizePublicUrl($promotion->thumbnail ?? null),
+                'banner' => $this->resolvePublicImageUrl($promotion->banner ?? null),
+                'thumbnail' => $this->resolvePublicImageUrl($promotion->thumbnail ?? null),
+                'image' => $this->resolvePublicImageUrl($promotion->banner ?? null)
+                    ?: $this->resolvePublicImageUrl($promotion->thumbnail ?? null),
                 'images' => array_values(array_filter(array_unique([
-                    $this->normalizePublicUrl($promotion->banner ?? null),
-                    $this->normalizePublicUrl($promotion->thumbnail ?? null),
+                    $this->resolvePublicImageUrl($promotion->banner ?? null),
+                    $this->resolvePublicImageUrl($promotion->thumbnail ?? null),
                 ]))),
                 'discount_type' => $promotion->discount_type,
                 'discount_value' => $promotion->discount_value ? (float) $promotion->discount_value : null,
@@ -383,12 +385,41 @@ class N8nSocialAutomationService
         ];
     }
 
-    private function normalizePublicUrl(?string $path): ?string
+    private function resolvePublicImageUrl(?string $path): ?string
     {
-        if (!$path) {
+        $publicUrl = $this->publicUrl($path);
+
+        if (!$publicUrl) {
             return null;
         }
 
-        return $this->publicUrl($path);
+        return $this->publicAssetExists($publicUrl) ? $publicUrl : null;
+    }
+
+    private function publicAssetExists(string $url): bool
+    {
+        $parsed = parse_url($url);
+        $path = $parsed['path'] ?? null;
+
+        if (!$path) {
+            return false;
+        }
+
+        return is_file(public_path(ltrim($path, '/')));
+    }
+
+    private function sanitizeSocialText(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $value = preg_replace('/\[(.*?)\]\((https?:\/\/[^\s]+)\)/u', '$1: $2', $value);
+        $value = preg_replace('/[*_`#>~]+/u', '', $value);
+        $value = preg_replace('/\n{3,}/u', "\n\n", $value);
+
+        return trim($value);
     }
 }

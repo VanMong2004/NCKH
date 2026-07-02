@@ -69,10 +69,15 @@ export default function OrderSuccess() {
     }
 
     async function handleDownloadBill() {
-        if (!order?.code) return;
+        if (!order) return;
 
         try {
             setDownloadingBill(true);
+
+            if (user) {
+                await orderService.downloadBill(order.id, `bill-${order.code}.pdf`);
+                return;
+            }
 
             const savedGuestOrder = JSON.parse(
                 sessionStorage.getItem('guest_order_success') || '{}'
@@ -89,9 +94,16 @@ export default function OrderSuccess() {
     }
 
     async function openVatInvoiceModal() {
-        if (!order?.code) return;
+        if (!order) return;
 
         try {
+            if (user) {
+                const result = await orderService.getVatInvoiceRequest(order.id);
+                setVatInvoiceRequest(result);
+                setVatInvoiceModalOpen(true);
+                return;
+            }
+
             const savedGuestOrder = JSON.parse(
                 sessionStorage.getItem('guest_order_success') || '{}'
             );
@@ -108,10 +120,17 @@ export default function OrderSuccess() {
     }
 
     async function submitVatInvoiceRequest(payload) {
-        if (!order?.code) return;
+        if (!order) return;
 
         try {
             setSubmittingVatInvoice(true);
+
+            if (user) {
+                const result = await orderService.createVatInvoiceRequest(order.id, payload);
+                setVatInvoiceRequest(result);
+                toast.success('Đã gửi yêu cầu hóa đơn đỏ');
+                return;
+            }
 
             const savedGuestOrder = JSON.parse(
                 sessionStorage.getItem('guest_order_success') || '{}'
@@ -131,10 +150,17 @@ export default function OrderSuccess() {
     }
 
     async function downloadVatInvoice() {
-        if (!order?.code) return;
+        if (!order) return;
 
         try {
             setDownloadingVatInvoice(true);
+
+            if (user) {
+                await orderService.downloadVatInvoice(order.id, `vat-invoice-${order.code}.pdf`);
+                const result = await orderService.getVatInvoiceRequest(order.id);
+                setVatInvoiceRequest(result);
+                return;
+            }
 
             const savedGuestOrder = JSON.parse(
                 sessionStorage.getItem('guest_order_success') || '{}'

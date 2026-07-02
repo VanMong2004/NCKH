@@ -493,23 +493,23 @@ class OrderService
         }
 
         if (empty($data['province'])) {
-            throw new RuntimeException('Vui long chon tinh/thanh pho', 422);
+            throw new RuntimeException('Vui lòng chọn tỉnh/thành phố', 422);
         }
 
         if (empty($data['district'])) {
-            throw new RuntimeException('Vui long nhap quan/huyen', 422);
+            throw new RuntimeException('Vui lòng nhập quận/huyện', 422);
         }
 
         if (empty($data['ward'])) {
-            throw new RuntimeException('Vui long nhap phuong/xa', 422);
+            throw new RuntimeException('Vui lòng nhập phường/xã', 422);
         }
 
         if (empty($data['address_line'])) {
-            throw new RuntimeException('Vui long nhap so nha, ten duong', 422);
+            throw new RuntimeException('Vui lòng nhập số nhà, tên đường', 422);
         }
 
         if ($requireEmail && empty($data['guest_email'])) {
-            throw new RuntimeException('Vui long nhap email', 422);
+            throw new RuntimeException('Vui lòng nhập email', 422);
         }
     }
 

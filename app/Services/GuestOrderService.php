@@ -136,6 +136,7 @@ class GuestOrderService
             'items.productVariant.product.images',
             'payments',
             'statusHistories:id,order_id,old_status,new_status,note,created_at',
+            'user.addresses',
         ])
         ->where('order_code', $orderCode)
         ->where('guest_phone', $phone)
@@ -160,6 +161,7 @@ class GuestOrderService
             'items.productVariant.product.images',
             'payments',
             'statusHistories:id,order_id,old_status,new_status,note,created_at',
+            'user.addresses',
         ])
             ->where('order_code', $orderCode)
             ->first();
@@ -200,7 +202,7 @@ class GuestOrderService
             'receiver' => [
                 'name' => $order->shipping_name,
                 'phone' => $order->shipping_phone,
-                'address' => $order->shipping_address,
+                'address' => $order->resolvedShippingAddress(),
             ],
             'payment' => $payment ? [
                 'id' => $payment->id,

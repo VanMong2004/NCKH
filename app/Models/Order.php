@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class Order extends Model
 {
@@ -72,5 +73,36 @@ class Order extends Model
     public function vatInvoiceRequest()
     {
         return $this->hasOne(VatInvoiceRequest::class);
+    }
+
+    public function resolvedShippingAddress(): ?string
+    {
+        if (!empty($this->shipping_address)) {
+            return $this->shipping_address;
+        }
+
+        $address = $this->resolvedUserAddress();
+
+        if (!$address) {
+            return null;
+        }
+
+        return collect([
+            $address->address_line,
+            $address->ward,
+            $address->district,
+            $address->province,
+        ])->filter()->implode(', ');
+    }
+
+    protected function resolvedUserAddress()
+    {
+        $addresses = $this->user?->addresses;
+
+        if (!$addresses instanceof Collection || $addresses->isEmpty()) {
+            return null;
+        }
+
+        return $addresses->firstWhere('is_default', true) ?: $addresses->first();
     }
 }

@@ -103,7 +103,11 @@ export default function Footer({ footer }) {
                         <div className="mt-4 space-y-3 text-sm">
                             {contacts.length > 0 ? (
                                 contacts.map((item) => (
-                                    <Info key={item.id || item.item_key} icon={getContactIcon(item.icon_key)}>
+                                    <Info
+                                        key={item.id || item.item_key}
+                                        icon={getContactIcon(item.icon_key)}
+                                        href={resolveContactHref(item)}
+                                    >
                                         {item.label || item.content}
                                     </Info>
                                 ))
@@ -179,11 +183,55 @@ function FooterColumn({ title, links }) {
     );
 }
 
-function Info({ icon: Icon, children }) {
-    return (
+function Info({ icon: Icon, children, href }) {
+    const content = (
         <div className="flex items-start gap-3">
             <Icon size={17} className="mt-0.5 shrink-0 text-blue-950 dark:text-blue-300" />
             <span>{children}</span>
         </div>
     );
+
+    if (href) {
+        return (
+            <a
+                href={href}
+                target={href.startsWith('http') ? '_blank' : undefined}
+                rel={href.startsWith('http') ? 'noreferrer' : undefined}
+                className="block rounded-xl transition hover:text-blue-700 dark:hover:text-blue-300"
+            >
+                {content}
+            </a>
+        );
+    }
+
+    return content;
+}
+
+function resolveContactHref(item = {}) {
+    const explicitLink = String(item.link_url || '').trim();
+
+    if (explicitLink) {
+        return explicitLink;
+    }
+
+    const iconKey = String(item.icon_key || '').toLowerCase();
+    const value = String(item.content || item.label || '').trim();
+
+    if (!value) {
+        return '';
+    }
+
+    if (iconKey.includes('mail') || iconKey.includes('email') || value.includes('@')) {
+        return `mailto:${value}`;
+    }
+
+    if (iconKey.includes('phone') || iconKey.includes('call')) {
+        return `tel:${value.replace(/\s+/g, '')}`;
+    }
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+        return value;
+    }
+
+    return '';
 }

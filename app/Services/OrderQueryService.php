@@ -216,6 +216,7 @@ class OrderQueryService
             'payments',
             'reviews',
             'statusHistories:id,order_id,old_status,new_status,note,created_at',
+            'user.addresses',
         ])
             ->where('user_id', $user->id)
             ->find($id);
@@ -239,7 +240,7 @@ class OrderQueryService
             'receiver' => [
                 'name' => $order->shipping_name,
                 'phone' => $order->shipping_phone,
-                'address' => $order->shipping_address,
+                'address' => $order->resolvedShippingAddress(),
             ],
             'payment' => $payment ? [
                 'id' => $payment->id,

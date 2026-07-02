@@ -8,7 +8,7 @@ export function paymentMethodText(method) {
         bank_transfer: 'Chuyển khoản ngân hàng',
         banking: 'Chuyển khoản ngân hàng',
         momo: 'MoMo',
-        mock: 'Thanh toán mô phỏng',
+        mock: 'Thanh toán giả lập banking',
         vnpay: 'VNPay',
     };
 

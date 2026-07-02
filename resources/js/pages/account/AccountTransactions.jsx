@@ -25,7 +25,7 @@ const STATUS_OPTIONS = [
 
 const METHOD_OPTIONS = [
     { value: '', label: 'Tất cả phương thức' },
-    { value: 'mock', label: 'Thanh toán mô phỏng' },
+    { value: 'mock', label: 'Thanh toán giả lập banking' },
     { value: 'vnpay', label: 'VNPay' },
     { value: 'momo', label: 'MoMo' },
     { value: 'banking', label: 'Chuyển khoản' },

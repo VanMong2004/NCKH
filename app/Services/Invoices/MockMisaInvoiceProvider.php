@@ -12,6 +12,7 @@ class MockMisaInvoiceProvider
         $request->loadMissing([
             'order.items',
             'order.payments',
+            'order.user.addresses',
         ]);
 
         $order = $request->order;

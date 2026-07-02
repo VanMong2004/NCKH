@@ -104,6 +104,35 @@
     </style>
 </head>
 <body>
+    @php
+        $orderStatusText = [
+            'pending' => 'Chờ xác nhận',
+            'paid' => 'Đã thanh toán',
+            'processing' => 'Đang xử lý',
+            'shipped' => 'Đang giao hàng',
+            'completed' => 'Hoàn thành',
+            'cancelled' => 'Đã hủy',
+        ][$order->status] ?? $order->status;
+
+        $paymentMethodText = [
+            'cod' => 'Thanh toán khi nhận hàng',
+            'mock' => 'Thanh toán giả lập banking',
+            'vnpay' => 'VNPay',
+            'bank_transfer' => 'Chuyển khoản ngân hàng',
+            'banking' => 'Chuyển khoản ngân hàng',
+            'momo' => 'MoMo',
+        ][$payment?->method] ?? ($payment?->method ?: '---');
+
+        $paymentStatusText = [
+            'pending' => 'Đang chờ',
+            'processing' => 'Đang xử lý',
+            'success' => 'Đã thanh toán',
+            'failed' => 'Thất bại',
+            'cancelled' => 'Đã hủy',
+            'refunded' => 'Đã hoàn tiền',
+        ][$payment?->status] ?? ($payment?->status ?: 'pending');
+    @endphp
+
     <div class="header">
         <h1>Phiếu thanh toán</h1>
         <div class="muted">CTUT Store - Bill đơn hàng {{ $order->order_code }}</div>
@@ -117,7 +146,7 @@
                     <div><strong>Mã đơn:</strong> {{ $order->order_code }}</div>
                     <div><strong>Ngày đặt:</strong> {{ optional($order->created_at)->format('d/m/Y H:i') }}</div>
                     <div><strong>Ngày xuất bill:</strong> {{ optional($issuedAt)->format('d/m/Y H:i') }}</div>
-                    <div><strong>Trạng thái đơn:</strong> {{ $order->status }}</div>
+                    <div><strong>Trạng thái đơn:</strong> {{ $orderStatusText }}</div>
                 </div>
             </td>
             <td style="padding-left: 8px;">
@@ -125,7 +154,7 @@
                     <div class="box-title">Người nhận</div>
                     <div><strong>Họ tên:</strong> {{ $order->shipping_name ?: '---' }}</div>
                     <div><strong>Số điện thoại:</strong> {{ $order->shipping_phone ?: '---' }}</div>
-                    <div><strong>Địa chỉ:</strong> {{ $order->shipping_address ?: '---' }}</div>
+                    <div><strong>Địa chỉ:</strong> {{ $order->resolvedShippingAddress() ?: '---' }}</div>
                 </div>
             </td>
         </tr>
@@ -133,8 +162,8 @@
 
     <div class="box">
         <div class="box-title">Thanh toán</div>
-        <div><strong>Phương thức:</strong> {{ $payment?->method ?: '---' }}</div>
-        <div><strong>Trạng thái:</strong> {{ $payment?->status ?: 'pending' }}</div>
+        <div><strong>Phương thức:</strong> {{ $paymentMethodText }}</div>
+        <div><strong>Trạng thái:</strong> {{ $paymentStatusText }}</div>
         <div><strong>Mã giao dịch:</strong> {{ $payment?->transaction_id ?: '---' }}</div>
     </div>
 

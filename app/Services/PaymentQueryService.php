@@ -38,7 +38,7 @@ class PaymentQueryService
             throw new RuntimeException('Vui lòng đăng nhập', 401);
         }
 
-        $payment = Payment::with('order')
+        $payment = Payment::with('order.user.addresses')
             ->whereHas('order', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
@@ -76,7 +76,7 @@ class PaymentQueryService
             'receiver' => [
                 'name' => $order->shipping_name,
                 'phone' => $order->shipping_phone,
-                'address' => $order->shipping_address,
+                'address' => $order->resolvedShippingAddress(),
             ],
 
             'timeline' => [

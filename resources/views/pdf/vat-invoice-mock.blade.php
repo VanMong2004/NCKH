@@ -104,6 +104,26 @@
     </style>
 </head>
 <body>
+    @php
+        $paymentMethodText = [
+            'cod' => 'Thanh toán khi nhận hàng',
+            'mock' => 'Thanh toán giả lập banking',
+            'vnpay' => 'VNPay',
+            'bank_transfer' => 'Chuyển khoản ngân hàng',
+            'banking' => 'Chuyển khoản ngân hàng',
+            'momo' => 'MoMo',
+        ][$payment?->method] ?? ($payment?->method ?: '---');
+
+        $paymentStatusText = [
+            'pending' => 'Đang chờ',
+            'processing' => 'Đang xử lý',
+            'success' => 'Đã thanh toán',
+            'failed' => 'Thất bại',
+            'cancelled' => 'Đã hủy',
+            'refunded' => 'Đã hoàn tiền',
+        ][$payment?->status] ?? ($payment?->status ?: 'pending');
+    @endphp
+
     <div class="mock-badge">
         Hóa đơn GTGT mô phỏng - Không có giá trị pháp lý - MISA mock provider
     </div>
@@ -134,7 +154,7 @@
     <div class="section">
         <div class="section-title">Thông tin đơn hàng</div>
         <div><strong>Mã đơn hàng:</strong> {{ $request->order_code }}</div>
-        <div><strong>Thanh toán:</strong> {{ $payment?->method ?: '---' }} / {{ $payment?->status ?: 'pending' }}</div>
+        <div><strong>Thanh toán:</strong> {{ $paymentMethodText }} / {{ $paymentStatusText }}</div>
     </div>
 
     <table class="data-table">

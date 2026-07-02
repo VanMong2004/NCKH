@@ -149,7 +149,7 @@ export default function MockPaymentQr() {
                         <div className="mt-4 space-y-3 text-sm">
                             <InfoRow label="Mã đơn" value={order.orderCode || order.code || '-'} />
                             <InfoRow label="Mã giao dịch" value={payment.transactionId || '-'} />
-                            <InfoRow label="Phương thức" value="Thanh toán mô phỏng" />
+                            <InfoRow label="Phương thức" value="Thanh toán giả lập banking" />
                             <InfoRow label="Tạm tính" value={formatCurrency(order.subTotal)} />
                             <InfoRow label="Giảm giá" value={formatCurrency(order.discount)} />
                             <InfoRow label="Tổng cộng" value={formatCurrency(order.grandTotal)} strong />

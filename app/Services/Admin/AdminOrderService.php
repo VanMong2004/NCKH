@@ -15,6 +15,7 @@ class AdminOrderService
         $query = Order::query()
             ->with([
                 'user:id,name,email',
+                'user.addresses',
                 'items:id,order_id,product_variant_id,quantity',
                 'items.productVariant:id,product_id',
                 'items.productVariant.product:id,name,slug',
@@ -77,6 +78,7 @@ class AdminOrderService
     {
         $order = Order::with([
             'user:id,name,email,phone',
+            'user.addresses',
             'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
             'items.productVariant.product.primaryImage:id,product_id,url,type,position',
             'payments',
@@ -385,7 +387,7 @@ class AdminOrderService
             'receiver' => [
                 'name' => $order->shipping_name,
                 'phone' => $order->shipping_phone,
-                'address' => $order->shipping_address,
+                'address' => $order->resolvedShippingAddress(),
             ],
 
             'payment' => $payment ? [

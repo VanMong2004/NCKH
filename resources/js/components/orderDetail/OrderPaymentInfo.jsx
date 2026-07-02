@@ -40,7 +40,7 @@ function getFallbackMethodText(order) {
 
     const map = {
         cod: 'Thanh toán khi nhận hàng',
-        mock: 'Thanh toán mô phỏng',
+        mock: 'Thanh toán giả lập banking',
         vnpay: 'VNPay',
     };
 

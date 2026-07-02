@@ -204,6 +204,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // REVIEW
     Route::prefix('reviews')->group(function () {
         Route::post('/', [ReviewController::class,'store']); // Tạo đánh giá mới (có thể là đánh giá sản phẩm hoặc chiến dịch, tùy vào payload gửi lên)
+        Route::put('/{id}', [ReviewController::class,'update']); // Cập nhật đánh giá theo đúng RESTful method cho frontend/form-data
         Route::post('/{id}', [ReviewController::class,'update']); // Cập nhật đánh giá (chỉ cho phép cập nhật nội dung đánh giá, không cho phép thay đổi sản phẩm/chiến dịch đã đánh giá)
         Route::delete('/{id}', [ReviewController::class,'destroy']); // Xóa đánh giá (chỉ cho phép xóa đánh giá của chính mình)
     });

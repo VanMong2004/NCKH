@@ -88,6 +88,37 @@ export default function AdminOrders() {
         filters.per_page,
     ]);
 
+    useEffect(() => {
+        if (!window.Echo) return undefined;
+
+        const token = localStorage.getItem('ctut_token');
+        const authHeaders = window.Echo?.connector?.pusher?.config?.auth?.headers;
+
+        if (authHeaders) {
+            authHeaders.Authorization = token ? `Bearer ${token}` : '';
+        }
+
+        const channelName = 'admin.analytics';
+        const channel = window.Echo.private(channelName).listen('.analytics.updated', () => {
+            loadOrders();
+        });
+
+        return () => {
+            channel.stopListening('.analytics.updated');
+            window.Echo.leave(channelName);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        debouncedKeyword,
+        filters.status,
+        filters.payment_status,
+        filters.date_from,
+        filters.date_to,
+        filters.sort,
+        filters.page,
+        filters.per_page,
+    ]);
+
     async function loadOrders() {
         try {
             setLoading(true);

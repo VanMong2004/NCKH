@@ -45,6 +45,20 @@ export default function AccountOrders() {
         loadOrders(1);
     }, [filters.status, filters.sort]);
 
+    useEffect(() => {
+        const refreshOrders = () => {
+            loadOrders(meta.currentPage || 1);
+        };
+
+        window.addEventListener('notification-created', refreshOrders);
+        window.addEventListener('notification-updated', refreshOrders);
+
+        return () => {
+            window.removeEventListener('notification-created', refreshOrders);
+            window.removeEventListener('notification-updated', refreshOrders);
+        };
+    }, [meta.currentPage, filters]);
+
     async function loadOrders(page = 1, customFilters = filters) {
         try {
             setLoading(true);
@@ -370,7 +384,7 @@ function paymentStatusLabel(status) {
 function paymentMethodLabel(method) {
     const map = {
         cod: 'COD',
-        mock: 'Thanh toán mô phỏng',
+        mock: 'Thanh toán giả lập banking',
         vnpay: 'VNPay',
         momo: 'MoMo',
         bank_transfer: 'Chuyển khoản',

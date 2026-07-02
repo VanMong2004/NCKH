@@ -51,6 +51,7 @@ class OrderBillService
         return Order::with([
             'items',
             'payments',
+            'user.addresses',
         ]);
     }
 

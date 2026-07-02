@@ -50,7 +50,7 @@ export function getPaymentMethodText(method) {
         bank_transfer: 'Chuyển khoản',
         momo: 'MoMo',
         vnpay: 'VNPay',
-        mock: 'Thanh toán thử',
+        mock: 'Thanh toán giả lập banking',
     };
 
     return map[method] || method || '-';

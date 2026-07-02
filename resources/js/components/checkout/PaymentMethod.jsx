@@ -10,7 +10,7 @@ export default function PaymentMethod({ value, onChange, error, disabled = false
         },
         {
             value: 'mock',
-            title: 'Thanh toán mô phỏng',
+            title: 'Thanh toán giả lập banking',
             desc: 'Dùng để test luồng thanh toán trực tuyến.',
             icon: CreditCard,
         },

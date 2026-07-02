@@ -9,7 +9,7 @@ class AboutSeeder extends Seeder
 {
     public function run(): void
     {
-        About::create([
+        About::updateOrCreate(['is_active' => true], [
             'title' => 'CTUT Store',
             'slogan' => 'Kết nối sinh viên CTUT',
             'banner' => 'images/about/banner.jpg',

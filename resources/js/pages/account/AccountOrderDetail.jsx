@@ -57,6 +57,20 @@ export default function AccountOrderDetail() {
         loadOrder();
     }, [id]);
 
+    useEffect(() => {
+        const refreshOrder = () => {
+            loadOrder();
+        };
+
+        window.addEventListener('notification-created', refreshOrder);
+        window.addEventListener('notification-updated', refreshOrder);
+
+        return () => {
+            window.removeEventListener('notification-created', refreshOrder);
+            window.removeEventListener('notification-updated', refreshOrder);
+        };
+    }, [id]);
+
     async function loadOrder() {
         try {
             setLoading(true);

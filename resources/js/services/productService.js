@@ -1,8 +1,13 @@
 import api from './api';
 import { mapProductDetailResponse, mapProductListResponse } from './mappers/productMapper';
 
+const PRODUCT_LIST_CACHE_TTL = 30 * 1000;
+const PRODUCT_DETAIL_CACHE_TTL = 2 * 60 * 1000;
+
 const pendingListRequests = new Map();
 const pendingDetailRequests = new Map();
+const listCache = new Map();
+const detailCache = new Map();
 
 function requestKey(params = {}) {
     return Object.entries(params)
@@ -15,6 +20,11 @@ function requestKey(params = {}) {
 const productService = {
     async getProducts(params = {}) {
         const key = requestKey(params);
+        const cached = listCache.get(key);
+
+        if (cached && Date.now() - cached.at < PRODUCT_LIST_CACHE_TTL) {
+            return cached.data;
+        }
 
         if (pendingListRequests.has(key)) {
             return pendingListRequests.get(key);
@@ -22,7 +32,16 @@ const productService = {
 
         const request = api
             .get('/products', { params })
-            .then((res) => mapProductListResponse(res.data))
+            .then((res) => {
+                const data = mapProductListResponse(res.data);
+
+                listCache.set(key, {
+                    data,
+                    at: Date.now(),
+                });
+
+                return data;
+            })
             .finally(() => {
                 pendingListRequests.delete(key);
             });
@@ -34,6 +53,11 @@ const productService = {
 
     async getProductBySlug(slug) {
         const key = String(slug || '');
+        const cached = detailCache.get(key);
+
+        if (cached && Date.now() - cached.at < PRODUCT_DETAIL_CACHE_TTL) {
+            return cached.data;
+        }
 
         if (pendingDetailRequests.has(key)) {
             return pendingDetailRequests.get(key);
@@ -41,7 +65,16 @@ const productService = {
 
         const request = api
             .get(`/products/${slug}`)
-            .then((res) => mapProductDetailResponse(res.data))
+            .then((res) => {
+                const data = mapProductDetailResponse(res.data);
+
+                detailCache.set(key, {
+                    data,
+                    at: Date.now(),
+                });
+
+                return data;
+            })
             .finally(() => {
                 pendingDetailRequests.delete(key);
             });

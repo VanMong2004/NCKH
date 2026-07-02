@@ -108,11 +108,20 @@ export default function AdminAnalytics() {
     }, [globalFilter, revenueFilter]);
 
     function fetchDashboardData(globalParams, revenueParams) {
+        const sameSalesFilter =
+            globalFilter.days === revenueFilter.days &&
+            JSON.stringify(globalParams) === JSON.stringify(revenueParams);
+
+        const revenueChartRequest = adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams);
+        const ordersChartRequest = sameSalesFilter
+            ? revenueChartRequest
+            : adminAnalyticsService.getSalesChart(globalFilter.days, globalParams);
+
         return Promise.all([
             adminAnalyticsService.getOverview(),
             adminAnalyticsService.getBehaviorOverview(globalFilter.days, globalParams),
-            adminAnalyticsService.getSalesChart(revenueFilter.days, revenueParams),
-            adminAnalyticsService.getSalesChart(globalFilter.days, globalParams),
+            revenueChartRequest,
+            ordersChartRequest,
             adminAnalyticsService.getBehaviorChart(globalFilter.days, globalParams),
             adminAnalyticsService.getRevenueByCategory(8, globalParams),
             adminAnalyticsService.getTopProducts({ ...globalParams, limit: 10 }),

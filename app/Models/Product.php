@@ -44,6 +44,21 @@ class Product extends Model
         return $this->hasMany(ProductImage::class);
     }
 
+    public function thumbnailImage()
+    {
+        return $this->hasOne(ProductImage::class)
+            ->where('type', 'thumbnail')
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    public function primaryImage()
+    {
+        return $this->hasOne(ProductImage::class)
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
     public function variants()
     {
         return $this->hasMany(ProductVariant::class);

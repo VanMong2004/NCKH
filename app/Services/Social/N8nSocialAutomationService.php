@@ -144,8 +144,6 @@ class N8nSocialAutomationService
             'variants',
         ]);
 
-        $images = $this->productImages($product);
-        $image = $images[0] ?? null;
         $productUrl = $this->publicUrl('/product/' . $product->slug);
         $caption = $this->normalizeCaption($caption, $productUrl);
 
@@ -196,9 +194,9 @@ class N8nSocialAutomationService
                     ])
                     ->values()
                     ->toArray(),
-                'image' => $image,
-                'images' => $images,
-                'url' => $productUrl,
+                'image' => null,
+                'images' => [],
+                'url' => null,
             ],
             'caption_template' => [
                 'title' => 'Sản phẩm mới tại CTUT Store',
@@ -274,19 +272,21 @@ class N8nSocialAutomationService
         return $publicBaseUrl . '/' . ltrim($path, '/');
     }
 
-    private function normalizeCaption(?string $caption, ?string $productUrl): ?string
+    private function normalizeCaption(?string $caption): ?string
     {
         if (!$caption) {
             return null;
         }
 
         $caption = $this->sanitizeSocialText($caption);
+        $caption = str_replace(['[link sản phẩm]', '[link khuyến mãi]', '[link]'], ' ', (string) $caption);
+        $caption = preg_replace('/https?:\/\/[^\s]+/iu', ' ', (string) $caption);
+        $caption = preg_replace('/\s+([,.!?:;])/u', '$1', (string) $caption);
+        $caption = preg_replace('/\n{3,}/u', "\n\n", (string) $caption);
+        $caption = preg_replace('/[ \t]{2,}/u', ' ', (string) $caption);
+        $caption = trim((string) $caption);
 
-        if ($productUrl) {
-            $caption = str_replace('[link sản phẩm]', $productUrl, $caption);
-        }
-
-        return $caption;
+        return $caption !== '' ? $caption : null;
     }
 
     public function createPromotionCreatedLog(Promotion $promotion, ?string $caption = null, ?string $style = null): SocialAutomationLog
@@ -351,21 +351,17 @@ class N8nSocialAutomationService
                 'title' => $promotion->title,
                 'slug' => $promotion->slug,
                 'description' => $promotion->description,
-                'banner' => $this->resolvePublicImageUrl($promotion->banner ?? null),
-                'thumbnail' => $this->resolvePublicImageUrl($promotion->thumbnail ?? null),
-                'image' => $this->resolvePublicImageUrl($promotion->banner ?? null)
-                    ?: $this->resolvePublicImageUrl($promotion->thumbnail ?? null),
-                'images' => array_values(array_filter(array_unique([
-                    $this->resolvePublicImageUrl($promotion->banner ?? null),
-                    $this->resolvePublicImageUrl($promotion->thumbnail ?? null),
-                ]))),
+                'banner' => null,
+                'thumbnail' => null,
+                'image' => null,
+                'images' => [],
                 'discount_type' => $promotion->discount_type,
                 'discount_value' => $promotion->discount_value ? (float) $promotion->discount_value : null,
                 'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
                 'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
                 'status' => $promotion->status,
                 'is_active' => (bool) $promotion->is_active,
-                'url' => $promotionUrl,
+                'url' => null,
                 'products' => $products,
                 'products_count' => $promotion->items->count(),
             ],

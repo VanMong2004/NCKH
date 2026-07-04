@@ -26,7 +26,8 @@ class AdminProductService
             ->with([
                 'category:id,name',
                 'department:id,name,code',
-                'images:id,product_id,url,type,position',
+                'thumbnailImage:id,product_id,url,type,position',
+                'primaryImage:id,product_id,url,type,position',
                 'variants:id,product_id,price,stock,is_active',
             ]);
 
@@ -127,11 +128,8 @@ class AdminProductService
                     => $product->category?->name,
 
                 'thumbnail'
-                    => optional(
-                        $product->images
-                            ->where('type', 'thumbnail')
-                            ->first()
-                    )->url,
+                    => $product->thumbnailImage?->url
+                        ?? $product->primaryImage?->url,
 
                 'variants_count'
                     => $product->variants->count(),

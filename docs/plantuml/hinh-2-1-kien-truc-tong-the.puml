@@ -1,0 +1,33 @@
+@startuml
+title Hình 2.1. Kiến trúc tổng thể của hệ thống
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+actor "Khách truy cập" as Guest
+actor "Sinh viên/\nNgười dùng" as User
+actor "Quản trị viên" as Admin
+
+component "React Frontend\n(SPA)" as React
+component "Laravel REST API" as Laravel
+database "MySQL Database" as DB
+component "File Storage\n(public/images, storage)" as Storage
+component "Payment Module\nCOD / Giả lập ngân hàng" as Payment
+component "OpenAI API" as OpenAI
+database "Vector Store /\nKho tri thức" as Vector
+component "n8n Automation" as N8N
+
+Guest --> React : Truy cập website
+User --> React : Mua hàng, theo dõi đơn
+Admin --> React : Quản trị hệ thống
+
+React --> Laravel : Gọi REST API
+Laravel --> DB : Đọc/ghi dữ liệu
+Laravel --> Storage : Lưu/đọc ảnh, file
+Laravel --> Payment : Tạo giao dịch, nhận kết quả
+Laravel --> OpenAI : Chatbot, caption, tóm tắt
+OpenAI --> Vector : File search tri thức
+Laravel <--> N8N : Webhook / callback
+
+@enduml

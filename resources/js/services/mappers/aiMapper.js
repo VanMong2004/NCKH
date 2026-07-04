@@ -34,6 +34,7 @@ export function mapAiMessage(item = {}) {
         sources: normalizeArray(item.sources).map(mapAiSource),
         toolCalls: normalizeArray(item.tool_calls || item.toolCalls).map(mapAiToolCall),
         products: normalizeArray(item.products),
+        promotions: normalizeArray(item.promotions),
         conversationId: item.conversation_id || item.conversationId || null,
         parentMessageId: item.parent_message_id || item.parentMessageId || null,
         guestToken: item.guest_token || item.guestToken || '',
@@ -53,6 +54,7 @@ export function mapAiChatResponse(response = {}, question = '') {
         sources: data.sources || [],
         tool_calls: data.tool_calls || [],
         products: data.products || [],
+        promotions: data.promotions || [],
         conversation_id: data.conversation_id || null,
         parent_message_id: data.parent_message_id || null,
         guest_token: data.guest_token || '',
@@ -98,6 +100,7 @@ export function mapAiConversationDetailResponse(response = {}) {
                 sources: [],
                 toolCalls: [],
                 products: [],
+                promotions: [],
                 conversationId: data.id || null,
                 parentMessageId: null,
                 guestToken: data.guest_token || '',
@@ -127,6 +130,7 @@ export function mapAiConversationDetailResponse(response = {}) {
                     sources: normalizeArray(message.sources).map(mapAiSource),
                     toolCalls: normalizeArray(message.tool_calls).map(mapAiToolCall),
                     products: normalizeArray(message.products),
+                    promotions: normalizeArray(message.promotions),
                     conversationId: data.id || null,
                     parentMessageId: parentId || null,
                     guestToken: data.guest_token || '',
@@ -144,6 +148,7 @@ export function mapAiConversationDetailResponse(response = {}) {
             pair.sources = normalizeArray(message.sources).map(mapAiSource);
             pair.toolCalls = normalizeArray(message.tool_calls).map(mapAiToolCall);
             pair.products = normalizeArray(message.products);
+            pair.promotions = normalizeArray(message.promotions);
             pair.parentMessageId = parentId;
             pair.raw.assistantMessage = message;
         });
@@ -174,6 +179,7 @@ export function mapAiConversationDetailResponse(response = {}) {
                 sources: [],
                 toolCalls: [],
                 products: [],
+                promotions: [],
                 conversationId: data.id || null,
                 guestToken: data.guest_token || '',
                 createdAt: message.created_at || '',
@@ -196,6 +202,7 @@ export function mapAiConversationDetailResponse(response = {}) {
                     sources: normalizeArray(message.sources).map(mapAiSource),
                     toolCalls: normalizeArray(message.tool_calls).map(mapAiToolCall),
                     products: normalizeArray(message.products),
+                    promotions: normalizeArray(message.promotions),
                     conversationId: data.id || null,
                     guestToken: data.guest_token || '',
                     createdAt: message.created_at || '',
@@ -214,6 +221,7 @@ export function mapAiConversationDetailResponse(response = {}) {
             currentPair.sources = normalizeArray(message.sources).map(mapAiSource);
             currentPair.toolCalls = normalizeArray(message.tool_calls).map(mapAiToolCall);
             currentPair.products = normalizeArray(message.products);
+            currentPair.promotions = normalizeArray(message.promotions);
             currentPair.raw.assistantMessage = message;
 
             pairs.push(currentPair);

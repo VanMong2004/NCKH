@@ -2,9 +2,10 @@
 
 namespace App\Services\Chat;
 
+use App\Jobs\SummarizeChatConversationJob;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
-use App\Jobs\SummarizeChatConversationJob;
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -58,6 +59,7 @@ class OpenAiHybridRagChatService
                     'intent' => $openAiResult['intent'] ?? 'unknown',
                     'debug' => $openAiResult['debug'] ?? [],
                     'products' => $openAiResult['products'] ?? [],
+                    'promotions' => $openAiResult['promotions'] ?? [],
                 ],
             ]);
 
@@ -69,9 +71,10 @@ class OpenAiHybridRagChatService
                 'parent_message_id' => $userMessage->id,
                 'message_id' => $assistantMessage->id,
                 'answer' => $assistantMessage->content,
-                'sources' => [],
-                'tool_calls' => [],
+                'sources' => $openAiResult['sources'] ?? [],
+                'tool_calls' => $openAiResult['tool_calls'] ?? [],
                 'products' => $openAiResult['products'] ?? [],
+                'promotions' => $openAiResult['promotions'] ?? [],
             ];
         });
 
@@ -223,92 +226,265 @@ class OpenAiHybridRagChatService
     {
         $startedAt = microtime(true);
         $intent = $this->detectIntent($latestMessage);
-        $tools = $this->tools();
+
+        if ($intent !== 'rag') {
+            $result = $this->handleDynamicIntent($intent, $latestMessage, $user);
+
+            return [
+                ...$result,
+                'debug' => [
+                    'intent' => $intent,
+                    'tool_count' => count($result['tool_calls'] ?? []),
+                    'tool_names' => collect($result['tool_calls'] ?? [])->pluck('name')->unique()->values()->toArray(),
+                    'product_count' => count($result['products'] ?? []),
+                    'promotion_count' => count($result['promotions'] ?? []),
+                    'source_count' => 0,
+                    'tool_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                    'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                ],
+            ];
+        }
 
         $response = $this->createResponse([
             'model' => config('services.openai.chat_model'),
             'instructions' => $this->systemPrompt(),
             'input' => $this->buildInput($conversation),
-            'tools' => $tools,
+            'tools' => $this->tools(),
             'max_output_tokens' => 700,
         ]);
 
-        $allToolCalls = [];
-        $toolDurationMs = 0;
-        $loop = 0;
-
-        while ($loop < 3) {
-            $loop++;
-
-            $toolCalls = $this->extractFunctionCalls($response);
-
-            if (empty($toolCalls)) {
-                break;
-            }
-
-            $toolOutputs = [];
-
-            foreach ($toolCalls as $toolCall) {
-                $toolStartedAt = microtime(true);
-                $arguments = json_decode($toolCall['arguments'] ?? '{}', true) ?: [];
-
-                $result = $this->productToolService->execute(
-                    $toolCall['name'],
-                    $arguments,
-                    $user
-                );
-
-                $allToolCalls[] = [
-                    'name' => $toolCall['name'],
-                    'arguments' => $arguments,
-                    'result' => $result,
-                    'summary' => $this->summarizeToolResult($toolCall['name'], $result),
-                ];
-                $toolDurationMs += (int) round((microtime(true) - $toolStartedAt) * 1000);
-
-                $toolOutputs[] = [
-                    'type' => 'function_call_output',
-                    'call_id' => $toolCall['call_id'],
-                    'output' => json_encode($result, JSON_UNESCAPED_UNICODE),
-                ];
-            }
-
-            $response = $this->createResponse([
-                'model' => config('services.openai.chat_model'),
-                'instructions' => $this->systemPrompt(),
-                'previous_response_id' => $response['id'] ?? null,
-                'input' => $toolOutputs,
-                'tools' => $tools,
-                'max_output_tokens' => 700,
-            ]);
-        }
-
-        $answer = $this->extractAnswer($response);
+        $answer = $this->sanitizeAnswer($this->extractAnswer($response));
         $sources = $this->extractSources($response);
-        $products = $this->extractProductsFromToolCalls($allToolCalls);
-        $answer = $this->normalizeFallbackAnswer($answer, $intent, $allToolCalls, $sources);
-        $answer = $this->sanitizeAnswer($answer);
 
-        if (!$answer) {
-            $answer = 'Hiện tại tôi chưa tìm thấy thông tin phù hợp trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận.';
+        if ($answer === '') {
+            $answer = 'Hiện tại tôi chưa tìm thấy thông tin này trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận.';
         }
 
         return [
             'response_id' => $response['id'] ?? null,
             'answer' => $answer,
-            'intent' => $intent,
+            'intent' => 'rag',
             'sources' => $sources,
-            'tool_calls' => $allToolCalls,
-            'products' => $products,
+            'tool_calls' => [],
+            'products' => [],
+            'promotions' => [],
             'debug' => [
-                'intent' => $intent,
-                'tool_count' => count($allToolCalls),
-                'tool_names' => collect($allToolCalls)->pluck('name')->unique()->values()->toArray(),
-                'product_count' => count($products),
+                'intent' => 'rag',
+                'tool_count' => 0,
+                'tool_names' => [],
+                'product_count' => 0,
+                'promotion_count' => 0,
                 'source_count' => count($sources),
-                'tool_duration_ms' => $toolDurationMs,
+                'tool_duration_ms' => 0,
                 'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
             ],
+        ];
+    }
+
+    private function handleDynamicIntent(string $intent, string $message, $user): array
+    {
+        return match ($intent) {
+            'product_search' => $this->handleProductSearchIntent($message, $user),
+            'product_price' => $this->handleProductInfoIntent($message, $user, 'get_product_price', 'product_price'),
+            'product_stock' => $this->handleProductInfoIntent($message, $user, 'get_product_stock', 'product_stock'),
+            'product_variant' => $this->handleProductInfoIntent($message, $user, 'get_product_variants', 'product_variant'),
+            'order_query' => $this->handleOrderIntent($message, $user),
+            'promotion_query' => $this->handlePromotionIntent($message, $user),
+            default => $this->dynamicEmptyResponse('rag', [], 'Hiện tại tôi chưa tìm thấy thông tin này trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận.'),
+        };
+    }
+
+    private function handleProductSearchIntent(string $message, $user): array
+    {
+        $query = $this->extractProductQuery($message);
+        $toolName = $query === '' ? 'get_product_recommendations' : 'search_products';
+        $arguments = $query === ''
+            ? ['type' => 'popular', 'limit' => 5]
+            : ['query' => $query, 'limit' => 5];
+
+        $result = $this->productToolService->execute($toolName, $arguments, $user);
+        $toolCalls = [[
+            'name' => $toolName,
+            'arguments' => $arguments,
+            'result' => $result,
+            'summary' => $this->summarizeToolResult($toolName, $result),
+        ]];
+
+        $products = $this->extractProductsFromToolCalls($toolCalls);
+
+        if (empty($products)) {
+            return $this->dynamicEmptyResponse('product_search', $toolCalls, 'Mình chưa tìm thấy sản phẩm phù hợp');
+        }
+
+        $answer = $query === ''
+            ? 'Mình đã lấy một số sản phẩm phù hợp từ hệ thống.'
+            : 'Mình đã tìm thấy ' . count($products) . " sản phẩm phù hợp với '{$query}'.";
+
+        return $this->dynamicSuccessResponse('product_search', $answer, $toolCalls, $products);
+    }
+
+    private function handleProductInfoIntent(string $message, $user, string $toolName, string $intent): array
+    {
+        $productName = $this->extractProductQuery($message);
+
+        if ($productName === '') {
+            return $this->dynamicEmptyResponse($intent, [], 'Mình chưa tìm thấy sản phẩm phù hợp');
+        }
+
+        $arguments = match ($toolName) {
+            'get_product_price', 'get_product_stock' => [
+                'product_name' => $productName,
+                'size' => null,
+                'color' => null,
+            ],
+            default => [
+                'product_name' => $productName,
+            ],
+        };
+
+        $result = $this->productToolService->execute($toolName, $arguments, $user);
+        $toolCalls = [[
+            'name' => $toolName,
+            'arguments' => $arguments,
+            'result' => $result,
+            'summary' => $this->summarizeToolResult($toolName, $result),
+        ]];
+        $products = $this->extractProductsFromToolCalls($toolCalls);
+
+        if (empty($result['found'])) {
+            return $this->dynamicEmptyResponse($intent, $toolCalls, 'Mình chưa tìm thấy sản phẩm phù hợp');
+        }
+
+        $answer = match ($intent) {
+            'product_price' => 'Mình đã lấy giá sản phẩm mới nhất từ hệ thống.',
+            'product_stock' => 'Mình đã kiểm tra tồn kho sản phẩm trong hệ thống.',
+            default => 'Mình đã lấy thông tin biến thể sản phẩm trong hệ thống.',
+        };
+
+        return $this->dynamicSuccessResponse($intent, $answer, $toolCalls, $products);
+    }
+
+    private function handleOrderIntent(string $message, $user): array
+    {
+        if (!$user) {
+            return $this->dynamicEmptyResponse('order_query', [], 'Không tìm thấy đơn hàng');
+        }
+
+        $orderCode = $this->extractOrderCode($message);
+        $query = Order::query()
+            ->with(['payments:id,order_id,method,status,amount', 'items:id,order_id,quantity'])
+            ->where('user_id', $user->id)
+            ->latest();
+
+        if ($orderCode) {
+            $query->where('order_code', $orderCode);
+        }
+
+        $orders = $query->limit($orderCode ? 1 : 3)->get();
+
+        if ($orders->isEmpty()) {
+            return $this->dynamicEmptyResponse('order_query', [], 'Không tìm thấy đơn hàng');
+        }
+
+        $lines = $orders->map(function ($order) {
+            $payment = $order->payments->first();
+            $total = number_format((float) ($order->grand_total ?? $order->total ?? 0), 0, ',', '.') . ' đ';
+
+            return "{$order->order_code}: trạng thái {$order->status}, thanh toán " . ($payment?->status ?? 'pending') . ", tổng {$total}.";
+        })->implode("\n");
+
+        return [
+            'response_id' => null,
+            'answer' => "Mình đã tra cứu đơn hàng trong hệ thống:\n{$lines}",
+            'intent' => 'order_query',
+            'sources' => [],
+            'tool_calls' => [],
+            'products' => [],
+            'promotions' => [],
+        ];
+    }
+
+    private function handlePromotionIntent(string $message, $user): array
+    {
+        $promotionQuery = $this->extractPromotionQuery($message);
+        $toolCalls = [];
+
+        if ($this->isPromotionProductQuestion($message)) {
+            $result = $this->productToolService->execute('get_promotion_products', [
+                'query' => $promotionQuery,
+                'limit' => 6,
+            ], $user);
+
+            $toolCalls[] = [
+                'name' => 'get_promotion_products',
+                'arguments' => [
+                    'query' => $promotionQuery,
+                    'limit' => 6,
+                ],
+                'result' => $result,
+                'summary' => $this->summarizeToolResult('get_promotion_products', $result),
+            ];
+
+            $products = $this->extractProductsFromToolCalls($toolCalls);
+            $promotions = $this->extractPromotionsFromToolCalls($toolCalls);
+
+            if (empty($products)) {
+                return $this->dynamicEmptyResponse('promotion_query', $toolCalls, 'Hiện chưa có chương trình khuyến mãi phù hợp');
+            }
+
+            $promotionTitle = data_get($result, 'promotion.title', 'chương trình khuyến mãi đang diễn ra');
+
+            return [
+                'response_id' => null,
+                'answer' => 'Mình đã tìm thấy sản phẩm trong ' . $promotionTitle . '.',
+                'intent' => 'promotion_query',
+                'sources' => [],
+                'tool_calls' => $toolCalls,
+                'products' => $products,
+                'promotions' => $promotions,
+            ];
+        }
+
+        $toolName = $promotionQuery !== '' ? 'search_promotions' : 'get_active_promotions';
+        $arguments = $promotionQuery !== ''
+            ? ['query' => $promotionQuery, 'limit' => 5]
+            : ['limit' => 5];
+
+        $result = $this->productToolService->execute($toolName, $arguments, $user);
+        $toolCalls[] = [
+            'name' => $toolName,
+            'arguments' => $arguments,
+            'result' => $result,
+            'summary' => $this->summarizeToolResult($toolName, $result),
+        ];
+
+        $promotions = $this->extractPromotionsFromToolCalls($toolCalls);
+
+        if (empty($promotions)) {
+            return $this->dynamicEmptyResponse('promotion_query', $toolCalls, 'Hiện chưa có chương trình khuyến mãi phù hợp');
+        }
+
+        $lines = collect($promotions)
+            ->take(5)
+            ->map(function ($promotion, int $index) {
+                $parts = collect([
+                    $this->formatDiscountText($promotion['discount_type'] ?? null, $promotion['discount_value'] ?? null),
+                    $this->formatPromotionTime($promotion),
+                    !empty($promotion['min_order_value']) ? 'Điều kiện từ ' . number_format((float) $promotion['min_order_value'], 0, ',', '.') . ' đ' : null,
+                ])->filter()->implode(', ');
+
+                return ($index + 1) . '. ' . ($promotion['title'] ?? 'Khuyến mãi') . ($parts !== '' ? ' (' . $parts . ')' : '');
+            })
+            ->implode("\n");
+
+        return [
+            'response_id' => null,
+            'answer' => "Hiện CTUT Store đang có các chương trình khuyến mãi:\n{$lines}",
+            'intent' => 'promotion_query',
+            'sources' => [],
+            'tool_calls' => $toolCalls,
+            'products' => [],
+            'promotions' => $promotions,
         ];
     }
 
@@ -325,7 +501,7 @@ class OpenAiHybridRagChatService
         try {
             return Http::withToken($apiKey)
                 ->acceptJson()
-                ->timeout(75)
+                ->timeout(30)
                 ->post($baseUrl . '/responses', $payload)
                 ->throw()
                 ->json();
@@ -337,7 +513,7 @@ class OpenAiHybridRagChatService
     private function buildInput(ChatConversation $conversation): array
     {
         $limit = (int) config('services.openai.chat_max_history', 12);
-        $limit = max(12, min($limit, 16));
+        $limit = max(6, min($limit, 12));
 
         $conversation->loadMissing('summary');
         $messages = $this->sessionService->recentMessages($conversation, $limit);
@@ -365,243 +541,84 @@ class OpenAiHybridRagChatService
 
     private function tools(): array
     {
-        $tools = [];
-
         $vectorStoreId = config('services.openai.vector_store_id');
 
-        if ($vectorStoreId) {
-            $tools[] = [
-                'type' => 'file_search',
-                'vector_store_ids' => [$vectorStoreId],
-                'max_num_results' => 3,
-            ];
+        if (!$vectorStoreId) {
+            return [];
         }
 
-        return array_merge($tools, $this->productTools());
-    }
-
-    private function productTools(): array
-    {
-        return [
-            [
-                'type' => 'function',
-                'name' => 'get_product_by_name',
-                'description' => 'Lấy thông tin chi tiết sản phẩm từ database Laravel theo tên sản phẩm.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'name' => [
-                            'type' => 'string',
-                            'description' => 'Tên hoặc một phần tên sản phẩm khách hàng hỏi.',
-                        ],
-                    ],
-                    'required' => ['name'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'search_products',
-                'description' => 'Tìm danh sách sản phẩm phù hợp nhu cầu khách hàng từ database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'query' => [
-                            'type' => 'string',
-                            'description' => 'Từ khóa hoặc nhu cầu tìm sản phẩm.',
-                        ],
-                        'limit' => [
-                            'type' => 'integer',
-                            'description' => 'Số sản phẩm tối đa cần trả về.',
-                        ],
-                    ],
-                    'required' => ['query'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_product_recommendations',
-                'description' => 'Lấy danh sách sản phẩm nổi bật, hot, phổ biến, bán chạy, mới nhất hoặc đánh giá cao từ database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'type' => [
-                            'type' => 'string',
-                            'enum' => ['popular', 'featured', 'best_selling', 'top_rated', 'newest'],
-                            'description' => 'Loại gợi ý: popular/hot/phổ biến, featured/nổi bật, best_selling/bán chạy, top_rated/đánh giá cao, newest/mới nhất.',
-                        ],
-                        'limit' => [
-                            'type' => 'integer',
-                            'description' => 'Số sản phẩm tối đa cần trả về.',
-                        ],
-                    ],
-                    'required' => ['type'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_product_stock',
-                'description' => 'Lấy tồn kho mới nhất theo sản phẩm/kích thước/màu sắc từ database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'product_name' => [
-                            'type' => 'string',
-                            'description' => 'Tên sản phẩm.',
-                        ],
-                        'size' => [
-                            'type' => 'string',
-                            'description' => 'Kích thước nếu khách hàng có hỏi.',
-                        ],
-                        'color' => [
-                            'type' => 'string',
-                            'description' => 'Màu sắc nếu khách hàng có hỏi.',
-                        ],
-                    ],
-                    'required' => ['product_name'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_product_price',
-                'description' => 'Lấy giá mới nhất theo sản phẩm/kích thước/màu sắc từ database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'product_name' => [
-                            'type' => 'string',
-                            'description' => 'Tên sản phẩm.',
-                        ],
-                        'size' => [
-                            'type' => 'string',
-                            'description' => 'Kích thước nếu khách hàng có hỏi.',
-                        ],
-                        'color' => [
-                            'type' => 'string',
-                            'description' => 'Màu sắc nếu khách hàng có hỏi.',
-                        ],
-                    ],
-                    'required' => ['product_name'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_product_variants',
-                'description' => 'Lấy danh sách biến thể size/màu/giá/tồn kho mới nhất của sản phẩm từ database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'product_name' => [
-                            'type' => 'string',
-                            'description' => 'Tên sản phẩm.',
-                        ],
-                    ],
-                    'required' => ['product_name'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_promotion_by_name',
-                'description' => 'Lay chi tiet mot chuong trinh khuyen mai dang dien ra tu database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'name' => [
-                            'type' => 'string',
-                            'description' => 'Ten hoac mot phan ten chuong trinh khuyen mai.',
-                        ],
-                    ],
-                    'required' => ['name'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'search_promotions',
-                'description' => 'Tim danh sach chuong trinh khuyen mai dang hieu luc theo tu khoa tu database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'query' => [
-                            'type' => 'string',
-                            'description' => 'Tu khoa khuyen mai nhu tan sinh vien, giam gia, uu dai.',
-                        ],
-                        'limit' => [
-                            'type' => 'integer',
-                            'description' => 'So khuyen mai toi da can tra ve.',
-                        ],
-                    ],
-                    'required' => ['query'],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_active_promotions',
-                'description' => 'Lay danh sach khuyen mai dang dien ra tai CTUT Store tu database Laravel.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'limit' => [
-                            'type' => 'integer',
-                            'description' => 'So khuyen mai toi da can tra ve.',
-                        ],
-                    ],
-                    'additionalProperties' => false,
-                ],
-            ],
-            [
-                'type' => 'function',
-                'name' => 'get_promotion_products',
-                'description' => 'Lay danh sach san pham nam trong mot chuong trinh khuyen mai dang dien ra tai CTUT Store.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'query' => [
-                            'type' => 'string',
-                            'description' => 'Ten chuong trinh khuyen mai hoac tu khoa lien quan. De trong neu khach hoi chung ve san pham trong cac khuyen mai dang dien ra.',
-                        ],
-                        'limit' => [
-                            'type' => 'integer',
-                            'description' => 'So san pham toi da can tra ve.',
-                        ],
-                    ],
-                    'additionalProperties' => false,
-                ],
-            ],
-        ];
+        return [[
+            'type' => 'file_search',
+            'vector_store_ids' => [$vectorStoreId],
+            'max_num_results' => 3,
+        ]];
     }
 
     private function detectIntent(string $message): string
     {
-        $normalized = mb_strtolower(Str::ascii(trim($message)));
+        $text = Str::ascii(mb_strtolower(trim($message)));
 
-        if ($normalized === '') {
-            return 'unknown';
-        }
-
-        if (preg_match('/\b(best selling|ban chay|hot|popular|noi bat|top rated|high rating|danh gia cao|new products|latest|moi nhat)\b/u', $normalized)) {
-            return 'product_recommendation';
-        }
-
-        if (preg_match('/\b(ao|thun|polo|hoodie|balo|tui|non|mu|binh|ly|but|sticker|moc khoa|san pham|product|price|gia|stock|ton kho|size|mau|color)\b/u', $normalized)) {
-            return 'product_search';
-        }
-
-        if (preg_match('/\b(chinh sach|doi tra|van chuyen|thanh toan|bao hanh|huong dan|faq|policy|shipping|payment|return)\b/u', $normalized)) {
-            return 'policy_question';
-        }
-
-        if (preg_match('/\b(khuyen mai|giam gia|uu dai|voucher|coupon|sale|deal|promo|promotion)\b/u', $normalized)) {
+        if (
+            str_contains($text, 'khuyen mai') ||
+            str_contains($text, 'giam gia') ||
+            str_contains($text, 'voucher') ||
+            str_contains($text, 'deal') ||
+            str_contains($text, 'sale') ||
+            str_contains($text, 'uu dai')
+        ) {
             return 'promotion_query';
         }
 
-        return 'out_of_scope';
+        if (
+            str_contains($text, 'don hang') ||
+            str_contains($text, 'order') ||
+            str_contains($text, 'ord-')
+        ) {
+            return 'order_query';
+        }
+
+        if (
+            str_contains($text, 'gia') ||
+            str_contains($text, 'bao nhieu tien') ||
+            str_contains($text, 'price')
+        ) {
+            return 'product_price';
+        }
+
+        if (
+            str_contains($text, 'con hang') ||
+            str_contains($text, 'het hang') ||
+            str_contains($text, 'ton kho') ||
+            str_contains($text, 'stock')
+        ) {
+            return 'product_stock';
+        }
+
+        if (
+            str_contains($text, 'size') ||
+            str_contains($text, 'mau') ||
+            str_contains($text, 'color') ||
+            str_contains($text, 'kich thuoc') ||
+            str_contains($text, 'bien the')
+        ) {
+            return 'product_variant';
+        }
+
+        if (
+            str_contains($text, 'san pham') ||
+            str_contains($text, 'ao') ||
+            str_contains($text, 'hoodie') ||
+            str_contains($text, 'thun') ||
+            str_contains($text, 'balo') ||
+            str_contains($text, 'sticker') ||
+            str_contains($text, 'tui') ||
+            str_contains($text, 'moc khoa') ||
+            str_contains($text, 'product')
+        ) {
+            return 'product_search';
+        }
+
+        return 'rag';
     }
 
     private function summarizeToolResult(string $name, array $result): array
@@ -620,58 +637,12 @@ class OpenAiHybridRagChatService
             'name' => $name,
             'found' => (bool) ($result['found'] ?? !empty($products)),
             'product_count' => count($products),
+            'promotion_count' => count($result['promotions'] ?? []) + (!empty($result['promotion']) ? 1 : 0),
             'message' => $result['message'] ?? null,
             'type' => $result['type'] ?? null,
             'query' => $result['query'] ?? null,
             'keywords' => $result['keywords'] ?? [],
         ];
-    }
-
-    private function normalizeFallbackAnswer(string $answer, string $intent, array $toolCalls, array $sources): string
-    {
-        $answer = trim($answer);
-        $hasProductTool = collect($toolCalls)->contains(fn ($toolCall) => str_starts_with((string) ($toolCall['name'] ?? ''), 'get_product')
-            || ($toolCall['name'] ?? '') === 'search_products');
-        $hasFoundProduct = collect($toolCalls)->contains(fn ($toolCall) => (bool) data_get($toolCall, 'summary.found'));
-
-        if (in_array($intent, ['product_search', 'product_recommendation'], true) && $hasProductTool && !$hasFoundProduct) {
-            return 'Mình chưa tìm thấy sản phẩm phù hợp trong hệ thống CTUT Store. Bạn có thể thử nhập tên sản phẩm cụ thể hơn, ví dụ áo thun, hoodie, balo, bình giữ nhiệt hoặc sản phẩm CTUT bạn đang cần tìm.';
-        }
-
-        $hasPromotionTool = collect($toolCalls)->contains(fn ($toolCall) => in_array(($toolCall['name'] ?? ''), [
-            'get_promotion_by_name',
-            'search_promotions',
-            'get_active_promotions',
-            'get_promotion_products',
-        ], true));
-        $hasFoundPromotion = collect($toolCalls)->contains(function ($toolCall) {
-            $result = $toolCall['result'] ?? [];
-
-            return !empty($result['promotion']) || !empty($result['promotions']) || !empty($result['products']);
-        });
-
-        if ($intent === 'promotion_query' && $hasPromotionTool && !$hasFoundPromotion) {
-            return 'Hien tai minh chua tim thay khuyen mai phu hop trong he thong CTUT Store. Ban co the hoi ro hon theo ten chuong trinh hoac hoi "khuyen mai dang dien ra" de minh kiem tra giup ban.';
-        }
-
-        $badFallbacks = [
-            'tài liệu không cung cấp',
-            'dữ liệu không cung cấp',
-            'không có trong tài liệu',
-            'document does not provide',
-            'uploaded a document',
-            'solidity',
-            'smart contract',
-        ];
-
-        $normalizedAnswer = mb_strtolower(Str::ascii($answer));
-        $hasBadFallback = collect($badFallbacks)->contains(fn ($text) => str_contains($normalizedAnswer, Str::ascii($text)));
-
-        if ($intent === 'out_of_scope' && (empty($sources) || $hasBadFallback)) {
-            return 'Mình chủ yếu hỗ trợ thông tin về sản phẩm, đơn hàng, thanh toán và chính sách của CTUT Store. Với nội dung này, bạn nên xem kênh thông tin chính thức phù hợp để được tư vấn chính xác hơn nhé.';
-        }
-
-        return $answer;
     }
 
     private function sanitizeAnswer(string $answer): string
@@ -692,7 +663,7 @@ class OpenAiHybridRagChatService
 
     private function extractProductsFromToolCalls(array $toolCalls): array
     {
-        $products = collect($toolCalls)
+        return collect($toolCalls)
             ->flatMap(function ($toolCall) {
                 $result = $toolCall['result'] ?? [];
 
@@ -708,28 +679,40 @@ class OpenAiHybridRagChatService
             })
             ->filter(fn ($product) => !empty($product['id']))
             ->unique('id')
-            ->take(3)
+            ->take(6)
             ->values()
             ->toArray();
-
-        return $products;
     }
 
-    private function extractFunctionCalls(array $response): array
+    private function extractPromotionsFromToolCalls(array $toolCalls): array
     {
-        $calls = [];
+        return collect($toolCalls)
+            ->flatMap(function ($toolCall) {
+                $result = $toolCall['result'] ?? [];
+                $promotions = [];
 
-        foreach (($response['output'] ?? []) as $item) {
-            if (($item['type'] ?? null) === 'function_call') {
-                $calls[] = [
-                    'call_id' => $item['call_id'] ?? null,
-                    'name' => $item['name'] ?? null,
-                    'arguments' => $item['arguments'] ?? '{}',
-                ];
-            }
-        }
+                if (!empty($result['promotion']) && is_array($result['promotion'])) {
+                    $promotions[] = $result['promotion'];
+                }
 
-        return array_values(array_filter($calls, fn ($call) => $call['call_id'] && $call['name']));
+                if (!empty($result['promotions']) && is_array($result['promotions'])) {
+                    $promotions = array_merge($promotions, $result['promotions']);
+                }
+
+                if (!empty($result['products']) && is_array($result['products'])) {
+                    foreach ($result['products'] as $product) {
+                        if (!empty($product['promotion']) && is_array($product['promotion'])) {
+                            $promotions[] = $product['promotion'];
+                        }
+                    }
+                }
+
+                return $promotions;
+            })
+            ->filter(fn ($promotion) => !empty($promotion['id']) || !empty($promotion['title']))
+            ->unique(fn ($promotion) => ($promotion['id'] ?? '') . '|' . ($promotion['title'] ?? ''))
+            ->values()
+            ->toArray();
     }
 
     private function extractAnswer(array $response): string
@@ -779,162 +762,155 @@ class OpenAiHybridRagChatService
             ->toArray();
     }
 
+    private function extractPromotionQuery(string $message): string
+    {
+        return (string) Str::of(Str::ascii(mb_strtolower(trim($message))))
+            ->replace([
+                'cho minh',
+                'giup minh',
+                'shop oi',
+                'toi muon hoi',
+                'xin hoi',
+                'khuyen mai',
+                'chuong trinh',
+                'uu dai',
+                'giam gia',
+                'voucher',
+                'deal',
+                'sale',
+                'san pham',
+                'mat hang',
+                'trong',
+                'cac',
+                'dot',
+                'dang dien ra',
+                'ap dung',
+            ], ' ')
+            ->replace(['?', '.', ',', ':'], ' ')
+            ->squish();
+    }
+
+    private function extractProductQuery(string $message): string
+    {
+        return (string) Str::of(Str::ascii(mb_strtolower(trim($message))))
+            ->replace([
+                'shop oi',
+                'cho minh',
+                'giup minh',
+                'tu van',
+                'tim',
+                'kiem',
+                'san pham',
+                'product',
+                'gia bao nhieu',
+                'bao nhieu tien',
+                'con hang khong',
+                'het hang chua',
+                'size nao',
+                'mau gi',
+                'co size nao',
+                'co mau nao',
+                'co bien the nao',
+            ], ' ')
+            ->replace(['?', '.', ',', ':'], ' ')
+            ->explode(' ')
+            ->filter(fn ($token) => $token !== '' && !in_array((string) $token, [
+                'co',
+                'khong',
+                'nao',
+                'size',
+                'mau',
+                'color',
+                'bien',
+                'the',
+                'kich',
+                'thuoc',
+            ], true))
+            ->implode(' ');
+    }
+
+    private function isPromotionProductQuestion(string $message): bool
+    {
+        $normalized = Str::ascii(mb_strtolower(trim($message)));
+
+        return str_contains($normalized, 'san pham')
+            || str_contains($normalized, 'mat hang')
+            || str_contains($normalized, 'ap dung');
+    }
+
+    private function extractOrderCode(string $message): ?string
+    {
+        if (preg_match('/ORD-\d{8}-\d+/i', $message, $matches)) {
+            return strtoupper($matches[0]);
+        }
+
+        return null;
+    }
+
+    private function formatDiscountText(?string $type, mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($type === 'percent') {
+            return 'Giảm ' . rtrim(rtrim(number_format((float) $value, 2, ',', '.'), '0'), ',') . '%';
+        }
+
+        if ($type === 'fixed') {
+            return 'Giảm ' . number_format((float) $value, 0, ',', '.') . ' đ';
+        }
+
+        return null;
+    }
+
+    private function formatPromotionTime(array $promotion): ?string
+    {
+        $start = $promotion['start_date'] ?? null;
+        $end = $promotion['end_date'] ?? null;
+
+        if (!$start && !$end) {
+            return null;
+        }
+
+        return trim(($start ?: 'Đang áp dụng') . ' - ' . ($end ?: 'Chưa xác định'));
+    }
+
+    private function dynamicSuccessResponse(string $intent, string $answer, array $toolCalls, array $products = [], array $promotions = []): array
+    {
+        return [
+            'response_id' => null,
+            'answer' => $answer,
+            'intent' => $intent,
+            'sources' => [],
+            'tool_calls' => $toolCalls,
+            'products' => $products,
+            'promotions' => $promotions,
+        ];
+    }
+
+    private function dynamicEmptyResponse(string $intent, array $toolCalls, string $answer): array
+    {
+        return [
+            'response_id' => null,
+            'answer' => $answer,
+            'intent' => $intent,
+            'sources' => [],
+            'tool_calls' => $toolCalls,
+            'products' => [],
+            'promotions' => [],
+        ];
+    }
+
     private function systemPrompt(): string
     {
         return <<<PROMPT
-    NGÔN NGỮ:
-    - Luôn trả lời bằng tiếng Việt, kể cả khi khách hỏi bằng tiếng Anh hoặc ngôn ngữ khác.
-    - Nếu khách hỏi tiếng Anh nhưng nội dung mơ hồ/ngoài phạm vi như "what news?", "what's new?", "tell me news", hãy trả lời ngắn gọn bằng tiếng Việt rằng mình chủ yếu hỗ trợ sản phẩm, đơn hàng, thanh toán và chính sách của CTUT Store; không tự lấy tài liệu không liên quan để trả lời.
-    - Không trả lời bằng tiếng Anh trừ khi khách yêu cầu rõ "reply in English" hoặc "answer in English".
-    - Không nhắc đến tài liệu, file, Vector Store, Solidity, smart contract hoặc nội dung ngoài CTUT Store nếu khách không hỏi đúng phạm vi đó.
+Bạn là trợ lý của CTUT Store.
 
-    QUY TẮC TRẢ LỜI NGOÀI PHẠM VI:
-    - Nếu khách hỏi nội dung không liên quan trực tiếp đến CTUT Store, sản phẩm, đơn hàng, thanh toán, vận chuyển, đổi trả, hướng dẫn mua hàng hoặc thông tin thương hiệu của shop, hãy trả lời tự nhiên và lịch sự.
-    - Không nói máy móc kiểu "tài liệu không cung cấp" hoặc "dữ liệu không cung cấp".
-    - Hãy nói rằng mình chủ yếu hỗ trợ CTUT Store và gợi ý người dùng liên hệ kênh phù hợp nếu cần thông tin chính xác.
-    - Ví dụ với câu "ngành đào tạo": "Mình chủ yếu hỗ trợ thông tin sản phẩm, đơn hàng, thanh toán và chính sách của CTUT Store. Với thông tin ngành đào tạo, bạn nên xem website chính thức của CTUT hoặc liên hệ phòng đào tạo để được tư vấn chính xác nhất."
-
-    Bạn là trợ lý bán hàng chính thức của CTUT Store.
-
-    NHIỆM VỤ:
-    - Tư vấn sản phẩm cho khách hàng.
-    - Trả lời câu hỏi về giá, kích thước, màu sắc, tồn kho.
-    - Gợi ý sản phẩm phù hợp với nhu cầu khách hàng.
-    - Trả lời câu hỏi về chính sách đổi trả, vận chuyển, thanh toán, hướng dẫn mua hàng, hướng dẫn chọn size và thông tin thương hiệu CTUT.
-
-    Quy tắc dữ liệu bắt buộc:
-    1. Với mọi câu hỏi có liên quan đến sản phẩm, ví dụ:
-    - shop có bán sản phẩm nào không
-    - sản phẩm này giá bao nhiêu
-    - còn hàng không
-    - có size/màu nào
-    - tư vấn/gợi ý sản phẩm
-    - sản phẩm phù hợp làm quà tặng
-    - khách hỏi tên một món hàng cụ thể
-    - Nếu khách hỏi tiếng Việt không dấu, viết tắt hoặc thiếu dấu như "shop ban cac loa ao nao", hãy hiểu theo nghĩa gần đúng là "shop bán các loại áo nào" và vẫn gọi tool search_products.
-    - Khi gọi search_products, nên truyền từ khóa sản phẩm chính, ví dụ: "ao", "balo", "non", "binh giu nhiet", thay vì truyền nguyên câu dài nếu có thể.
-
-    Quy tắc sản phẩm theo gợi ý/xếp hạng:
-    - Nếu khách hỏi "product hot", "hot products", "popular products", "sản phẩm hot", "sản phẩm nổi bật": gọi get_product_recommendations với type="popular" hoặc "featured".
-    - Nếu khách hỏi "product high rate review", "top rated products", "high rating products", "sản phẩm đánh giá cao": gọi get_product_recommendations với type="top_rated".
-    - Nếu khách hỏi "best selling products", "sản phẩm bán chạy": gọi get_product_recommendations với type="best_selling".
-    - Nếu khách hỏi "new products", "latest products", "sản phẩm mới nhất": gọi get_product_recommendations với type="newest".
-
-    Bắt buộc phải dùng tool/function gọi database Laravel trước.
-
-    Không được dùng File Search để xác nhận sản phẩm có bán hay không.
-    Không được dùng File Search để trả lời giá, tồn kho, size, màu, biến thể, sản phẩm hiện có.
-    Nếu tool trả found=false hoặc products rỗng:
-    - Phải nói rõ chưa tìm thấy sản phẩm phù hợp trong hệ thống.
-    - Không được lấy tài liệu FAQ/thương hiệu để suy ra rằng shop có bán sản phẩm đó.
-
-    2. Với thông tin động về sản phẩm như giá bán, biến thể, kích thước, màu sắc, tồn kho, tình trạng còn hàng:
-    - Luôn dùng tool/function gọi database Laravel.
-    - Không tự suy đoán giá, tồn kho, kích thước, màu sắc.
-
-    3. Với thông tin tĩnh như chính sách đổi trả, vận chuyển, thanh toán, hướng dẫn mua hàng, hướng dẫn chọn size, giới thiệu thương hiệu CTUT:
-    - Dùng File Search từ Vector Store.
-    - Chỉ trả lời dựa trên nội dung tìm được trong tài liệu.
-
-    4. Nếu không tìm thấy dữ liệu trong database hoặc tài liệu:
-    - Nói rõ: "Hiện tại tôi chưa tìm thấy thông tin này trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận."
-
-    5. Không bịa thông tin.
-
-    6. Trả lời ngắn gọn, thân thiện, rõ ràng như nhân viên chăm sóc khách hàng.
-
-    7. Nếu có nhiều sản phẩm phù hợp, hãy liệt kê tối đa 5 sản phẩm, kèm tên, giá nếu có, và tình trạng tồn kho nếu tool cung cấp.
-
-    8. Nếu tool trả về product_url thì luôn sử dụng đúng product_url. Không tự tạo URL. Không tự tạo link sản phẩm. Không tự tạo link ảnh.
-
-    9. Không cần hiển thị link sản phẩm trong câu trả lời.
-
-    10. Không cần hiển thị ảnh sản phẩm trong câu trả lời.
-
-    11. Frontend sẽ tự hiển thị card sản phẩm từ dữ liệu tool trả về.
-
-    12. Khi có sản phẩm phù hợp, chỉ trả lời phần tư vấn ngắn gọn, không tự tạo Markdown link hoặc Markdown ảnh.
-
-    PROMPT;
+Chỉ dùng file search cho dữ liệu tĩnh do admin đã upload như FAQ, chính sách, hướng dẫn mua hàng, giới thiệu cửa hàng.
+Không dùng file search để suy đoán sản phẩm, giá, tồn kho, khuyến mãi hoặc đơn hàng.
+Nếu không tìm thấy thông tin trong tài liệu thì nói rõ là chưa tìm thấy trong hệ thống, đừng trả lời link hay ảnh gì hết.
+Luôn trả lời bằng tiếng Việt, ngắn gọn, tự nhiên, không dùng markdown.
+PROMPT;
     }
-    // NGUYÊN TẮC:
-    // - Luôn trả lời bằng tiếng Việt.
-    // - Trả lời tự nhiên như nhân viên tư vấn.
-    // - Ngắn gọn.
-    // - Không lan man.
-    // - Không giải thích dài nếu khách không hỏi.
-
-    // ĐỊNH DẠNG:
-    //     Không sử dụng Markdown.
-    //     Không dùng:
-    //     *
-    //     **
-    //     #
-    //     ##
-    //     ###
-    //     __
-    //     ---
-    //     >
-    //     `
-    //     Không tạo bảng.
-    //     Không dùng code block.
-    //     Không in ký tự Markdown.
-    //     Chỉ dùng xuống dòng và dấu "-" khi cần.
-
-    // SẢN PHẨM:
-    //     Nếu tool trả về nhiều sản phẩm:
-    //         - Chỉ giới thiệu tối đa 3 sản phẩm phù hợp nhất.
-    //     Mỗi sản phẩm chỉ cần:
-    //         Tên
-    //         Giá
-    //         Khuyến mãi (nếu có)
-    //         Tồn kho
-    //         Màu
-    //         Size
-    //         Không liệt kê toàn bộ dữ liệu.
-
-    // HÌNH ẢNH
-    //     Nếu sản phẩm có image_url
-    //     hãy trả:
-    //     <image>
-    //     image_url
-    //     </image>
-    //     Không tự tạo URL.
-    //     Không suy đoán URL.
-
-    // LINK
-    //     Nếu có product_url
-    //     hãy trả:
-    //     <link>
-    //     product_url
-    //     </link>
-    //     Không tự tạo link.
-
-    // KHÔNG TÌM THẤY
-    //     Nếu không có dữ liệu:
-    //     "Xin lỗi, hiện mình chưa tìm thấy sản phẩm phù hợp."
-    //     Không được tự bịa.
-
-    // GIỌNG ĐIỆU
-    //     Không dùng:
-    //     "Dưới đây là..."
-    //     "Theo dữ liệu..."
-    //     "Tôi tìm thấy..."
-    //     "Thông tin như sau..."
-    //     Hãy trả lời như nhân viên bán hàng.
-    //     Ví dụ:
-    //     "Hiện shop có một số mẫu áo CTUT phù hợp với nhu cầu của bạn."
-
-    // QUAN TRỌNG
-    //     Chỉ sử dụng dữ liệu từ:
-    //     - File Search
-    //     - Function Tool
-    //     Không được tự tạo:
-    //     Giá
-    //     Khuyến mãi
-    //     Ảnh
-    //     Link
-    //     Tồn kho
-    //     Tên sản phẩm
-    
 }

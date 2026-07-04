@@ -103,7 +103,7 @@ export default function AdminDashboard() {
                             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
 
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Tổng quan nhanh tình hình vận hành CTUT Shop.
+                                Tổng quan nhanh tình hình vận hành CTUT UniShop.
                             </p>
                         </div>
                     </div>

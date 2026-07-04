@@ -1,0 +1,53 @@
+@startuml
+title Hình 2.3. Sơ đồ use case tổng quan
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+left to right direction
+
+actor "Khách truy cập" as Guest
+actor "Người dùng/\nSinh viên" as User
+actor "Quản trị viên" as Admin
+actor "Hệ thống\nthanh toán" as PaymentSystem
+actor "Chatbot AI" as Chatbot
+actor "n8n" as N8N
+
+rectangle "Cổng dịch vụ số CTUT Store" {
+  usecase "Xem sản phẩm" as UC_ViewProduct
+  usecase "Tìm kiếm sản phẩm" as UC_Search
+  usecase "Thêm giỏ hàng" as UC_Cart
+  usecase "Đặt hàng" as UC_Order
+  usecase "Thanh toán" as UC_Payment
+  usecase "Theo dõi đơn hàng" as UC_TrackOrder
+  usecase "Quản lý sản phẩm" as UC_AdminProduct
+  usecase "Quản lý đơn hàng" as UC_AdminOrder
+  usecase "Chatbot tư vấn" as UC_Chatbot
+  usecase "Thống kê" as UC_Analytics
+}
+
+Guest --> UC_ViewProduct
+Guest --> UC_Search
+Guest --> UC_Cart
+Guest --> UC_Order
+Guest --> UC_Payment
+Guest --> UC_Chatbot
+
+User --> UC_ViewProduct
+User --> UC_Search
+User --> UC_Cart
+User --> UC_Order
+User --> UC_Payment
+User --> UC_TrackOrder
+User --> UC_Chatbot
+
+Admin --> UC_AdminProduct
+Admin --> UC_AdminOrder
+Admin --> UC_Analytics
+Admin --> UC_Chatbot
+
+UC_Payment --> PaymentSystem : Gửi yêu cầu /\nnhận kết quả
+UC_Chatbot --> Chatbot : Gửi câu hỏi /\nnhận phản hồi
+UC_AdminProduct --> N8N : Gửi webhook\nđăng sản phẩm
+UC_Analytics --> N8N : Nhận callback /\nlog automation
+
+@enduml

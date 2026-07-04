@@ -408,6 +408,24 @@ class HomeService
 
     protected function featuredProducts($user = null)
     {
+        if (!$user) {
+            return Cache::remember(
+                'home:featured_products:guest:v1',
+                now()->addMinutes(self::HOME_CACHE_MINUTES),
+                function () {
+                    $products = Product::query()
+                        ->with($this->productRelations())
+                        ->where('is_active', true)
+                        ->where('is_featured', true)
+                        ->latest()
+                        ->limit(self::HOME_PRODUCT_LIMIT)
+                        ->get();
+
+                    return $this->formatProducts($products, null);
+                }
+            );
+        }
+
         $products = Product::query()
             ->with($this->productRelations())
             ->where('is_active', true)
@@ -421,6 +439,23 @@ class HomeService
 
     protected function newProducts($user = null)
     {
+        if (!$user) {
+            return Cache::remember(
+                'home:new_products:guest:v1',
+                now()->addMinutes(self::HOME_CACHE_MINUTES),
+                function () {
+                    $products = Product::query()
+                        ->with($this->productRelations())
+                        ->where('is_active', true)
+                        ->latest()
+                        ->limit(self::HOME_PRODUCT_LIMIT)
+                        ->get();
+
+                    return $this->formatProducts($products, null);
+                }
+            );
+        }
+
         $products = Product::query()
             ->with($this->productRelations())
             ->where('is_active', true)
@@ -433,6 +468,24 @@ class HomeService
 
     protected function bestSellingProducts($user = null)
     {
+        if (!$user) {
+            return Cache::remember(
+                'home:best_selling_products:guest:v1',
+                now()->addMinutes(self::HOME_CACHE_MINUTES),
+                function () {
+                    $products = Product::query()
+                        ->with($this->productRelations())
+                        ->where('is_active', true)
+                        ->withSum('variants', 'sold_stock')
+                        ->orderByDesc('variants_sum_sold_stock')
+                        ->limit(self::HOME_PRODUCT_LIMIT)
+                        ->get();
+
+                    return $this->formatProducts($products, null);
+                }
+            );
+        }
+
         $products = Product::query()
             ->with($this->productRelations())
             ->where('is_active', true)
@@ -446,6 +499,24 @@ class HomeService
 
     protected function topRatedProducts($user = null)
     {
+        if (!$user) {
+            return Cache::remember(
+                'home:top_rated_products:guest:v1',
+                now()->addMinutes(self::HOME_CACHE_MINUTES),
+                function () {
+                    $products = Product::query()
+                        ->with($this->productRelations())
+                        ->where('is_active', true)
+                        ->orderByDesc('average_rating')
+                        ->orderByDesc('total_reviews')
+                        ->limit(self::HOME_PRODUCT_LIMIT)
+                        ->get();
+
+                    return $this->formatProducts($products, null);
+                }
+            );
+        }
+
         $products = Product::query()
             ->with($this->productRelations())
             ->where('is_active', true)
@@ -507,17 +578,29 @@ class HomeService
         $productService = app(ProductService::class);
 
         return $products->map(
-            fn ($product) => $productService->formatProduct($product, $user)
+            fn ($product) => $productService->formatProductSummary($product, $user)
         );
     }
 
     protected function productRelations(): array
     {
         return [
-            'images:id,product_id,url,type,position',
-            'variants:id,product_id,size,color,price,stock,reserved_stock,sold_stock,is_active',
+            'thumbnailImage:id,product_id,url,type,position',
+            'primaryImage:id,product_id,url,type,position',
+            'variants' => function ($query) {
+                $query->select([
+                    'id',
+                    'product_id',
+                    'size',
+                    'color',
+                    'price',
+                    'stock',
+                    'reserved_stock',
+                    'sold_stock',
+                    'is_active',
+                ])->where('is_active', true);
+            },
             'category:id,parent_id,name,slug',
-            'category.parent:id,parent_id,name,slug',
             'department:id,name,slug,code',
         ];
     }

@@ -1,0 +1,40 @@
+@startuml
+title Hình 2.10. Sơ đồ luồng xử lý cập nhật trạng thái đơn hàng
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+actor "Admin" as Admin
+participant "React Admin" as ReactAdmin
+participant "Laravel API" as API
+participant "AdminOrderService" as AdminOrderService
+database "MySQL Database" as DB
+participant "InventoryService" as InventoryService
+
+Admin -> ReactAdmin : Chọn trạng thái mới
+ReactAdmin -> API : PATCH /api/admin/orders/{id}/status
+API -> API : Kiểm tra auth:sanctum và role admin
+API -> AdminOrderService : updateStatus(id, data, admin)
+AdminOrderService -> DB : Khóa và tải order, items, payments
+AdminOrderService -> AdminOrderService : Kiểm tra trạng thái hợp lệ
+
+alt Chuyển sang cancelled
+    AdminOrderService -> InventoryService : Release reserved_stock
+    InventoryService -> DB : Ghi inventory_histories
+    AdminOrderService -> DB : Cập nhật order cancelled
+    AdminOrderService -> DB : Cập nhật payment pending thành failed nếu có
+else Chuyển sang completed
+    AdminOrderService -> InventoryService : Chuyển reserved_stock sang sold_stock
+    InventoryService -> DB : Ghi inventory_histories
+    AdminOrderService -> DB : Cập nhật order completed
+    AdminOrderService -> DB : Cập nhật payment pending thành success nếu cần
+else Trạng thái xử lý thông thường
+    AdminOrderService -> DB : Cập nhật order status
+end
+
+AdminOrderService -> DB : Ghi order_status_histories
+AdminOrderService --> API : Trả chi tiết đơn hàng mới
+API --> ReactAdmin : JSON kết quả
+ReactAdmin --> Admin : Hiển thị trạng thái đã cập nhật
+
+@enduml

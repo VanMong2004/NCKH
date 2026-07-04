@@ -132,16 +132,14 @@ class PaymentController extends Controller
             $orderCode = $result['order_code'] ?? null;
             $orderId   = $result['order_id'] ?? null;
             $status    = $result['status'] ?? $request->status ?? 'unknown';
-            $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
             
             if (!$orderCode && $orderId) {
                 $orderCode = Order::find($orderId)?->order_code;
             }
                 
-            $order = Order::find($orderId);
-                
-            return redirect()->away(
-                $frontendUrl . '/order-success?' . http_build_query([
+            return redirect(
+                '/order-success?' . http_build_query([
+                    'order_id'   => $orderId,
                     'order_code' => $orderCode,
                     'status'     => $status,
                 ])

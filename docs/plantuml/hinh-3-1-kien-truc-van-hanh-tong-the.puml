@@ -1,0 +1,37 @@
+@startuml
+title Hình 3.1. Kiến trúc vận hành tổng thể của hệ thống sau khi hoàn thiện
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+node "Client Browser" as Browser {
+  component "React SPA" as React {
+    component "User Portal" as UserPortal
+    component "Admin Dashboard" as AdminDashboard
+  }
+}
+
+node "Laravel API Server" as Server {
+  component "Laravel REST API" as API
+  component "Payment Module\nCOD / Giả lập ngân hàng" as Payment
+}
+
+database "MySQL Database" as DB
+folder "File Storage" as Storage
+component "OpenAI API" as OpenAI
+database "Vector Store" as Vector
+node "n8n Workflow Server" as N8N
+
+UserPortal -[hidden]- AdminDashboard
+
+React --> API : Gọi REST API
+API --> DB : Đọc/ghi dữ liệu
+API --> Storage : Lưu ảnh, file, PDF
+API --> Payment : Tạo và xử lý thanh toán
+API --> OpenAI : Chatbot, caption, tóm tắt
+OpenAI --> Vector : Tra cứu kho tri thức
+API --> N8N : Gửi webhook
+N8N --> API : Callback trạng thái
+
+@enduml

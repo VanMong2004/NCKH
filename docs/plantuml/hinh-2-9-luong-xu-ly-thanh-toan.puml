@@ -1,0 +1,37 @@
+@startuml
+title Hình 2.9. Sơ đồ luồng xử lý thanh toán
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+actor "Người dùng" as User
+participant "React Frontend" as React
+participant "Laravel API" as API
+participant "PaymentService" as PaymentService
+participant "Cổng giả lập ngân hàng" as MockGateway
+database "MySQL Database" as DB
+
+User -> React : Yêu cầu thanh toán đơn hàng
+React -> API : POST /api/orders/{id}/pay
+API -> PaymentService : pay(user, guest_token, order_id, method)
+PaymentService -> DB : Kiểm tra order pending
+PaymentService -> DB : Kiểm tra payment pending/success
+PaymentService -> DB : Kiểm tra phương thức thanh toán
+PaymentService -> MockGateway : Tạo giao dịch giả lập
+MockGateway --> PaymentService : Trả URL/QR thanh toán
+PaymentService --> API : Thông tin thanh toán
+API --> React : redirect_url hoặc dữ liệu QR
+React --> User : Hiển thị màn hình thanh toán
+
+User -> MockGateway : Hoàn tất thanh toán giả lập
+MockGateway -> API : Callback kết quả thanh toán
+API -> PaymentService : handleCallback(data)
+PaymentService -> DB : Xác minh payment/order
+PaymentService -> DB : Cập nhật payments
+PaymentService -> DB : Cập nhật orders
+PaymentService -> DB : Ghi order_status_histories
+PaymentService --> API : Kết quả callback
+API --> React : Kết quả thanh toán
+React --> User : Hiển thị thành công/thất bại
+
+@enduml

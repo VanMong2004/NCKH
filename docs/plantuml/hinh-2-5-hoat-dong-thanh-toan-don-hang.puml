@@ -1,0 +1,38 @@
+@startuml
+title Hình 2.5. Sơ đồ hoạt động thanh toán đơn hàng
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+start
+:Người dùng chọn phương thức thanh toán;
+:Hệ thống tạo đơn hàng pending;
+:Hệ thống tạo payment pending;
+
+if (Phương thức thanh toán?) then (COD)
+    :Kiểm tra giới hạn COD theo tổng tiền;
+    if (Hợp lệ?) then (Có)
+        :Đơn hàng chờ quản trị viên xử lý;
+        :Payment giữ trạng thái pending;
+    else (Không)
+        :Thông báo COD không áp dụng;
+    endif
+else (Giả lập ngân hàng)
+    :Tạo giao dịch giả lập;
+    :Tạo URL hoặc màn hình QR thanh toán;
+    :Người dùng hoàn tất thanh toán giả lập;
+    :Cổng giả lập gửi callback;
+    :Hệ thống xác minh callback;
+    if (Thanh toán thành công?) then (Có)
+        :Cập nhật payment success;
+        :Cập nhật trạng thái đơn hàng phù hợp;
+        :Ghi lịch sử trạng thái;
+    else (Không)
+        :Cập nhật payment failed;
+        :Giữ hoặc hủy đơn theo luồng xử lý;
+    endif
+endif
+
+stop
+
+@enduml

@@ -155,12 +155,10 @@ class AiSocialCaptionService
             'Mô tả ngắn: ' . ($product->short_description ?: 'Không có'),
             'Mô tả: ' . mb_substr(strip_tags((string) $product->description), 0, 700),
             'Biến thể: ' . ($variants ?: 'Không có thông tin biến thể'),
-            'Liên kết: ' . $productUrl,
             'Yêu cầu định dạng:',
-            '- 3 đến 6 dòng ngắn, dễ đọc.',
+            '- 5 đến 10 dòng ngắn, dễ đọc.',
             '- Có lời kêu gọi hành động vừa phải.',
             '- Có hashtag #CTUTStore #CTUT.',
-            '- Nếu nhắc đến liên kết, phải dùng đúng URL ở trên, không viết placeholder như [link sản phẩm].',
             '- Không tự tạo mã giảm giá, không đổi giá, không bịa thông tin.',
         ]);
     }
@@ -201,12 +199,10 @@ class AiSocialCaptionService
             'Mô tả: ' . mb_substr(strip_tags((string) $promotion->description), 0, 700),
             'Sản phẩm nổi bật: ' . ($products ?: 'Không có'),
             'Số sản phẩm áp dụng: ' . $promotion->items->count(),
-            'Liên kết: ' . $promotionUrl,
             'Yêu cầu định dạng:',
-            '- 3 đến 7 dòng ngắn, dễ đọc.',
+            '- 5 đến 10 dòng ngắn, dễ đọc.',
             '- Có lời kêu gọi hành động vừa phải.',
             '- Có hashtag #CTUTStore #CTUT #KhuyenMai.',
-            '- Nếu nhắc đến liên kết, phải dùng đúng URL ở trên, không viết placeholder.',
             '- Không tự tạo mã giảm giá, không đổi mức giảm, không bịa thông tin.',
         ]);
     }

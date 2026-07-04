@@ -59,15 +59,16 @@ class ChatbotProductCatalogService
             ];
         }
 
+        $priceConstraint = $this->extractPriceConstraint($query);
         $userKey = $user?->id ? 'user_' . $user->id : 'guest';
-        $cacheKey = 'chatbot:products:search:v2:' . md5($userKey . '|' . $query . '|' . $limit);
+        $cacheKey = 'chatbot:products:search:v3:' . md5($userKey . '|' . $query . '|' . $limit . '|' . json_encode($priceConstraint));
 
-        return Cache::remember($cacheKey, now()->addMinutes(3), function () use ($query, $limit, $user) {
+        return Cache::remember($cacheKey, now()->addMinutes(3), function () use ($query, $limit, $user, $priceConstraint) {
             $keywords = $this->extractProductSearchKeywords($query);
             $products = $this->queryProductsForIntent($query, $keywords, $limit);
 
             $matchedProducts = $products
-                ->map(function ($product) use ($keywords, $query, $user) {
+                ->map(function ($product) use ($keywords, $query, $user, $priceConstraint) {
                     $score = $this->calculateProductSearchScore($product, $keywords, $query);
 
                     if ($score <= 0) {
@@ -75,6 +76,11 @@ class ChatbotProductCatalogService
                     }
 
                     $formatted = $this->formatProduct($product, $user);
+
+                    if (!$this->productMatchesPriceConstraint($formatted, $priceConstraint)) {
+                        return null;
+                    }
+
                     $formatted['search_score'] = $score;
                     $formatted['matched_keywords'] = $keywords;
 
@@ -107,6 +113,7 @@ class ChatbotProductCatalogService
                 'query' => $query,
                 'normalized_query' => $this->normalizeSearchText($query),
                 'keywords' => $keywords,
+                'price_constraint' => $priceConstraint,
                 'products' => $matchedProducts,
             ];
         });
@@ -255,13 +262,7 @@ class ChatbotProductCatalogService
             ];
         }
 
-        $promotion = $this->basePromotionQuery()
-            ->where(function ($query) use ($name) {
-                $query->where('title', 'like', "%{$name}%")
-                    ->orWhere('slug', 'like', "%{$name}%")
-                    ->orWhere('description', 'like', "%{$name}%");
-            })
-            ->first();
+        $promotion = $this->findPromotion($name);
 
         if (!$promotion) {
             return [
@@ -289,11 +290,19 @@ class ChatbotProductCatalogService
             ];
         }
 
+        $normalizedQuery = $this->normalizePromotionSearchQuery($query);
+
         $promotions = $this->basePromotionQuery()
-            ->where(function ($builder) use ($query) {
+            ->where(function ($builder) use ($query, $normalizedQuery) {
                 $builder->where('title', 'like', "%{$query}%")
                     ->orWhere('slug', 'like', "%{$query}%")
                     ->orWhere('description', 'like', "%{$query}%");
+
+                if ($normalizedQuery !== '' && $normalizedQuery !== $query) {
+                    $builder->orWhere('title', 'like', "%{$normalizedQuery}%")
+                        ->orWhere('slug', 'like', "%{$normalizedQuery}%")
+                        ->orWhere('description', 'like', "%{$normalizedQuery}%");
+                }
             })
             ->orderBy('end_date')
             ->limit($limit)
@@ -332,16 +341,11 @@ class ChatbotProductCatalogService
         $query = trim($query);
         $limit = max(1, min($limit, 12));
 
-        $promotion = $query === ''
-            ? $this->basePromotionQuery()->orderBy('end_date')->first()
-            : $this->basePromotionQuery()
-                ->where(function ($builder) use ($query) {
-                    $builder->where('title', 'like', "%{$query}%")
-                        ->orWhere('slug', 'like', "%{$query}%")
-                        ->orWhere('description', 'like', "%{$query}%");
-                })
-                ->orderBy('end_date')
-                ->first();
+        if ($query === '') {
+            return $this->getProductsFromActivePromotions($limit, $user);
+        }
+
+        $promotion = $this->findPromotion($query);
 
         if (!$promotion) {
             return [
@@ -575,6 +579,137 @@ class ChatbotProductCatalogService
         ];
     }
 
+    private function getProductsFromActivePromotions(int $limit, $user = null): array
+    {
+        $promotions = $this->basePromotionQuery()
+            ->with([
+                'items' => function ($itemQuery) {
+                    $itemQuery->where('is_active', true);
+                },
+                'items.product.images',
+                'items.product.variants' => function ($variantQuery) {
+                    $variantQuery->where('is_active', true);
+                },
+                'items.product.category:id,name,slug',
+                'items.productVariant',
+            ])
+            ->orderBy('end_date')
+            ->limit(5)
+            ->get();
+
+        $products = $promotions
+            ->flatMap(function ($promotion) use ($user) {
+                return $promotion->items
+                    ->filter(fn ($item) => $item->product && $item->product->is_active)
+                    ->map(function ($item) use ($promotion, $user) {
+                        $formattedProduct = $this->formatProduct($item->product, $user);
+
+                        return [
+                            ...$formattedProduct,
+                            'promotion' => [
+                                'id' => $promotion->id,
+                                'title' => $promotion->title,
+                                'slug' => $promotion->slug,
+                                'discount_type' => $item->discount_type ?? $promotion->discount_type,
+                                'discount_value' => $item->discount_value !== null
+                                    ? (float) $item->discount_value
+                                    : ($promotion->discount_value !== null ? (float) $promotion->discount_value : null),
+                                'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
+                                'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
+                                'url' => url('/promotions/' . $promotion->slug),
+                            ],
+                            'promotion_variant' => $item->productVariant ? [
+                                'id' => $item->productVariant->id,
+                                'sku' => $item->productVariant->sku,
+                                'size' => $item->productVariant->size,
+                                'color' => $item->productVariant->color,
+                                'price' => $item->productVariant->price !== null ? (float) $item->productVariant->price : null,
+                            ] : null,
+                        ];
+                    });
+            })
+            ->unique('id')
+            ->take($limit)
+            ->values()
+            ->toArray();
+
+        return [
+            'found' => !empty($products),
+            'promotions' => $promotions->map(fn ($promotion) => $this->formatPromotion($promotion))->values()->toArray(),
+            'products' => $products,
+        ];
+    }
+
+    private function findPromotion(string $query): ?Promotion
+    {
+        $query = trim($query);
+
+        if ($query === '') {
+            return null;
+        }
+
+        $normalizedQuery = $this->normalizePromotionSearchQuery($query);
+
+        return $this->basePromotionQuery()
+            ->get()
+            ->sortBy(function (Promotion $promotion) use ($query, $normalizedQuery) {
+                return $this->calculatePromotionSearchScore($promotion, $query, $normalizedQuery);
+            })
+            ->reverse()
+            ->first(function (Promotion $promotion) use ($query, $normalizedQuery) {
+                return $this->calculatePromotionSearchScore($promotion, $query, $normalizedQuery) > 0;
+            });
+    }
+
+    private function calculatePromotionSearchScore(Promotion $promotion, string $query, string $normalizedQuery): int
+    {
+        $title = $this->normalizePromotionSearchQuery((string) $promotion->title);
+        $slug = $this->normalizePromotionSearchQuery((string) $promotion->slug);
+        $description = $this->normalizePromotionSearchQuery((string) $promotion->description);
+        $originalQuery = $this->normalizePromotionSearchQuery($query);
+
+        $score = 0;
+
+        foreach (array_unique(array_filter([$originalQuery, $normalizedQuery])) as $keyword) {
+            if ($keyword === '') {
+                continue;
+            }
+
+            if ($title === $keyword || $slug === $keyword) {
+                $score += 120;
+            }
+
+            if (str_contains($title, $keyword)) {
+                $score += 80;
+            }
+
+            if (str_contains($slug, $keyword)) {
+                $score += 60;
+            }
+
+            if (str_contains($description, $keyword)) {
+                $score += 20;
+            }
+        }
+
+        return $score;
+    }
+
+    private function normalizePromotionSearchQuery(string $value): string
+    {
+        $value = $this->normalizeSearchText($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        $value = preg_replace('/\b\d+\s*\.\s*/u', ' ', $value);
+        $value = preg_replace('/\b(san pham|trong|khuyen mai|chuong trinh|ct khuyen mai|dot khuyen mai)\b/u', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value);
+    }
+
     private function variantNotFoundResponse(Product $product): array
     {
         return [
@@ -677,6 +812,7 @@ class ChatbotProductCatalogService
     private function extractProductSearchKeywords(string $query): array
     {
         $normalized = $this->normalizeCommonVietnameseTypos($this->normalizeSearchText($query));
+        $normalized = $this->removePriceConstraintWords($normalized);
 
         if ($normalized === '') {
             return [];
@@ -833,6 +969,15 @@ class ChatbotProductCatalogService
             'hoi',
             'nhe',
             'nha',
+            'duoi',
+            'tren',
+            'tu',
+            'den',
+            'gia',
+            'k',
+            'nghin',
+            'ngan',
+            'trieu',
         ];
     }
 
@@ -859,5 +1004,81 @@ class ChatbotProductCatalogService
         }
 
         return false;
+    }
+
+    private function extractPriceConstraint(string $query): array
+    {
+        $normalized = $this->normalizeSearchText($query);
+
+        if ($normalized === '') {
+            return [];
+        }
+
+        if (preg_match('/\b(duoi|nho hon|toi da|khong qua)\s+(\d+(?:[.,]\d+)?)\s*(k|nghin|ngan|trieu|m|vnd|d|dong)?\b/u', $normalized, $matches)) {
+            return [
+                'max' => $this->normalizeMoneyValue($matches[2], $matches[3] ?? null),
+            ];
+        }
+
+        if (preg_match('/\b(tren|lon hon|tu)\s+(\d+(?:[.,]\d+)?)\s*(k|nghin|ngan|trieu|m|vnd|d|dong)?\b/u', $normalized, $matches)) {
+            return [
+                'min' => $this->normalizeMoneyValue($matches[2], $matches[3] ?? null),
+            ];
+        }
+
+        return [];
+    }
+
+    private function normalizeMoneyValue(string $value, ?string $unit): float
+    {
+        $amount = (float) str_replace(',', '.', $value);
+        $unit = trim((string) $unit);
+
+        if (in_array($unit, ['k', 'nghin', 'ngan'], true)) {
+            return $amount * 1000;
+        }
+
+        if (in_array($unit, ['trieu', 'm'], true)) {
+            return $amount * 1000000;
+        }
+
+        if ($amount > 0 && $amount < 1000 && $unit === '') {
+            return $amount * 1000;
+        }
+
+        return $amount;
+    }
+
+    private function productMatchesPriceConstraint(array $product, array $constraint): bool
+    {
+        if (empty($constraint)) {
+            return true;
+        }
+
+        $minPrice = $product['min_price'] ?? data_get($product, 'price.min');
+        $maxPrice = $product['max_price'] ?? data_get($product, 'price.max');
+
+        if ($minPrice === null && $maxPrice === null) {
+            return false;
+        }
+
+        if (isset($constraint['max']) && (float) $minPrice > (float) $constraint['max']) {
+            return false;
+        }
+
+        if (isset($constraint['min']) && (float) $maxPrice < (float) $constraint['min']) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function removePriceConstraintWords(string $value): string
+    {
+        $value = preg_replace('/\b(duoi|nho hon|toi da|khong qua|tren|lon hon|tu|den)\s+\d+(?:[.,]\d+)?\s*(k|nghin|ngan|trieu|m|vnd|d|dong)?\b/u', ' ', $value);
+        $value = preg_replace('/\b\d+(?:[.,]\d+)?\s*(k|nghin|ngan|trieu|m|vnd|d|dong)\b/u', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        return trim($value);
     }
 }

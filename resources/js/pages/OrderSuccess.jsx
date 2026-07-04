@@ -18,6 +18,7 @@ export default function OrderSuccess() {
 
     const [searchParams] = useSearchParams();
     const orderCode = searchParams.get('order_code');
+    const orderIdParam = searchParams.get('order_id');
     const paymentStatus = searchParams.get('status');
 
     const location = useLocation();
@@ -49,16 +50,23 @@ export default function OrderSuccess() {
                 sessionStorage.getItem('guest_order_success') || '{}'
             );
 
-            const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;            
+            const savedOrderId =
+                state.orderId || savedGuestOrder.orderId || orderIdParam;
+            const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;
 
             if (!orderCode) {
                 setError('Không tìm thấy mã đơn hàng.');
                 return;
             }
 
-            const result = await guestOrderService.getByCode(orderCode, {
-                guestToken: isGuestOrder ? savedGuestOrder.guestToken : null,
-            });
+            const result =
+                user && savedOrderId
+                    ? await orderService.getOrderDetail(savedOrderId)
+                    : await guestOrderService.getByCode(orderCode, {
+                          guestToken: isGuestOrder
+                              ? savedGuestOrder.guestToken
+                              : null,
+                      });
 
             setOrder(result);
         } catch (err) {

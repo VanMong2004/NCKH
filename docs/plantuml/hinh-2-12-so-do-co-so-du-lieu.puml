@@ -1,0 +1,235 @@
+@startuml
+title Hình 2.12. Sơ đồ cơ sở dữ liệu của hệ thống
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+hide methods
+
+class users {
+  id
+  name
+  email
+  phone
+  mssv
+  role
+}
+
+class addresses {
+  id
+  user_id
+  full_name
+  phone
+  province
+  district
+  ward
+}
+
+class categories {
+  id
+  parent_id
+  name
+  slug
+}
+
+class departments {
+  id
+  name
+  slug
+  code
+}
+
+class products {
+  id
+  category_id
+  department_id
+  name
+  slug
+  is_active
+}
+
+class product_images {
+  id
+  product_id
+  url
+  type
+  position
+}
+
+class product_variants {
+  id
+  product_id
+  sku
+  size
+  color
+  price
+  stock
+  reserved_stock
+  sold_stock
+}
+
+class carts {
+  id
+  user_id
+  guest_token
+  status
+}
+
+class cart_items {
+  id
+  cart_id
+  product_variant_id
+  quantity
+}
+
+class promotions {
+  id
+  title
+  slug
+  discount_type
+  discount_value
+  status
+}
+
+class promotion_items {
+  id
+  promotion_id
+  product_id
+  product_variant_id
+  limit_quantity
+  sold_quantity
+  reserved_quantity
+}
+
+class orders {
+  id
+  user_id
+  order_code
+  status
+  total
+  guest_token
+}
+
+class order_items {
+  id
+  order_id
+  product_variant_id
+  product_name
+  quantity
+  final_price
+}
+
+class payments {
+  id
+  order_id
+  method
+  status
+  amount
+  transaction_id
+}
+
+class order_status_histories {
+  id
+  order_id
+  changed_by
+  old_status
+  new_status
+}
+
+class inventory_histories {
+  id
+  product_variant_id
+  order_id
+  actor_id
+  action
+  quantity
+}
+
+class reviews {
+  id
+  user_id
+  product_id
+  order_id
+  order_item_id
+  rating
+}
+
+class notifications {
+  id
+  user_id
+  type
+  title
+  is_read
+}
+
+class chat_conversations {
+  id
+  user_id
+  guest_token
+  title
+  status
+}
+
+class chat_messages {
+  id
+  conversation_id
+  parent_message_id
+  role
+  content
+}
+
+class chat_knowledge_files {
+  id
+  uploaded_by
+  original_name
+  openai_file_id
+  vector_store_id
+  status
+}
+
+class analytics_events {
+  id
+  user_id
+  event_type
+  session_id
+  visitor_id
+}
+
+class analytics_daily_metrics {
+  id
+  metric_date
+  visitors_count
+  page_views_count
+}
+
+class social_automation_logs {
+  id
+  trigger_type
+  entity_type
+  entity_id
+  status
+}
+
+users "1" -- "n" addresses
+users "1" -- "n" orders
+users "1" -- "n" reviews
+users "1" -- "n" chat_conversations
+users "1" -- "n" notifications
+
+categories "1" -- "n" products
+departments "1" -- "n" products
+products "1" -- "n" product_images
+products "1" -- "n" product_variants
+products "1" -- "n" reviews
+
+carts "1" -- "n" cart_items
+product_variants "1" -- "n" cart_items
+
+orders "1" -- "n" order_items
+orders "1" -- "n" payments
+orders "1" -- "n" order_status_histories
+product_variants "1" -- "n" inventory_histories
+
+promotions "1" -- "n" promotion_items
+chat_conversations "1" -- "n" chat_messages
+
+@enduml

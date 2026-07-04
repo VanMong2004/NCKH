@@ -1,0 +1,40 @@
+@startuml
+title Hình 2.11. Sơ đồ luồng xử lý chatbot AI
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+actor "Người dùng" as User
+participant "React Chat UI" as ChatUI
+participant "ChatController" as ChatController
+participant "OpenAiHybridRagChatService" as ChatService
+participant "ProductChatToolService" as ProductTool
+database "MySQL Database" as DB
+participant "OpenAI API" as OpenAI
+database "Vector Store" as Vector
+
+User -> ChatUI : Gửi câu hỏi
+ChatUI -> ChatController : POST /api/chat/send
+ChatController -> ChatService : sendMessage(user, guest_token, message)
+ChatService -> DB : Tạo/lấy chat_conversations
+ChatService -> DB : Lưu chat_messages role=user
+ChatService -> ChatService : Phát hiện intent
+
+alt Dữ liệu động sản phẩm/giá/tồn kho/khuyến mãi/đơn hàng
+    ChatService -> ProductTool : execute(tool, arguments, user)
+    ProductTool -> DB : Truy vấn products, variants, promotions, orders
+    DB --> ProductTool : Dữ liệu phù hợp
+    ProductTool --> ChatService : Kết quả tool
+else Chính sách/FAQ/hướng dẫn
+    ChatService -> OpenAI : Responses API + file_search
+    OpenAI -> Vector : Tra cứu tài liệu tri thức
+    Vector --> OpenAI : Nguồn tài liệu
+    OpenAI --> ChatService : Câu trả lời và sources
+end
+
+ChatService -> DB : Lưu chat_messages role=assistant
+ChatService --> ChatController : answer, sources, tool_calls
+ChatController --> ChatUI : JSON câu trả lời
+ChatUI --> User : Hiển thị phản hồi chatbot
+
+@enduml

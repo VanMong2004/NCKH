@@ -214,7 +214,7 @@ export default function FloatingAIChat() {
                             </div>
 
                             <div>
-                                <h3 className="font-extrabold">Trợ lý AI CTUT Store</h3>
+                                <h3 className="font-extrabold">Trợ lý AI CTUT UniShop</h3>
 
                                 <p className="text-xs text-blue-100">
                                     {user ? `Xin chào ${user.name || 'bạn'}` : 'Hỗ trợ sản phẩm, đơn hàng, chính sách'}

@@ -111,9 +111,10 @@ class ChatSessionService
                 'parent_message_id' => $message->parent_message_id,
                 'role' => $message->role,
                 'content' => $message->content,
-                'sources' => [],
-                'tool_calls' => [],
+                'sources' => $message->sources ?? [],
+                'tool_calls' => $message->tool_calls ?? [],
                 'products' => data_get($message->metadata, 'products', []),
+                'promotions' => data_get($message->metadata, 'promotions', []),
                 'created_at' => optional($message->created_at)->format('d/m/Y H:i'),
             ])
             ->values();

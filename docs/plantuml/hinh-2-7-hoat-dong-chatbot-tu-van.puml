@@ -1,0 +1,34 @@
+@startuml
+title Hình 2.7. Sơ đồ hoạt động chatbot tư vấn
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+start
+:Người dùng gửi câu hỏi;
+:Hệ thống tạo hoặc lấy phiên hội thoại;
+:Lưu tin nhắn người dùng;
+:Phát hiện intent câu hỏi;
+
+if (Hỏi sản phẩm/giá/tồn kho/khuyến mãi/đơn hàng?) then (Có)
+    :Truy vấn dữ liệu động trong database;
+    if (Có dữ liệu phù hợp?) then (Có)
+        :Tạo câu trả lời từ dữ liệu hệ thống;
+    else (Không)
+        :Trả lời không tìm thấy thông tin phù hợp;
+    endif
+else (Hỏi chính sách/FAQ/hướng dẫn)
+    :Gửi câu hỏi đến OpenAI API;
+    :OpenAI tra cứu Vector Store/Kho tri thức;
+    if (Có tài liệu liên quan?) then (Có)
+        :Tạo câu trả lời từ tài liệu tri thức;
+    else (Không)
+        :Trả lời chưa tìm thấy thông tin trong hệ thống;
+    endif
+endif
+
+:Lưu phản hồi của chatbot;
+:Trả answer về giao diện chat;
+stop
+
+@enduml

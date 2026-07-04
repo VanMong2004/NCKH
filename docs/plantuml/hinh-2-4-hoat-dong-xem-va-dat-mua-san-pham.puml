@@ -1,0 +1,30 @@
+@startuml
+title Hình 2.4. Sơ đồ hoạt động xem và đặt mua sản phẩm
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+start
+:Người dùng mở trang sản phẩm;
+:Hệ thống tải danh sách sản phẩm active;
+:Người dùng xem chi tiết sản phẩm;
+:Chọn size, màu hoặc biến thể;
+:Kiểm tra biến thể và tồn kho khả dụng;
+
+if (Còn hàng?) then (Có)
+    :Thêm sản phẩm vào giỏ hàng;
+    :Cập nhật số lượng giỏ hàng;
+    :Người dùng vào checkout;
+    :Nhập thông tin nhận hàng;
+    :Chọn phương thức thanh toán;
+    :Tạo đơn hàng pending;
+    :Giữ tồn kho bằng reserved_stock;
+    :Tạo payment pending;
+    :Trả kết quả đặt hàng;
+else (Không)
+    :Hiển thị thông báo lỗi hết hàng\nhoặc sản phẩm không còn mở bán;
+endif
+
+stop
+
+@enduml

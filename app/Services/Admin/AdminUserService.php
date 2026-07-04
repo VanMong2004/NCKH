@@ -10,6 +10,18 @@ class AdminUserService
     public function index(array $filters = []): array
     {
         $query = User::query()
+            ->select([
+                'id',
+                'name',
+                'email',
+                'phone',
+                'mssv',
+                'role',
+                'avatar',
+                'locked_at',
+                'created_at',
+                'deleted_at',
+            ])
             ->withCount([
                 'orders',
                 'reviews',
@@ -57,10 +69,31 @@ class AdminUserService
     public function show(int $id): array
     {
         $user = User::withTrashed()
+            ->select([
+                'id',
+                'name',
+                'email',
+                'phone',
+                'mssv',
+                'role',
+                'avatar',
+                'locked_at',
+                'created_at',
+                'deleted_at',
+            ])
             ->with([
-                'addresses',
+                'addresses:id,user_id,name,phone,address,is_default',
                 'orders' => function ($q) {
-                    $q->latest()->limit(10);
+                    $q->select([
+                        'id',
+                        'user_id',
+                        'order_code',
+                        'status',
+                        'total',
+                        'created_at',
+                    ])
+                        ->latest()
+                        ->limit(10);
                 },
             ])
             ->withCount([

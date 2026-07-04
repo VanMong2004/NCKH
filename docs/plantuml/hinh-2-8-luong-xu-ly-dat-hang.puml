@@ -1,0 +1,35 @@
+@startuml
+title Hình 2.8. Sơ đồ luồng xử lý đặt hàng
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+actor "Người dùng" as User
+participant "React Frontend" as React
+participant "Laravel API" as API
+participant "OrderService" as OrderService
+database "MySQL Database" as DB
+participant "PaymentService" as PaymentService
+
+User -> React : Bấm đặt hàng
+React -> API : POST /api/orders/checkout
+API -> OrderService : checkout(user, guest_token, payload)
+OrderService -> DB : Kiểm tra giỏ hàng active
+OrderService -> DB : Khóa cart và cart_items
+OrderService -> DB : Kiểm tra product_variants còn hàng
+OrderService -> DB : Tạo orders pending
+OrderService -> DB : Tạo order_status_histories
+OrderService -> DB : Tạo order_items kèm snapshot
+OrderService -> DB : Tăng reserved_stock
+OrderService -> DB : Tạo payments pending
+OrderService -> DB : Xóa cart_items đã checkout
+OrderService --> API : Trả thông tin đơn hàng
+API --> React : JSON kết quả checkout
+React --> User : Hiển thị kết quả đặt hàng
+
+note right of PaymentService
+Payment pending được tạo trong luồng checkout.
+PaymentService xử lý khi người dùng yêu cầu thanh toán.
+end note
+
+@enduml

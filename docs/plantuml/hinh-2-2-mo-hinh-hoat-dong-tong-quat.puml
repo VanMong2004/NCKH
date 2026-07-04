@@ -1,0 +1,27 @@
+@startuml
+title Hình 2.2. Mô hình hoạt động tổng quát của cổng dịch vụ số
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+start
+:Người dùng truy cập cổng dịch vụ số;
+:Xem danh sách sản phẩm;
+:Tìm kiếm hoặc lọc sản phẩm;
+:Xem chi tiết sản phẩm;
+:Chọn biến thể sản phẩm;
+:Thêm sản phẩm vào giỏ hàng;
+:Kiểm tra giỏ hàng;
+:Thực hiện checkout;
+:Nhập thông tin nhận hàng;
+:Chọn phương thức thanh toán;
+:Tạo đơn hàng;
+:Tạo payment pending;
+:Quản trị viên tiếp nhận đơn hàng;
+:Cập nhật trạng thái đơn hàng;
+:Cập nhật tồn kho khi hủy hoặc hoàn tất đơn;
+:Ghi nhận dữ liệu thống kê;
+:Tổng hợp dashboard và báo cáo;
+stop
+
+@enduml

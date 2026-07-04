@@ -91,6 +91,7 @@ export function mapCheckoutOrderResponse(response = {}) {
         grandTotal: toNumber(item.grand_total),
 
         paymentMethod: item.payment_method || '',
+        actions: mapActions(item.actions),
 
         items: Array.isArray(item.items) ? item.items.map(mapCheckoutOrderItem) : [],
 
@@ -104,6 +105,16 @@ function mapReceiver(receiver = {}) {
         phone: receiver.phone || '',
         address: receiver.address || '',
         raw: receiver,
+    };
+}
+
+function mapActions(actions = {}) {
+    return {
+        canCancel: Boolean(actions.can_cancel),
+        canPayAgain: Boolean(actions.can_pay_again),
+        canReviewOrder: Boolean(actions.can_review_order),
+        available: Array.isArray(actions.available) ? actions.available : [],
+        raw: actions,
     };
 }
 
@@ -161,6 +172,7 @@ function mapOrderItem(item = {}) {
 
         reviewId,
         reviewed: Boolean(item.is_reviewed || item.reviewed || reviewId),
+        canReview: Boolean(item.can_review),
 
         raw: item,
     };
@@ -224,6 +236,8 @@ export function mapOrderDetailResponse(response = {}) {
                 methodText: paymentMethodText(item.payment_method),
             },
 
+        actions: mapActions(item.actions),
+
         summary: mapSummary(
             item.summary || {
                 sub_total: item.sub_total || item.total,
@@ -272,6 +286,7 @@ function mapOrderListItem(item = {}) {
 
         createdAt: item.created_at || '',
         detailUrl: item.detail_url || '',
+        actions: mapActions(item.actions),
 
         raw: item,
     };

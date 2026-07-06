@@ -11,7 +11,11 @@ class ProductImageSeeder extends Seeder
     public function run(): void
     {
         foreach (Product::all() as $product) {
-            ProductImage::create([
+            ProductImage::updateOrCreate([
+                'product_id' => $product->id,
+                'type' => 'thumbnail',
+                'position' => 0,
+            ], [
                 'product_id' => $product->id,
                 'url' => "images/products/{$product->slug}/thumbnail.jpg",
                 'type' => 'thumbnail',
@@ -25,7 +29,11 @@ class ProductImageSeeder extends Seeder
             };
 
             for ($i = 1; $i <= $galleryCount; $i++) {
-                ProductImage::create([
+                ProductImage::updateOrCreate([
+                    'product_id' => $product->id,
+                    'type' => 'gallery',
+                    'position' => $i,
+                ], [
                     'product_id' => $product->id,
                     'url' => "images/products/{$product->slug}/{$i}.jpg",
                     'type' => 'gallery',

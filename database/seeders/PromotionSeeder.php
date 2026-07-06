@@ -50,11 +50,15 @@ class PromotionSeeder extends Seeder
         ];
 
         foreach ($promotions as $promotion) {
-            Promotion::create([
+            $slug = Str::slug($promotion['title']);
+
+            Promotion::updateOrCreate([
+                'slug' => $slug,
+            ], [
                 ...$promotion,
-                'slug' => Str::slug($promotion['title']),
-                'banner' => 'images/promotions/' . Str::slug($promotion['title']) . '/banner.jpg',
-                'thumbnail' => 'images/promotions/' . Str::slug($promotion['title']) . '/thumbnail.jpg',
+                'slug' => $slug,
+                'banner' => 'images/promotions/' . $slug . '/banner.jpg',
+                'thumbnail' => 'images/promotions/' . $slug . '/thumbnail.jpg',
                 'is_active' => true,
             ]);
         }

@@ -26,7 +26,10 @@ class AddressSeeder extends Seeder
                 continue;
             }
 
-            Address::create([
+            Address::updateOrCreate([
+                'user_id' => $user->id,
+                'address_line' => $data[5],
+            ], [
                 'user_id' => $user->id,
                 'full_name' => $data[0],
                 'phone' => $data[1],

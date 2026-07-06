@@ -27,9 +27,13 @@ class BlogSeeder extends Seeder
 
         foreach ($blogs as $index => $title) {
 
-            Blog::create([
+            $slug = Str::slug($title);
+
+            Blog::updateOrCreate([
+                'slug' => $slug,
+            ], [
                 'title' => $title,
-                'slug' => Str::slug($title),
+                'slug' => $slug,
                 'excerpt' => $title,
                 'content' => "<p>{$title}</p>",
                 'thumbnail' => "images/blogs/" . ($index + 1) . ".jpg",

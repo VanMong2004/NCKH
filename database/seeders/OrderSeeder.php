@@ -77,7 +77,11 @@ class OrderSeeder extends Seeder
                 continue;
             }
 
-            $order = Order::create([
+            $orderCode = 'ORD-2026-' . str_pad($index + 1, 5, '0', STR_PAD_LEFT);
+
+            $order = Order::firstOrCreate([
+                'order_code' => $orderCode,
+            ], [
                 'user_id' => $user->id,
                 'guest_token' => null,
                 'guest_name' => null,
@@ -94,8 +98,12 @@ class OrderSeeder extends Seeder
                 'status' => $data['status'],
                 'expired_at' => $data['status'] === 'pending' ? now()->addMinutes(15) : null,
                 'cancel_reason' => $data['status'] === 'cancelled' ? 'Khách hàng không thanh toán đúng hạn' : null,
-                'order_code' => 'ORD-2026-' . str_pad($index + 1, 5, '0', STR_PAD_LEFT),
+                'order_code' => $orderCode,
             ]);
+
+            if (!$order->wasRecentlyCreated) {
+                continue;
+            }
 
             $subTotal = 0;
             $discountTotal = 0;
@@ -117,7 +125,10 @@ class OrderSeeder extends Seeder
                 $subTotal += $variant->price * $quantity;
                 $discountTotal += $discount * $quantity;
 
-                OrderItem::create([
+                OrderItem::updateOrCreate([
+                    'order_id' => $order->id,
+                    'product_variant_id' => $variant->id,
+                ], [
                     'order_id' => $order->id,
                     'product_variant_id' => $variant->id,
                     'price' => $variant->price,
@@ -140,12 +151,12 @@ class OrderSeeder extends Seeder
                     ] : null,
                 ]);
 
-                if (in_array($data['status'], ['confirmed', 'processing', 'ready_for_pickup', 'shipped', 'completed'], true)) {
-                    $variant->increment('sold_stock', $quantity);
+                if (in_array($data['status'], ['pending', 'paid', 'processing', 'shipped'], true)) {
+                    $variant->increment('reserved_stock', $quantity);
                 }
 
-                if ($data['status'] === 'pending') {
-                    $variant->increment('reserved_stock', $quantity);
+                if ($data['status'] === 'completed') {
+                    $variant->increment('sold_stock', $quantity);
                 }
             }
 
@@ -165,6 +176,12 @@ class OrderSeeder extends Seeder
     {
         return PromotionItem::where('is_active', true)
             ->where('product_id', $variant->product_id)
+            ->whereHas('promotion', function ($query) {
+                $query->where('is_active', true)
+                    ->where('status', 'active')
+                    ->where('start_date', '<=', now())
+                    ->where('end_date', '>=', now());
+            })
             ->where(function ($query) use ($variant) {
                 $query->where('variant_unique_key', 0)
                     ->orWhere('variant_unique_key', $variant->id);

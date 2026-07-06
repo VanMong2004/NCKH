@@ -28,14 +28,20 @@ class PromotionItemSeeder extends Seeder
                     continue;
                 }
 
-                PromotionItem::create([
+                $totalStock = (int) ProductVariant::where('product_id', $product->id)->sum('stock');
+
+                PromotionItem::updateOrCreate([
+                    'promotion_id' => $freshman->id,
+                    'product_id' => $product->id,
+                    'variant_unique_key' => 0,
+                ], [
                     'promotion_id' => $freshman->id,
                     'product_id' => $product->id,
                     'product_variant_id' => null,
                     'variant_unique_key' => 0,
                     'discount_type' => 'percent',
                     'discount_value' => 10,
-                    'limit_quantity' => 500,
+                    'limit_quantity' => max(1, min(500, $totalStock)),
                     'sold_quantity' => 0,
                     'reserved_quantity' => 0,
                     'is_active' => true,
@@ -74,14 +80,18 @@ class PromotionItemSeeder extends Seeder
                     continue;
                 }
 
-                PromotionItem::create([
+                PromotionItem::updateOrCreate([
+                    'promotion_id' => $opening->id,
+                    'product_id' => $product->id,
+                    'variant_unique_key' => $variant->id,
+                ], [
                     'promotion_id' => $opening->id,
                     'product_id' => $product->id,
                     'product_variant_id' => $variant->id,
                     'variant_unique_key' => $variant->id,
                     'discount_type' => 'fixed',
                     'discount_value' => $discount,
-                    'limit_quantity' => 150,
+                    'limit_quantity' => max(1, min(150, (int) $variant->stock)),
                     'sold_quantity' => 0,
                     'reserved_quantity' => 0,
                     'is_active' => true,

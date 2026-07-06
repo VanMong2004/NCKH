@@ -11,21 +11,20 @@ class PolicySeeder extends Seeder
     public function run(): void
     {
         $policies = [
-
             ['Chính sách đổi trả', 'policy'],
-
             ['Chính sách vận chuyển', 'policy'],
-
             ['Chính sách bảo mật', 'policy'],
-
             ['Điều khoản sử dụng', 'terms'],
         ];
 
         foreach ($policies as $index => $item) {
+            $slug = Str::slug($item[0]);
 
-            Policy::create([
+            Policy::updateOrCreate([
+                'slug' => $slug,
+            ], [
                 'title' => $item[0],
-                'slug' => Str::slug($item[0]),
+                'slug' => $slug,
                 'type' => $item[1],
                 'content' => '<p>Nội dung đang được cập nhật.</p>',
                 'sort_order' => $index + 1,

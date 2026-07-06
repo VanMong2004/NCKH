@@ -36,7 +36,10 @@ class SearchHistorySeeder extends Seeder
                 ) as $keyword
             ) {
 
-                SearchHistory::create([
+                SearchHistory::updateOrCreate([
+                    'user_id' => $user->id,
+                    'keyword' => $keyword,
+                ], [
                     'user_id' => $user->id,
                     'keyword' => $keyword,
                 ]);

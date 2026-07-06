@@ -10,17 +10,19 @@ class PaymentSeeder extends Seeder
 {
     public function run(): void
     {
-        $methods = [
-            'vnpay',
-            'momo',
-            'banking',
-            'mock',
-        ];
+        $onlineMethods = ['mock', 'vnpay', 'banking'];
+        $onlineIndex = 0;
 
         foreach (Order::all() as $order) {
-            $method = $methods[$order->id % count($methods)];
+            $method = match ($order->status) {
+                'pending' => 'cod',
+                'cancelled' => 'mock',
+                default => $onlineMethods[$onlineIndex++ % count($onlineMethods)],
+            };
 
-            Payment::create([
+            Payment::updateOrCreate([
+                'order_id' => $order->id,
+            ], [
                 'order_id' => $order->id,
                 'method' => $method,
                 'status' => match ($order->status) {

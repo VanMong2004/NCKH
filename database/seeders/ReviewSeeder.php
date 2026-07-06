@@ -41,7 +41,9 @@ class ReviewSeeder extends Seeder
 
                 $rating = $index % 4 === 0 ? 4 : 5;
 
-                Review::create([
+                Review::updateOrCreate([
+                    'order_item_id' => $item->id,
+                ], [
                     'user_id' => $order->user_id,
                     'product_id' => $item->productVariant->product_id,
                     'order_id' => $order->id,

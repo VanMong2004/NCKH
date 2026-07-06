@@ -46,7 +46,10 @@ class RecentlyViewedProductSeeder extends Seeder
 
                 if (!$product) continue;
 
-                RecentlyViewedProduct::create([
+                RecentlyViewedProduct::updateOrCreate([
+                    'user_id' => $user->id,
+                    'product_id' => $product->id,
+                ], [
                     'user_id' => $user->id,
                     'product_id' => $product->id,
                     'viewed_at' => now()->subDays($index + 1),

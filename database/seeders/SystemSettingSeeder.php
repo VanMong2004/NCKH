@@ -2,39 +2,35 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\SystemSetting;
+use Illuminate\Database\Seeder;
 
 class SystemSettingSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        SystemSetting::updateOrCreate([
+        $current = SystemSetting::query()->first();
 
-            'maintenance_mode'=>false,
+        if ($current) {
+            $current->update([
+                'maintenance_mode' => false,
+                'maintenance_message' => 'Hệ thống đang bảo trì',
+                'session_timeout' => 120,
+                'order_auto_cancel_minutes' => null,
+            ]);
 
-            'maintenance_message'=>
-                'Hệ thống đang bảo trì',
+            SystemSetting::query()
+                ->where('id', '!=', $current->id)
+                ->delete();
 
-            'session_timeout'=>120,
+            return;
+        }
 
-            'order_auto_cancel_minutes'=>null,
-        ]);
-
-        SystemSetting::updateOrCreate([
-
-            'maintenance_mode'=>false,
-
-            'maintenance_message'=>
-                'Thời gian tự động hủy đơn',
-
-            'session_timeout'=>null,
-
-            'order_auto_cancel_minutes'=>15,
+        SystemSetting::create([
+            'maintenance_mode' => false,
+            'maintenance_message' => 'Thời gian tự động hủy đơn',
+            'session_timeout' => null,
+            'order_auto_cancel_minutes' => 15,
         ]);
     }
 }

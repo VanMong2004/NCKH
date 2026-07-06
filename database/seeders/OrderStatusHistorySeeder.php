@@ -65,7 +65,11 @@ class OrderStatusHistorySeeder extends Seeder
         string $newStatus,
         string $note
     ): void {
-        OrderStatusHistory::create([
+        OrderStatusHistory::updateOrCreate([
+            'order_id' => $order->id,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+        ], [
             'order_id' => $order->id,
             'changed_by' => 1,
             'old_status' => $oldStatus,

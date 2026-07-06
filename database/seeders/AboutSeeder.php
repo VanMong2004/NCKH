@@ -23,10 +23,10 @@ class AboutSeeder extends Seeder
             'vision' =>
                 'Trở thành hệ thống phân phối sản phẩm chính thức của CTUT.',
 
-            'student_count' => 10000,
-            'major_count' => 20,
-            'teacher_count' => 500,
-            'years_of_operation' => 12,
+            'student_count' => 0,
+            'major_count' => 0,
+            'teacher_count' => 0,
+            'years_of_operation' => 0,
 
             'gallery' => [
                 'images/about/1.jpg',

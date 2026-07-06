@@ -44,7 +44,9 @@ class FaqSeeder extends Seeder
 
         foreach ($faqs as $index => $faq) {
 
-            Faq::create([
+            Faq::updateOrCreate([
+                'question' => $faq['question'],
+            ], [
                 ...$faq,
                 'is_active' => true,
                 'sort_order' => $index + 1,

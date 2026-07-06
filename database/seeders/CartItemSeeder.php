@@ -41,7 +41,9 @@ class CartItemSeeder extends Seeder
                     continue;
                 }
 
-                $cart->items()->create([
+                $cart->items()->updateOrCreate([
+                    'product_variant_id' => $variant->id,
+                ], [
                     'product_variant_id' => $variant->id,
                     'quantity' => $quantity,
                     'is_selected' => true,

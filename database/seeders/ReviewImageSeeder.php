@@ -26,13 +26,19 @@ class ReviewImageSeeder extends Seeder
             $slug = $review->product->slug;
             $userId = $review->user_id;
 
-            ReviewImage::create([
+            ReviewImage::updateOrCreate([
+                'review_id' => $review->id,
+                'image_url' => "images/reviews/{$slug}/user-{$userId}/review-1.jpg",
+            ], [
                 'review_id' => $review->id,
                 'image_url' => "images/reviews/{$slug}/user-{$userId}/review-1.jpg",
             ]);
 
             if ($index % 4 === 0) {
-                ReviewImage::create([
+                ReviewImage::updateOrCreate([
+                    'review_id' => $review->id,
+                    'image_url' => "images/reviews/{$slug}/user-{$userId}/review-2.jpg",
+                ], [
                     'review_id' => $review->id,
                     'image_url' => "images/reviews/{$slug}/user-{$userId}/review-2.jpg",
                 ]);

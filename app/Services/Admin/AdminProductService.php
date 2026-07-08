@@ -715,6 +715,8 @@ class AdminProductService
             'variants',
         ])->findOrFail($id);
 
+        $this->ensureProductCanPostFacebook($product, true);
+
         if (!$product->is_active) {
             throw new Exception('Không thể tạo nội dung Facebook vì sản phẩm đang tắt bán');
         }
@@ -736,6 +738,8 @@ class AdminProductService
             'images',
             'variants',
         ])->findOrFail($id);
+
+        $this->ensureProductCanPostFacebook($product);
 
         if (!$product->is_active) {
             throw new Exception('Không thể đăng Facebook vì sản phẩm đang tắt bán');
@@ -765,6 +769,25 @@ class AdminProductService
                 'status' => $socialLog->status,
             ],
         ];
+    }
+
+    private function ensureProductCanPostFacebook(Product $product, bool $forCaption = false): void
+    {
+        if (!$product->is_active) {
+            throw new Exception($forCaption
+                ? 'Không thể tạo nội dung Facebook vì sản phẩm đang tắt bán'
+                : 'Không thể đăng Facebook vì sản phẩm đang tắt bán');
+        }
+
+        $hasActiveVariant = $product->variants
+            ->where('is_active', true)
+            ->isNotEmpty();
+
+        if (!$hasActiveVariant) {
+            throw new Exception($forCaption
+                ? 'Không thể tạo nội dung Facebook vì sản phẩm không có biến thể đang mở bán'
+                : 'Không thể đăng Facebook vì sản phẩm không có biến thể đang mở bán');
+        }
     }
 
     private function clearProductFilterCache(): void

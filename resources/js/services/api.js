@@ -32,13 +32,16 @@ api.interceptors.response.use(
         const response = error.response;
         const isTimeout = error.code === 'ECONNABORTED';
         const isCanceled = axios.isCancel(error) || error.code === 'ERR_CANCELED';
+        const errors = response?.data?.errors || {};
+        const firstError = Object.values(errors).flat().find(Boolean);
 
         return Promise.reject({
             message: response?.data?.message
+                || firstError
                 || (isTimeout ? 'Yêu cầu quá thời gian phản hồi. Vui lòng thử lại.' : null)
                 || (isCanceled ? 'Yêu cầu đã bị hủy.' : null)
-                || 'Có lỗi xảy ra. Vui lòng thử lại.',
-            errors: response?.data?.errors || {},
+                || 'Đã xảy ra lỗi, vui lòng thử lại',
+            errors,
             status: response?.status || (isTimeout ? 408 : 0),
             raw: response?.data || null,
             canceled: isCanceled,

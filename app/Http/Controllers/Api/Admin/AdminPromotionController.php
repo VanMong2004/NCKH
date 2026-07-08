@@ -64,7 +64,7 @@ class AdminPromotionController extends Controller
                 
                 'items.*.discount_value' 
                     => 'required|numeric|min:0',
-            ]);
+            ], $this->validationMessages());
 
             return response()->json(
                 $this->service->storeItemsBulk(
@@ -94,7 +94,7 @@ class AdminPromotionController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            $data = $request->validate($this->promotionRules());
+            $data = $request->validate($this->promotionRules(), $this->validationMessages());
 
             $data['banner_file'] = $request->file('banner');
             $data['thumbnail_file'] = $request->file('thumbnail');
@@ -132,7 +132,7 @@ class AdminPromotionController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            $data = $request->validate($this->promotionRules($id));
+            $data = $request->validate($this->promotionRules($id), $this->validationMessages());
 
             $data['banner_file'] = $request->file('banner');
             $data['thumbnail_file'] = $request->file('thumbnail');
@@ -169,11 +169,15 @@ class AdminPromotionController extends Controller
         try {
             $data = $request->validate([
                 'style' => 'nullable|string|in:intro,promotion,sales',
-            ]);
+            ], $this->validationMessages());
 
-            return response()->json(
-                $this->service->generateFacebookCaption($id, $data['style'] ?? 'promotion')
-            );
+            $result = $this->service->generateFacebookCaption($id, $data['style'] ?? 'promotion');
+            $result['message'] = 'Đã tạo nội dung khuyến mãi bằng AI';
+
+            return response()->json($result);
+
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'Dữ liệu tạo nội dung Facebook không hợp lệ');
 
         } catch (RuntimeException $e) {
             return $this->businessError($e);
@@ -192,11 +196,15 @@ class AdminPromotionController extends Controller
             $data = $request->validate([
                 'content' => 'nullable|string|max:5000',
                 'style' => 'nullable|string|in:intro,promotion,sales',
-            ]);
+            ], $this->validationMessages());
 
-            return response()->json(
-                $this->service->publishSocial($id, $data)
-            );
+            $result = $this->service->publishSocial($id, $data);
+            $result['message'] = 'Đã đưa đợt khuyến mãi vào hàng đợi đăng Facebook';
+
+            return response()->json($result);
+
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'Dữ liệu đăng Facebook không hợp lệ');
 
         } catch (RuntimeException $e) {
             return $this->businessError($e);
@@ -239,7 +247,7 @@ class AdminPromotionController extends Controller
     public function storeItem(Request $request, $id): JsonResponse
     {
         try {
-            $data = $request->validate($this->itemRules());
+            $data = $request->validate($this->itemRules(), $this->validationMessages());
 
             return response()->json(
                 $this->service->storeItem($id, $data),
@@ -258,7 +266,7 @@ class AdminPromotionController extends Controller
     public function updateItem(Request $request, $itemId): JsonResponse
     {
         try {
-            $data = $request->validate($this->itemRules(false));
+            $data = $request->validate($this->itemRules(false), $this->validationMessages());
 
             return response()->json(
                 $this->service->updateItem($itemId, $data)
@@ -316,11 +324,35 @@ class AdminPromotionController extends Controller
         ];
     }
 
+    private function validationMessages(): array
+    {
+        return [
+            'is_active.required' => 'Vui lòng truyền trạng thái mở bán',
+            'is_active.boolean' => 'Trạng thái mở bán không hợp lệ',
+            'active.required' => 'Vui lòng truyền trạng thái',
+            'active.boolean' => 'Trạng thái không hợp lệ',
+            'status.required' => 'Vui lòng chọn trạng thái khuyến mãi',
+            'status.in' => 'Trạng thái khuyến mãi không hợp lệ',
+            'content.max' => 'Nội dung bài đăng không được vượt quá 5000 ký tự',
+            'style.in' => 'Phong cách nội dung không hợp lệ',
+            'items.required' => 'Vui lòng chọn sản phẩm khuyến mãi',
+            'items.array' => 'Danh sách sản phẩm khuyến mãi không hợp lệ',
+            'items.min' => 'Vui lòng chọn ít nhất một sản phẩm khuyến mãi',
+            'items.*.is_active.boolean' => 'Trạng thái sản phẩm khuyến mãi không hợp lệ',
+            'discount_type.required' => 'Vui lòng chọn loại khuyến mãi',
+            'discount_type.in' => 'Loại khuyến mãi không hợp lệ',
+            'discount_value.required' => 'Vui lòng nhập giá trị khuyến mãi',
+            'discount_value.numeric' => 'Giá trị khuyến mãi không hợp lệ',
+        ];
+    }
+
     private function validationError(ValidationException $e, string $message): JsonResponse
     {
+        $firstError = collect($e->errors())->flatten()->first();
+
         return response()->json([
             'success' => false,
-            'message' => $message,
+            'message' => $firstError ?: $message,
             'error_code' => 'VALIDATION_ERROR',
             'errors' => $e->errors(),
             'data' => null,

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\Admin;
 use Exception;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\ProductVariant;
 use App\Services\Admin\AdminProductService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
 class AdminProductController extends Controller
 {
@@ -91,13 +93,17 @@ class AdminProductController extends Controller
                 'variants.*.stock' => 'required|integer|min:0',
                 'variants.*.is_active' => 'nullable|boolean',
 
-            ])->validate();
+            ], $this->validationMessages())->validate();
 
             // dd($request->all());
 
             return response()->json(
                 $this->adminProductService->store($request)
             );
+
+        } catch (ValidationException $e) {
+
+            return $this->validationError($e);
 
         } catch (Exception $e) {
 
@@ -137,7 +143,7 @@ class AdminProductController extends Controller
                 'variants.*.stock' => 'nullable|integer|min:0',
                 'variants.*.is_active' => 'nullable|boolean',
                 
-            ])->validate();
+            ], $this->validationMessages())->validate();
 
             return response()->json(
                 $this->adminProductService->update(
@@ -145,6 +151,10 @@ class AdminProductController extends Controller
                     $id
                 )
             );
+
+        } catch (ValidationException $e) {
+
+            return $this->validationError($e);
 
         } catch (ModelNotFoundException $e) {
 
@@ -195,13 +205,17 @@ class AdminProductController extends Controller
     public function toggleProductSale(Request $request, $id)
     {
         try {
-            validator($request->all(), [
-                'is_active' => 'required|boolean',
-            ])->validate();
-
-            return response()->json(
-                $this->adminProductService->toggleProductSale($id, $request->boolean('is_active'))
+            $isActive = $this->booleanInput(
+                $request,
+                ['is_active', 'isActive', 'active'],
+                'Vui lòng truyền trạng thái mở bán',
+                'Trạng thái mở bán không hợp lệ'
             );
+
+            $result = $this->adminProductService->toggleProductSale($id, $isActive);
+            $result['message'] = $isActive ? 'Đã mở bán sản phẩm' : 'Đã tắt bán sản phẩm';
+
+            return response()->json($result);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -214,13 +228,29 @@ class AdminProductController extends Controller
     public function toggleVariantSale(Request $request, $id)
     {
         try {
-            validator($request->all(), [
-                'is_active' => 'required|boolean',
-            ])->validate();
-
-            return response()->json(
-                $this->adminProductService->toggleVariantSale($id, $request->boolean('is_active'))
+            $isActive = $this->booleanInput(
+                $request,
+                ['is_active', 'isActive', 'active'],
+                'Vui lòng truyền trạng thái mở bán',
+                'Trạng thái mở bán không hợp lệ'
             );
+
+            if ($isActive) {
+                $variant = ProductVariant::with('product')->findOrFail($id);
+
+                if (!$variant->product?->is_active) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Không thể mở bán biến thể khi sản phẩm đang bị tắt bán',
+                        'data' => null,
+                    ], 400);
+                }
+            }
+
+            $result = $this->adminProductService->toggleVariantSale($id, $isActive);
+            $result['message'] = $isActive ? 'Đã mở bán biến thể sản phẩm' : 'Đã tắt bán biến thể sản phẩm';
+
+            return response()->json($result);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -235,11 +265,14 @@ class AdminProductController extends Controller
         try {
             $data = validator($request->all(), [
                 'style' => 'nullable|string|in:intro,promotion,sales',
-            ])->validate();
+            ], $this->validationMessages())->validate();
 
-            return response()->json(
-                $this->adminProductService->generateFacebookCaption($id, $data['style'] ?? 'intro')
-            );
+            $result = $this->adminProductService->generateFacebookCaption($id, $data['style'] ?? 'intro');
+            $result['message'] = 'Đã tạo nội dung bài đăng bằng AI';
+
+            return response()->json($result);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -255,11 +288,14 @@ class AdminProductController extends Controller
             $data = validator($request->all(), [
                 'content' => 'nullable|string|max:5000',
                 'style' => 'nullable|string|in:intro,promotion,sales',
-            ])->validate();
+            ], $this->validationMessages())->validate();
 
-            return response()->json(
-                $this->adminProductService->postFacebook($id, $data)
-            );
+            $result = $this->adminProductService->postFacebook($id, $data);
+            $result['message'] = 'Đã gửi yêu cầu đăng Facebook sang n8n';
+
+            return response()->json($result);
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -267,5 +303,87 @@ class AdminProductController extends Controller
                 'error' => app()->environment('local') ? $e->getMessage() : null,
             ], 400);
         }
+    }
+
+    private function booleanInput(Request $request, array $keys, string $requiredMessage, string $invalidMessage): bool
+    {
+        foreach ($keys as $key) {
+            if (!$request->has($key)) {
+                continue;
+            }
+
+            $value = $request->input($key);
+
+            if (is_bool($value)) {
+                return $value;
+            }
+
+            if (is_int($value)) {
+                return $value === 1;
+            }
+
+            if (is_string($value)) {
+                $normalized = strtolower(trim($value));
+
+                if (in_array($normalized, ['1', 'true', 'on', 'yes'], true)) {
+                    return true;
+                }
+
+                if (in_array($normalized, ['0', 'false', 'off', 'no'], true)) {
+                    return false;
+                }
+            }
+
+            throw new Exception($invalidMessage);
+        }
+
+        throw new Exception($requiredMessage);
+    }
+
+    private function validationMessages(): array
+    {
+        return [
+            'name.required' => 'Vui lòng nhập tên sản phẩm',
+            'name.max' => 'Tên sản phẩm không được vượt quá 255 ký tự',
+            'category_id.required' => 'Vui lòng chọn danh mục sản phẩm',
+            'category_id.exists' => 'Danh mục sản phẩm không tồn tại',
+            'is_active.required' => 'Vui lòng truyền trạng thái mở bán',
+            'is_active.boolean' => 'Trạng thái mở bán không hợp lệ',
+            'is_featured.required' => 'Vui lòng truyền trạng thái nổi bật',
+            'is_featured.boolean' => 'Trạng thái nổi bật không hợp lệ',
+            'active.required' => 'Vui lòng truyền trạng thái',
+            'active.boolean' => 'Trạng thái không hợp lệ',
+            'images.required' => 'Vui lòng chọn ít nhất một ảnh sản phẩm',
+            'images.array' => 'Danh sách ảnh sản phẩm không hợp lệ',
+            'images.min' => 'Vui lòng chọn ít nhất một ảnh sản phẩm',
+            'images.max' => 'Chỉ được tải lên tối đa 10 ảnh sản phẩm',
+            'images.*.image' => 'File tải lên phải là hình ảnh',
+            'images.*.mimes' => 'Ảnh sản phẩm chỉ hỗ trợ jpg, jpeg, png, webp',
+            'images.*.max' => 'Mỗi ảnh sản phẩm không được vượt quá 5MB',
+            'variants.required' => 'Vui lòng thêm ít nhất một biến thể sản phẩm',
+            'variants.array' => 'Danh sách biến thể không hợp lệ',
+            'variants.min' => 'Vui lòng thêm ít nhất một biến thể sản phẩm',
+            'variants.*.price.required' => 'Vui lòng nhập giá biến thể',
+            'variants.*.price.numeric' => 'Giá biến thể không hợp lệ',
+            'variants.*.price.min' => 'Giá biến thể không được âm',
+            'variants.*.stock.required' => 'Vui lòng nhập tồn kho biến thể',
+            'variants.*.stock.integer' => 'Tồn kho biến thể không hợp lệ',
+            'variants.*.stock.min' => 'Tồn kho biến thể không được âm',
+            'variants.*.is_active.boolean' => 'Trạng thái biến thể không hợp lệ',
+            'content.max' => 'Nội dung bài đăng không được vượt quá 5000 ký tự',
+            'style.in' => 'Phong cách nội dung không hợp lệ',
+        ];
+    }
+
+    private function validationError(ValidationException $e)
+    {
+        $firstError = collect($e->errors())->flatten()->first();
+
+        return response()->json([
+            'success' => false,
+            'message' => $firstError ?: 'Dữ liệu không hợp lệ',
+            'errors' => $e->errors(),
+            'data' => null,
+        ], 422);
     }
 }

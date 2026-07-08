@@ -255,7 +255,8 @@ export default function AdminProducts() {
         try {
             setSaleActionId(product.id);
 
-            const result = await adminProductService.toggleProductSale(product.id);
+            const result = await adminProductService.toggleProductSale(product.id, !product.isActive);
+            result.message = product.isActive ? 'Đã tắt bán sản phẩm' : 'Đã mở bán sản phẩm';
 
             toast.success(result.message || (product.isActive ? 'Đã tắt bán sản phẩm' : 'Đã mở bán sản phẩm'));
 
@@ -268,6 +269,11 @@ export default function AdminProducts() {
     }
 
     function handlePostFacebook(product) {
+        if (!product.isActive) {
+            toast.error('Sản phẩm đang tắt bán, không thể đăng Facebook');
+            return;
+        }
+
         setFacebookModal({
             open: true,
             product,

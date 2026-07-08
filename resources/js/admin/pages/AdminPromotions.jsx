@@ -14,6 +14,32 @@ const facebookStyleOptions = [
     { value: 'sales', label: 'Bán hàng' },
 ];
 
+function getPromotionSocialBlockedMessage(promotion) {
+    if (!promotion?.isActive) {
+        return 'Khuyến mãi đang tắt, không thể đăng Facebook';
+    }
+
+    const status = promotion.computedStatus || promotion.status;
+
+    if (status === 'draft' || status === 'upcoming') {
+        return 'Khuyến mãi chưa hoạt động, không thể đăng Facebook';
+    }
+
+    if (status === 'inactive') {
+        return 'Khuyến mãi đang tắt, không thể đăng Facebook';
+    }
+
+    if (status === 'ended') {
+        return 'Khuyến mãi đã kết thúc, không thể đăng Facebook';
+    }
+
+    if (!promotion.itemsCount) {
+        return 'Khuyến mãi chưa có sản phẩm áp dụng, không thể đăng Facebook';
+    }
+
+    return '';
+}
+
 export default function AdminPromotions() {
     const [promotions, setPromotions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -168,6 +194,13 @@ export default function AdminPromotions() {
     }
 
     function handlePublishSocial(promotion) {
+        const blockedMessage = getPromotionSocialBlockedMessage(promotion);
+
+        if (blockedMessage) {
+            toast.error(blockedMessage);
+            return;
+        }
+
         setFacebookModal({
             open: true,
             promotion,

@@ -272,7 +272,7 @@ class AdminPromotionService
     {
         $promotion = Promotion::query()
             ->with([
-                'items.product',
+                'items.product.variants',
                 'items.productVariant',
             ])
             ->find($id);
@@ -280,6 +280,8 @@ class AdminPromotionService
         if (!$promotion) {
             throw new RuntimeException('Đợt khuyến mãi không tồn tại', 404);
         }
+
+        $this->ensurePromotionCanPostSocial($promotion, true);
 
         if ($promotion->items->count() <= 0) {
             throw new RuntimeException('Vui lòng thêm sản phẩm vào đợt khuyến mãi trước khi tạo nội dung Facebook', 422);
@@ -299,7 +301,7 @@ class AdminPromotionService
     {
         $promotion = Promotion::query()
             ->with([
-                'items.product',
+                'items.product.variants',
                 'items.productVariant',
             ])
             ->find($id);
@@ -307,6 +309,8 @@ class AdminPromotionService
         if (!$promotion) {
             throw new RuntimeException('Đợt khuyến mãi không tồn tại', 404);
         }
+
+        $this->ensurePromotionCanPostSocial($promotion);
 
         if ($promotion->items->count() <= 0) {
             throw new RuntimeException(
@@ -689,6 +693,57 @@ class AdminPromotionService
             if (($variant->stock - $variant->reserved_stock) <= 0) {
                 throw new RuntimeException('Biến thể sản phẩm đã hết hàng', 400);
             }
+        }
+    }
+
+    private function ensurePromotionCanPostSocial(Promotion $promotion, bool $forCaption = false): void
+    {
+        $action = $forCaption ? 'tạo nội dung Facebook' : 'đăng Facebook';
+
+        if (!$promotion->is_active) {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi đang tắt", 422);
+        }
+
+        if ($promotion->status === 'draft' || $promotion->computed_status === 'draft') {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi chưa hoạt động", 422);
+        }
+
+        if ($promotion->status === 'inactive' || $promotion->computed_status === 'inactive') {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi đang tắt", 422);
+        }
+
+        if ($promotion->computed_status === 'upcoming' || now()->lt($promotion->start_date)) {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi chưa hoạt động", 422);
+        }
+
+        if ($promotion->computed_status === 'ended' || now()->gt($promotion->end_date)) {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi đã kết thúc", 422);
+        }
+
+        $activeItems = $promotion->items->filter(fn ($item) => (bool) $item->is_active);
+
+        if ($activeItems->isEmpty()) {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi chưa có sản phẩm áp dụng", 422);
+        }
+
+        $hasSellableProduct = $activeItems->contains(function ($item) {
+            $product = $item->product;
+
+            if (!$product || !$product->is_active) {
+                return false;
+            }
+
+            if ($item->productVariant) {
+                return (bool) $item->productVariant->is_active;
+            }
+
+            return $product->variants
+                ->where('is_active', true)
+                ->isNotEmpty();
+        });
+
+        if (!$hasSellableProduct) {
+            throw new RuntimeException("Không thể {$action} vì khuyến mãi chưa có sản phẩm áp dụng", 422);
         }
     }
 

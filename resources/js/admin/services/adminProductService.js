@@ -85,13 +85,17 @@ const adminProductService = {
         return res.data;
     },
 
-    async toggleProductSale(id) {
-        const res = await api.post(`/admin/products/${id}/toggle-sale`);
+    async toggleProductSale(id, isActive) {
+        const res = await api.post(`/admin/products/${id}/toggle-sale`, {
+            is_active: Boolean(isActive),
+        });
         return res.data;
     },
 
-    async toggleVariantSale(id) {
-        const res = await api.post(`/admin/products/variants/${id}/toggle-sale`);
+    async toggleVariantSale(id, isActive) {
+        const res = await api.post(`/admin/products/variants/${id}/toggle-sale`, {
+            is_active: Boolean(isActive),
+        });
         return res.data;
     },
 

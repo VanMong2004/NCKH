@@ -22,7 +22,15 @@ yarn-error.log
 .env
 .env.*
 !.env.example
+!.env.production.example
 .env copy
 
 # VS Code local history
 .history/
+
+n8n-backup/
+n8n-full-backup/
+.env.local
+.env.vps
+tmp/
+tree.txt

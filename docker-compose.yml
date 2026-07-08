@@ -1,0 +1,133 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+      args:
+        VITE_APP_NAME: ${VITE_APP_NAME}
+        VITE_PUSHER_APP_KEY: ${VITE_PUSHER_APP_KEY}
+        VITE_PUSHER_HOST: ${VITE_PUSHER_HOST}
+        VITE_PUSHER_PORT: ${VITE_PUSHER_PORT}
+        VITE_PUSHER_SCHEME: ${VITE_PUSHER_SCHEME}
+        VITE_PUSHER_APP_CLUSTER: ${VITE_PUSHER_APP_CLUSTER}
+    image: ctut-unishop-app
+    container_name: ctut-unishop-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - app_storage:/var/www/html/storage
+      - public_images:/var/www/html/public/images
+    networks:
+      - ctut-network
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
+    image: ctut-unishop-nginx
+    container_name: ctut-unishop-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    volumes:
+      - app_storage:/var/www/html/storage
+      - public_images:/var/www/html/public/images
+    networks:
+      - ctut-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: ctut-unishop-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ctut-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  queue:
+    image: ctut-unishop-app
+    container_name: ctut-unishop-queue
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    command: php artisan queue:work database --queue=default,social,chat --sleep=3 --tries=3 --timeout=120
+    volumes:
+      - app_storage:/var/www/html/storage
+      - public_images:/var/www/html/public/images
+    networks:
+      - ctut-network
+
+  scheduler:
+    image: ctut-unishop-app
+    container_name: ctut-unishop-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    command: php artisan schedule:work
+    volumes:
+      - app_storage:/var/www/html/storage
+      - public_images:/var/www/html/public/images
+    networks:
+      - ctut-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ctut-unishop-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: ${N8N_HOST}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      WEBHOOK_URL: ${N8N_WEBHOOK_PUBLIC_URL}
+      N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL}
+      GENERIC_TIMEZONE: Asia/Ho_Chi_Minh
+      TZ: Asia/Ho_Chi_Minh
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_SECURE_COOKIE: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - ctut-network
+
+volumes:
+  mysql_data:
+  app_storage:
+  public_images:
+  n8n_data:
+
+networks:
+  ctut-network:
+    driver: bridge

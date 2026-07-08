@@ -138,25 +138,6 @@ export default function Checkout() {
             if (!receiver.guest_phone.trim()) {
                 nextErrors.guest_phone = 'Vui lòng nhập số điện thoại';
             }
-
-        }
-
-        if (!pendingPaymentOrder && !selectedAddressId) {
-            if (!receiver.province.trim()) {
-                nextErrors.province = 'Vui lòng chọn tỉnh/thành phố';
-            }
-
-            if (!receiver.district.trim()) {
-                nextErrors.district = 'Vui lòng nhập quận/huyện';
-            }
-
-            if (!receiver.ward.trim()) {
-                nextErrors.ward = 'Vui lòng nhập phường/xã';
-            }
-
-            if (!receiver.address_line.trim()) {
-                nextErrors.address_line = 'Vui lòng nhập số nhà, tên đường';
-            }
         }
 
         if (!paymentMethod) {
@@ -243,28 +224,32 @@ export default function Checkout() {
 
             const method = order.paymentMethod || paymentMethod;
 
-            // if (method === 'cod') {
-            //     await fetchCart();
+            if (method === 'cod') {
+                sessionStorage.removeItem('mock_payment_qr');
 
-            //     saveGuestOrderToSession(order);
+                await fetchCart();
 
-            //     toast.success('Đặt hàng thành công');
+                saveGuestOrderToSession(order);
 
-            //     navigate(
-            //         `/order-success?order_code=${encodeURIComponent(order.orderCode)}`,
-            //         {
-            //             replace: true,
-            //             state: {
-            //                 isGuest: !user,
-            //                 orderCode: order.orderCode,
-            //                 guestPhone: receiver.guest_phone,
-            //                 paymentMethod: method,
-            //             },
-            //         }
-            //     );
+                toast.success('Đặt hàng thành công');
 
-            //     return;
-            // }
+                navigate(
+                    `/order-success?order_code=${encodeURIComponent(order.orderCode)}`,
+                    {
+                        replace: true,
+                        state: {
+                            isGuest: !user,
+                            orderId: order.id,
+                            orderCode: order.orderCode,
+                            guestPhone: receiver.guest_phone,
+                            paymentMethod: method,
+                            paymentStatus: 'pending',
+                        },
+                    }
+                );
+
+                return;
+            }
 
             setPendingPaymentOrder(order);
 

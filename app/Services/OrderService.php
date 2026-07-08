@@ -484,32 +484,16 @@ class OrderService
             throw new RuntimeException('Vui lòng nhập tên người nhận', 422);
         }
 
+        if ($requireEmail && empty($data['guest_email'])) {
+            throw new RuntimeException('Vui lòng nhập email', 422);
+        }
+
         if (!empty($data['guest_email']) && !filter_var($data['guest_email'], FILTER_VALIDATE_EMAIL)) {
             throw new RuntimeException('Email không đúng định dạng', 422);
         }
 
         if (empty($data['guest_phone'])) {
             throw new RuntimeException('Vui lòng nhập số điện thoại người nhận', 422);
-        }
-
-        if (empty($data['province'])) {
-            throw new RuntimeException('Vui lòng chọn tỉnh/thành phố', 422);
-        }
-
-        if (empty($data['district'])) {
-            throw new RuntimeException('Vui lòng nhập quận/huyện', 422);
-        }
-
-        if (empty($data['ward'])) {
-            throw new RuntimeException('Vui lòng nhập phường/xã', 422);
-        }
-
-        if (empty($data['address_line'])) {
-            throw new RuntimeException('Vui lòng nhập số nhà, tên đường', 422);
-        }
-
-        if ($requireEmail && empty($data['guest_email'])) {
-            throw new RuntimeException('Vui lòng nhập email', 422);
         }
     }
 

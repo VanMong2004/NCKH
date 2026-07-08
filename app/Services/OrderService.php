@@ -461,7 +461,7 @@ class OrderService
             ];
         }
 
-        $this->validateInlineAddress($data, true);
+        $this->validateInlineAddress($data, false);
 
         return [
             'name' => $data['guest_name'],

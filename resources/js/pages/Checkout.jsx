@@ -234,7 +234,7 @@ export default function Checkout() {
                 toast.success('Đặt hàng thành công');
 
                 navigate(
-                    `/order-success?order_code=${encodeURIComponent(order.orderCode)}`,
+                    `/order-success?order_id=${encodeURIComponent(order.id)}&order_code=${encodeURIComponent(order.orderCode)}&status=pending`,
                     {
                         replace: true,
                         state: {

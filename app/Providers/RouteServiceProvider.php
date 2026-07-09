@@ -42,7 +42,7 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('checkout', function (Request $request) {
-            return $this->limitPerMinute(10, $this->userOrIpKey($request), 'Bạn thao tác thanh toán quá nhanh, vui lòng thử lại sau ít phút.');
+            return $this->limitPerMinute(10, $this->userOrIpKey($request), 'Bạn thao tác đặt hàng quá nhanh, vui lòng thử lại sau ít phút.');
         });
 
         RateLimiter::for('chatbot', function (Request $request) {

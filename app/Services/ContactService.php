@@ -34,6 +34,7 @@ class ContactService
         ]);
 
         $this->webhook->send('contact_submitted', [
+            'type' => 'contact_submitted',
             'contact_id' => $contact->id,
             'full_name' => $contact->full_name,
             'email' => $contact->email,

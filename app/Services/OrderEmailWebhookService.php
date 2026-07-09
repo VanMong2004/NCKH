@@ -34,6 +34,7 @@ class OrderEmailWebhookService
         $paymentMethod = $payment?->method ?? ($emailType === 'cod_order_created' ? 'cod' : null);
         $isCod = $paymentMethod === 'cod';
         $isPaid = !$isCod && ($payment?->status === 'paid' || $emailType === 'payment_success');
+        $userId = $order->user_id ?? $order->user?->id;
         $userEmail = $order->user?->email;
         $guestEmail = $order->guest_email;
         $recipientEmail = $userEmail ?: $guestEmail;
@@ -41,6 +42,7 @@ class OrderEmailWebhookService
         $this->webhook->send('order_email', [
             'type' => $emailType,
             'email_type' => $emailType,
+            'user_id' => $userId,
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'customer_name' => $order->shipping_name ?: $order->user?->name ?: $order->guest_name,

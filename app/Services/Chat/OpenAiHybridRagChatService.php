@@ -229,11 +229,34 @@ class OpenAiHybridRagChatService
         $entities = $this->extractEntities($latestMessage);
         $intent = $entities['intent'];
 
+        if ($intent === 'off_topic') {
+            return [
+                ...$this->offTopicResponse($entities),
+                'debug' => [
+                    'intent' => 'off_topic',
+                    'original_message' => $entities['original_message'] ?? $latestMessage,
+                    'normalized_message' => $entities['normalized_message'] ?? null,
+                    'entities' => $entities,
+                    'confidence' => $entities['confidence'],
+                    'source_used' => 'guard',
+                    'tool_count' => 0,
+                    'tool_names' => [],
+                    'product_count' => 0,
+                    'promotion_count' => 0,
+                    'source_count' => 0,
+                    'tool_duration_ms' => 0,
+                    'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                ],
+            ];
+        }
+
         if ($intent === 'small_talk') {
             return [
                 ...$this->smallTalkResponse($entities),
                 'debug' => [
                     'intent' => 'small_talk',
+                    'original_message' => $entities['original_message'] ?? $latestMessage,
+                    'normalized_message' => $entities['normalized_message'] ?? null,
                     'entities' => $entities,
                     'confidence' => $entities['confidence'],
                     'source_used' => 'small_talk',
@@ -253,6 +276,8 @@ class OpenAiHybridRagChatService
                 ...$this->clarifyResponse($entities),
                 'debug' => [
                     'intent' => $intent,
+                    'original_message' => $entities['original_message'] ?? $latestMessage,
+                    'normalized_message' => $entities['normalized_message'] ?? null,
                     'entities' => $entities,
                     'confidence' => $entities['confidence'],
                     'source_used' => 'clarify',
@@ -274,6 +299,8 @@ class OpenAiHybridRagChatService
                 ...$result,
                 'debug' => [
                     'intent' => $result['intent'] ?? $intent,
+                    'original_message' => $entities['original_message'] ?? $latestMessage,
+                    'normalized_message' => $entities['normalized_message'] ?? null,
                     'entities' => $entities,
                     'confidence' => $entities['confidence'],
                     'source_used' => ($result['intent'] ?? $intent) === 'clarify' ? 'clarify' : 'database',
@@ -298,6 +325,8 @@ class OpenAiHybridRagChatService
             'debug' => [
                 ...$debug,
                 'intent' => $result['intent'] ?? 'static_knowledge',
+                'original_message' => $entities['original_message'] ?? $latestMessage,
+                'normalized_message' => $entities['normalized_message'] ?? null,
                 'entities' => $entities,
                 'confidence' => $entities['confidence'],
                 'source_used' => $debug['source_used'] ?? 'vector_store',
@@ -706,13 +735,14 @@ class OpenAiHybridRagChatService
 
     private function extractEntities(string $message): array
     {
-        $text = $this->normalizeChatText($message);
+        $text = $this->normalizeVietnameseText($message);
         $size = $this->extractSize($text);
         $color = $this->extractColor($text);
         $priceRange = $this->extractPriceRange($text);
         $categoryQuery = $this->extractCategoryQuery($text);
         $departmentQuery = $this->extractDepartmentQuery($text);
         $smallTalkType = $this->detectSmallTalkType($text);
+        $isOffTopic = $this->isOffTopicRequest($text);
 
         $hasPromotionSignal = $this->containsAny($text, [
             'khuyen mai', 'giam gia', 'voucher', 'deal', 'sale', 'uu dai',
@@ -755,6 +785,9 @@ class OpenAiHybridRagChatService
         } elseif ($hasPromotionSignal) {
             $intent = 'promotion_query';
             $confidence = 0.88;
+        } elseif ($isOffTopic) {
+            $intent = 'off_topic';
+            $confidence = 0.92;
         } elseif ($hasStaticKnowledgeSignal) {
             $intent = 'static_knowledge';
             $confidence = 0.85;
@@ -786,6 +819,8 @@ class OpenAiHybridRagChatService
 
         return [
             'intent' => $intent,
+            'original_message' => $message,
+            'normalized_message' => $text,
             'product_query' => $productQuery,
             'category_query' => $categoryQuery,
             'department_query' => $departmentQuery,
@@ -795,6 +830,7 @@ class OpenAiHybridRagChatService
             'price_max' => $priceRange['max'],
             'confidence' => $confidence,
             'small_talk_type' => $smallTalkType,
+            'is_off_topic' => $isOffTopic,
             'has_static_knowledge_signal' => $hasStaticKnowledgeSignal,
             'has_dynamic_signal' => $hasCatalogSignal || $hasPriceSignal || $hasStockSignal || $hasVariantSignal || $hasPromotionSignal || $hasOrderSignal,
         ];
@@ -836,6 +872,19 @@ class OpenAiHybridRagChatService
         ];
     }
 
+    private function offTopicResponse(array $entities): array
+    {
+        return [
+            'response_id' => null,
+            'answer' => 'CTUT UniShop hiện chưa hỗ trợ sản phẩm này. Bạn có thể hỏi mình về các sản phẩm CTUT như áo thun, hoodie, túi tote, móc khóa, bảng tên hoặc chính sách mua hàng.',
+            'intent' => 'off_topic',
+            'sources' => [],
+            'tool_calls' => [],
+            'products' => [],
+            'promotions' => [],
+        ];
+    }
+
     private function detectSmallTalkType(string $text): ?string
     {
         $text = trim($text);
@@ -868,6 +917,23 @@ class OpenAiHybridRagChatService
         }
 
         return $this->containsAny($query, $this->catalogSignalWords());
+    }
+
+    private function isOffTopicRequest(string $text): bool
+    {
+        return $this->containsAny($text, [
+            'pho',
+            'com',
+            'bun',
+            'mi',
+            'tra sua',
+            'ca phe',
+            'nuoc mia',
+            'banh mi',
+            'do an',
+            'mon an',
+            'thuc an',
+        ]);
     }
 
     private function isAmbiguousProductQuestion(
@@ -1047,8 +1113,13 @@ class OpenAiHybridRagChatService
 
     private function normalizeChatText(string $message): string
     {
+        return $this->normalizeVietnameseText($message);
+    }
+
+    private function normalizeVietnameseText(string $message): string
+    {
         $text = Str::ascii(mb_strtolower(trim($message)));
-        $text = preg_replace('/[^\pL\pN\s\-.]/u', ' ', $text);
+        $text = preg_replace('/[^\pL\pN\s]/u', ' ', $text);
         $text = preg_replace('/\s+/', ' ', $text);
 
         return trim((string) $text);

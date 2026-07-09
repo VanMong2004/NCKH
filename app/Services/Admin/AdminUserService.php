@@ -82,7 +82,7 @@ class AdminUserService
                 'deleted_at',
             ])
             ->with([
-                'addresses:id,user_id,name,phone,address,is_default',
+                'addresses:id,user_id,full_name,phone,province,district,ward,address_line,postal_code,is_default',
                 'orders' => function ($q) {
                     $q->select([
                         'id',
@@ -242,13 +242,18 @@ class AdminUserService
         return [
             ...$this->formatListItem($user),
 
-            'addresses' => $user->addresses?->map(fn ($address) => [
+            'addresses' => collect($user->addresses)->map(fn ($address) => [
                 'id' => $address->id,
-                'name' => $address->name ?? null,
+                'name' => $address->full_name ?? null,
                 'phone' => $address->phone ?? null,
-                'address' => $address->address ?? null,
+                'address' => $this->formatAddressLine($address),
+                'province' => $address->province ?? null,
+                'district' => $address->district ?? null,
+                'ward' => $address->ward ?? null,
+                'address_line' => $address->address_line ?? null,
+                'postal_code' => $address->postal_code ?? null,
                 'is_default' => (bool) ($address->is_default ?? false),
-            ])->values(),
+            ])->values()->toArray(),
 
             'recent_orders' => $user->orders?->map(fn ($order) => [
                 'id' => $order->id,
@@ -258,6 +263,18 @@ class AdminUserService
                 'created_at' => optional($order->created_at)->format('d/m/Y H:i'),
             ])->values(),
         ];
+    }
+
+    private function formatAddressLine($address): string
+    {
+        return collect([
+            $address->address_line ?? null,
+            $address->ward ?? null,
+            $address->district ?? null,
+            $address->province ?? null,
+        ])
+            ->filter(fn ($part) => filled($part))
+            ->implode(', ');
     }
 
     public function restore(int $id): array

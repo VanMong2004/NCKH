@@ -229,6 +229,25 @@ class OpenAiHybridRagChatService
         $entities = $this->extractEntities($latestMessage);
         $intent = $entities['intent'];
 
+        if ($intent === 'small_talk') {
+            return [
+                ...$this->smallTalkResponse($entities),
+                'debug' => [
+                    'intent' => 'small_talk',
+                    'entities' => $entities,
+                    'confidence' => $entities['confidence'],
+                    'source_used' => 'small_talk',
+                    'tool_count' => 0,
+                    'tool_names' => [],
+                    'product_count' => 0,
+                    'promotion_count' => 0,
+                    'source_count' => 0,
+                    'tool_duration_ms' => 0,
+                    'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                ],
+            ];
+        }
+
         if (in_array($intent, ['clarify', 'unknown'], true)) {
             return [
                 ...$this->clarifyResponse($entities),
@@ -398,6 +417,12 @@ class OpenAiHybridRagChatService
         $products = $this->extractProductsFromToolCalls($toolCalls);
 
         if (empty($result['found'])) {
+            $fallback = $this->fallbackProductInfoBySearch($toolName, $intent, $productName, $entities, $user, $toolCalls);
+
+            if ($fallback !== null) {
+                return $fallback;
+            }
+
             return $this->dynamicEmptyResponse($intent, $toolCalls, 'Mình chưa tìm thấy sản phẩm phù hợp trong hệ thống.');
         }
 
@@ -448,6 +473,80 @@ class OpenAiHybridRagChatService
             'products' => [],
             'promotions' => [],
         ];
+    }
+
+    private function fallbackProductInfoBySearch(string $toolName, string $intent, string $productName, array $entities, $user, array $toolCalls): ?array
+    {
+        if (!in_array($toolName, ['get_product_price', 'get_product_stock'], true)) {
+            return null;
+        }
+
+        $searchArguments = array_filter([
+            'query' => $productName,
+            'limit' => 5,
+            'category_query' => $entities['category_query'] ?? null,
+            'department_query' => $entities['department_query'] ?? null,
+            'size' => $entities['size'] ?? null,
+            'color' => $entities['color'] ?? null,
+            'in_stock_only' => $intent === 'product_stock',
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $searchResult = $this->productToolService->execute('search_products', $searchArguments, $user);
+        $toolCalls[] = [
+            'name' => 'search_products',
+            'arguments' => $searchArguments,
+            'result' => $searchResult,
+            'summary' => $this->summarizeToolResult('search_products', $searchResult),
+        ];
+
+        $products = $this->extractProductsFromToolCalls([end($toolCalls)]);
+
+        if (empty($products)) {
+            return null;
+        }
+
+        if (count($products) > 1) {
+            $choices = collect($products)
+                ->take(3)
+                ->map(fn ($product, int $index) => ($index + 1) . '. ' . ($product['name'] ?? 'Sản phẩm'))
+                ->implode("\n");
+
+            return $this->dynamicSuccessResponse(
+                'clarify',
+                "Mình tìm thấy một vài sản phẩm gần giống. Bạn muốn hỏi " . ($intent === 'product_price' ? 'giá' : 'tồn kho') . " sản phẩm nào?\n{$choices}",
+                $toolCalls,
+                $products
+            );
+        }
+
+        $matchedProductName = (string) ($products[0]['name'] ?? '');
+
+        if ($matchedProductName === '') {
+            return null;
+        }
+
+        $arguments = [
+            'product_name' => $matchedProductName,
+            'size' => $entities['size'] ?? null,
+            'color' => $entities['color'] ?? null,
+        ];
+        $result = $this->productToolService->execute($toolName, $arguments, $user);
+        $toolCalls[] = [
+            'name' => $toolName,
+            'arguments' => $arguments,
+            'result' => $result,
+            'summary' => $this->summarizeToolResult($toolName, $result),
+        ];
+
+        if (empty($result['found'])) {
+            return $this->dynamicEmptyResponse($intent, $toolCalls, 'Mình chưa tìm thấy sản phẩm phù hợp trong hệ thống.');
+        }
+
+        $answer = $intent === 'product_price'
+            ? $this->buildProductPriceAnswer($result)
+            : $this->buildProductStockAnswer($result);
+
+        return $this->dynamicSuccessResponse($intent, $answer, $toolCalls, $this->extractProductsFromToolCalls($toolCalls));
     }
 
     private function handlePromotionIntent(string $message, $user): array
@@ -613,6 +712,7 @@ class OpenAiHybridRagChatService
         $priceRange = $this->extractPriceRange($text);
         $categoryQuery = $this->extractCategoryQuery($text);
         $departmentQuery = $this->extractDepartmentQuery($text);
+        $smallTalkType = $this->detectSmallTalkType($text);
 
         $hasPromotionSignal = $this->containsAny($text, [
             'khuyen mai', 'giam gia', 'voucher', 'deal', 'sale', 'uu dai',
@@ -621,9 +721,11 @@ class OpenAiHybridRagChatService
             'don hang', 'ma don', 'order', 'ord-', 'trang thai don', 'van chuyen',
         ]);
         $hasStaticKnowledgeSignal = $this->containsAny($text, [
-            'chinh sach', 'faq', 'huong dan', 'doi tra', 'hoan tra', 'bao hanh',
-            'thanh toan', 'cod', 'giao hang', 'nhan hang', 'lien he', 'ho tro',
-            'gioi thieu', 'ctut unishop', 'ctut store', 'cua hang la gi',
+            'chinh sach', 'faq', 'cau hoi thuong gap', 'huong dan', 'huong dan mua hang',
+            'cach mua', 'cach dat hang', 'doi tra', 'hoan tien', 'hoan tra', 'bao hanh',
+            'thanh toan', 'thanh toan khi nhan hang', 'cod', 'giao hang', 'nhan hang',
+            'lien he', 'ho tro', 'gioi thieu', 'ctut unishop', 'ctut store',
+            'cua hang la gi', 'quy dinh',
         ]);
         $hasPriceSignal = $this->containsAny($text, [
             'gia', 'bao nhieu', 'may tien', 'gia nhieu', 'nhieu tien', 'duoi', 'tren',
@@ -644,12 +746,18 @@ class OpenAiHybridRagChatService
         $hasSpecificProduct = $productQuery !== '' || $categoryQuery !== null || $departmentQuery !== null;
         $isAmbiguous = $this->isAmbiguousProductQuestion($text, $productQuery, $hasCatalogSignal, $hasPriceSignal, $hasStockSignal, $hasVariantSignal);
 
-        if ($hasOrderSignal) {
+        if ($smallTalkType !== null) {
+            $intent = 'small_talk';
+            $confidence = 0.95;
+        } elseif ($hasOrderSignal) {
             $intent = 'order_query';
             $confidence = 0.9;
         } elseif ($hasPromotionSignal) {
             $intent = 'promotion_query';
             $confidence = 0.88;
+        } elseif ($hasStaticKnowledgeSignal) {
+            $intent = 'static_knowledge';
+            $confidence = 0.85;
         } elseif ($isAmbiguous) {
             $intent = 'clarify';
             $confidence = 0.3;
@@ -665,12 +773,12 @@ class OpenAiHybridRagChatService
         } elseif ($hasVariantSignal && $hasSpecificProduct && $productQuery !== '') {
             $intent = 'product_variant';
             $confidence = 0.8;
-        } elseif ($hasCatalogSignal || $productQuery !== '') {
+        } elseif ($hasCatalogSignal) {
             $intent = 'product_search';
             $confidence = 0.72;
-        } elseif ($hasStaticKnowledgeSignal) {
-            $intent = 'static_knowledge';
-            $confidence = 0.78;
+        } elseif ($productQuery !== '' && $this->looksLikePotentialProductQuery($productQuery)) {
+            $intent = 'product_search';
+            $confidence = 0.55;
         } else {
             $intent = 'rag';
             $confidence = 0.65;
@@ -686,6 +794,7 @@ class OpenAiHybridRagChatService
             'price_min' => $priceRange['min'],
             'price_max' => $priceRange['max'],
             'confidence' => $confidence,
+            'small_talk_type' => $smallTalkType,
             'has_static_knowledge_signal' => $hasStaticKnowledgeSignal,
             'has_dynamic_signal' => $hasCatalogSignal || $hasPriceSignal || $hasStockSignal || $hasVariantSignal || $hasPromotionSignal || $hasOrderSignal,
         ];
@@ -707,6 +816,58 @@ class OpenAiHybridRagChatService
             [],
             'Mình chưa rõ bạn muốn hỏi sản phẩm nào. Bạn có thể nhập rõ hơn tên sản phẩm, ví dụ: áo thun, hoodie, túi tote, móc khóa hoặc bảng tên.'
         );
+    }
+
+    private function smallTalkResponse(array $entities): array
+    {
+        $type = $entities['small_talk_type'] ?? 'greeting';
+        $answer = in_array($type, ['thanks', 'goodbye'], true)
+            ? 'Rất vui được hỗ trợ bạn. Nếu cần thêm thông tin về CTUT UniShop, bạn cứ nhắn cho mình nhé.'
+            : 'Chào bạn, mình là trợ lý CTUT UniShop. Bạn cần mình hỗ trợ về sản phẩm, đơn hàng, khuyến mãi hay hướng dẫn mua hàng?';
+
+        return [
+            'response_id' => null,
+            'answer' => $answer,
+            'intent' => 'small_talk',
+            'sources' => [],
+            'tool_calls' => [],
+            'products' => [],
+            'promotions' => [],
+        ];
+    }
+
+    private function detectSmallTalkType(string $text): ?string
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return null;
+        }
+
+        if (in_array($text, ['xin chao', 'chao', 'chao shop', 'hello', 'hi'], true)) {
+            return 'greeting';
+        }
+
+        if (in_array($text, ['cam on', 'cam on shop', 'thanks', 'thank you', 'ok', 'duoc roi'], true)) {
+            return 'thanks';
+        }
+
+        if (in_array($text, ['tam biet', 'bye', 'goodbye'], true)) {
+            return 'goodbye';
+        }
+
+        return null;
+    }
+
+    private function looksLikePotentialProductQuery(string $query): bool
+    {
+        $query = trim($query);
+
+        if ($query === '' || mb_strlen($query) < 4) {
+            return false;
+        }
+
+        return $this->containsAny($query, $this->catalogSignalWords());
     }
 
     private function isAmbiguousProductQuestion(
@@ -757,7 +918,7 @@ class OpenAiHybridRagChatService
         $tokens = preg_split('/\s+/', trim($query)) ?: [];
         $tokens = array_values(array_filter($tokens, fn ($token) => $token !== '' && !in_array($token, [
             'co', 'khong', 'nao', 'gi', 'cai', 'nay', 'minh', 'toi', 'em', 'anh', 'chi', 'khoa',
-            'ban', 'ctut', 'store', 'shop', 'san', 'pham', 'hang',
+            'ban', 'store', 'shop', 'san', 'pham', 'hang',
         ], true)));
 
         $query = trim(implode(' ', $tokens));

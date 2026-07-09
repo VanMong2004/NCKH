@@ -16,7 +16,8 @@ class OpenAiHybridRagChatService
 {
     public function __construct(
         protected ProductChatToolService $productToolService,
-        protected ChatSessionService $sessionService
+        protected ChatSessionService $sessionService,
+        protected OpenAiStaticKnowledgeService $staticKnowledgeService
     ) {}
 
     public function sendMessage($user, ?string $guestToken, ?int $conversationId, string $message): array
@@ -247,7 +248,7 @@ class OpenAiHybridRagChatService
             ];
         }
 
-        if ($intent !== 'rag') {
+        if (!in_array($intent, ['rag', 'static_knowledge'], true)) {
             $result = $this->handleDynamicIntent($intent, $latestMessage, $user, $entities);
 
             return [
@@ -268,39 +269,25 @@ class OpenAiHybridRagChatService
             ];
         }
 
-        $response = $this->createResponse([
-            'model' => config('services.openai.chat_model'),
-            'instructions' => $this->systemPrompt(),
-            'input' => $this->buildInput($conversation),
-            'tools' => $this->tools(),
-            'max_output_tokens' => 700,
-        ]);
-
-        $answer = $this->sanitizeAnswer($this->extractAnswer($response));
-        $sources = $this->extractSources($response);
-
-        if ($answer === '' || empty($sources)) {
-            $answer = 'Mình chưa tìm thấy thông tin này trong tài liệu hỗ trợ của CTUT UniShop.';
-        }
+        $result = $this->staticKnowledgeService->answer($conversation, $latestMessage);
+        $debug = $result['debug'] ?? [];
 
         return [
-            'response_id' => $response['id'] ?? null,
-            'answer' => $answer,
-            'intent' => 'rag',
-            'sources' => $sources,
-            'tool_calls' => [],
+            ...$result,
             'products' => [],
             'promotions' => [],
             'debug' => [
-                'intent' => 'rag',
+                ...$debug,
+                'intent' => $result['intent'] ?? 'static_knowledge',
                 'entities' => $entities,
                 'confidence' => $entities['confidence'],
-                'source_used' => 'vector_store',
-                'tool_count' => 0,
-                'tool_names' => [],
+                'source_used' => $debug['source_used'] ?? 'vector_store',
+                'tool_count' => count($result['tool_calls'] ?? []),
+                'tool_names' => collect($result['tool_calls'] ?? [])->pluck('name')->unique()->values()->toArray(),
                 'product_count' => 0,
                 'promotion_count' => 0,
-                'source_count' => count($sources),
+                'source_count' => count($result['sources'] ?? []),
+                'prompt_id_used' => (bool) ($debug['prompt_id_used'] ?? false),
                 'tool_duration_ms' => 0,
                 'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
             ],
@@ -633,6 +620,11 @@ class OpenAiHybridRagChatService
         $hasOrderSignal = $this->containsAny($text, [
             'don hang', 'ma don', 'order', 'ord-', 'trang thai don', 'van chuyen',
         ]);
+        $hasStaticKnowledgeSignal = $this->containsAny($text, [
+            'chinh sach', 'faq', 'huong dan', 'doi tra', 'hoan tra', 'bao hanh',
+            'thanh toan', 'cod', 'giao hang', 'nhan hang', 'lien he', 'ho tro',
+            'gioi thieu', 'ctut unishop', 'ctut store', 'cua hang la gi',
+        ]);
         $hasPriceSignal = $this->containsAny($text, [
             'gia', 'bao nhieu', 'may tien', 'gia nhieu', 'nhieu tien', 'duoi', 'tren',
         ]) || $priceRange['min'] !== null || $priceRange['max'] !== null;
@@ -676,6 +668,9 @@ class OpenAiHybridRagChatService
         } elseif ($hasCatalogSignal || $productQuery !== '') {
             $intent = 'product_search';
             $confidence = 0.72;
+        } elseif ($hasStaticKnowledgeSignal) {
+            $intent = 'static_knowledge';
+            $confidence = 0.78;
         } else {
             $intent = 'rag';
             $confidence = 0.65;
@@ -691,6 +686,7 @@ class OpenAiHybridRagChatService
             'price_min' => $priceRange['min'],
             'price_max' => $priceRange['max'],
             'confidence' => $confidence,
+            'has_static_knowledge_signal' => $hasStaticKnowledgeSignal,
             'has_dynamic_signal' => $hasCatalogSignal || $hasPriceSignal || $hasStockSignal || $hasVariantSignal || $hasPromotionSignal || $hasOrderSignal,
         ];
     }

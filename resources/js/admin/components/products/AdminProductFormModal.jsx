@@ -52,6 +52,7 @@ export default function AdminProductFormModal({
     mode = 'create',
     productId = null,
     categories = [],
+    departments = departmentOptions,
     onClose,
     onSaved,
 }) {
@@ -428,7 +429,12 @@ export default function AdminProductFormModal({
 
                         <div className="min-h-0 flex-1 overflow-y-auto p-5">
                             {activeTab === 'info' && (
-                                <InfoTab form={form} categories={categories} updateField={updateField} />
+                                <InfoTab
+                                    form={form}
+                                    categories={categories}
+                                    departments={departments}
+                                    updateField={updateField}
+                                />
                             )}
 
                             {activeTab === 'images' && (
@@ -496,7 +502,7 @@ export default function AdminProductFormModal({
     );
 }
 
-function InfoTab({ form, categories, updateField }) {
+function InfoTab({ form, categories, departments, updateField }) {
     return (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <Section title="Thông tin sản phẩm">
@@ -546,7 +552,7 @@ function InfoTab({ form, categories, updateField }) {
                             className={inputClass}
                         >
                             <option value="">Không chọn đơn vị</option>
-                            {departmentOptions.map((department) => (
+                            {departments.map((department) => (
                                 <option key={department.id} value={department.id}>
                                     {department.code} - {department.name}
                                 </option>

@@ -41,6 +41,9 @@ use App\Http\Controllers\Api\Admin\AdminChatConversationController;
 use App\Http\Controllers\Api\Admin\AdminSiteContentController;
 use App\Http\Controllers\Api\Admin\AdminUploadController;
 use App\Http\Controllers\Api\Admin\ChatKnowledgeController;
+use App\Http\Controllers\Api\Admin\AdminContactController;
+use App\Http\Controllers\Api\Admin\AdminCategoryController;
+use App\Http\Controllers\Api\Admin\AdminDepartmentController;
 
 use App\Http\Controllers\Api\N8n\N8nChatKnowledgeController;
 use App\Http\Controllers\Api\N8n\N8nSocialCallbackController;
@@ -297,6 +300,37 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         Route::patch('/{id}/lock', [AdminUserController::class, 'lock']);
         Route::patch('/{id}/unlock', [AdminUserController::class, 'unlock']);
         Route::delete('/{id}', [AdminUserController::class, 'destroy']);
+    });
+
+    // ADMIN CONTACTS
+    Route::prefix('contacts')->group(function () {
+        Route::get('/', [AdminContactController::class, 'index']);
+        Route::get('/{id}', [AdminContactController::class, 'show']);
+        Route::patch('/{id}/status', [AdminContactController::class, 'updateStatus']);
+        Route::patch('/{id}/note', [AdminContactController::class, 'updateNote']);
+        Route::delete('/{id}', [AdminContactController::class, 'destroy']);
+    });
+
+    // ADMIN CATEGORIES
+    Route::prefix('categories')->group(function () {
+        Route::get('/', [AdminCategoryController::class, 'index']);
+        Route::post('/', [AdminCategoryController::class, 'store']);
+        Route::get('/active-options', [AdminCategoryController::class, 'activeOptions']);
+        Route::get('/{id}', [AdminCategoryController::class, 'show']);
+        Route::put('/{id}', [AdminCategoryController::class, 'update']);
+        Route::patch('/{id}/toggle-active', [AdminCategoryController::class, 'toggleActive']);
+        Route::delete('/{id}', [AdminCategoryController::class, 'destroy']);
+    });
+
+    // ADMIN DEPARTMENTS
+    Route::prefix('departments')->group(function () {
+        Route::get('/', [AdminDepartmentController::class, 'index']);
+        Route::post('/', [AdminDepartmentController::class, 'store']);
+        Route::get('/active-options', [AdminDepartmentController::class, 'activeOptions']);
+        Route::get('/{id}', [AdminDepartmentController::class, 'show']);
+        Route::put('/{id}', [AdminDepartmentController::class, 'update']);
+        Route::patch('/{id}/toggle-active', [AdminDepartmentController::class, 'toggleActive']);
+        Route::delete('/{id}', [AdminDepartmentController::class, 'destroy']);
     });
 
     // ADMIN ORDERS

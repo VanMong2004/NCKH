@@ -62,6 +62,8 @@ const AdminSiteContent = lazy(() => import('./admin/pages/AdminSiteContent'));
 const AdminAnalytics = lazy(() => import('./admin/pages/AdminAnalytics'));
 const AdminChatKnowledge = lazy(() => import('./admin/pages/AdminChatKnowledge'));
 const AdminChatConversations = lazy(() => import('./admin/pages/AdminChatConversations'));
+const AdminContacts = lazy(() => import('./admin/pages/AdminContacts'));
+const AdminCatalogManagement = lazy(() => import('./admin/pages/AdminCatalogManagement'));
 
 function PageLoader() {
     return (
@@ -175,10 +177,12 @@ createRoot(document.getElementById('app')).render(
                                 <Route path="dashboard" element={<AdminDashboard />} />
 
                                 <Route path="products" element={<AdminProducts />} />
+                                <Route path="catalogs" element={<AdminCatalogManagement />} />
                                 <Route path="promotions" element={<AdminPromotions />} />
                                 <Route path="promotions/:id" element={<AdminPromotionDetail />} />
                                 <Route path="orders" element={<AdminOrders />} />
                                 <Route path="users" element={<AdminUsers />} />
+                                <Route path="contacts" element={<AdminContacts />} />
                                 <Route path="reviews" element={<AdminReviews />} />
                                 <Route path="site-content" element={<AdminSiteContent />} />
                                 <Route path="chat-knowledge" element={<AdminChatKnowledge />} />

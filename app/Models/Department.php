@@ -13,6 +13,7 @@ class Department extends Model
         'name',
         'slug',
         'code',
+        'description',
         'is_active',
         'sort_order',
     ];

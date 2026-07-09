@@ -2,12 +2,12 @@ import { Edit3, Loader2, Plus, Power, PowerOff, RefreshCcw, Search, Send, Sparkl
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
-import categoryService from '../../services/categoryService';
-
 import AdminProductFormModal from '../components/products/AdminProductFormModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import StatCard from '../components/ui/StatCard';
 import { formatMoney } from '../mappers/adminProductMapper';
+import adminCategoryService from '../services/adminCategoryService';
+import adminDepartmentService from '../services/adminDepartmentService';
 import adminProductService from '../services/adminProductService';
 
 const activeOptions = [
@@ -38,6 +38,7 @@ const facebookStyleOptions = [
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [departments, setDepartments] = useState([]);
 
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
@@ -114,10 +115,16 @@ export default function AdminProducts() {
 
     async function loadCategories() {
         try {
-            const result = await categoryService.getCategories();
-            setCategories(result.categories || []);
+            const [categoryOptions, departmentOptions] = await Promise.all([
+                adminCategoryService.getActiveOptions(),
+                adminDepartmentService.getActiveOptions(),
+            ]);
+
+            setCategories(categoryOptions || []);
+            setDepartments(departmentOptions || []);
         } catch {
             setCategories([]);
+            setDepartments([]);
         }
     }
 
@@ -725,6 +732,7 @@ export default function AdminProducts() {
                 mode={formState.mode}
                 productId={formState.productId}
                 categories={categories}
+                departments={departments}
                 onClose={closeForm}
                 onSaved={handleSavedProduct}
             />

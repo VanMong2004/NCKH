@@ -5,12 +5,15 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const pageTitles = [
     { path: '/admin/products', title: 'Sản phẩm' },
+    { path: '/admin/catalogs', title: 'Danh mục & Khoa' },
     { path: '/admin/promotions', title: 'Khuyến mãi' },
     { path: '/admin/orders', title: 'Đơn hàng' },
     { path: '/admin/users', title: 'Người dùng' },
+    { path: '/admin/contacts', title: 'Liên hệ' },
     { path: '/admin/reviews', title: 'Đánh giá' },
     { path: '/admin/site-content', title: 'Nội dung site' },
     { path: '/admin/chat-knowledge', title: 'Tài liệu AI' },
+    { path: '/admin/chat-conversations', title: 'Hội thoại AI' },
     { path: '/admin/analytics', title: 'Thống kê' },
 ];
 
@@ -43,30 +46,30 @@ export default function AdminTopbar({ onOpenSidebar }) {
                 </div>
 
                 <div className="hidden h-10 w-72 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 lg:flex dark:border-slate-700 dark:bg-slate-950">
-                    <Search size={16} className="text-slate-400" />
+                    <Search size={17} className="text-slate-400" />
                     <input
-                        disabled
+                        type="text"
                         placeholder="Tìm nhanh..."
-                        className="min-w-0 flex-1 bg-transparent text-sm text-slate-500 outline-none"
+                        className="w-full bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400 dark:text-slate-200"
                     />
                 </div>
 
                 <Link
                     to="/"
-                    className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 md:inline-flex dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-50 sm:flex dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                    <Store size={16} />
+                    <Store size={17} />
                     Xem shop
                 </Link>
 
-                <div className="hidden items-center gap-2 md:flex">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        <UserRound size={17} />
+                <div className="hidden items-center gap-3 md:flex">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                        <UserRound size={19} />
                     </div>
 
-                    <div className="max-w-32">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                            {user?.name || user?.full_name || 'Admin'}
+                    <div className="max-w-[160px]">
+                        <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                            {user?.name || user?.full_name || 'Quản trị CTUT Store'}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Quản trị</p>
                     </div>
@@ -75,10 +78,10 @@ export default function AdminTopbar({ onOpenSidebar }) {
                 <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
                     title="Đăng xuất"
                 >
-                    <LogOut size={18} />
+                    <LogOut size={20} />
                 </button>
             </div>
         </header>

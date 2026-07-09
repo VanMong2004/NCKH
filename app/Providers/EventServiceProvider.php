@@ -8,8 +8,6 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use Illuminate\Support\Facades\Event;
 use App\Listeners\UpdateStockAfterPayment;
 use App\Events\OrderPaid;
-use App\Events\OrderCreated;
-use App\Listeners\SendOrderCreatedWebhook;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -24,9 +22,6 @@ class EventServiceProvider extends ServiceProvider
         ],
         OrderPaid::class => [
             UpdateStockAfterPayment::class,
-        ],
-        OrderCreated::class => [
-            SendOrderCreatedWebhook::class,
         ],
     ];
 

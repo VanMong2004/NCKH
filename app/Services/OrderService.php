@@ -324,6 +324,17 @@ class OrderService
             }
         }
 
+        if ($paymentMethod === 'cod') {
+            try {
+                app(OrderEmailWebhookService::class)->sendCodOrderCreated($order);
+            } catch (\Throwable $e) {
+                Log::error('Send COD order email webhook failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         $order->load('items');
 
         $items = $order->items;

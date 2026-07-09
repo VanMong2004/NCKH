@@ -27,7 +27,8 @@ class ProductChatToolService
             'search_products' => $this->searchProducts(
                 (string) ($arguments['query'] ?? ''),
                 (int) ($arguments['limit'] ?? 5),
-                $user
+                $user,
+                $arguments
             ),
 
             'get_product_recommendations' => $this->getProductRecommendations(
@@ -120,9 +121,9 @@ class ProductChatToolService
         return $this->catalogService->getProductRecommendations($type, $limit, $user);
     }
 
-    public function searchProducts(string $query, int $limit = 5, $user = null): array
+    public function searchProducts(string $query, int $limit = 5, $user = null, array $filters = []): array
     {
-        return $this->catalogService->searchProducts($query, $limit, $user);
+        return $this->catalogService->searchProducts($query, $limit, $user, $filters);
 
         $query = trim($query);
         $limit = max(1, min($limit, 10));

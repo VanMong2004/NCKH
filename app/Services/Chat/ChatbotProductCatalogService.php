@@ -46,7 +46,7 @@ class ChatbotProductCatalogService
         ];
     }
 
-    public function searchProducts(string $query, int $limit = 5, $user = null): array
+    public function searchProducts(string $query, int $limit = 5, $user = null, array $filters = []): array
     {
         $query = trim($query);
         $limit = max(1, min($limit, 10));
@@ -59,17 +59,25 @@ class ChatbotProductCatalogService
             ];
         }
 
-        $priceConstraint = $this->extractPriceConstraint($query);
-        $userKey = $user?->id ? 'user_' . $user->id : 'guest';
-        $cacheKey = 'chatbot:products:search:v3:' . md5($userKey . '|' . $query . '|' . $limit . '|' . json_encode($priceConstraint));
+        $priceConstraint = array_filter([
+            'min' => $filters['price_min'] ?? null,
+            'max' => $filters['price_max'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
 
-        return Cache::remember($cacheKey, now()->addMinutes(3), function () use ($query, $limit, $user, $priceConstraint) {
+        if (empty($priceConstraint)) {
+            $priceConstraint = $this->extractPriceConstraint($query);
+        }
+
+        $userKey = $user?->id ? 'user_' . $user->id : 'guest';
+        $cacheKey = 'chatbot:products:search:v4:' . md5($userKey . '|' . $query . '|' . $limit . '|' . json_encode($priceConstraint) . '|' . json_encode($filters));
+
+        return Cache::remember($cacheKey, now()->addMinutes(3), function () use ($query, $limit, $user, $priceConstraint, $filters) {
             $keywords = $this->extractProductSearchKeywords($query);
-            $products = $this->queryProductsForIntent($query, $keywords, $limit);
+            $products = $this->queryProductsForIntent($query, $keywords, $limit, $filters);
 
             $matchedProducts = $products
-                ->map(function ($product) use ($keywords, $query, $user, $priceConstraint) {
-                    $score = $this->calculateProductSearchScore($product, $keywords, $query);
+                ->map(function ($product) use ($keywords, $query, $user, $priceConstraint, $filters) {
+                    $score = $this->calculateProductSearchScore($product, $keywords, $query, $filters);
 
                     if ($score <= 0) {
                         return null;
@@ -81,8 +89,13 @@ class ChatbotProductCatalogService
                         return null;
                     }
 
+                    if (!empty($filters['in_stock_only']) && (int) ($formatted['available_stock'] ?? 0) <= 0) {
+                        return null;
+                    }
+
                     $formatted['search_score'] = $score;
                     $formatted['matched_keywords'] = $keywords;
+                    $formatted['matched_filters'] = $filters;
 
                     return $formatted;
                 })
@@ -413,6 +426,7 @@ class ChatbotProductCatalogService
             ->select([
                 'id',
                 'category_id',
+                'department_id',
                 'name',
                 'slug',
                 'description',
@@ -426,6 +440,7 @@ class ChatbotProductCatalogService
             ])
             ->with([
                 'category:id,name,slug',
+                'department:id,name,slug,code',
                 'images:id,product_id,url,type,position',
                 'variants' => function ($q) {
                     $q->select([
@@ -442,7 +457,8 @@ class ChatbotProductCatalogService
                     ])->where('is_active', true);
                 },
             ])
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->whereHas('variants', fn ($variantQuery) => $variantQuery->where('is_active', true));
     }
 
     private function basePromotionQuery()
@@ -455,24 +471,79 @@ class ChatbotProductCatalogService
             ->where('end_date', '>=', now());
     }
 
-    private function queryProductsForIntent(string $query, array $keywords, int $limit)
+    private function queryProductsForIntent(string $query, array $keywords, int $limit, array $filters = [])
     {
         $normalizedQuery = $this->normalizeSearchText($query);
+        $categoryQuery = $this->normalizeSearchText((string) ($filters['category_query'] ?? ''));
+        $departmentQuery = $this->normalizeSearchText((string) ($filters['department_query'] ?? ''));
+        $size = $this->normalizeSearchText((string) ($filters['size'] ?? ''));
+        $color = $this->normalizeSearchText((string) ($filters['color'] ?? ''));
 
-        return $this->baseProductQuery()
+        $builder = $this->baseProductQuery()
             ->where(function ($q) use ($query, $keywords, $normalizedQuery) {
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('slug', 'like', "%{$normalizedQuery}%")
+                    ->orWhere('description', 'like', "%{$query}%")
                     ->orWhereHas('category', function ($categoryQuery) use ($query, $normalizedQuery) {
                         $categoryQuery->where('name', 'like', "%{$query}%")
                             ->orWhere('slug', 'like', "%{$normalizedQuery}%");
+                    })
+                    ->orWhereHas('department', function ($departmentQuery) use ($query, $normalizedQuery) {
+                        $departmentQuery->where('name', 'like', "%{$query}%")
+                            ->orWhere('slug', 'like', "%{$normalizedQuery}%")
+                            ->orWhere('code', 'like', "%{$normalizedQuery}%");
                     });
 
                 foreach (array_slice($keywords, 0, 8) as $keyword) {
                     $q->orWhere('name', 'like', "%{$keyword}%")
-                        ->orWhere('slug', 'like', "%{$keyword}%");
+                        ->orWhere('slug', 'like', "%{$keyword}%")
+                        ->orWhere('description', 'like', "%{$keyword}%")
+                        ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
+                            $categoryQuery->where('name', 'like', "%{$keyword}%")
+                                ->orWhere('slug', 'like', "%{$keyword}%");
+                        })
+                        ->orWhereHas('department', function ($departmentQuery) use ($keyword) {
+                            $departmentQuery->where('name', 'like', "%{$keyword}%")
+                                ->orWhere('slug', 'like', "%{$keyword}%")
+                                ->orWhere('code', 'like', "%{$keyword}%");
+                        });
                 }
-            })
+            });
+
+        if ($categoryQuery !== '') {
+            $builder->whereHas('category', function ($q) use ($categoryQuery) {
+                $q->where('name', 'like', "%{$categoryQuery}%")
+                    ->orWhere('slug', 'like', "%{$categoryQuery}%");
+            });
+        }
+
+        if ($departmentQuery !== '') {
+            $builder->whereHas('department', function ($q) use ($departmentQuery) {
+                $q->where('name', 'like', "%{$departmentQuery}%")
+                    ->orWhere('slug', 'like', "%{$departmentQuery}%")
+                    ->orWhere('code', 'like', "%{$departmentQuery}%");
+            });
+        }
+
+        if ($size !== '' || $color !== '' || !empty($filters['in_stock_only'])) {
+            $builder->whereHas('variants', function ($q) use ($size, $color, $filters) {
+                $q->where('is_active', true);
+
+                if ($size !== '') {
+                    $q->where('size', 'like', "%{$size}%");
+                }
+
+                if ($color !== '') {
+                    $q->where('color', 'like', "%{$color}%");
+                }
+
+                if (!empty($filters['in_stock_only'])) {
+                    $q->whereRaw('stock - reserved_stock > 0');
+                }
+            });
+        }
+
+        return $builder
             ->latest()
             ->limit(max(20, $limit * 5))
             ->get();
@@ -838,13 +909,19 @@ class ChatbotProductCatalogService
         return array_values(array_unique($keywords));
     }
 
-    private function calculateProductSearchScore(Product $product, array $keywords, string $originalQuery): int
+    private function calculateProductSearchScore(Product $product, array $keywords, string $originalQuery, array $filters = []): int
     {
         $searchText = $this->normalizeSearchText(implode(' ', array_filter([
             $product->name ?? '',
             $product->slug ?? '',
             $product->description ?? '',
             data_get($product, 'category.name', ''),
+            data_get($product, 'category.slug', ''),
+            data_get($product, 'department.name', ''),
+            data_get($product, 'department.slug', ''),
+            data_get($product, 'department.code', ''),
+            $product->variants->pluck('size')->filter()->implode(' '),
+            $product->variants->pluck('color')->filter()->implode(' '),
         ])));
 
         if ($searchText === '') {
@@ -861,12 +938,45 @@ class ChatbotProductCatalogService
             if (str_contains($this->normalizeSearchText((string) $product->name), $keyword)) {
                 $score += 20;
             }
+
+            if (str_contains($this->normalizeSearchText((string) data_get($product, 'category.name', '')), $keyword)) {
+                $score += 14;
+            }
+
+            if (str_contains($this->normalizeSearchText((string) data_get($product, 'department.name', '')), $keyword)
+                || str_contains($this->normalizeSearchText((string) data_get($product, 'department.code', '')), $keyword)) {
+                $score += 18;
+            }
         }
 
         $normalizedQuery = $this->normalizeSearchText($originalQuery);
 
         if ($normalizedQuery !== '' && str_contains($searchText, $normalizedQuery)) {
             $score += 30;
+        }
+
+        $categoryQuery = $this->normalizeSearchText((string) ($filters['category_query'] ?? ''));
+        $departmentQuery = $this->normalizeSearchText((string) ($filters['department_query'] ?? ''));
+        $size = $this->normalizeSearchText((string) ($filters['size'] ?? ''));
+        $color = $this->normalizeSearchText((string) ($filters['color'] ?? ''));
+
+        if ($categoryQuery !== '' && str_contains($this->normalizeSearchText((string) data_get($product, 'category.name', '')), $categoryQuery)) {
+            $score += 35;
+        }
+
+        if ($departmentQuery !== '' && (
+            str_contains($this->normalizeSearchText((string) data_get($product, 'department.name', '')), $departmentQuery)
+            || str_contains($this->normalizeSearchText((string) data_get($product, 'department.code', '')), $departmentQuery)
+        )) {
+            $score += 40;
+        }
+
+        if ($size !== '' && $product->variants->contains(fn ($variant) => str_contains($this->normalizeSearchText((string) $variant->size), $size))) {
+            $score += 20;
+        }
+
+        if ($color !== '' && $product->variants->contains(fn ($variant) => str_contains($this->normalizeSearchText((string) $variant->color), $color))) {
+            $score += 20;
         }
 
         return $score;

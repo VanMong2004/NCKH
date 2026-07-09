@@ -182,15 +182,23 @@ export default function AdminCatalogManagement() {
     }
 
     async function toggleCategory(item) {
-        await adminCategoryService.toggleActive(item.id, !item.isActive);
-        toast.success(!item.isActive ? 'Đã bật danh mục' : 'Đã tắt danh mục');
-        await loadCategories();
+        try {
+            await adminCategoryService.toggleActive(item.id, !item.isActive);
+            toast.success(!item.isActive ? 'Đã bật danh mục' : 'Đã tắt danh mục');
+            await loadCategories();
+        } catch (error) {
+            toast.error(getApiErrorMessage(error));
+        }
     }
 
     async function toggleDepartment(item) {
-        await adminDepartmentService.toggleActive(item.id, !item.isActive);
-        toast.success(!item.isActive ? 'Đã bật đơn vị/khoa' : 'Đã tắt đơn vị/khoa');
-        await loadDepartments();
+        try {
+            await adminDepartmentService.toggleActive(item.id, !item.isActive);
+            toast.success(!item.isActive ? 'Đã bật đơn vị/khoa' : 'Đã tắt đơn vị/khoa');
+            await loadDepartments();
+        } catch (error) {
+            toast.error(getApiErrorMessage(error));
+        }
     }
 
     function confirmDeleteCategory(item) {
@@ -612,11 +620,19 @@ function SearchInput({ value, onChange, placeholder, className = '' }) {
 }
 
 function ActionTd({ item, onEdit, onToggle, onDelete }) {
+    async function handleToggle() {
+        try {
+            await onToggle(item);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error));
+        }
+    }
+
     return (
         <Td className="text-right">
             <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => onEdit(item)} className={smallButtonClass}><Edit3 size={15} /> Sửa</button>
-                <button type="button" onClick={() => onToggle(item)} className={smallButtonClass}>{item.isActive ? 'Tắt' : 'Bật'}</button>
+                <button type="button" onClick={handleToggle} className={smallButtonClass}>{item.isActive ? 'Tắt' : 'Bật'}</button>
                 <button type="button" onClick={() => onDelete(item)} className={dangerButtonClass}><Trash2 size={15} /> Xóa</button>
             </div>
         </Td>
@@ -676,6 +692,17 @@ function defaultCatalogState() {
         filters: defaultFilters(),
         meta: { currentPage: 1, lastPage: 1, total: 0, perPage: 10 },
     };
+}
+
+function getApiErrorMessage(error) {
+    const errors = error?.response?.data?.errors || error?.raw?.errors || error?.errors || {};
+    const firstError = Object.values(errors).flat().find(Boolean);
+
+    return error?.response?.data?.message
+        || error?.raw?.message
+        || firstError
+        || error?.message
+        || 'Đã xảy ra lỗi, vui lòng thử lại';
 }
 
 const sectionClass = 'overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';

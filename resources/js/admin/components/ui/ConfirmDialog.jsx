@@ -1,6 +1,7 @@
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import { AlertTriangle, CheckCircle2, Info, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 
 export default function ConfirmDialog({
     open,
@@ -26,6 +27,8 @@ export default function ConfirmDialog({
             setLoading(true);
             await onConfirm();
             onOpenChange(false);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error));
         } finally {
             setLoading(false);
         }
@@ -136,4 +139,15 @@ function getButtonClass(type) {
     }
 
     return 'bg-blue-950 hover:bg-blue-900 dark:bg-blue-700 dark:hover:bg-blue-600';
+}
+
+function getApiErrorMessage(error) {
+    const errors = error?.response?.data?.errors || error?.raw?.errors || error?.errors || {};
+    const firstError = Object.values(errors).flat().find(Boolean);
+
+    return error?.response?.data?.message
+        || error?.raw?.message
+        || firstError
+        || error?.message
+        || 'Đã xảy ra lỗi, vui lòng thử lại';
 }

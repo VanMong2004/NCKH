@@ -54,7 +54,7 @@ use App\Http\Controllers\Api\N8n\N8nSocialCallbackController;
 
 
 // PUBLIC ROUTES
-Route::prefix('auth')->group(function () {
+Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']); // Đăng nhập
     Route::post('/register', [AuthController::class, 'register']); // Đăng ký
     Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)
@@ -104,7 +104,7 @@ Route::prefix('cart')->group(function () {
 });
 
 // CHECKOUT - GUEST + USER
-Route::prefix('orders')->group(function () {
+Route::prefix('orders')->middleware('throttle:checkout')->group(function () {
     Route::post('/checkout', [OrderController::class, 'checkout']);
 
     // Guest/user đều có thể thanh toán nếu có order_id + quyền hợp lệ
@@ -127,7 +127,7 @@ Route::get('/payment/callback', [PaymentController::class, 'callback'])
 Route::post('/payment/callback', [PaymentController::class, 'callback']);
 
 // NOTIFICATIONS (PUBLIC) - DÙNG CHO VIỆC TEST GỬI NOTIFICATION QUA API, KHÔNG DÙNG CHO NGƯỜI DÙNG CUỐI
-Route::middleware('throttle:20,1')
+Route::middleware('throttle:webhook')
 ->post('/webhooks/notifications/create',[NotificationController::class,'create']); // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
 
 // FAQ (PUBLIC)
@@ -156,7 +156,7 @@ Route::prefix('policies')->group(function () {
 
 // CONTACT (PUBLIC)
 Route::get('/contact-info', [ContactController::class, 'info']); // Lấy thông tin liên hệ (địa chỉ, email, số điện thoại, v.v.)
-Route::post('/contact', [ContactController::class, 'submit']); // Gửi thông tin liên hệ (tên, email, subject, message), có thể dùng cho form contact trên website hoặc app, thông tin gửi lên sẽ được lưu vào database và gửi email thông báo cho admin
+Route::post('/contact', [ContactController::class, 'submit'])->middleware('throttle:contact'); // Gửi thông tin liên hệ (tên, email, subject, message), có thể dùng cho form contact trên website hoặc app, thông tin gửi lên sẽ được lưu vào database và gửi email thông báo cho admin
 
 // ABOUT (PUBLIC)
 Route::get('/about', [AboutController::class, 'show']); // Lấy thông tin về chúng tôi (có thể bao gồm cả sứ mệnh, tầm nhìn, giá trị cốt lõi, lịch sử hình thành, v.v.)
@@ -168,9 +168,9 @@ Route::get('/system/state',[SystemController::class,'state']);
 Route::prefix('chat')->group(function () {
     Route::get('/session/current', [ChatController::class, 'current']);
     Route::get('/session/current/messages', [ChatController::class, 'currentMessages']);
-    Route::post('/reset', [ChatController::class, 'reset']);
-    Route::post('/translate', [ChatController::class, 'translate']);
-    Route::post('/send', [ChatController::class, 'send']);
+    Route::post('/reset', [ChatController::class, 'reset'])->middleware('throttle:chatbot');
+    Route::post('/translate', [ChatController::class, 'translate'])->middleware('throttle:chatbot');
+    Route::post('/send', [ChatController::class, 'send'])->middleware('throttle:chatbot');
     Route::get('/conversations', [ChatController::class, 'conversations']);
     Route::get('/conversations/{id}', [ChatController::class, 'show']);
 });
@@ -256,15 +256,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 // N8N AI KNOWLEDGE SYNC
-Route::prefix('n8n/chat/knowledge')->group(function () {
+Route::prefix('n8n/chat/knowledge')->middleware('throttle:webhook')->group(function () {
     Route::post('/sync-status', [N8nChatKnowledgeController::class, 'syncStatus']);
 });
 
 // N8N SOCIAL CALLBACK
-Route::post('/n8n/social/callback', [N8nSocialCallbackController::class, 'handle']);
+Route::post('/n8n/social/callback', [N8nSocialCallbackController::class, 'handle'])->middleware('throttle:webhook');
 
 // ADMIN
-Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'admin', 'throttle:admin'])->prefix('admin')->group(function () {
 
     // ADMIN SITE CONTENT
     Route::prefix('site-components')->group(function () {
@@ -287,7 +287,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     });
 
     // ADMIN UPLOADS
-    Route::prefix('uploads')->group(function () {
+    Route::prefix('uploads')->middleware('throttle:upload')->group(function () {
         Route::post('/image', [AdminUploadController::class, 'image']);
     });
 
@@ -420,7 +420,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // ADMIN AI KNOWLEDGE
     Route::prefix('chat/knowledge')->group(function () {
         Route::get('/', [ChatKnowledgeController::class, 'index']);
-        Route::post('/upload', [ChatKnowledgeController::class, 'upload']);
+        Route::post('/upload', [ChatKnowledgeController::class, 'upload'])->middleware('throttle:upload');
         Route::get('/{id}', [ChatKnowledgeController::class, 'show']);
         Route::patch('/{id}/toggle', [ChatKnowledgeController::class, 'toggle']);
         Route::delete('/{id}', [ChatKnowledgeController::class, 'destroy']);

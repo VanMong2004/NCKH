@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -31,6 +32,17 @@ class Handler extends ExceptionHandler
     public function render($request, Throwable $e)
     {
         if ($request->is('api/*')) {
+            if ($e instanceof ThrottleRequestsException) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.',
+                    'errors' => [
+                        'rate_limit' => ['Vui lòng chờ rồi thử lại.'],
+                    ],
+                    'data' => null,
+                ], 429);
+            }
+
             return response()->json([
                 'message' => $e->getMessage()
             ], 400);

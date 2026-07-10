@@ -91,6 +91,27 @@ function toDatetimeLocal(value) {
     return '';
 }
 
+function formatDateDisplay(value) {
+    if (!value) return '';
+
+    const raw = String(value).trim();
+    const viMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+
+    if (viMatch) {
+        const [, day, month, year] = viMatch;
+        return `${day}/${month}/${year}`;
+    }
+
+    const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (isoMatch) {
+        const [, year, month, day] = isoMatch;
+        return `${day}/${month}/${year}`;
+    }
+
+    return raw;
+}
+
 export function mapAdminPromotion(item = {}) {
     const status = item.status || '';
     const computedStatus = item.computed_status || status;
@@ -108,8 +129,8 @@ export function mapAdminPromotion(item = {}) {
         discountValue: toNumber(item.discount_value),
         discountText: getDiscountText(item.discount_type, item.discount_value),
 
-        startDate: item.start_date || '',
-        endDate: item.end_date || '',
+        startDate: formatDateDisplay(item.start_date),
+        endDate: formatDateDisplay(item.end_date),
         startDateInput: toDatetimeLocal(item.start_date),
         endDateInput: toDatetimeLocal(item.end_date),
 

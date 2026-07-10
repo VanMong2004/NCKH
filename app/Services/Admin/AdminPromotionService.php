@@ -12,6 +12,7 @@ use App\Jobs\SendPromotionSocialAutomationJob;
 use App\Services\Social\AiSocialCaptionService;
 use App\Services\Social\N8nSocialAutomationService;
 use App\Models\SocialAutomationLog;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 

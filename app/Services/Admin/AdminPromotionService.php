@@ -129,9 +129,17 @@ class AdminPromotionService
                 }
             }
 
+            if (count($created) === 0 && count($skipped) > 0) {
+                $firstReason = $skipped[0]['reason'] ?? 'Không có sản phẩm nào được thêm vào khuyến mãi';
+
+                throw new RuntimeException($firstReason, 422);
+            }
+
             return [
                 'success' => true,
-                'message' => 'Thêm danh sách sản phẩm khuyến mãi hoàn tất',
+                'message' => count($skipped) > 0
+                    ? 'Đã thêm một phần sản phẩm khuyến mãi, một số sản phẩm bị bỏ qua'
+                    : 'Thêm danh sách sản phẩm khuyến mãi hoàn tất',
                 'data' => [
                     'created_count' => count($created),
                     'skipped_count' => count($skipped),
@@ -317,25 +325,6 @@ class AdminPromotionService
             throw new RuntimeException(
                 'Vui lòng thêm sản phẩm vào đợt khuyến mãi trước khi đăng Facebook',
                 422
-            );
-        }
-
-        $alreadySent = SocialAutomationLog::query()
-            ->where('trigger_type', 'promotion_created')
-            ->where('entity_type', 'promotion')
-            ->where('entity_id', $promotion->id)
-            ->whereIn('status', [
-                'pending',
-                'sending',
-                'sent',
-                'success',
-            ])
-            ->exists();
-
-        if ($alreadySent) {
-            throw new RuntimeException(
-                'Đợt khuyến mãi này đã được gửi đăng Facebook trước đó',
-                409
             );
         }
 

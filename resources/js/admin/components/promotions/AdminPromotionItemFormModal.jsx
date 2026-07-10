@@ -220,7 +220,14 @@ export default function AdminPromotionItemFormModal({
                     items,
                 });
 
-                toast.success(result.message || 'Đã thêm sản phẩm vào khuyến mãi');
+                const skippedCount = Number(result?.data?.skipped_count || 0);
+
+                if (skippedCount > 0) {
+                    const skippedReason = result?.data?.skipped?.[0]?.reason;
+                    toast.warning(skippedReason || result.message || 'Một số sản phẩm không được thêm vào khuyến mãi');
+                } else {
+                    toast.success(result.message || 'Đã thêm sản phẩm vào khuyến mãi');
+                }
             }
 
             onSaved?.();

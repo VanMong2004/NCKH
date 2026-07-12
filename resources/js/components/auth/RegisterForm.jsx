@@ -7,6 +7,7 @@ import AuthInput from './AuthInput';
 import PasswordInput from './PasswordInput';
 import GoogleButton from './GoogleButton';
 import { useAuth } from '../../contexts/AuthContext';
+import { withMinimumDelay } from '../../utils/demoDelay';
 
 export default function RegisterForm() {
     const navigate = useNavigate();
@@ -68,7 +69,7 @@ export default function RegisterForm() {
         try {
             setLoading(true);
 
-            const response = await register(form);
+            const response = await withMinimumDelay(register(form));
 
             toast.success(response.message || 'Đăng ký thành công');
 

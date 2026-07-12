@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import MainLayout from '../layout/MainLayout';
+import LoadingOverlay from '../components/common/LoadingOverlay';
+import { wait } from '../utils/demoDelay';
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('vi-VN', {
@@ -52,7 +54,7 @@ export default function MockPaymentQr() {
         toast.success('Đã sao chép nội dung chuyển khoản');
     }
 
-    function completePayment() {
+    async function completePayment() {
         if (submitting) return;
 
         setSubmitting(true);
@@ -68,11 +70,19 @@ export default function MockPaymentQr() {
             }),
         );
 
+        await wait();
+
         window.location.href = callbackUrl;
     }
 
     return (
         <MainLayout>
+            <LoadingOverlay
+                show={submitting}
+                text="Đang xác nhận thanh toán..."
+                description="Hệ thống đang xác minh giao dịch mô phỏng và chuẩn bị kết quả thanh toán."
+            />
+
             <main className="mx-auto max-w-5xl px-4 py-6">
                 <div className="mb-6 flex items-center justify-between gap-3">
                     <Link
@@ -137,7 +147,7 @@ export default function MockPaymentQr() {
                                     className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-950 px-5 text-sm font-extrabold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-blue-700 dark:hover:bg-blue-600"
                                 >
                                     {submitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                                    Hoàn tất thanh toán
+                                    {submitting ? 'Đang xác nhận thanh toán...' : 'Hoàn tất thanh toán'}
                                 </button>
                             </div>
                         </div>

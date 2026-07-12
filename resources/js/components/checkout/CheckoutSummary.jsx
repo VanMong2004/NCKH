@@ -9,6 +9,7 @@ export default function CheckoutSummary({
     loading,
     onCheckout,
     buttonText = 'Đặt hàng',
+    loadingText = 'Đang xử lý...',
     error = '',
 }) {
     const finalTotal = Number(grandTotal || subtotal + shippingFee);
@@ -119,7 +120,7 @@ export default function CheckoutSummary({
                 onClick={onCheckout}
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-950 py-4 font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
             >
-                {loading ? 'Đang xử lý...' : buttonText}
+                {loading ? loadingText : buttonText}
             </button>
         </aside>
     );

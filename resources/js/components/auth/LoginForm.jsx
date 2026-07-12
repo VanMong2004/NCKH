@@ -7,6 +7,7 @@ import AuthInput from './AuthInput';
 import PasswordInput from './PasswordInput';
 import GoogleButton from './GoogleButton';
 import { useAuth } from '../../contexts/AuthContext';
+import { withMinimumDelay } from '../../utils/demoDelay';
 
 function isAdminUser(user) {
     if (!user) return false;
@@ -65,7 +66,7 @@ export default function LoginForm() {
         try {
             setLoading(true);
 
-            const response = await login(form.email, form.password);
+            const response = await withMinimumDelay(login(form.email, form.password));
             const user = response.data?.user;
 
             toast.success(response.message || 'Đăng nhập thành công');

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 
 import authService from '../../services/authService';
 import { useAuth } from '../../contexts/AuthContext';
+import { withMinimumDelay } from '../../utils/demoDelay';
 
 export default function ProfileForm({ user }) {
     const { refreshUser } = useAuth();
@@ -123,7 +124,7 @@ export default function ProfileForm({ user }) {
                 payload.append('avatar', avatarFile);
             }
 
-            await authService.updateProfile(payload);
+            await withMinimumDelay(authService.updateProfile(payload));
 
             await refreshUser();
 

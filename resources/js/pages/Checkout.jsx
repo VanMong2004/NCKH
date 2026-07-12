@@ -9,12 +9,14 @@ import CheckoutSteps from '../components/checkout/CheckoutSteps';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 import PaymentMethod from '../components/checkout/PaymentMethod';
 import ReceiverForm from '../components/checkout/ReceiverForm';
+import LoadingOverlay from '../components/common/LoadingOverlay';
 
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 
 import orderService from '../services/orderService';
 import paymentService from '../services/paymentService';
+import { withMinimumDelay } from '../utils/demoDelay';
 
 export default function Checkout() {
     const navigate = useNavigate();
@@ -215,7 +217,7 @@ export default function Checkout() {
                 );
             }
 
-            const order = await orderService.checkout(payload);
+            const order = await withMinimumDelay(orderService.checkout(payload));
 
             if (!order.id) {
                 toast.error('Không lấy được mã đơn hàng');
@@ -253,7 +255,7 @@ export default function Checkout() {
 
             setPendingPaymentOrder(order);
 
-            await payExistingOrder(order);
+            await payExistingOrder(order, false);
         } catch (error) {
             console.error('Checkout error:', error);
 
@@ -263,11 +265,13 @@ export default function Checkout() {
         }
     }
 
-    async function payExistingOrder(order) {
+    async function payExistingOrder(order, useDemoDelay = true) {
         try {
             const method = order.paymentMethod || paymentMethod;
 
-            const payment = await paymentService.pay(order.id, method);
+            const payment = useDemoDelay
+                ? await withMinimumDelay(paymentService.pay(order.id, method))
+                : await paymentService.pay(order.id, method);
 
             setPendingPaymentOrder(null);
 
@@ -336,6 +340,12 @@ export default function Checkout() {
 
     return (
         <MainLayout>
+            <LoadingOverlay
+                show={loading}
+                text={pendingPaymentOrder ? 'Đang tạo lại thanh toán...' : 'Đang xử lý đơn hàng...'}
+                description="Vui lòng chờ trong giây lát, hệ thống đang kiểm tra giỏ hàng và thông tin thanh toán."
+            />
+
             <main className="mx-auto max-w-7xl px-4 py-6">
                 <Breadcrumb />
 
@@ -391,6 +401,7 @@ export default function Checkout() {
                         onCheckout={handleCheckout}
                         loading={loading}
                         buttonText={pendingPaymentOrder ? 'Thanh toán lại' : 'Đặt hàng'}
+                        loadingText={pendingPaymentOrder ? 'Đang tạo lại thanh toán...' : 'Đang xử lý đơn hàng...'}
                     />
                 </section>
             </main>

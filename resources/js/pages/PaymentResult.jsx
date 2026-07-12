@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, XCircle } from 'lucide-react';
 
 import MainLayout from '../layout/MainLayout';
+import { wait } from '../utils/demoDelay';
 
 export default function PaymentResult() {
     const [searchParams] = useSearchParams();
@@ -11,9 +12,15 @@ export default function PaymentResult() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        function handleResult() {
+        let mounted = true;
+
+        async function handleResult() {
             const orderCode = searchParams.get('order_code');
             const status = searchParams.get('status');
+
+            await wait();
+
+            if (!mounted) return;
 
             if (!orderCode) {
                 setError('Không tìm thấy mã đơn hàng.');
@@ -38,6 +45,10 @@ export default function PaymentResult() {
         }
 
         handleResult();
+
+        return () => {
+            mounted = false;
+        };
     }, [navigate, searchParams]);
 
     if (error) {

@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import addressService from '../../services/addressService';
 import AddressCard from '../../components/account/AddressCard';
 import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
+import { withMinimumDelay } from '../../utils/demoDelay';
 
 const emptyForm = {
     fullName: '',
@@ -131,10 +132,10 @@ export default function AccountAddress() {
             setSubmitting(true);
 
             if (editingId) {
-                await addressService.updateAddress(editingId, form);
+                await withMinimumDelay(addressService.updateAddress(editingId, form));
                 toast.success('Đã cập nhật địa chỉ');
             } else {
-                await addressService.createAddress(form);
+                await withMinimumDelay(addressService.createAddress(form));
                 toast.success('Đã thêm địa chỉ mới');
             }
 

@@ -12,6 +12,8 @@ import {
 } from '../../mappers/adminOrderMapper';
 import adminOrderService from '../../services/adminOrderService';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import LoadingOverlay from '../../../components/common/LoadingOverlay';
+import { withMinimumDelay } from '../../../utils/demoDelay';
 
 export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdated }) {
     const [order, setOrder] = useState(null);
@@ -104,7 +106,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         try {
             setSavingStatus(true);
 
-            const result = await adminOrderService.updateStatus(order.id, statusForm);
+            const result = await withMinimumDelay(adminOrderService.updateStatus(order.id, statusForm));
 
             setOrder(result);
 
@@ -128,6 +130,12 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
 
     return (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-3">
+            <LoadingOverlay
+                show={savingStatus}
+                text="Đang cập nhật trạng thái đơn hàng..."
+                description="Hệ thống đang kiểm tra quyền, trạng thái hợp lệ và cập nhật dữ liệu đơn hàng."
+            />
+
             <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                     <div>

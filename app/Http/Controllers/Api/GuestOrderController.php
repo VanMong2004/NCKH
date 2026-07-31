@@ -2,63 +2,65 @@
 
 namespace App\Http\Controllers\Api;
 
-use Throwable;
-use RuntimeException;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Services\GuestOrderService;
-use App\Services\OrderBillService;
 use App\Services\VatInvoiceRequestService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
 
 class GuestOrderController extends Controller
 {
     public function __construct(
         protected GuestOrderService $service,
-        protected OrderBillService $orderBillService,
         protected VatInvoiceRequestService $vatInvoiceRequestService
     ) {}
 
     public function lookup(Request $request): JsonResponse
     {
         try {
-
             $data = $request->validate([
-                'order_code' => 'required|string',
-                'phone' => 'required|string',
+                'order_code' => 'nullable|string',
+                'phone' => ['nullable', 'regex:/^0\d{9}$/'],
+                'email' => 'required|email|max:255',
+            ], [
+                'phone.regex' => 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0.',
             ]);
 
-            $order = $this->service->lookup(
-                $data['order_code'],
-                $data['phone']
-            );
+            $hasOrderCode = !empty($data['order_code']);
+            $hasPhone = !empty($data['phone']);
+
+            if ($hasOrderCode === $hasPhone) {
+                throw ValidationException::withMessages([
+                    'lookup' => [
+                        'Vui lòng nhập `order_code + email` hoặc `phone + email`.',
+                    ],
+                ]);
+            }
+
+            $order = $this->service->lookup($data);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tra cứu đơn hàng thành công',
                 'data' => $order,
             ]);
-
         } catch (ValidationException $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Dữ liệu tra cứu không hợp lệ',
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (RuntimeException $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], 404);
-
+            ], in_array($e->getCode(), [400, 404], true) ? $e->getCode() : 404);
         } catch (Throwable $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi hệ thống',
@@ -71,59 +73,22 @@ class GuestOrderController extends Controller
     {
         try {
             $user = auth('sanctum')->user();
-
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
 
-            $order = $this->service->showByCode(
-                $user,
-                $guestToken,
-                $orderCode
-            );
+            $order = $this->service->showByCode($user, $guestToken, $orderCode);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tra cứu đơn hàng thành công',
                 'data' => $order,
             ]);
-
         } catch (RuntimeException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404]) ? $e->getCode() : 400);
-
-        } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-        }
-    }
-
-    public function bill(Request $request, string $orderCode)
-    {
-        try {
-            $user = auth('sanctum')->user();
-
-            $guestToken = $request->header('X-Guest-Token')
-                ?: $request->query('guest_token');
-
-            return $this->orderBillService->downloadForGuest(
-                $user,
-                $guestToken,
-                $orderCode
-            );
-
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404]) ? $e->getCode() : 400);
-
+            ], in_array($e->getCode(), [400, 401, 403, 404], true) ? $e->getCode() : 400);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -137,7 +102,6 @@ class GuestOrderController extends Controller
     {
         try {
             $user = auth('sanctum')->user();
-
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
 
@@ -150,14 +114,12 @@ class GuestOrderController extends Controller
                     $orderCode
                 ),
             ]);
-
         } catch (RuntimeException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404]) ? $e->getCode() : 400);
-
+            ], in_array($e->getCode(), [400, 401, 403, 404], true) ? $e->getCode() : 400);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -176,16 +138,9 @@ class GuestOrderController extends Controller
                 'company_address' => 'required|string|max:500',
                 'invoice_email' => 'required|email|max:255',
                 'note' => 'nullable|string|max:1000',
-            ], [
-                'company_name.required' => 'Vui lòng nhập tên đơn vị xuất hóa đơn',
-                'tax_code.required' => 'Vui lòng nhập mã số thuế',
-                'company_address.required' => 'Vui lòng nhập địa chỉ xuất hóa đơn',
-                'invoice_email.required' => 'Vui lòng nhập email nhận hóa đơn',
-                'invoice_email.email' => 'Email nhận hóa đơn không đúng định dạng',
             ]);
 
             $user = auth('sanctum')->user();
-
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
 
@@ -199,7 +154,6 @@ class GuestOrderController extends Controller
                     $data
                 ),
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -207,44 +161,12 @@ class GuestOrderController extends Controller
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (RuntimeException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
-
-        } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-        }
-    }
-
-    public function downloadVatInvoice(Request $request, string $orderCode)
-    {
-        try {
-            $user = auth('sanctum')->user();
-
-            $guestToken = $request->header('X-Guest-Token')
-                ?: $request->query('guest_token');
-
-            return $this->vatInvoiceRequestService->downloadForGuest(
-                $user,
-                $guestToken,
-                $orderCode
-            );
-
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
-
+            ], in_array($e->getCode(), [400, 401, 403, 404, 409], true) ? $e->getCode() : 400);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,

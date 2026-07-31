@@ -2,167 +2,57 @@
 
 namespace App\Services;
 
-use RuntimeException;
 use App\Models\Order;
 use App\Models\Review;
+use RuntimeException;
 
 class GuestOrderService
 {
-    private function findStatusHistoryTime(Order $order, string $status): ?string
+    public function lookup(array $data): array
     {
-        if (!$order->relationLoaded('statusHistories')) {
-            return null;
+        if (!empty($data['order_code'])) {
+            $order = Order::with($this->relations())
+                ->where('order_code', $data['order_code'])
+                ->where(function ($query) use ($data) {
+                    $query->where('guest_email', $data['email'])
+                        ->orWhereHas('user', fn ($q) => $q->where('email', $data['email']));
+                })
+                ->first();
+
+            if (!$order) {
+                throw new RuntimeException('Không tìm thấy đơn hàng', 404);
+            }
+
+            return $this->formatOrder($order);
         }
 
-        $history = $order->statusHistories
-            ->where('new_status', $status)
-            ->sortBy('created_at')
-            ->last();
+        $orders = Order::with($this->relations())
+            ->where(function ($query) use ($data) {
+                $query->where('guest_phone', $data['phone'])
+                    ->orWhere('shipping_phone', $data['phone']);
+            })
+            ->where(function ($query) use ($data) {
+                $query->where('guest_email', $data['email'])
+                    ->orWhereHas('user', fn ($q) => $q->where('email', $data['email']));
+            })
+            ->latest()
+            ->get()
+            ->map(fn ($order) => $this->formatOrder($order))
+            ->values();
 
-        return optional($history?->created_at)->format('d/m/Y H:i');
-    }
-
-    private function buildOrderTimeline(Order $order, $payment): array
-    {
-        $processingTime = $this->findStatusHistoryTime($order, 'processing');
-        $shippedTime = $this->findStatusHistoryTime($order, 'shipped');
-        $completedTime = $this->findStatusHistoryTime($order, 'completed');
-        $cancelledTime = $this->findStatusHistoryTime($order, 'cancelled');
-        $paidTime = $this->findStatusHistoryTime($order, 'paid')
-            ?: ($payment?->status === 'success'
-                ? optional($payment?->updated_at)->format('d/m/Y H:i')
-                : null);
-
-        $steps = [
-            [
-                'key' => 'created',
-                'label' => 'Đã tạo đơn',
-                'status' => true,
-                'time' => optional($order->created_at)->format('d/m/Y H:i'),
-                'note' => 'Hệ thống đã ghi nhận đơn hàng',
-            ],
-        ];
-
-        $isOnlinePayment = in_array($payment?->method, ['mock', 'vnpay'], true);
-        $isExpired = in_array($order->cancel_reason, ['expired', 'payment_timeout'], true);
-        $isCancelled = $order->status === 'cancelled';
-
-        if ($isOnlinePayment) {
-            $steps[] = [
-                'key' => 'payment',
-                'label' => 'Thanh toán',
-                'status' => $payment?->status === 'success',
-                'time' => $paidTime,
-                'note' => match ($payment?->status) {
-                    'pending' => 'Đang chờ thanh toán',
-                    'failed' => 'Thanh toán chưa thành công',
-                    'success' => 'Đã thanh toán thành công',
-                    default => 'Chưa có giao dịch hoàn tất',
-                },
-            ];
-        }
-
-        $steps[] = [
-            'key' => 'processing',
-            'label' => 'Đang xử lý',
-            'status' => in_array($order->status, ['processing', 'shipped', 'completed'], true),
-            'time' => $processingTime,
-            'note' => 'Đơn hàng đã được tiếp nhận và bắt đầu xử lý',
-        ];
-
-        $steps[] = [
-            'key' => 'shipped',
-            'label' => 'Đang giao / chờ nhận',
-            'status' => in_array($order->status, ['shipped', 'completed'], true),
-            'time' => $shippedTime,
-            'note' => 'Đơn hàng đang được giao hoặc chờ người nhận xác nhận',
-        ];
-
-        $steps[] = [
-            'key' => 'completed',
-            'label' => 'Hoàn thành',
-            'status' => $order->status === 'completed',
-            'time' => $completedTime,
-            'note' => 'Đơn hàng đã hoàn tất',
-        ];
-
-        if ($isCancelled) {
-            $steps[] = [
-                'key' => 'cancelled',
-                'label' => $isExpired ? 'Đã hết hạn' : 'Đã hủy',
-                'status' => true,
-                'time' => $cancelledTime ?: optional($order->updated_at)->format('d/m/Y H:i'),
-                'note' => $isExpired
-                    ? 'Đơn hàng đã hết hạn thanh toán'
-                    : 'Đơn hàng đã bị hủy',
-            ];
-        }
-
-        return $steps;
-    }
-
-    private function buildOrderActions(Order $order, $payment): array
-    {
-        $paymentMethod = $payment?->method;
-        $paymentStatus = $payment?->status;
-        $supportsOnlineRepayment = in_array($paymentMethod, ['mock', 'vnpay'], true);
-
-        $canCancel = false;
-        $canPayAgain = $order->status === 'pending'
-            && $supportsOnlineRepayment
-            && $paymentStatus !== 'success';
-
-        if ($order->user_id) {
-            $canCancel = $order->status === 'pending';
+        if ($orders->isEmpty()) {
+            throw new RuntimeException('Không tìm thấy đơn hàng', 404);
         }
 
         return [
-            'can_cancel' => $canCancel,
-            'can_pay_again' => $canPayAgain,
-            'can_review_order' => false,
-            'available' => array_values(array_filter([
-                $canCancel ? 'cancel' : null,
-                $canPayAgain ? 'pay_again' : null,
-            ])),
+            'lookup_type' => 'phone_email',
+            'orders' => $orders,
         ];
-    }
-
-    public function lookup(
-        string $orderCode,
-        string $phone
-    )
-    {
-        $order = Order::with([
-            'items.productVariant.product.images',
-            'payments',
-            'statusHistories:id,order_id,old_status,new_status,note,created_at',
-            'user.addresses',
-        ])
-        ->where('order_code', $orderCode)
-        ->where('guest_phone', $phone)
-        ->first();
-
-        if (!$order) {
-            throw new RuntimeException(
-                'Không tìm thấy đơn hàng'
-            );
-        }
-
-        $payment = $order->payments
-            ->sortByDesc('created_at')
-            ->first();
-
-        return $this->formatOrder($order);
     }
 
     public function showByCode($user, ?string $guestToken, string $orderCode)
     {
-        $order = Order::with([
-            'items.productVariant.product.images',
-            'payments',
-            'statusHistories:id,order_id,old_status,new_status,note,created_at',
-            'user.addresses',
-        ])
+        $order = Order::with($this->relations())
             ->where('order_code', $orderCode)
             ->first();
 
@@ -183,6 +73,16 @@ class GuestOrderService
         return $this->formatOrder($order);
     }
 
+    private function relations(): array
+    {
+        return [
+            'items.productVariant.product.images',
+            'payments',
+            'statusHistories:id,order_id,old_status,new_status,note,created_at',
+            'user.addresses',
+        ];
+    }
+
     private function formatOrder(Order $order): array
     {
         $payment = $order->payments
@@ -193,6 +93,8 @@ class GuestOrderService
             'id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'fulfillment_method' => $order->fulfillment_method,
             'qr_code' => $order->order_code,
             'guest_email' => $order->guest_email,
             'customer_email' => $order->user?->email ?: $order->guest_email,
@@ -213,7 +115,6 @@ class GuestOrderService
                 'created_at' => optional($payment->created_at)->format('d/m/Y H:i'),
                 'updated_at' => optional($payment->updated_at)->format('d/m/Y H:i'),
             ] : null,
-            'payment_status' => $payment?->status,
             'payment_method' => $payment?->method,
             'actions' => $this->buildOrderActions($order, $payment),
             'summary' => [
@@ -248,9 +149,8 @@ class GuestOrderService
                     'is_reviewed' => (bool) $review,
                     'can_review' => false,
                     'product_name' => $item->product_name ?: $product?->name,
-                    'thumbnail' => optional(
-                        $product?->images?->where('type', 'thumbnail')->first()
-                    )->url ?? optional($product?->images?->first())->url,
+                    'thumbnail' => optional($product?->images?->where('type', 'thumbnail')->first())->url
+                        ?? optional($product?->images?->first())->url,
                     'variant' => $item->variant_snapshot,
                     'price' => (float) ($item->final_price ?? $item->price),
                     'original_price' => (float) ($item->original_price ?? $item->price),
@@ -264,10 +164,107 @@ class GuestOrderService
                 ];
             })->values(),
             'pickup' => [
-                'location' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
-                'instruction' => 'Vui lòng mang theo MSSV, mã đơn hàng hoặc mã QR để nhận hàng.',
+                'location' => 'Phòng Công tác Chính trị và Quản lý sinh viên',
+                'instruction' => 'Vui lòng mang theo mã đơn hàng hoặc mã QR khi đến nhận hàng.',
             ],
             'timeline' => $this->buildOrderTimeline($order, $payment),
         ];
+    }
+
+    private function buildOrderActions(Order $order, $payment): array
+    {
+        $paymentMethod = $payment?->method;
+        $paymentStatus = $payment?->status ?? $order->payment_status;
+        $supportsOnlineRepayment = $paymentMethod === 'mock_bank';
+
+        $canCancel = false;
+        $canPayAgain = $order->status === 'pending'
+            && $supportsOnlineRepayment
+            && $paymentStatus !== 'paid';
+
+        if ($order->user_id) {
+            $canCancel = $order->status === 'pending';
+        }
+
+        return [
+            'can_cancel' => $canCancel,
+            'can_pay_again' => $canPayAgain,
+            'can_review_order' => false,
+            'available' => array_values(array_filter([
+                $canCancel ? 'cancel' : null,
+                $canPayAgain ? 'pay_again' : null,
+            ])),
+        ];
+    }
+
+    private function buildOrderTimeline(Order $order, $payment): array
+    {
+        $processingTime = $this->findStatusHistoryTime($order, 'processing');
+        $awaitingReceiptTime = $this->findStatusHistoryTime($order, 'awaiting_receipt');
+        $completedTime = $this->findStatusHistoryTime($order, 'completed');
+        $cancelledTime = $this->findStatusHistoryTime($order, 'cancelled');
+        $paidTime = $payment?->status === 'paid'
+            ? optional($payment?->updated_at)->format('d/m/Y H:i')
+            : null;
+
+        $steps = [
+            [
+                'key' => 'created',
+                'label' => 'Đã tạo đơn',
+                'status' => true,
+                'time' => optional($order->created_at)->format('d/m/Y H:i'),
+            ],
+        ];
+
+        if ($payment?->method === 'mock_bank') {
+            $steps[] = [
+                'key' => 'payment',
+                'label' => 'Thanh toán',
+                'status' => $payment?->status === 'paid',
+                'time' => $paidTime,
+            ];
+        }
+
+        $steps[] = [
+            'key' => 'processing',
+            'label' => 'Đang chuẩn bị',
+            'status' => in_array($order->status, ['processing', 'awaiting_receipt', 'completed'], true),
+            'time' => $processingTime,
+        ];
+
+        $steps[] = [
+            'key' => 'awaiting_receipt',
+            'label' => $order->fulfillment_method === 'pickup'
+                ? 'Sẵn sàng nhận tại phòng'
+                : 'Đang giao',
+            'status' => in_array($order->status, ['awaiting_receipt', 'completed'], true),
+            'time' => $awaitingReceiptTime,
+        ];
+
+        $steps[] = [
+            'key' => 'completed',
+            'label' => 'Hoàn thành',
+            'status' => $order->status === 'completed',
+            'time' => $completedTime,
+        ];
+
+        if ($order->status === 'cancelled') {
+            $steps[] = [
+                'key' => 'cancelled',
+                'label' => 'Đã hủy',
+                'status' => true,
+                'time' => $cancelledTime ?: optional($order->updated_at)->format('d/m/Y H:i'),
+            ];
+        }
+
+        return $steps;
+    }
+
+    private function findStatusHistoryTime(Order $order, string $status): ?string
+    {
+        $history = $order->statusHistories
+            ->firstWhere('new_status', $status);
+
+        return optional($history?->created_at)->format('d/m/Y H:i');
     }
 }

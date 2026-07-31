@@ -2,15 +2,16 @@
 
 namespace App\Services\Gateways;
 
-use App\Models\Payment;
+use App\Events\OrderPaid;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
-use Illuminate\Support\Facades\DB;
-use App\Events\OrderPaid;
-use App\Services\PromotionSoldService;
-use App\Services\Admin\OrderReleaseService;
+use App\Models\Payment;
 use App\Services\Analytics\AnalyticsEventService;
+use App\Services\Admin\OrderReleaseService;
 use App\Services\NotificationService;
+use App\Services\OrderEmailWebhookService;
+use App\Services\PromotionSoldService;
+use Illuminate\Support\Facades\DB;
 
 class MockPaymentGatewayService
 {
@@ -18,26 +19,27 @@ class MockPaymentGatewayService
         protected PromotionSoldService $promotionSoldService,
     ) {}
 
-    public function create(Payment $payment)
+    public function create(Payment $payment): array
     {
         return [
             'payment_id' => $payment->id,
             'transaction_id' => $payment->transaction_id,
-            'redirect_url' => url("/api/payment/callback?payment_id={$payment->id}&status=success&method=mock")
+            'redirect_url' => url("/api/payment/callback?payment_id={$payment->id}&status=success&method=mock_bank"),
         ];
     }
 
-    public function callback(array $data)
+    public function callback(array $data): array
     {
         return DB::transaction(function () use ($data) {
             $payment = Payment::lockForUpdate()->findOrFail($data['payment_id']);
 
-            if (in_array($payment->status, ['success', 'refunded'])) {
+            if (in_array($payment->status, ['paid', 'refunded'], true)) {
                 return [
                     'message' => 'Payment đã xử lý',
                     'payment_id' => $payment->id,
                     'order_id' => $payment->order_id,
-                    'status' => 'success',
+                    'order_code' => $payment->order?->order_code,
+                    'status' => 'paid',
                 ];
             }
 
@@ -61,6 +63,7 @@ class MockPaymentGatewayService
                 $order->update([
                     'status' => 'cancelled',
                     'cancel_reason' => 'payment_timeout',
+                    'payment_status' => 'failed',
                 ]);
 
                 $this->createStatusHistory(
@@ -70,19 +73,14 @@ class MockPaymentGatewayService
                     'Đơn hàng hết hạn thanh toán'
                 );
 
-                app(NotificationService::class)
-                    ->order(
-                        $order->fresh(),
-                        'cancelled'
-                    );
-
-                app(AnalyticsEventService::class)
-                    ->broadcastDashboardRefresh();
+                app(NotificationService::class)->order($order->fresh(), 'cancelled');
+                app(AnalyticsEventService::class)->broadcastDashboardRefresh();
 
                 return [
                     'message' => 'Đơn hàng đã hết hạn thanh toán',
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
+                    'order_code' => $order->order_code,
                     'status' => 'failed',
                 ];
             }
@@ -93,67 +91,70 @@ class MockPaymentGatewayService
                     'response_data' => $data,
                 ]);
 
-                app(AnalyticsEventService::class)
-                    ->broadcastDashboardRefresh();
+                app(AnalyticsEventService::class)->broadcastDashboardRefresh();
 
                 return [
                     'message' => 'Đơn hàng đã bị hủy, không thể thanh toán',
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
+                    'order_code' => $order->order_code,
                     'status' => 'failed',
                 ];
             }
 
-            $status = $data['status'] === 'success' ? 'success' : 'failed';
+            $status = ($data['status'] ?? '') === 'success' ? 'paid' : 'failed';
 
             $payment->update([
                 'status' => $status,
-                'response_data' => $data
+                'response_data' => $data,
             ]);
 
-            if ($status === 'success') {
-                $wasPaid = $order->status === 'paid';
+            if ($status === 'paid') {
                 $oldStatus = $order->status;
+                $alreadyPaid = $order->payment_status === 'paid';
 
                 $order->update([
-                    'status' => 'paid'
+                    'payment_status' => 'paid',
+                    'status' => $order->status === 'pending' ? 'processing' : $order->status,
+                    'cancel_reason' => null,
                 ]);
 
-                if (!$wasPaid) {
+                if ($oldStatus !== $order->status) {
                     $this->createStatusHistory(
                         $order,
                         $oldStatus,
-                        'paid',
-                        'Thanh toán mock thành công'
+                        $order->status,
+                        'Thanh toán giả lập ngân hàng thành công'
                     );
                 }
 
-                app(NotificationService::class)
-                    ->order(
-                        $order->fresh(),
-                        'paid'
-                    );
-
+                app(NotificationService::class)->order($order->fresh(), $order->status);
                 $order->load('items.productVariant');
 
-                if (!$wasPaid) {
+                if (!$alreadyPaid) {
                     $this->promotionSoldService->increase($order);
+                }
+
+                try {
+                    app(OrderEmailWebhookService::class)->sendPaymentSuccess($order, $payment);
+                } catch (\Throwable $e) {
                 }
 
                 event(new OrderPaid($order));
             } else {
                 $order->update([
+                    'payment_status' => 'failed',
                     'cancel_reason' => null,
                 ]);
 
-                app(AnalyticsEventService::class)
-                    ->broadcastDashboardRefresh();
+                app(AnalyticsEventService::class)->broadcastDashboardRefresh();
             }
 
             return [
                 'message' => 'Callback xử lý thành công',
                 'payment_id' => $payment->id,
                 'order_id' => $order->id,
+                'order_code' => $order->order_code,
                 'status' => $status,
             ];
         });

@@ -3,42 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\OrderService;
-use App\Services\OrderQueryService;
-use App\Services\OrderBillService;
-use App\Services\VatInvoiceRequestService;
 use App\Services\Analytics\AnalyticsEventService;
+use App\Services\OrderQueryService;
+use App\Services\OrderService;
+use App\Services\VatInvoiceRequestService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\QueryException;
 use RuntimeException;
 use Throwable;
 
 class OrderController extends Controller
 {
-    protected $orderService;
-    protected $orderQueryService;
-    protected $orderBillService;
-    protected $vatInvoiceRequestService;
-    protected $analyticsEventService;
-
     public function __construct(
-        OrderService $orderService,
-        OrderQueryService $orderQueryService,
-        OrderBillService $orderBillService,
-        VatInvoiceRequestService $vatInvoiceRequestService,
-        AnalyticsEventService $analyticsEventService
-    )
-    {
-        $this->orderService = $orderService;
-        $this->orderQueryService = $orderQueryService;
-        $this->orderBillService = $orderBillService;
-        $this->vatInvoiceRequestService = $vatInvoiceRequestService;
-        $this->analyticsEventService = $analyticsEventService;
-    }
+        protected OrderService $orderService,
+        protected OrderQueryService $orderQueryService,
+        protected VatInvoiceRequestService $vatInvoiceRequestService,
+        protected AnalyticsEventService $analyticsEventService
+    ) {}
 
-    // POST /api/orders/checkout
     public function checkout(Request $request)
     {
         try {
@@ -46,87 +30,60 @@ class OrderController extends Controller
 
             $rules = [
                 'address_id' => 'nullable|integer|exists:addresses,id',
-
                 'guest_name' => 'nullable|string|max:255',
                 'guest_email' => 'nullable|email|max:255',
-                'guest_phone' => 'nullable|string|max:20',
-
+                'guest_phone' => ['nullable', 'regex:/^0\d{9}$/'],
                 'province' => 'nullable|string|max:255',
                 'district' => 'nullable|string|max:255',
                 'ward' => 'nullable|string|max:255',
                 'address_line' => 'nullable|string|max:500',
                 'postal_code' => 'nullable|string|max:20',
-
                 'save_address' => 'nullable|boolean',
                 'is_default' => 'nullable|boolean',
-
-                'payment_method' => 'required|in:cod,vnpay,mock',
-
+                'fulfillment_method' => 'required|in:delivery,pickup',
+                'payment_method' => 'required|in:cod,mock_bank,cash_on_pickup',
                 'cart_item_ids' => 'required|array|min:1',
                 'cart_item_ids.*' => 'required|integer|exists:cart_items,id',
             ];
 
-            // Guest chưa đăng nhập thì bắt buộc nhập thông tin nhận hàng
             if (!$user) {
                 $rules['guest_name'] = 'required|string|max:255';
-                $rules['guest_email'] = 'nullable|email|max:255';
-                $rules['guest_phone'] = 'required|string|max:20';
-
-                $rules['province'] = 'nullable|string|max:255';
-                $rules['district'] = 'nullable|string|max:255';
-                $rules['ward'] = 'nullable|string|max:255';
-                $rules['address_line'] = 'nullable|string|max:500';
+                $rules['guest_email'] = 'required|email|max:255';
+                $rules['guest_phone'] = ['required', 'regex:/^0\d{9}$/'];
             }
 
-            // User login nhưng không chọn address_id thì phải nhập địa chỉ mới
-            if ($user && !$request->filled('address_id')) {
-                $rules['province'] = 'nullable|string|max:255';
-                $rules['district'] = 'nullable|string|max:255';
-                $rules['ward'] = 'nullable|string|max:255';
-                $rules['address_line'] = 'nullable|string|max:500';
+            if ($request->input('fulfillment_method') === 'delivery') {
+                if (!$user || !$request->filled('address_id')) {
+                    $rules['province'] = 'required|string|max:255';
+                    $rules['district'] = 'required|string|max:255';
+                    $rules['ward'] = 'required|string|max:255';
+                    $rules['address_line'] = 'required|string|max:500';
+                }
             }
 
             $data = $request->validate($rules, [
                 'address_id.integer' => 'Địa chỉ giao hàng không hợp lệ.',
                 'address_id.exists' => 'Địa chỉ giao hàng không tồn tại.',
-
                 'guest_name.required' => 'Vui lòng nhập tên người nhận.',
                 'guest_name.string' => 'Tên người nhận không hợp lệ.',
                 'guest_name.max' => 'Tên người nhận không được vượt quá 255 ký tự.',
-
                 'guest_email.required' => 'Vui lòng nhập email.',
                 'guest_email.email' => 'Email không đúng định dạng.',
                 'guest_email.max' => 'Email không được vượt quá 255 ký tự.',
-
                 'guest_phone.required' => 'Vui lòng nhập số điện thoại người nhận.',
-                'guest_phone.string' => 'Số điện thoại không hợp lệ.',
-                'guest_phone.max' => 'Số điện thoại không được vượt quá 20 ký tự.',
-
+                'guest_phone.regex' => 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0.',
                 'province.required' => 'Vui lòng nhập tỉnh/thành phố.',
-                'province.string' => 'Tỉnh/thành phố không hợp lệ.',
-                'province.max' => 'Tỉnh/thành phố không được vượt quá 255 ký tự.',
-
                 'district.required' => 'Vui lòng nhập quận/huyện.',
-                'district.string' => 'Quận/huyện không hợp lệ.',
-                'district.max' => 'Quận/huyện không được vượt quá 255 ký tự.',
-
                 'ward.required' => 'Vui lòng nhập phường/xã.',
-                'ward.string' => 'Phường/xã không hợp lệ.',
-                'ward.max' => 'Phường/xã không được vượt quá 255 ký tự.',
-
                 'address_line.required' => 'Vui lòng nhập địa chỉ giao hàng.',
-                'address_line.string' => 'Địa chỉ giao hàng không hợp lệ.',
-                'address_line.max' => 'Địa chỉ không được vượt quá 500 ký tự.',
-
                 'postal_code.max' => 'Mã bưu điện không được vượt quá 20 ký tự.',
-
+                'fulfillment_method.required' => 'Vui lòng chọn phương thức nhận hàng.',
+                'fulfillment_method.in' => 'Phương thức nhận hàng không hợp lệ.',
                 'payment_method.required' => 'Vui lòng chọn phương thức thanh toán.',
                 'payment_method.in' => 'Phương thức thanh toán không hợp lệ.',
-
                 'cart_item_ids.required' => 'Vui lòng chọn sản phẩm cần thanh toán.',
                 'cart_item_ids.array' => 'Danh sách sản phẩm không hợp lệ.',
                 'cart_item_ids.min' => 'Vui lòng chọn ít nhất một sản phẩm.',
-
                 'cart_item_ids.*.required' => 'Sản phẩm trong giỏ hàng không hợp lệ.',
                 'cart_item_ids.*.integer' => 'Sản phẩm trong giỏ hàng không hợp lệ.',
                 'cart_item_ids.*.exists' => 'Có sản phẩm không tồn tại trong giỏ hàng.',
@@ -148,7 +105,6 @@ class OrderController extends Controller
                 'message' => 'Đặt hàng thành công',
                 'data' => $result,
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -156,9 +112,8 @@ class OrderController extends Controller
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (RuntimeException $e) {
-            $statusCode = in_array($e->getCode(), [400, 401, 404, 409])
+            $statusCode = in_array($e->getCode(), [400, 401, 404, 409, 422], true)
                 ? $e->getCode()
                 : 400;
 
@@ -167,22 +122,16 @@ class OrderController extends Controller
                 'message' => $e->getMessage(),
                 'data' => null,
             ], $statusCode);
-
         } catch (QueryException $e) {
-            Log::error('Checkout database error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Checkout database error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi hệ thống',
                 'data' => null,
             ], 500);
-
         } catch (Throwable $e) {
-            Log::error('Checkout system error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Checkout system error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -192,7 +141,6 @@ class OrderController extends Controller
         }
     }
 
-    // GET /api/orders/my-orders
     public function myOrders(Request $request)
     {
         try {
@@ -203,23 +151,6 @@ class OrderController extends Controller
                 'sort' => 'nullable|in:latest,oldest',
                 'page' => 'nullable|integer|min:1',
                 'per_page' => 'nullable|integer|min:1',
-            ], [
-                'status.string' => 'Trạng thái đơn hàng không hợp lệ',
-                'status.max' => 'Trạng thái đơn hàng không hợp lệ',
-
-                'type.string' => 'Loại đơn hàng không hợp lệ',
-                'type.max' => 'Loại đơn hàng không hợp lệ',
-
-                'keyword.string' => 'Từ khóa tìm kiếm không hợp lệ',
-                'keyword.max' => 'Từ khóa tìm kiếm không được vượt quá 255 ký tự',
-
-                'sort.in' => 'Kiểu sắp xếp không hợp lệ',
-
-                'page.integer' => 'Số trang không hợp lệ',
-                'page.min' => 'Số trang phải lớn hơn hoặc bằng 1',
-
-                'per_page.integer' => 'Số đơn hàng mỗi trang không hợp lệ',
-                'per_page.min' => 'Số đơn hàng mỗi trang phải lớn hơn hoặc bằng 1',
             ]);
 
             $orders = $this->orderQueryService->myOrders(
@@ -229,7 +160,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lấy danh sách order thành công',
+                'message' => 'Lấy danh sách đơn hàng thành công',
                 'data' => $orders->items(),
                 'meta' => [
                     'current_page' => $orders->currentPage(),
@@ -238,7 +169,6 @@ class OrderController extends Controller
                     'total' => $orders->total(),
                 ],
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -246,20 +176,16 @@ class OrderController extends Controller
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (QueryException $e) {
-            Log::error('Get my orders database error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Get my orders database error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi hệ thống',
                 'data' => null,
             ], 500);
-
         } catch (RuntimeException $e) {
-            $statusCode = in_array($e->getCode(), [400, 401, 404])
+            $statusCode = in_array($e->getCode(), [400, 401, 404], true)
                 ? $e->getCode()
                 : 400;
 
@@ -268,11 +194,8 @@ class OrderController extends Controller
                 'message' => $e->getMessage(),
                 'data' => null,
             ], $statusCode);
-
         } catch (Throwable $e) {
-            Log::error('Get my orders system error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Get my orders system error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -282,20 +205,13 @@ class OrderController extends Controller
         }
     }
 
-    // GET /api/orders/{id}
     public function show(Request $request, $id)
     {
         try {
-            $request->merge([
-                'order_id' => $id,
-            ]);
+            $request->merge(['order_id' => $id]);
 
             $data = $request->validate([
                 'order_id' => 'required|integer|min:1',
-            ], [
-                'order_id.required' => 'Đơn hàng không hợp lệ',
-                'order_id.integer' => 'Đơn hàng không hợp lệ',
-                'order_id.min' => 'Đơn hàng không hợp lệ',
             ]);
 
             $order = $this->orderQueryService->show(
@@ -305,31 +221,26 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lấy chi tiết order thành công',
+                'message' => 'Lấy chi tiết đơn hàng thành công',
                 'data' => $order,
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Dữ liệu đơn hàng không hợp lệ',
+                'message' => 'Mã đơn hàng không hợp lệ',
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (QueryException $e) {
-            Log::error('Get order detail database error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Get order detail database error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Đã xảy ra lỗi hệ thống',
                 'data' => null,
             ], 500);
-
         } catch (RuntimeException $e) {
-            $statusCode = in_array($e->getCode(), [400, 401, 404])
+            $statusCode = in_array($e->getCode(), [400, 401, 403, 404], true)
                 ? $e->getCode()
                 : 400;
 
@@ -338,63 +249,8 @@ class OrderController extends Controller
                 'message' => $e->getMessage(),
                 'data' => null,
             ], $statusCode);
-
         } catch (Throwable $e) {
-            Log::error('Get order detail system error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-        }
-    }
-
-    public function bill(Request $request, $id)
-    {
-        try {
-            $request->merge([
-                'order_id' => $id,
-            ]);
-
-            $data = $request->validate([
-                'order_id' => 'required|integer|min:1',
-            ], [
-                'order_id.required' => 'Đơn hàng không hợp lệ',
-                'order_id.integer' => 'Đơn hàng không hợp lệ',
-                'order_id.min' => 'Đơn hàng không hợp lệ',
-            ]);
-
-            return $this->orderBillService->downloadForUser(
-                $request->user(),
-                $data['order_id']
-            );
-
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu đơn hàng không hợp lệ',
-                'errors' => $e->errors(),
-                'data' => null,
-            ], 422);
-
-        } catch (RuntimeException $e) {
-            $statusCode = in_array($e->getCode(), [400, 401, 403, 404])
-                ? $e->getCode()
-                : 400;
-
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'data' => null,
-            ], $statusCode);
-
-        } catch (Throwable $e) {
-            Log::error('Download order bill error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Get order detail system error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -407,42 +263,26 @@ class OrderController extends Controller
     public function vatInvoiceRequest(Request $request, $id)
     {
         try {
-            $request->merge([
-                'order_id' => $id,
-            ]);
-
-            $data = $request->validate([
-                'order_id' => 'required|integer|min:1',
-            ]);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Lấy yêu cầu hóa đơn đỏ thành công',
                 'data' => $this->vatInvoiceRequestService->showForUser(
                     $request->user(),
-                    $data['order_id']
+                    (int) $id
                 ),
             ]);
-
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu đơn hàng không hợp lệ',
-                'errors' => $e->errors(),
-                'data' => null,
-            ], 422);
-
         } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 401, 403, 404], true)
+                ? $e->getCode()
+                : 400;
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404]) ? $e->getCode() : 400);
-
+            ], $statusCode);
         } catch (Throwable $e) {
-            Log::error('Get VAT invoice request error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Get VAT invoice request system error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -455,23 +295,12 @@ class OrderController extends Controller
     public function storeVatInvoiceRequest(Request $request, $id)
     {
         try {
-            $request->merge([
-                'order_id' => $id,
-            ]);
-
             $data = $request->validate([
-                'order_id' => 'required|integer|min:1',
                 'company_name' => 'required|string|max:255',
                 'tax_code' => 'required|string|max:50',
                 'company_address' => 'required|string|max:500',
                 'invoice_email' => 'required|email|max:255',
                 'note' => 'nullable|string|max:1000',
-            ], [
-                'company_name.required' => 'Vui lòng nhập tên đơn vị xuất hóa đơn',
-                'tax_code.required' => 'Vui lòng nhập mã số thuế',
-                'company_address.required' => 'Vui lòng nhập địa chỉ xuất hóa đơn',
-                'invoice_email.required' => 'Vui lòng nhập email nhận hóa đơn',
-                'invoice_email.email' => 'Email nhận hóa đơn không đúng định dạng',
             ]);
 
             return response()->json([
@@ -479,11 +308,10 @@ class OrderController extends Controller
                 'message' => 'Gửi yêu cầu hóa đơn đỏ thành công',
                 'data' => $this->vatInvoiceRequestService->createForUser(
                     $request->user(),
-                    $data['order_id'],
+                    (int) $id,
                     $data
                 ),
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -491,108 +319,8 @@ class OrderController extends Controller
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
-
-        } catch (Throwable $e) {
-            Log::error('Store VAT invoice request error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-        }
-    }
-
-    public function downloadVatInvoice(Request $request, $id)
-    {
-        try {
-            $request->merge([
-                'order_id' => $id,
-            ]);
-
-            $data = $request->validate([
-                'order_id' => 'required|integer|min:1',
-            ]);
-
-            return $this->vatInvoiceRequestService->downloadForUser(
-                $request->user(),
-                $data['order_id']
-            );
-
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu đơn hàng không hợp lệ',
-                'errors' => $e->errors(),
-                'data' => null,
-            ], 422);
-
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'data' => null,
-            ], in_array($e->getCode(), [400, 401, 403, 404, 409]) ? $e->getCode() : 400);
-
-        } catch (Throwable $e) {
-            Log::error('Download VAT invoice error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-        }
-    }
-
-    // POST /api/orders/{id}/cancel
-    public function cancel(Request $request, $id)
-    {
-        try {
-            $request->merge([
-                'order_id' => $id,
-            ]);
-
-            $data = $request->validate([
-                'order_id' => 'required|integer|min:1',
-            ], [
-                'order_id.required' => 'Đơn hàng không hợp lệ',
-                'order_id.integer' => 'Đơn hàng không hợp lệ',
-                'order_id.min' => 'Đơn hàng không hợp lệ',
-            ]);
-
-            $order = $this->orderQueryService->cancel(
-                $request->user(),
-                $data['order_id']
-            );
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Hủy order thành công',
-                'data' => $order,
-            ]);
-
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu đơn hàng không hợp lệ',
-                'errors' => $e->errors(),
-                'data' => null,
-            ], 422);
-
-        } catch (RuntimeException $e) {
-            $statusCode = in_array($e->getCode(), [400, 401, 404, 409])
+            $statusCode = in_array($e->getCode(), [400, 401, 403, 404, 409], true)
                 ? $e->getCode()
                 : 400;
 
@@ -601,22 +329,8 @@ class OrderController extends Controller
                 'message' => $e->getMessage(),
                 'data' => null,
             ], $statusCode);
-
-        } catch (QueryException $e) {
-            Log::error('Cancel order database error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-
         } catch (Throwable $e) {
-            Log::error('Cancel order system error', [
-                'message' => $e->getMessage(),
-            ]);
+            Log::error('Store VAT invoice request system error', ['message' => $e->getMessage()]);
 
             return response()->json([
                 'success' => false,
@@ -624,5 +338,40 @@ class OrderController extends Controller
                 'data' => null,
             ], 500);
         }
-    }    
+    }
+
+    public function cancel(Request $request, $id)
+    {
+        try {
+            $result = $this->orderService->cancel(
+                $request->user(),
+                (int) $id,
+                (string) $request->input('reason', '')
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Hủy đơn hàng thành công',
+                'data' => $result,
+            ]);
+        } catch (RuntimeException $e) {
+            $statusCode = in_array($e->getCode(), [400, 401, 403, 404, 409, 422], true)
+                ? $e->getCode()
+                : 400;
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $statusCode);
+        } catch (Throwable $e) {
+            Log::error('Cancel order system error', ['message' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
 }

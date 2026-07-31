@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Jobs\CancelPendingOrderJob;
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
@@ -9,16 +11,12 @@ use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Models\ProductVariant;
-use App\Models\Address;
 use App\Models\PromotionItem;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
-use Exception;
-use App\Jobs\CancelPendingOrderJob;
-use App\Services\PromotionPriceService;
-use App\Models\SystemSetting;
-use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
@@ -26,9 +24,6 @@ class OrderService
         protected PromotionPriceService $promotionPriceService
     ) {}
 
-    private const COD_MAX_AMOUNT = 500000;
-
-    // CHECKOUT
     public function checkout($user, ?string $guestToken, array $data)
     {
         if (!$user && !$guestToken) {
@@ -36,15 +31,28 @@ class OrderService
         }
 
         $autoCancelMinutes = $this->getOrderAutoCancelMinutes();
+        $fulfillmentMethod = $data['fulfillment_method'];
+        $paymentMethod = $data['payment_method'];
 
-        $order = DB::transaction(function () use ($user, $guestToken, $data, $autoCancelMinutes) {
+        $this->validateCheckoutCombination(
+            $fulfillmentMethod,
+            $paymentMethod
+        );
+
+        $order = DB::transaction(function () use (
+            $user,
+            $guestToken,
+            $data,
+            $autoCancelMinutes,
+            $fulfillmentMethod,
+            $paymentMethod
+        ) {
             $cartQuery = Cart::with([
                 'items' => function ($query) use ($data) {
                     $query->whereIn('id', $data['cart_item_ids']);
                 },
                 'items.productVariant.product',
-            ])
-            ->where('status', 'active');
+            ])->where('status', 'active');
 
             if ($user) {
                 $cartQuery->where('user_id', $user->id);
@@ -94,32 +102,27 @@ class OrderService
                 }
             }
 
-            $shipping = $this->resolveShippingInfo(
-                $user,
-                $data
-            );
+            $shipping = $this->resolveShippingInfo($user, $data, $fulfillmentMethod);
 
             $order = Order::create([
                 'user_id' => $user?->id,
                 'guest_token' => $user ? null : $guestToken,
-
                 'guest_name' => $shipping['guest_name'],
                 'guest_email' => $shipping['guest_email'],
                 'guest_phone' => $shipping['guest_phone'],
-
+                'fulfillment_method' => $fulfillmentMethod,
                 'order_code' => 'TEMP-' . uniqid(),
                 'status' => 'pending',
-                'expired_at' => in_array($data['payment_method'], ['mock','vnpay'])
+                'payment_status' => 'unpaid',
+                'expired_at' => $paymentMethod === 'mock_bank'
                     ? now()->addMinutes($autoCancelMinutes)
                     : null,
-
                 'total' => 0,
                 'shipping_fee' => 0,
-
                 'shipping_name' => $shipping['name'],
                 'shipping_phone' => $shipping['phone'],
                 'shipping_address' => $shipping['address'],
-            ]);            
+            ]);
 
             $order->update([
                 'order_code' => $this->generateOrderCode($order->id),
@@ -134,13 +137,8 @@ class OrderService
             ]);
 
             if ($order->user_id) {
-
                 app(NotificationService::class)
-                    ->order(
-                        $order,
-                        'pending'
-                    );
-
+                    ->order($order, 'pending');
             }
 
             $total = 0;
@@ -160,9 +158,7 @@ class OrderService
                 }
 
                 $before = clone $variant;
-
                 $variant->increment('reserved_stock', $item->quantity);
-
                 $after = $variant->fresh();
 
                 app(\App\Services\Admin\InventoryHistoryService::class)->record(
@@ -229,38 +225,24 @@ class OrderService
                 }
 
                 $lineTotal = $finalPrice * $item->quantity;
-
-                $totalDiscount += (
-                    $discountAmount
-                    *
-                    $item->quantity
-                );
+                $totalDiscount += $discountAmount * $item->quantity;
 
                 OrderItem::create([
                     'order_id' => $order->id,
-
                     'product_variant_id' => $variant->id,
-
-                    // giữ tương thích code cũ
                     'price' => $finalPrice,
-
                     'original_price' => $originalPrice,
                     'discount_amount' => $discountAmount,
                     'final_price' => $finalPrice,
-
                     'quantity' => $item->quantity,
-
                     'product_name' => $variant->product?->name ?? 'Sản phẩm',
-
                     'variant_snapshot' => [
                         'sku' => $variant->sku,
                         'size' => $variant->size,
                         'color' => $variant->color,
                         'attributes' => $variant->attributes ?? [],
                     ],
-
                     'promotion_id' => $promotionId,
-
                     'promotion_snapshot' => $promotionSnapshot,
                 ]);
 
@@ -274,23 +256,14 @@ class OrderService
                 'total' => $total,
             ]);
 
-            $paymentMethod = $data['payment_method'] ?? 'mock';
-
-            if ($paymentMethod === 'cod' && $total > self::COD_MAX_AMOUNT) {
-                throw new RuntimeException(
-                    'COD chỉ áp dụng cho đơn hàng từ 500.000đ trở xuống',
-                    400
-                );
-            }
-
             $order->refresh();
 
             Payment::create([
                 'order_id' => $order->id,
                 'method' => $paymentMethod,
-                'status' => 'pending',
+                'status' => 'unpaid',
                 'amount' => $order->total,
-                'transaction_id' => $paymentMethod === 'cod'
+                'transaction_id' => in_array($paymentMethod, ['cod', 'cash_on_pickup'], true)
                     ? null
                     : Str::uuid(),
             ]);
@@ -299,20 +272,12 @@ class OrderService
             app(\App\Services\Analytics\AnalyticsEventService::class)
                 ->broadcastDashboardRefresh();
 
-            // $cart->update([
-            //     'status' => 'checked_out',
-            // ]);
-            CartItem::whereIn(
-                'id',
-                $selectedItems->pluck('id')
-            )->delete();
+            CartItem::whereIn('id', $selectedItems->pluck('id'))->delete();
 
             return $order;
         });
 
-        $paymentMethod = $data['payment_method'] ?? 'mock';
-
-        if (in_array($paymentMethod, ['mock', 'vnpay'])) {
+        if ($paymentMethod === 'mock_bank') {
             try {
                 CancelPendingOrderJob::dispatch($order->id)
                     ->delay($order->expired_at ?? now()->addMinutes($autoCancelMinutes));
@@ -324,7 +289,7 @@ class OrderService
             }
         }
 
-        if ($paymentMethod === 'cod') {
+        if (in_array($paymentMethod, ['cod', 'cash_on_pickup'], true)) {
             try {
                 app(OrderEmailWebhookService::class)->sendCodOrderCreated($order);
             } catch (\Throwable $e) {
@@ -336,17 +301,9 @@ class OrderService
         }
 
         $order->load('items');
-
         $items = $order->items;
-
-        $subTotal = $items->sum(
-            fn ($item) =>
-                $item->original_price * $item->quantity
-        );
-
+        $subTotal = $items->sum(fn ($item) => $item->original_price * $item->quantity);
         $shippingFee = $order->shipping_fee ?? 0;
-
-        $paymentMethod = $data['payment_method'] ?? 'mock';
 
         return [
             'user_id' => $order->user_id,
@@ -354,38 +311,29 @@ class OrderService
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
-
+            'payment_status' => $order->payment_status,
+            'fulfillment_method' => $order->fulfillment_method,
             'sub_total' => $subTotal,
             'shipping_fee' => $shippingFee,
             'discount' => $order->discount_total,
             'grand_total' => $order->total,
-
             'payment_method' => $paymentMethod,
-
             'items' => $items->map(fn ($item) => [
                 'product_name' => $item->product_name,
-
                 'original_price' => $item->original_price,
-
                 'discount_amount' => $item->discount_amount,
-
                 'final_price' => $item->final_price,
-
                 'quantity' => $item->quantity,
-
                 'total' => $item->final_price * $item->quantity,
-
                 'promotion' => $item->promotion_id
                     ? $item->promotion_snapshot
                     : null,
-
                 'promotion_login_required' => !$order->user_id
                     && !empty($item->promotion_snapshot),
             ]),
         ];
     }
 
-    // GENERATE ORDER CODE
     private function generateOrderCode(int $orderId): string
     {
         return 'ORD-'
@@ -394,11 +342,14 @@ class OrderService
             . str_pad($orderId, 6, '0', STR_PAD_LEFT);
     }
 
-    // RESOLVE SHIPPING INFO
-    private function resolveShippingInfo($user, array $data): array
+    private function resolveShippingInfo($user, array $data, string $fulfillmentMethod): array
     {
         if ($user) {
             if (!empty($data['address_id'])) {
+                if ($fulfillmentMethod !== 'delivery') {
+                    throw new RuntimeException('Không thể dùng địa chỉ giao hàng cho hình thức nhận tại phòng', 422);
+                }
+
                 $address = Address::query()
                     ->where('user_id', $user->id)
                     ->whereKey($data['address_id'])
@@ -423,10 +374,10 @@ class OrderService
                 ];
             }
 
-            $this->validateInlineAddress($data, false);
+            $this->validateInlineAddress($data, false, $fulfillmentMethod);
 
-            $canSaveAddress =
-                !empty($data['province'])
+            $canSaveAddress = $fulfillmentMethod === 'delivery'
+                && !empty($data['province'])
                 && !empty($data['district'])
                 && !empty($data['ward'])
                 && !empty($data['address_line']);
@@ -448,10 +399,10 @@ class OrderService
                     'user_id' => $user->id,
                     'full_name' => $data['guest_name'],
                     'phone' => $data['guest_phone'],
-                    'province' => $data['province'],
-                    'district' => $data['district'],
-                    'ward' => $data['ward'],
-                    'address_line' => $data['address_line'],
+                    'province' => $data['province'] ?? null,
+                    'district' => $data['district'] ?? null,
+                    'ward' => $data['ward'] ?? null,
+                    'address_line' => $data['address_line'] ?? null,
                     'postal_code' => $data['postal_code'] ?? null,
                     'is_default' => $isDefault,
                 ]);
@@ -460,37 +411,30 @@ class OrderService
             return [
                 'name' => $data['guest_name'],
                 'phone' => $data['guest_phone'],
-                'address' => $this->formatAddress([
-                    $data['address_line'] ?? null,
-                    $data['ward'] ?? null,
-                    $data['district'] ?? null,
-                    $data['province'] ?? null,
-                ]),
+                'address' => $this->resolveFulfillmentAddress($data, $fulfillmentMethod),
                 'guest_name' => null,
                 'guest_email' => null,
                 'guest_phone' => null,
             ];
         }
 
-        $this->validateInlineAddress($data, false);
+        $this->validateInlineAddress($data, true, $fulfillmentMethod);
 
         return [
             'name' => $data['guest_name'],
             'phone' => $data['guest_phone'],
-            'address' => $this->formatAddress([
-                $data['address_line'] ?? null,
-                $data['ward'] ?? null,
-                $data['district'] ?? null,
-                $data['province'] ?? null,
-            ]),
+            'address' => $this->resolveFulfillmentAddress($data, $fulfillmentMethod),
             'guest_name' => $data['guest_name'],
             'guest_email' => $data['guest_email'] ?? null,
             'guest_phone' => $data['guest_phone'],
         ];
     }
 
-    private function validateInlineAddress(array $data, bool $requireEmail): void
-    {
+    private function validateInlineAddress(
+        array $data,
+        bool $requireEmail,
+        string $fulfillmentMethod
+    ): void {
         if (empty($data['guest_name'])) {
             throw new RuntimeException('Vui lòng nhập tên người nhận', 422);
         }
@@ -505,6 +449,48 @@ class OrderService
 
         if (empty($data['guest_phone'])) {
             throw new RuntimeException('Vui lòng nhập số điện thoại người nhận', 422);
+        }
+
+        if (!preg_match('/^0\d{9}$/', (string) $data['guest_phone'])) {
+            throw new RuntimeException('Số điện thoại phải gồm 10 số và bắt đầu bằng số 0', 422);
+        }
+
+        if ($fulfillmentMethod === 'delivery') {
+            foreach (['province', 'district', 'ward', 'address_line'] as $field) {
+                if (empty($data[$field])) {
+                    throw new RuntimeException('Vui lòng nhập đầy đủ thông tin địa chỉ giao hàng', 422);
+                }
+            }
+        }
+    }
+
+    private function resolveFulfillmentAddress(array $data, string $fulfillmentMethod): string
+    {
+        if ($fulfillmentMethod === 'pickup') {
+            return 'Phòng Công tác Chính trị và Quản lý sinh viên';
+        }
+
+        return $this->formatAddress([
+            $data['address_line'] ?? null,
+            $data['ward'] ?? null,
+            $data['district'] ?? null,
+            $data['province'] ?? null,
+        ]);
+    }
+
+    private function validateCheckoutCombination(
+        string $fulfillmentMethod,
+        string $paymentMethod
+    ): void {
+        $validCombinations = [
+            'delivery:cod',
+            'delivery:mock_bank',
+            'pickup:cash_on_pickup',
+            'pickup:mock_bank',
+        ];
+
+        if (!in_array("{$fulfillmentMethod}:{$paymentMethod}", $validCombinations, true)) {
+            throw new RuntimeException('Tổ hợp nhận hàng và thanh toán không hợp lệ', 422);
         }
     }
 

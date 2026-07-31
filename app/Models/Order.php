@@ -21,6 +21,7 @@ class Order extends Model
         'guest_name',
         'guest_email',
         'guest_phone',
+        'fulfillment_method',
         'shipping_fee',
         'shipping_name',
         'shipping_phone',
@@ -28,6 +29,7 @@ class Order extends Model
         'sub_total',
         'discount_total',
         'grand_total',
+        'payment_status',
     ];
 
     protected $casts = [
@@ -39,6 +41,8 @@ class Order extends Model
         'sub_total' => 'float',
         'discount_total' => 'float',
         'grand_total' => 'float',
+        'fulfillment_method' => 'string',
+        'payment_status' => 'string',
     ];
 
     // ========================

@@ -21,10 +21,15 @@ class VatInvoiceRequest extends Model
         'note',
         'admin_note',
         'issued_at',
+        'processed_by',
+        'processed_at',
+        'fulfilled_at',
     ];
 
     protected $casts = [
         'issued_at' => 'datetime',
+        'processed_at' => 'datetime',
+        'fulfilled_at' => 'datetime',
     ];
 
     public function order()
@@ -35,5 +40,10 @@ class VatInvoiceRequest extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function processor()
+    {
+        return $this->belongsTo(User::class, 'processed_by');
     }
 }

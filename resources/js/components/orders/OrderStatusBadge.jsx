@@ -1,27 +1,19 @@
 export default function OrderStatusBadge({ status }) {
     const map = {
         pending: {
-            label: 'Chờ xử lý',
+            label: 'Chờ xác nhận',
             className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300',
-        },
-        confirmed: {
-            label: 'Đã xác nhận',
-            className: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
         },
         processing: {
             label: 'Đang chuẩn bị',
             className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
         },
-        shipping: {
-            label: 'Đang giao',
+        awaiting_receipt: {
+            label: 'Đang chờ nhận hàng',
             className: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
         },
-        paid: {
+        completed: {
             label: 'Hoàn thành',
-            className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-        },
-        delivered: {
-            label: 'Đã giao hàng',
             className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
         },
         cancelled: {

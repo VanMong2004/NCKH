@@ -118,7 +118,7 @@ export default function AccountOrderDetail() {
 
         const method = order.payment?.method || order.raw?.payment_method || '';
 
-        if (!['mock', 'vnpay'].includes(method)) {
+        if (method !== 'mock_bank') {
             toast.warning('Phương thức thanh toán này không hỗ trợ thanh toán lại');
             return;
         }
@@ -129,7 +129,7 @@ export default function AccountOrderDetail() {
             const payment = await paymentService.pay(order.id, method);
 
             if (payment.redirectUrl) {
-                if (method === 'mock') {
+                if (method === 'mock_bank') {
                     sessionStorage.setItem(
                         'mock_payment_qr',
                         JSON.stringify({
@@ -170,6 +170,10 @@ export default function AccountOrderDetail() {
 
     async function openVatInvoiceModal() {
         if (!order?.id) return;
+        if (!isOrderPaid(order)) {
+            toast.warning('Chỉ có thể yêu cầu hóa đơn đỏ cho đơn hàng đã thanh toán.');
+            return;
+        }
 
         try {
             const result = await orderService.getVatInvoiceRequest(order.id);
@@ -201,7 +205,7 @@ export default function AccountOrderDetail() {
     const canCancel = Boolean(order?.actions?.canCancel);
 
     const canPayAgain = useMemo(() => Boolean(order?.actions?.canPayAgain), [order]);
-    const isPendingOnlinePayment = order?.payment?.status === 'pending';
+    const canRequestVatInvoice = isOrderPaid(order);
 
     if (loading) {
         return <LoadingBox text="Đang tải chi tiết đơn hàng..." />;
@@ -259,8 +263,9 @@ export default function AccountOrderDetail() {
 
                         <button
                             type="button"
+                            disabled={!canRequestVatInvoice}
                             onClick={openVatInvoiceModal}
-                            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
+                            className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
                         >
                             Yêu cầu hóa đơn đỏ
                         </button>
@@ -989,4 +994,8 @@ function formatDate(value) {
     }
 
     return date.toLocaleString('vi-VN');
+}
+
+function isOrderPaid(order) {
+    return order?.payment?.status === 'paid' || order?.raw?.payment_status === 'paid';
 }

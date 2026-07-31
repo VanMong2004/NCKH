@@ -3,10 +3,9 @@ import { ChevronRight, Home } from 'lucide-react';
 export default function OrdersHeader({ status, onStatusChange, total = 0 }) {
     const statuses = [
         { value: '', label: 'Tất cả trạng thái' },
-        { value: 'pending', label: 'Chờ xử lý' },
-        { value: 'confirmed', label: 'Đã xác nhận' },
+        { value: 'pending', label: 'Chờ xác nhận' },
         { value: 'processing', label: 'Đang chuẩn bị' },
-        { value: 'shipping', label: 'Đang giao' },
+        { value: 'awaiting_receipt', label: 'Đang chờ nhận hàng' },
         { value: 'completed', label: 'Hoàn thành' },
         { value: 'cancelled', label: 'Đã hủy' },
     ];

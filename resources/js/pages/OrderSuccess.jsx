@@ -76,6 +76,10 @@ export default function OrderSuccess() {
 
     async function openVatInvoiceModal() {
         if (!order) return;
+        if (!isOrderPaid(order)) {
+            toast.warning('Chỉ có thể yêu cầu hóa đơn đỏ cho đơn hàng đã thanh toán.');
+            return;
+        }
 
         try {
             if (user) {
@@ -193,6 +197,7 @@ export default function OrderSuccess() {
     }, [location.state, order, paymentStatus]);
 
     const canPayAgain = Boolean(order?.actions?.canPayAgain);
+    const canRequestVatInvoice = isOrderPaid(order);
 
     if (loading) {
         return (
@@ -436,8 +441,9 @@ export default function OrderSuccess() {
 
                     <button
                         type="button"
+                        disabled={!canRequestVatInvoice}
                         onClick={openVatInvoiceModal}
-                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
                     >
                         Yêu cầu hóa đơn đỏ
                     </button>
@@ -519,6 +525,10 @@ function getPaymentStatusFallback(order) {
     }
     if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đã hủy';
     return 'Chưa tạo thanh toán';
+}
+
+function isOrderPaid(order) {
+    return order?.payment?.status === 'paid' || order?.raw?.payment_status === 'paid';
 }
 
 function Card({ title, children }) {

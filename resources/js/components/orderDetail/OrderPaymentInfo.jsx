@@ -40,8 +40,8 @@ function getFallbackMethodText(order) {
 
     const map = {
         cod: 'Thanh toán khi nhận hàng',
-        mock: 'Thanh toán giả lập banking',
-        vnpay: 'VNPay',
+        mock_bank: 'Giả lập ngân hàng',
+        cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại phòng',
     };
 
     return map[method] || 'Chưa xác định';

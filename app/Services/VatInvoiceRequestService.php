@@ -97,6 +97,10 @@ class VatInvoiceRequestService
     private function create(Order $order, array $data): array
     {
         return DB::transaction(function () use ($order, $data) {
+            if ($order->payment_status !== 'paid') {
+                throw new RuntimeException('Chỉ có thể yêu cầu hóa đơn đỏ cho đơn hàng đã thanh toán.', 409);
+            }
+
             $existing = VatInvoiceRequest::where('order_id', $order->id)
                 ->lockForUpdate()
                 ->first();

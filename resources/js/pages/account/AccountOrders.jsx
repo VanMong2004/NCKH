@@ -8,10 +8,9 @@ import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả' },
-    { value: 'pending', label: 'Chờ xử lý' },
-    { value: 'paid', label: 'Đã thanh toán' },
+    { value: 'pending', label: 'Chờ xác nhận' },
     { value: 'processing', label: 'Đang chuẩn bị' },
-    { value: 'shipped', label: 'Đang giao' },
+    { value: 'awaiting_receipt', label: 'Đang chờ nhận hàng' },
     { value: 'completed', label: 'Hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
 ];
@@ -370,28 +369,24 @@ function Pagination({ meta, onPageChange }) {
 
 function paymentStatusLabel(status) {
     const map = {
-        pending: 'Đang chờ',
-        processing: 'Đang xử lý',
-        success: 'Đã thanh toán',
-        failed: 'Thất bại',
+        unpaid: 'Chưa thanh toán',
+        paid: 'Đã thanh toán',
+        failed: 'Thanh toán thất bại',
         cancelled: 'Đã hủy',
         refunded: 'Đã hoàn tiền',
     };
 
-    return map[status] || status || 'Chưa tạo';
+    return map[status] || 'Chưa tạo thanh toán';
 }
 
 function paymentMethodLabel(method) {
     const map = {
-        cod: 'COD',
-        mock: 'Thanh toán giả lập banking',
-        vnpay: 'VNPay',
-        momo: 'MoMo',
-        bank_transfer: 'Chuyển khoản',
-        banking: 'Chuyển khoản',
+        cod: 'Thanh toán khi nhận hàng',
+        mock_bank: 'Giả lập ngân hàng',
+        cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại phòng',
     };
 
-    return map[method] || method || 'Chưa xác định';
+    return map[method] || 'Chưa xác định';
 }
 
 function cancelReasonText(reason) {

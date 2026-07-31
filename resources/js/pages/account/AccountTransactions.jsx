@@ -16,18 +16,17 @@ import paymentService from '../../services/paymentService';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả trạng thái' },
-    { value: 'pending', label: 'Đang chờ' },
-    { value: 'processing', label: 'Đang xử lý' },
-    { value: 'success', label: 'Đã thanh toán' },
-    { value: 'failed', label: 'Thất bại' },
+    { value: 'unpaid', label: 'Chưa thanh toán' },
+    { value: 'paid', label: 'Đã thanh toán' },
+    { value: 'failed', label: 'Thanh toán thất bại' },
     { value: 'refunded', label: 'Đã hoàn tiền' },
 ];
 
 const METHOD_OPTIONS = [
     { value: '', label: 'Tất cả phương thức' },
-    { value: 'mock', label: 'Thanh toán giả lập banking' },
-    { value: 'momo', label: 'MoMo' },
-    { value: 'banking', label: 'Chuyển khoản' },
+    { value: 'mock_bank', label: 'Giả lập ngân hàng' },
+    { value: 'cod', label: 'Thanh toán khi nhận hàng' },
+    { value: 'cash_on_pickup', label: 'Thanh toán trực tiếp khi nhận tại phòng' },
 ];
 
 export default function AccountTransactions() {

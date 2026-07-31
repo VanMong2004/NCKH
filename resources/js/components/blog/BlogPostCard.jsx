@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarDays, Eye } from 'lucide-react';
+import { ArrowRight, CalendarDays } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function BlogPostCard({ blog, variant = 'featured' }) {
@@ -75,9 +75,7 @@ function LatestPostCard({ blog }) {
                         {blog.excerpt || 'Thông tin đang được cập nhật.'}
                     </p>
 
-                    <div className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        {formatDate(blog.publishedAt)}
-                    </div>
+                    <div className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{formatDate(blog.publishedAt)}</div>
                 </div>
             </Link>
         </article>
@@ -101,10 +99,7 @@ function PopularPostCard({ blog }) {
                     {blog.title}
                 </h3>
 
-                <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    <Eye size={13} />
-                    {blog.viewCount} lượt xem
-                </div>
+                <div className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{formatDate(blog.publishedAt)}</div>
             </div>
         </Link>
     );
@@ -132,11 +127,6 @@ function PostMeta({ blog }) {
             <span className="inline-flex items-center gap-1.5">
                 <CalendarDays size={14} />
                 {formatDate(blog.publishedAt)}
-            </span>
-
-            <span className="inline-flex items-center gap-1.5">
-                <Eye size={14} />
-                {blog.viewCount} lượt xem
             </span>
         </div>
     );

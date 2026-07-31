@@ -153,9 +153,9 @@ export default function Blog() {
         return posts.length > 0 ? posts : blogs;
     }, [blogs, featuredPosts]);
 
-    const popularPosts = useMemo(() => {
-        return [...blogs].sort((a, b) => Number(b.viewCount || 0) - Number(a.viewCount || 0)).slice(0, 4);
-    }, [blogs]);
+    const sidebarPosts = useMemo(() => {
+        return featuredPosts.concat(blogs.filter((blog) => !featuredPosts.some((item) => item.id === blog.id))).slice(0, 4);
+    }, [blogs, featuredPosts]);
 
     return (
         <MainLayout>
@@ -221,7 +221,7 @@ export default function Blog() {
                             )}
                         </div>
 
-                        <BlogSidebar posts={popularPosts} />
+                        <BlogSidebar posts={sidebarPosts} />
                     </section>
                 </div>
             </main>

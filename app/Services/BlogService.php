@@ -55,8 +55,6 @@ class BlogService
             throw new RuntimeException('Blog không tồn tại');
         }
 
-        $blog->increment('view_count');
-
         $related = Blog::query()
             ->where('id', '!=', $blog->id)
             ->where('category', $blog->category)
@@ -79,7 +77,6 @@ class BlogService
             'thumbnail' => $blog->thumbnail,
             'category' => $blog->category,
             'author_name' => $blog->author_name,
-            'view_count' => (int) ($blog->view_count + 1),
             'published_at' => optional($blog->published_at)->format('d/m/Y H:i'),
             'related_posts' => $related,
         ];
@@ -117,7 +114,6 @@ class BlogService
             'category' => $blog->category,
             'author_name' => $blog->author_name,
             'is_featured' => (bool) $blog->is_featured,
-            'view_count' => (int) $blog->view_count,
             'published_at' => optional($blog->published_at)->format('d/m/Y H:i'),
         ];
     }

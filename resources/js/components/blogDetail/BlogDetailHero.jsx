@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, Clock3, Eye, Share2, Tag, UserRound } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock3, Share2, Tag, UserRound } from 'lucide-react';
 
 export default function BlogDetailHero({ blog, readingTime = 1, onBack, onShare }) {
     return (
@@ -46,7 +46,6 @@ export default function BlogDetailHero({ blog, readingTime = 1, onBack, onShare 
                     <div className="mt-6 flex flex-wrap gap-3 text-xs font-bold text-slate-500 dark:text-slate-400">
                         <MetaPill icon={UserRound} text={blog.authorName || 'CTUT'} />
                         <MetaPill icon={CalendarDays} text={formatDate(blog.publishedAt)} />
-                        <MetaPill icon={Eye} text={`${blog.viewCount || 0} lượt xem`} />
                         <MetaPill icon={Clock3} text={`${readingTime} phút đọc`} />
                     </div>
                 </div>

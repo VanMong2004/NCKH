@@ -23,7 +23,6 @@ export function mapBlog(item = {}) {
         category: item.category || '',
         authorName: item.author_name || '',
         isFeatured: Boolean(item.is_featured),
-        viewCount: Number(item.view_count || 0),
         publishedAt: item.published_at || '',
         relatedPosts: Array.isArray(item.related_posts) ? item.related_posts.map(mapBlog) : [],
         raw: item,

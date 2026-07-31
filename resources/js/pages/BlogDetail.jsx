@@ -3,7 +3,6 @@ import {
     CalendarDays,
     ChevronRight,
     Clock3,
-    Eye,
     Home,
     Loader2,
     RefreshCcw,
@@ -110,9 +109,7 @@ export default function BlogDetail() {
                                     <div className="mt-10 border-t border-slate-200 pt-6 dark:border-slate-800">
                                         <div className="flex flex-col gap-4 rounded-2xl bg-slate-50 p-5 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between">
                                             <div>
-                                                <p className="text-sm font-black text-blue-950 dark:text-white">
-                                                    Bạn muốn xem thêm tin tức?
-                                                </p>
+                                                <p className="text-sm font-black text-blue-950 dark:text-white">Bạn muốn xem thêm tin tức?</p>
 
                                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                                     Quay lại danh sách để theo dõi các bài viết mới nhất.
@@ -133,11 +130,7 @@ export default function BlogDetail() {
                                 <aside className="space-y-6">
                                     <ArticleInfoCard blog={blog} readingTime={readingTime} onShare={handleShare} />
 
-                                    <BlogRelatedPosts
-                                        posts={blog.relatedPosts || []}
-                                        title="Bài viết liên quan"
-                                        compact
-                                    />
+                                    <BlogRelatedPosts posts={blog.relatedPosts || []} title="Bài viết liên quan" compact />
                                 </aside>
                             </section>
 
@@ -207,13 +200,8 @@ function ArticleInfoCard({ blog, readingTime, onShare }) {
 
             <div className="mt-5 space-y-4">
                 <InfoRow icon={UserRound} label="Tác giả" value={blog.authorName || 'CTUT'} />
-
                 <InfoRow icon={Tag} label="Danh mục" value={getCategoryLabel(blog.category)} />
-
                 <InfoRow icon={CalendarDays} label="Ngày đăng" value={formatDate(blog.publishedAt)} />
-
-                <InfoRow icon={Eye} label="Lượt xem" value={`${blog.viewCount || 0} lượt xem`} />
-
                 <InfoRow icon={Clock3} label="Thời gian đọc" value={`${readingTime} phút`} />
             </div>
 
@@ -238,7 +226,6 @@ function InfoRow({ icon: Icon, label, value }) {
 
             <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</p>
-
                 <p className="mt-1 text-sm font-black text-blue-950 dark:text-white">{value || 'Đang cập nhật'}</p>
             </div>
         </div>

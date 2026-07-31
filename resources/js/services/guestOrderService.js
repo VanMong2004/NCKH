@@ -1,12 +1,12 @@
 import api from './api';
 import guestTokenService from './guestTokenService';
-import { mapOrderDetailResponse } from './mappers/orderMapper';
+import { mapGuestOrderLookupResponse, mapOrderDetailResponse } from './mappers/orderMapper';
 
 const guestOrderService = {
     async lookup(payload) {
         const res = await api.post('/guest/orders/lookup', payload);
 
-        return mapOrderDetailResponse(res.data);
+        return mapGuestOrderLookupResponse(res.data);
     },
 
     async getByCode(orderCode, options = {}) {

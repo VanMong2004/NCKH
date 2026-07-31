@@ -55,9 +55,11 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
         ];
     //
 
-    const normalizedDesktopLinks = filterPublicLinks(desktopLinks);
-    const mobileLinks = filterPublicLinks(
-        Array.isArray(mobileMenu.links) && mobileMenu.links.length ? mobileMenu.links : normalizedDesktopLinks,
+    const normalizedDesktopLinks = ensureGuestOrderLookupLink(filterPublicLinks(desktopLinks));
+    const mobileLinks = ensureGuestOrderLookupLink(
+        filterPublicLinks(
+            Array.isArray(mobileMenu.links) && mobileMenu.links.length ? mobileMenu.links : normalizedDesktopLinks,
+        ),
     );
 
     const [keyword, setKeyword] = useState('');
@@ -676,4 +678,23 @@ function Badge({ count = 0 }) {
 
 function filterPublicLinks(links = []) {
     return links.filter((item) => !['/faq', '/about'].includes(item?.link_url || ''));
+}
+
+function ensureGuestOrderLookupLink(links = []) {
+    if (links.some((item) => (item?.link_url || '') === '/guest-order-lookup')) {
+        return links;
+    }
+
+    const nextLinks = [...links];
+    const contactIndex = nextLinks.findIndex((item) => (item?.link_url || '') === '/contact');
+
+    const guestLookupLink = { label: 'Tra cứu đơn', link_url: '/guest-order-lookup' };
+
+    if (contactIndex === -1) {
+        nextLinks.push(guestLookupLink);
+        return nextLinks;
+    }
+
+    nextLinks.splice(contactIndex, 0, guestLookupLink);
+    return nextLinks;
 }

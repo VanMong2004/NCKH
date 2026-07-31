@@ -37,6 +37,7 @@ const Blog = lazy(() => import('./pages/Blog'));
 const BlogDetail = lazy(() => import('./pages/BlogDetail'));
 const Policy = lazy(() => import('./pages/Policy'));
 const Contact = lazy(() => import('./pages/Contact'));
+const GuestOrderLookup = lazy(() => import('./pages/GuestOrderLookup'));
 
 const AccountLayout = lazy(() => import('./pages/account/AccountLayout'));
 const AccountOverview = lazy(() => import('./pages/account/AccountOverview'));
@@ -107,6 +108,7 @@ createRoot(document.getElementById('app')).render(
                             <Route path="/blog/:slug" element={<BlogDetail />} />
                             <Route path="/policy" element={<Policy />} />
                             <Route path="/contact" element={<Contact />} />
+                            <Route path="/guest-order-lookup" element={<GuestOrderLookup />} />
 
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />

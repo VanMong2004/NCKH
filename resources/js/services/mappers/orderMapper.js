@@ -187,8 +187,7 @@ function mapTimelineItem(item = {}) {
     };
 }
 
-export function mapOrderDetailResponse(response = {}) {
-    const item = response.data || {};
+function mapOrderDetail(item = {}) {
     const fulfillmentMethod = item.fulfillment_method || '';
     const statusText =
         item.status === 'awaiting_receipt'
@@ -198,9 +197,6 @@ export function mapOrderDetailResponse(response = {}) {
             : orderStatusText(item.status);
 
     return {
-        success: Boolean(response.success),
-        message: response.message || '',
-
         id: item.id,
 
         code: item.order_code || '',
@@ -252,6 +248,31 @@ export function mapOrderDetailResponse(response = {}) {
 
         timeline: Array.isArray(item.timeline) ? item.timeline.map(mapTimelineItem) : [],
 
+        raw: item,
+    };
+}
+
+export function mapOrderDetailResponse(response = {}) {
+    return {
+        success: Boolean(response.success),
+        message: response.message || '',
+        ...mapOrderDetail(response.data || {}),
+    };
+}
+
+export function mapGuestOrderLookupResponse(response = {}) {
+    const item = response.data || {};
+    const lookupType = item.lookup_type || 'order_code_email';
+
+    return {
+        success: Boolean(response.success),
+        message: response.message || '',
+        lookupType,
+        order: lookupType === 'phone_email' ? null : mapOrderDetail(item),
+        orders:
+            lookupType === 'phone_email'
+                ? (Array.isArray(item.orders) ? item.orders : []).map((order) => mapOrderDetail(order))
+                : [],
         raw: item,
     };
 }

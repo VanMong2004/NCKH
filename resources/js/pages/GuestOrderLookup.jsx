@@ -370,7 +370,7 @@ function OrderDetailPanel({ order }) {
                     </Card>
 
                     <Card title="Sản phẩm đã đặt">
-                        <div className="space-y-3">
+                        <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
                             {(order.items || []).map((item) => {
                                 const originalPrice = Number(item.originalPrice || item.price || 0);
                                 const finalPrice = Number(item.finalPrice || item.price || 0);

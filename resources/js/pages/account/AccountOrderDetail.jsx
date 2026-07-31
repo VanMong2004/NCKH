@@ -38,11 +38,9 @@ export default function AccountOrderDetail() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [paying, setPaying] = useState(false);
-    const [downloadingBill, setDownloadingBill] = useState(false);
     const [vatInvoiceModalOpen, setVatInvoiceModalOpen] = useState(false);
     const [vatInvoiceRequest, setVatInvoiceRequest] = useState(null);
     const [submittingVatInvoice, setSubmittingVatInvoice] = useState(false);
-    const [downloadingVatInvoice, setDownloadingVatInvoice] = useState(false);
     const [confirmDialog, setConfirmDialog] = useState({
         open: false,
         title: '',
@@ -170,20 +168,6 @@ export default function AccountOrderDetail() {
         }
     }
 
-    async function handleDownloadBill() {
-        if (!order?.id) return;
-
-        try {
-            setDownloadingBill(true);
-
-            await orderService.downloadBill(order.id, `bill-${order.code}.pdf`);
-        } catch (error) {
-            toast.error(error.message || 'Không thể tải bill đơn hàng');
-        } finally {
-            setDownloadingBill(false);
-        }
-    }
-
     async function openVatInvoiceModal() {
         if (!order?.id) return;
 
@@ -206,29 +190,11 @@ export default function AccountOrderDetail() {
             const result = await orderService.createVatInvoiceRequest(order.id, payload);
 
             setVatInvoiceRequest(result);
-            toast.success('Đã gửi yêu cầu hóa đơn đỏ');
+            toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
         } catch (error) {
             toast.error(error.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
         } finally {
             setSubmittingVatInvoice(false);
-        }
-    }
-
-    async function downloadVatInvoice() {
-        if (!order?.id) return;
-
-        try {
-            setDownloadingVatInvoice(true);
-
-            await orderService.downloadVatInvoice(order.id, `vat-invoice-${order.code}.pdf`);
-
-            const result = await orderService.getVatInvoiceRequest(order.id);
-
-            setVatInvoiceRequest(result);
-        } catch (error) {
-            toast.error(error.message || 'Không thể tải PDF hóa đơn đỏ');
-        } finally {
-            setDownloadingVatInvoice(false);
         }
     }
 
@@ -293,15 +259,6 @@ export default function AccountOrderDetail() {
 
                         <button
                             type="button"
-                            disabled={downloadingBill}
-                            onClick={handleDownloadBill}
-                            className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300"
-                        >
-                            {downloadingBill ? 'Đang tải bill...' : 'Tải bill'}
-                        </button>
-
-                        <button
-                            type="button"
                             onClick={openVatInvoiceModal}
                             className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
                         >
@@ -350,11 +307,9 @@ export default function AccountOrderDetail() {
                 open={vatInvoiceModalOpen}
                 existingRequest={vatInvoiceRequest}
                 submitting={submittingVatInvoice}
-                downloading={downloadingVatInvoice}
                 defaultEmail={order.raw?.guest_email || order.raw?.customer?.email || ''}
                 onClose={() => setVatInvoiceModalOpen(false)}
                 onSubmit={submitVatInvoiceRequest}
-                onDownload={downloadVatInvoice}
             />
 
             <ConfirmDialog

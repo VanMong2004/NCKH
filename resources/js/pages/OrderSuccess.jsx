@@ -26,12 +26,10 @@ export default function OrderSuccess() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [downloadingBill, setDownloadingBill] = useState(false);
     const [paying, setPaying] = useState(false);
     const [vatInvoiceModalOpen, setVatInvoiceModalOpen] = useState(false);
     const [vatInvoiceRequest, setVatInvoiceRequest] = useState(null);
     const [submittingVatInvoice, setSubmittingVatInvoice] = useState(false);
-    const [downloadingVatInvoice, setDownloadingVatInvoice] = useState(false);
 
     useEffect(() => {
         if (authLoading) return;
@@ -76,31 +74,6 @@ export default function OrderSuccess() {
         }
     }
 
-    async function handleDownloadBill() {
-        if (!order) return;
-
-        try {
-            setDownloadingBill(true);
-
-            if (user) {
-                await orderService.downloadBill(order.id, `bill-${order.code}.pdf`);
-                return;
-            }
-
-            const savedGuestOrder = JSON.parse(
-                sessionStorage.getItem('guest_order_success') || '{}'
-            );
-
-            await guestOrderService.downloadBill(order.code, {
-                guestToken: savedGuestOrder.guestToken,
-            });
-        } catch (err) {
-            toast.error(err.message || 'Không thể tải bill đơn hàng');
-        } finally {
-            setDownloadingBill(false);
-        }
-    }
-
     async function openVatInvoiceModal() {
         if (!order) return;
 
@@ -136,7 +109,7 @@ export default function OrderSuccess() {
             if (user) {
                 const result = await orderService.createVatInvoiceRequest(order.id, payload);
                 setVatInvoiceRequest(result);
-                toast.success('Đã gửi yêu cầu hóa đơn đỏ');
+                toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
                 return;
             }
 
@@ -149,44 +122,11 @@ export default function OrderSuccess() {
             });
 
             setVatInvoiceRequest(result);
-            toast.success('Đã gửi yêu cầu hóa đơn đỏ');
+            toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
         } catch (err) {
             toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
         } finally {
             setSubmittingVatInvoice(false);
-        }
-    }
-
-    async function downloadVatInvoice() {
-        if (!order) return;
-
-        try {
-            setDownloadingVatInvoice(true);
-
-            if (user) {
-                await orderService.downloadVatInvoice(order.id, `vat-invoice-${order.code}.pdf`);
-                const result = await orderService.getVatInvoiceRequest(order.id);
-                setVatInvoiceRequest(result);
-                return;
-            }
-
-            const savedGuestOrder = JSON.parse(
-                sessionStorage.getItem('guest_order_success') || '{}'
-            );
-
-            await guestOrderService.downloadVatInvoice(order.code, {
-                guestToken: savedGuestOrder.guestToken,
-            });
-
-            const result = await guestOrderService.getVatInvoiceRequest(order.code, {
-                guestToken: savedGuestOrder.guestToken,
-            });
-
-            setVatInvoiceRequest(result);
-        } catch (err) {
-            toast.error(err.message || 'Không thể tải PDF hóa đơn đỏ');
-        } finally {
-            setDownloadingVatInvoice(false);
         }
     }
 
@@ -496,15 +436,6 @@ export default function OrderSuccess() {
 
                     <button
                         type="button"
-                        disabled={downloadingBill}
-                        onClick={handleDownloadBill}
-                        className="rounded-xl border border-blue-200 bg-blue-50 px-6 py-3 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300"
-                    >
-                        {downloadingBill ? 'Đang tải bill...' : 'Tải bill'}
-                    </button>
-
-                    <button
-                        type="button"
                         onClick={openVatInvoiceModal}
                         className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
                     >
@@ -523,11 +454,9 @@ export default function OrderSuccess() {
                     open={vatInvoiceModalOpen}
                     existingRequest={vatInvoiceRequest}
                     submitting={submittingVatInvoice}
-                    downloading={downloadingVatInvoice}
                     defaultEmail={order.raw?.guest_email || order.raw?.customer_email || user?.email || ''}
                     onClose={() => setVatInvoiceModalOpen(false)}
                     onSubmit={submitVatInvoiceRequest}
-                    onDownload={downloadVatInvoice}
                 />
             </main>
         </MainLayout>

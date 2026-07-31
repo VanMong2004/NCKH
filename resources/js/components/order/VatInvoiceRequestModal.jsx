@@ -14,10 +14,8 @@ export default function VatInvoiceRequestModal({
     existingRequest,
     defaultEmail = '',
     submitting = false,
-    downloading = false,
     onClose,
     onSubmit,
-    onDownload,
 }) {
     const [form, setForm] = useState(defaultForm);
     const [errors, setErrors] = useState({});
@@ -122,19 +120,13 @@ export default function VatInvoiceRequestModal({
                                 <Info label="Mã số thuế" value={existingRequest.tax_code} />
                                 <Info label="Email nhận" value={existingRequest.invoice_email} />
                                 <Info label="Ngày yêu cầu" value={existingRequest.created_at} />
+                                <Info label="Ghi chú xử lý" value={existingRequest.admin_note} />
                             </div>
 
-                            {existingRequest.status !== 'rejected' && (
-                                <button
-                                    type="button"
-                                    disabled={downloading}
-                                    onClick={onDownload}
-                                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-60"
-                                >
-                                    {downloading && <Loader2 size={16} className="animate-spin" />}
-                                    Tải PDF hóa đơn đỏ
-                                </button>
-                            )}
+                            <p className="mt-4 rounded-xl bg-white/80 px-4 py-3 text-sm font-medium text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
+                                Hệ thống chỉ tiếp nhận và theo dõi yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử
+                                lý thủ công và gửi hóa đơn theo quy trình của cửa hàng.
+                            </p>
                         </div>
                     </div>
                 ) : (
@@ -233,10 +225,10 @@ function Info({ label, value }) {
 
 function getStatusText(status) {
     const map = {
-        pending: 'Đang chờ xử lý',
-        approved: 'Đã duyệt',
-        issued: 'Đã xuất hóa đơn',
-        rejected: 'Từ chối',
+        pending: 'Chờ xử lý',
+        processing: 'Đang xử lý',
+        fulfilled: 'Đã hoàn thành',
+        rejected: 'Đã từ chối',
     };
 
     return map[status] || status || 'Đang chờ xử lý';

@@ -147,12 +147,12 @@ export default function GuestOrderLookup() {
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                             <Search size={14} />
-                            Tra cứu đơn hàng
+                            Xem đơn hàng
                         </div>
 
-                        <h1 className="mt-4 text-3xl font-extrabold text-blue-950 dark:text-white">
-                            Xem đơn hàng dành cho khách chưa đăng nhập
-                        </h1>
+                        {/* <h1 className="mt-4 text-3xl font-extrabold text-blue-950 dark:text-white">
+                            Xem đơn hàng
+                        </h1> */}
 
                         <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                             Bạn có thể tra cứu theo mã đơn hàng và email, hoặc nhập số điện thoại cùng email để xem

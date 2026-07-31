@@ -19,13 +19,14 @@ class AdminOrderController extends Controller
     {
         try {
             $filters = $request->validate([
-                'status' => 'nullable|string|max:50',
-                'payment_status' => 'nullable|string|max:50',
+                'status' => 'nullable|string|in:pending,processing,awaiting_receipt,completed,cancelled',
+                'payment_status' => 'nullable|string|in:unpaid,paid,failed,refunded',
+                'vat_invoice_status' => 'nullable|string|in:none,pending,processing,fulfilled,rejected',
                 'keyword' => 'nullable|string|max:255',
                 'date_from' => 'nullable|date',
                 'date_to' => 'nullable|date',
                 'per_page' => 'nullable|integer|min:1|max:100',
-                'sort' => 'nullable|string|max:50',
+                'sort' => 'nullable|string|in:latest,oldest',
             ]);
 
             return response()->json(
@@ -71,7 +72,7 @@ class AdminOrderController extends Controller
     {
         try {
             $data = $request->validate([
-                'status'=>'required|string|in:processing,awaiting_receipt,completed,cancelled',
+                'status' => 'required|string|in:processing,awaiting_receipt,completed,cancelled',
                 'cancel_reason' => 'nullable|string|max:255',
                 'note' => 'nullable|string|max:500',
             ]);
@@ -99,6 +100,42 @@ class AdminOrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Lỗi khi cập nhật trạng thái đơn hàng',
+                'data' => null,
+            ], 500);
+        }
+    }
+
+    public function updateVatInvoiceStatus(Request $request, $id)
+    {
+        try {
+            $data = $request->validate([
+                'status' => 'required|string|in:processing,fulfilled,rejected',
+                'admin_note' => 'nullable|string|max:1000',
+            ]);
+
+            return response()->json(
+                $this->service->updateVatInvoiceStatus(
+                    (int) $id,
+                    $data,
+                    $request->user()
+                )
+            );
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Trạng thái hóa đơn đỏ không hợp lệ',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], $this->httpStatus($e));
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi cập nhật trạng thái hóa đơn đỏ',
                 'data' => null,
             ], 500);
         }

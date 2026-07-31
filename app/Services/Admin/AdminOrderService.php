@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use RuntimeException;
 use App\Models\Order;
 use App\Models\ProductVariant;
+use App\Models\VatInvoiceRequest;
 use Illuminate\Support\Facades\DB;
 use App\Services\NotificationService;
 
@@ -30,9 +31,17 @@ class AdminOrderService
         }
 
         if (!empty($filters['payment_status'])) {
-            $query->whereHas('payments', function ($q) use ($filters) {
-                $q->where('status', $filters['payment_status']);
-            });
+            $query->where('payment_status', $filters['payment_status']);
+        }
+
+        if (!empty($filters['vat_invoice_status'])) {
+            if ($filters['vat_invoice_status'] === 'none') {
+                $query->whereDoesntHave('vatInvoiceRequest');
+            } else {
+                $query->whereHas('vatInvoiceRequest', function ($q) use ($filters) {
+                    $q->where('status', $filters['vat_invoice_status']);
+                });
+            }
         }
 
         if (!empty($filters['keyword'])) {
@@ -151,11 +160,93 @@ class AdminOrderService
                 'message' => 'Cập nhật trạng thái đơn hàng thành công',
                 'data' => $this->formatDetail($order->fresh([
                     'user:id,name,email,phone',
+                    'user.addresses',
                     'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
                     'items.productVariant.product.primaryImage:id,product_id,url,type,position',
                     'payments',
                     'statusHistories.changer:id,name,email',
+                    'vatInvoiceRequest.processor:id,name,email',
                 ])),
+            ];
+        });
+    }
+
+    public function updateVatInvoiceStatus(int $id, array $data, $admin = null): array
+    {
+        return DB::transaction(function () use ($id, $data, $admin) {
+            $order = Order::with([
+                'user:id,name,email,phone',
+                'user.addresses',
+                'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
+                'items.productVariant.product.primaryImage:id,product_id,url,type,position',
+                'payments',
+                'statusHistories.changer:id,name,email',
+                'vatInvoiceRequest.processor:id,name,email',
+            ])->find($id);
+
+            if (!$order) {
+                throw new RuntimeException('Đơn hàng không tồn tại', 404);
+            }
+
+            /** @var VatInvoiceRequest|null $request */
+            $request = VatInvoiceRequest::query()
+                ->where('order_id', $order->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$request) {
+                throw new RuntimeException('Đơn hàng này chưa có yêu cầu hóa đơn đỏ', 404);
+            }
+
+            $oldStatus = $request->status;
+            $newStatus = $data['status'];
+            $adminNote = trim((string) ($data['admin_note'] ?? ''));
+
+            $allowedTransitions = [
+                'pending' => ['processing', 'rejected'],
+                'processing' => ['fulfilled', 'rejected'],
+                'fulfilled' => [],
+                'rejected' => [],
+            ];
+
+            if (!in_array($newStatus, $allowedTransitions[$oldStatus] ?? [], true)) {
+                throw new RuntimeException('Không thể chuyển trạng thái hóa đơn đỏ theo luồng hiện tại', 409);
+            }
+
+            if ($newStatus === 'rejected' && $adminNote === '') {
+                throw new RuntimeException('Vui lòng nhập lý do từ chối hóa đơn đỏ', 422);
+            }
+
+            $payload = [
+                'status' => $newStatus,
+                'admin_note' => $adminNote !== '' ? $adminNote : $request->admin_note,
+            ];
+
+            if ($newStatus === 'processing') {
+                $payload['processed_by'] = $admin?->id;
+                $payload['processed_at'] = now();
+            }
+
+            if ($newStatus === 'fulfilled') {
+                $payload['processed_by'] = $admin?->id;
+                $payload['processed_at'] = $request->processed_at ?: now();
+                $payload['fulfilled_at'] = now();
+            }
+
+            if ($newStatus === 'rejected') {
+                $payload['processed_by'] = $admin?->id;
+                $payload['processed_at'] = $request->processed_at ?: now();
+                $payload['fulfilled_at'] = null;
+            }
+
+            $request->update($payload);
+
+            $order->setRelation('vatInvoiceRequest', $request->fresh(['processor:id,name,email']));
+
+            return [
+                'success' => true,
+                'message' => 'Cập nhật trạng thái hóa đơn đỏ thành công',
+                'data' => $this->formatDetail($order),
             ];
         });
     }

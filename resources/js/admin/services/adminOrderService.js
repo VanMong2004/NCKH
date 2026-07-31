@@ -22,6 +22,15 @@ const adminOrderService = {
 
         return mapAdminOrderDetailResponse(res.data);
     },
+
+    async updateVatInvoiceStatus(id, payload) {
+        const res = await api.patch(`/admin/orders/${id}/vat-invoice-status`, {
+            status: payload.status,
+            admin_note: payload.admin_note || undefined,
+        });
+
+        return mapAdminOrderDetailResponse(res.data);
+    },
 };
 
 export default adminOrderService;

@@ -7,7 +7,7 @@ import {
     getCancelReasonText,
     getDisplayOrderStatusText,
     getNextOrderStatuses,
-    getOrderStatusText,
+    getNextVatInvoiceStatuses,
     getPaymentMethodText,
     getPaymentStatusText,
     getVatInvoiceStatusText,
@@ -21,11 +21,17 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [savingStatus, setSavingStatus] = useState(false);
+    const [savingVatInvoice, setSavingVatInvoice] = useState(false);
 
     const [statusForm, setStatusForm] = useState({
         status: '',
         note: '',
         cancel_reason: '',
+    });
+
+    const [vatInvoiceForm, setVatInvoiceForm] = useState({
+        status: '',
+        admin_note: '',
     });
 
     const [confirmDialog, setConfirmDialog] = useState({
@@ -57,6 +63,10 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                 note: '',
                 cancel_reason: '',
             });
+            setVatInvoiceForm({
+                status: '',
+                admin_note: result?.vatInvoiceRequest?.adminNote || '',
+            });
         } catch (error) {
             toast.error(error?.message || 'Không thể tải chi tiết đơn hàng');
             onClose?.();
@@ -73,8 +83,19 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         return getNextOrderStatuses(order?.status, order?.paymentMethod);
     }, [order?.allowedNextStatuses, order?.paymentMethod, order?.status]);
 
+    const nextVatInvoiceStatuses = useMemo(() => {
+        return getNextVatInvoiceStatuses(order?.vatInvoiceRequest?.status);
+    }, [order?.vatInvoiceRequest?.status]);
+
     function updateStatusForm(key, value) {
         setStatusForm((prev) => ({
+            ...prev,
+            [key]: value,
+        }));
+    }
+
+    function updateVatInvoiceForm(key, value) {
+        setVatInvoiceForm((prev) => ({
             ...prev,
             [key]: value,
         }));
@@ -84,7 +105,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         e.preventDefault();
 
         if (!statusForm.status) {
-            toast.warning('Vui lòng chọn trạng thái cần chuyển');
+            toast.warning('Vui lòng chọn trạng thái đơn hàng cần chuyển');
             return;
         }
 
@@ -104,6 +125,30 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         });
     }
 
+    function handleUpdateVatInvoiceStatus(e) {
+        e.preventDefault();
+
+        if (!vatInvoiceForm.status) {
+            toast.warning('Vui lòng chọn trạng thái hóa đơn đỏ cần chuyển');
+            return;
+        }
+
+        if (vatInvoiceForm.status === 'rejected' && !vatInvoiceForm.admin_note.trim()) {
+            toast.warning('Vui lòng nhập lý do từ chối hóa đơn đỏ');
+            return;
+        }
+
+        setConfirmDialog({
+            open: true,
+            title: 'Cập nhật hóa đơn đỏ',
+            message: `Chuyển yêu cầu hóa đơn đỏ của đơn ${order.orderCode} sang "${getVatInvoiceStatusText(vatInvoiceForm.status)}"?`,
+            description: 'Email n8n chưa được gọi tự động ở bước này, bạn sẽ cấu hình thủ công sau.',
+            confirmText: 'Cập nhật',
+            type: 'warning',
+            onConfirm: updateVatInvoiceStatus,
+        });
+    }
+
     async function updateOrderStatus() {
         try {
             setSavingStatus(true);
@@ -111,15 +156,13 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
             const result = await withMinimumDelay(adminOrderService.updateStatus(order.id, statusForm));
 
             setOrder(result);
-
-            toast.success('Đã cập nhật trạng thái đơn hàng');
-
             setStatusForm({
                 status: '',
                 note: '',
                 cancel_reason: '',
             });
 
+            toast.success('Đã cập nhật trạng thái đơn hàng');
             onUpdated?.();
         } catch (error) {
             toast.error(error?.message || 'Không thể cập nhật trạng thái đơn hàng');
@@ -128,14 +171,39 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         }
     }
 
+    async function updateVatInvoiceStatus() {
+        try {
+            setSavingVatInvoice(true);
+
+            const result = await withMinimumDelay(adminOrderService.updateVatInvoiceStatus(order.id, vatInvoiceForm));
+
+            setOrder(result);
+            setVatInvoiceForm({
+                status: '',
+                admin_note: result?.vatInvoiceRequest?.adminNote || '',
+            });
+
+            toast.success('Đã cập nhật trạng thái hóa đơn đỏ');
+            onUpdated?.();
+        } catch (error) {
+            toast.error(error?.message || 'Không thể cập nhật trạng thái hóa đơn đỏ');
+        } finally {
+            setSavingVatInvoice(false);
+        }
+    }
+
     if (!open) return null;
 
     return (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-3">
             <LoadingOverlay
-                show={savingStatus}
-                text="Đang cập nhật trạng thái đơn hàng..."
-                description="Hệ thống đang kiểm tra quyền, trạng thái hợp lệ và cập nhật dữ liệu đơn hàng."
+                show={savingStatus || savingVatInvoice}
+                text={savingVatInvoice ? 'Đang cập nhật hóa đơn đỏ...' : 'Đang cập nhật trạng thái đơn hàng...'}
+                description={
+                    savingVatInvoice
+                        ? 'Hệ thống đang kiểm tra luồng trạng thái hóa đơn đỏ và lưu dữ liệu xử lý.'
+                        : 'Hệ thống đang kiểm tra quyền, trạng thái hợp lệ và cập nhật dữ liệu đơn hàng.'
+                }
             />
 
             <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
@@ -197,13 +265,11 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
 
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                                {history.oldStatusText || '—'} → {history.newStatusText || '—'}
+                                                                {history.oldStatusText || 'Khởi tạo đơn hàng'} {'->'} {history.newStatusText || '—'}
                                                             </p>
 
                                                             {history.note && (
-                                                                <p className="mt-1 text-sm text-slate-500">
-                                                                    {history.note}
-                                                                </p>
+                                                                <p className="mt-1 text-sm text-slate-500">{history.note}</p>
                                                             )}
 
                                                             <p className="mt-1 text-xs text-slate-400">
@@ -225,7 +291,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                     <div className="grid gap-3">
                                         <InfoLine label="Mã đơn" value={order.orderCode || `#${order.id}`} />
                                         <InfoLine label="Ngày đặt" value={order.createdAt || '—'} />
-                                        <InfoLine label="Trạng thái" value={order.statusText} />
+                                        <InfoLine label="Trạng thái đơn" value={order.statusText} />
                                         <InfoLine label="Số sản phẩm" value={order.itemCount} />
                                         {order.expiredAt && <InfoLine label="Hết hạn" value={order.expiredAt} />}
                                         {order.cancelReason && (
@@ -252,16 +318,8 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
 
                                 <Section title="Thanh toán">
                                     <div className="grid gap-3">
-                                        <InfoLine
-                                            label="Phương thức"
-                                            value={getPaymentMethodText(order.paymentMethod)}
-                                        />
-
-                                        <InfoLine
-                                            label="Trạng thái"
-                                            value={getPaymentStatusText(order.paymentStatus)}
-                                        />
-
+                                        <InfoLine label="Phương thức" value={getPaymentMethodText(order.paymentMethod)} />
+                                        <InfoLine label="Trạng thái thanh toán" value={getPaymentStatusText(order.paymentStatus)} />
                                         {order.payment?.transactionId && (
                                             <InfoLine label="Mã giao dịch" value={order.payment.transactionId} />
                                         )}
@@ -269,46 +327,106 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                 </Section>
 
                                 {order.vatInvoiceRequest && (
-                                    <Section title="Yêu cầu hóa đơn đỏ">
-                                        <div className="grid gap-3">
-                                            <InfoLine
-                                                label="Trạng thái"
-                                                value={getVatInvoiceStatusText(order.vatInvoiceRequest.status)}
-                                            />
-                                            <InfoLine
-                                                label="Tên đơn vị"
-                                                value={order.vatInvoiceRequest.companyName || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Mã số thuế"
-                                                value={order.vatInvoiceRequest.taxCode || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Email nhận"
-                                                value={order.vatInvoiceRequest.invoiceEmail || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Ngày yêu cầu"
-                                                value={order.vatInvoiceRequest.createdAt || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Nhân viên xử lý"
-                                                value={order.vatInvoiceRequest.processedBy?.name || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Bắt đầu xử lý"
-                                                value={order.vatInvoiceRequest.processedAt || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Hoàn tất"
-                                                value={order.vatInvoiceRequest.fulfilledAt || '—'}
-                                            />
-                                            <InfoLine
-                                                label="Ghi chú xử lý"
-                                                value={order.vatInvoiceRequest.adminNote || '—'}
-                                            />
-                                        </div>
-                                    </Section>
+                                    <>
+                                        <Section title="Yêu cầu hóa đơn đỏ">
+                                            <div className="grid gap-3">
+                                                <InfoLine
+                                                    label="Trạng thái"
+                                                    value={getVatInvoiceStatusText(order.vatInvoiceRequest.status)}
+                                                />
+                                                <InfoLine
+                                                    label="Tên đơn vị"
+                                                    value={order.vatInvoiceRequest.companyName || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Mã số thuế"
+                                                    value={order.vatInvoiceRequest.taxCode || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Email nhận"
+                                                    value={order.vatInvoiceRequest.invoiceEmail || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Ngày yêu cầu"
+                                                    value={order.vatInvoiceRequest.createdAt || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Nhân viên xử lý"
+                                                    value={order.vatInvoiceRequest.processedBy?.name || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Bắt đầu xử lý"
+                                                    value={order.vatInvoiceRequest.processedAt || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Hoàn tất"
+                                                    value={order.vatInvoiceRequest.fulfilledAt || '—'}
+                                                />
+                                                <InfoLine
+                                                    label="Ghi chú xử lý"
+                                                    value={order.vatInvoiceRequest.adminNote || '—'}
+                                                />
+                                            </div>
+                                        </Section>
+
+                                        <Section title="Xử lý hóa đơn đỏ">
+                                            {nextVatInvoiceStatuses.length > 0 ? (
+                                                <form onSubmit={handleUpdateVatInvoiceStatus} className="space-y-4">
+                                                    <Field label="Chuyển trạng thái hóa đơn đỏ">
+                                                        <select
+                                                            value={vatInvoiceForm.status}
+                                                            onChange={(e) => updateVatInvoiceForm('status', e.target.value)}
+                                                            className={controlClass}
+                                                        >
+                                                            <option value="">Chọn trạng thái tiếp theo</option>
+                                                            {nextVatInvoiceStatuses.map((status) => (
+                                                                <option key={status} value={status}>
+                                                                    {getVatInvoiceStatusText(status)}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </Field>
+
+                                                    <Field
+                                                        label={
+                                                            vatInvoiceForm.status === 'rejected'
+                                                                ? 'Lý do từ chối'
+                                                                : 'Ghi chú xử lý'
+                                                        }
+                                                    >
+                                                        <textarea
+                                                            value={vatInvoiceForm.admin_note}
+                                                            onChange={(e) => updateVatInvoiceForm('admin_note', e.target.value)}
+                                                            rows={3}
+                                                            placeholder={
+                                                                vatInvoiceForm.status === 'rejected'
+                                                                    ? 'Nhập lý do từ chối hóa đơn đỏ'
+                                                                    : 'Ghi chú xử lý nếu có'
+                                                            }
+                                                            className={textareaClass}
+                                                        />
+                                                    </Field>
+
+                                                    <button
+                                                        type="submit"
+                                                        disabled={savingVatInvoice}
+                                                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                                                    >
+                                                        {savingVatInvoice ? (
+                                                            <Loader2 size={16} className="animate-spin" />
+                                                        ) : (
+                                                            <Save size={16} />
+                                                        )}
+                                                        Cập nhật hóa đơn đỏ
+                                                    </button>
+                                                </form>
+                                            ) : (
+                                                <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-950">
+                                                    Yêu cầu hóa đơn đỏ ở trạng thái hiện tại không thể chuyển tiếp.
+                                                </div>
+                                            )}
+                                        </Section>
+                                    </>
                                 )}
 
                                 <Section title="Tổng tiền">
@@ -327,7 +445,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                 <Section title="Xử lý đơn hàng">
                                     {nextStatuses.length > 0 ? (
                                         <form onSubmit={handleUpdateStatus} className="space-y-4">
-                                            <Field label="Chuyển trạng thái">
+                                            <Field label="Chuyển trạng thái đơn hàng">
                                                 <select
                                                     value={statusForm.status}
                                                     onChange={(e) => updateStatusForm('status', e.target.value)}
@@ -346,9 +464,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                                 <Field label="Lý do hủy">
                                                     <textarea
                                                         value={statusForm.cancel_reason}
-                                                        onChange={(e) =>
-                                                            updateStatusForm('cancel_reason', e.target.value)
-                                                        }
+                                                        onChange={(e) => updateStatusForm('cancel_reason', e.target.value)}
                                                         rows={3}
                                                         placeholder="Nhập lý do hủy đơn"
                                                         className={textareaClass}
@@ -376,7 +492,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                                 ) : (
                                                     <Save size={16} />
                                                 )}
-                                                Cập nhật trạng thái
+                                                Cập nhật trạng thái đơn hàng
                                             </button>
                                         </form>
                                     ) : (
@@ -399,10 +515,10 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                 confirmText={confirmDialog.confirmText}
                 type={confirmDialog.type}
                 onConfirm={confirmDialog.onConfirm}
-                onOpenChange={(open) => {
+                onOpenChange={(openState) => {
                     setConfirmDialog((prev) => ({
                         ...prev,
-                        open,
+                        open: openState,
                     }));
                 }}
             />
@@ -444,9 +560,7 @@ function OrderItemRow({ item }) {
 
             <div className="text-right">
                 <p className="font-semibold text-slate-900 dark:text-white">{formatMoney(item.finalPrice)}</p>
-
                 <p className="mt-1 text-xs text-slate-500">x {item.quantity}</p>
-
                 <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{formatMoney(item.total)}</p>
             </div>
         </div>

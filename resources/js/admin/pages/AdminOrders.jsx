@@ -6,7 +6,7 @@ import AdminOrderDetailModal from '../components/orders/AdminOrderDetailModal';
 import StatCard from '../components/ui/StatCard';
 import {
     formatMoney,
-    getOrderStatusText,
+    getDisplayOrderStatusText,
     getPaymentMethodText,
     getPaymentStatusText,
     getVatInvoiceStatusText,
@@ -14,23 +14,29 @@ import {
 import adminOrderService from '../services/adminOrderService';
 
 const orderStatusOptions = [
-    { value: '', label: 'Tất cả trạng thái' },
-    { value: 'pending', label: 'Chờ xử lý' },
-    { value: 'paid', label: 'Đã thanh toán' },
-    { value: 'processing', label: 'Đang xử lý' },
-    { value: 'shipped', label: 'Đã giao hàng' },
-    { value: 'completed', label: 'Hoàn tất' },
+    { value: '', label: 'Tất cả trạng thái đơn hàng' },
+    { value: 'pending', label: 'Chờ xác nhận' },
+    { value: 'processing', label: 'Đang chuẩn bị' },
+    { value: 'awaiting_receipt', label: 'Đang chờ nhận hàng' },
+    { value: 'completed', label: 'Hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
 ];
 
 const paymentStatusOptions = [
-    { value: '', label: 'Tất cả thanh toán' },
-    { value: 'pending', label: 'Chờ thanh toán' },
+    { value: '', label: 'Tất cả trạng thái thanh toán' },
+    { value: 'unpaid', label: 'Chưa thanh toán' },
     { value: 'paid', label: 'Đã thanh toán' },
-    { value: 'success', label: 'Thành công' },
-    { value: 'failed', label: 'Thất bại' },
-    { value: 'cancelled', label: 'Đã hủy' },
+    { value: 'failed', label: 'Thanh toán thất bại' },
     { value: 'refunded', label: 'Đã hoàn tiền' },
+];
+
+const vatInvoiceStatusOptions = [
+    { value: '', label: 'Tất cả hóa đơn đỏ' },
+    { value: 'none', label: 'Không có yêu cầu' },
+    { value: 'pending', label: 'Chờ xử lý' },
+    { value: 'processing', label: 'Đang xử lý' },
+    { value: 'fulfilled', label: 'Đã hoàn tất' },
+    { value: 'rejected', label: 'Đã từ chối' },
 ];
 
 const sortOptions = [
@@ -46,6 +52,7 @@ export default function AdminOrders() {
         keyword: '',
         status: '',
         payment_status: '',
+        vat_invoice_status: '',
         date_from: '',
         date_to: '',
         sort: 'latest',
@@ -82,6 +89,7 @@ export default function AdminOrders() {
         debouncedKeyword,
         filters.status,
         filters.payment_status,
+        filters.vat_invoice_status,
         filters.date_from,
         filters.date_to,
         filters.sort,
@@ -113,6 +121,7 @@ export default function AdminOrders() {
         debouncedKeyword,
         filters.status,
         filters.payment_status,
+        filters.vat_invoice_status,
         filters.date_from,
         filters.date_to,
         filters.sort,
@@ -128,6 +137,7 @@ export default function AdminOrders() {
                 keyword: debouncedKeyword || undefined,
                 status: filters.status || undefined,
                 payment_status: filters.payment_status || undefined,
+                vat_invoice_status: filters.vat_invoice_status || undefined,
                 date_from: filters.date_from || undefined,
                 date_to: filters.date_to || undefined,
                 sort: filters.sort || undefined,
@@ -164,6 +174,7 @@ export default function AdminOrders() {
             keyword: '',
             status: '',
             payment_status: '',
+            vat_invoice_status: '',
             date_from: '',
             date_to: '',
             sort: 'latest',
@@ -212,7 +223,7 @@ export default function AdminOrders() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Đơn hàng</h1>
 
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Theo dõi đơn hàng, thanh toán, thông tin giao hàng và xử lý trạng thái.
+                        Theo dõi đơn hàng, thanh toán, hóa đơn đỏ và xử lý trạng thái.
                     </p>
                 </div>
 
@@ -229,16 +240,16 @@ export default function AdminOrders() {
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <StatCard label="Tổng đơn" value={summary.total} tone="blue" />
-                <StatCard label="Chờ xử lý" value={summary.pending} tone="amber" />
-                <StatCard label="Đang xử lý" value={summary.processing} tone="violet" />
-                <StatCard label="Hoàn tất" value={summary.completed} tone="emerald" />
+                <StatCard label="Chờ xác nhận" value={summary.pending} tone="amber" />
+                <StatCard label="Đang chuẩn bị" value={summary.processing} tone="violet" />
+                <StatCard label="Hoàn thành" value={summary.completed} tone="emerald" />
                 <StatCard label="Đã hủy" value={summary.cancelled} tone="gray" />
                 <StatCard label="Doanh thu" value={formatMoney(summary.revenue)} tone="rose" />
             </div>
 
             <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 <div className="border-b border-slate-200 p-4 dark:border-slate-800">
-                    <div className="grid gap-3 lg:grid-cols-12">
+                    <div className="grid gap-3 lg:grid-cols-14">
                         <div className="relative lg:col-span-3">
                             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
 
@@ -268,6 +279,18 @@ export default function AdminOrders() {
                             className={controlClass + ' lg:col-span-2'}
                         >
                             {paymentStatusOptions.map((option) => (
+                                <option key={option.value || 'all'} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={filters.vat_invoice_status}
+                            onChange={(e) => updateFilter('vat_invoice_status', e.target.value)}
+                            className={controlClass + ' lg:col-span-2'}
+                        >
+                            {vatInvoiceStatusOptions.map((option) => (
                                 <option key={option.value || 'all'} value={option.value}>
                                     {option.label}
                                 </option>
@@ -317,9 +340,10 @@ export default function AdminOrders() {
                                 <Th>Đơn hàng</Th>
                                 <Th>Khách hàng</Th>
                                 <Th>Thanh toán</Th>
+                                <Th>Hóa đơn đỏ</Th>
                                 <Th className="text-center">Sản phẩm</Th>
                                 <Th>Tổng tiền</Th>
-                                <Th>Trạng thái</Th>
+                                <Th>Trạng thái đơn</Th>
                                 <Th>Ngày đặt</Th>
                                 <Th className="text-right">Thao tác</Th>
                             </tr>
@@ -328,7 +352,7 @@ export default function AdminOrders() {
                         <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center">
+                                    <td colSpan={9} className="px-4 py-12 text-center">
                                         <Loader2 size={26} className="mx-auto animate-spin text-blue-600" />
                                         <p className="mt-3 text-sm text-slate-500">Đang tải đơn hàng...</p>
                                     </td>
@@ -378,13 +402,17 @@ export default function AdminOrders() {
                                                 <p className="text-xs text-slate-500">
                                                     {getPaymentMethodText(order.paymentMethod)}
                                                 </p>
-
-                                                {order.vatInvoiceRequest && (
-                                                    <p className="text-xs font-medium text-emerald-600">
-                                                        Hóa đơn đỏ: {getVatInvoiceStatusText(order.vatInvoiceRequest.status)}
-                                                    </p>
-                                                )}
                                             </div>
+                                        </td>
+
+                                        <td className="whitespace-nowrap px-4 py-4">
+                                            {order.vatInvoiceRequest ? (
+                                                <VatInvoiceBadge status={order.vatInvoiceRequest.status}>
+                                                    {getVatInvoiceStatusText(order.vatInvoiceRequest.status)}
+                                                </VatInvoiceBadge>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">Không có yêu cầu</span>
+                                            )}
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4 text-center text-slate-700 dark:text-slate-200">
@@ -399,7 +427,7 @@ export default function AdminOrders() {
 
                                         <td className="whitespace-nowrap px-4 py-4">
                                             <OrderStatusBadge status={order.status}>
-                                                {getOrderStatusText(order.status)}
+                                                {getDisplayOrderStatusText(order.status, order.fulfillmentMethod)}
                                             </OrderStatusBadge>
                                         </td>
 
@@ -421,7 +449,7 @@ export default function AdminOrders() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center">
+                                    <td colSpan={9} className="px-4 py-12 text-center">
                                         <ShoppingCart size={30} className="mx-auto text-slate-300" />
 
                                         <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">
@@ -508,32 +536,41 @@ function OrderStatusBadge({ status, children }) {
             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
             : key === 'cancelled'
               ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'
-              : key === 'processing' || key === 'shipped'
+              : key === 'processing' || key === 'awaiting_receipt'
                 ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
-                : key === 'paid'
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300'
-                  : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 
-    return (
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>
-    );
+    return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
 
 function PaymentBadge({ status, children }) {
     const key = String(status || '').toLowerCase();
 
     const className =
-        key === 'paid' || key === 'success'
+        key === 'paid'
             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-            : key === 'failed' || key === 'cancelled'
+            : key === 'failed'
               ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'
               : key === 'refunded'
                 ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                 : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 
-    return (
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>
-    );
+    return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>;
+}
+
+function VatInvoiceBadge({ status, children }) {
+    const key = String(status || '').toLowerCase();
+
+    const className =
+        key === 'fulfilled'
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+            : key === 'rejected'
+              ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300'
+              : key === 'processing'
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+
+    return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }
 
 const controlClass =

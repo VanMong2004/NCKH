@@ -334,6 +334,7 @@ Route::middleware(['auth:sanctum', 'admin', 'throttle:admin'])->prefix('admin')-
         Route::get('/', [AdminOrderController::class, 'index']);
         Route::get('/{id}', [AdminOrderController::class, 'show']);
         Route::patch('/{id}/status', [AdminOrderController::class, 'updateStatus']);
+        Route::patch('/{id}/vat-invoice-status', [AdminOrderController::class, 'updateVatInvoiceStatus']);
     });  
 
     // ADMIN PRODUCTS

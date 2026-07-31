@@ -102,6 +102,17 @@ export function getNextOrderStatuses(status, paymentMethod = '') {
     return map[status] || [];
 }
 
+export function getNextVatInvoiceStatuses(status) {
+    const map = {
+        pending: ['processing', 'rejected'],
+        processing: ['fulfilled', 'rejected'],
+        fulfilled: [],
+        rejected: [],
+    };
+
+    return map[status] || [];
+}
+
 export function mapAdminOrder(item = {}) {
     const customer = item.customer || {};
     const fulfillmentMethod = item.fulfillment_method || '';

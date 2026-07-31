@@ -22,21 +22,21 @@ export function formatMoney(value) {
 
 export function getOrderStatusText(status) {
     const map = {
+        empty: 'Khởi tạo đơn hàng',
         pending: 'Chờ xác nhận',
-        paid: 'Đã thanh toán',
-        processing: 'Đang xử lý',
-        shipped: 'Đang giao',
+        processing: 'Đang chuẩn bị',
+        awaiting_receipt: 'Đang chờ nhận hàng',
         completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };
 
-    return map[status] || status || 'Không rõ';
+    return map[status] || status || map.empty;
 }
 
 export function getPaymentStatusText(status) {
     const map = {
-        pending: 'Chờ thanh toán',
-        success: 'Thanh toán thành công',
+        unpaid: 'Chưa thanh toán',
+        paid: 'Đã thanh toán',
         failed: 'Thất bại',
         refunded: 'Đã hoàn tiền',
     };
@@ -47,10 +47,8 @@ export function getPaymentStatusText(status) {
 export function getPaymentMethodText(method) {
     const map = {
         cod: 'COD',
-        bank_transfer: 'Chuyển khoản',
-        momo: 'MoMo',
-        vnpay: 'VNPay',
-        mock: 'Thanh toán giả lập banking',
+        mock_bank: 'Giả lập ngân hàng',
+        cash_on_pickup: 'Thanh toán tại phòng',
     };
 
     return map[method] || method || '-';
@@ -70,29 +68,19 @@ export function getCancelReasonText(reason) {
 
 export function getNextOrderStatuses(status, paymentMethod = '') {
     const map = {
-        pending:
-            paymentMethod && paymentMethod !== 'cod'
-                ? [
-                      'paid',
-                      'cancelled',
-                  ]
-                : [
-                      'processing',
-                      'cancelled',
-                  ],
-
-        paid: [
+        pending: [
             'processing',
             'cancelled',
         ],
 
         processing: [
-            'shipped',
+            'awaiting_receipt',
             'cancelled',
         ],
 
-        shipped: [
+        awaiting_receipt: [
             'completed',
+            'cancelled',
         ],
 
         completed: [],
@@ -105,15 +93,18 @@ export function getNextOrderStatuses(status, paymentMethod = '') {
 
 export function mapAdminOrder(item = {}) {
     const customer = item.customer || {};
+    const fulfillmentMethod = item.fulfillment_method || '';
 
     return {
         id: item.id,
         orderCode: item.order_code || '',
         status: item.status || '',
-        statusText: getOrderStatusText(item.status),
+        statusText: getDisplayOrderStatusText(item.status, fulfillmentMethod),
 
         paymentStatus: item.payment_status || '',
         paymentStatusText: getPaymentStatusText(item.payment_status),
+        fulfillmentMethod: fulfillmentMethod,
+        fulfillmentMethodText: getFulfillmentMethodText(fulfillmentMethod),
         paymentMethod: item.payment_method || '',
         paymentMethodText: getPaymentMethodText(item.payment_method),
 
@@ -146,6 +137,7 @@ export function mapAdminOrderDetail(item = {}) {
         id: item.id,
         order_code: item.order_code,
         status: item.status,
+        fulfillment_method: item.fulfillment_method,
         customer: item.customer,
         payment_status: item.payment?.status,
         payment_method: item.payment?.method,
@@ -216,9 +208,9 @@ export function mapAdminOrderDetail(item = {}) {
             ? item.status_histories.map((history) => ({
                   id: history.id,
                   oldStatus: history.old_status || '',
-                  oldStatusText: getOrderStatusText(history.old_status),
+                  oldStatusText: getDisplayOrderStatusText(history.old_status, item.fulfillment_method),
                   newStatus: history.new_status || '',
-                  newStatusText: getOrderStatusText(history.new_status),
+                  newStatusText: getDisplayOrderStatusText(history.new_status, item.fulfillment_method),
                   note: history.note || '',
                   changedBy: history.changed_by || null,
                   createdAt: history.created_at || '',
@@ -250,4 +242,27 @@ export function mapAdminOrderListResponse(response = {}) {
 
 export function mapAdminOrderDetailResponse(response = {}) {
     return mapAdminOrderDetail(response.data || {});
+}
+
+export function getFulfillmentMethodText(method) {
+    const map = {
+        delivery: 'Giao hàng tận nơi',
+        pickup: 'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên',
+    };
+
+    return map[method] || method || '-';
+}
+
+export function getDisplayOrderStatusText(status, fulfillmentMethod = '') {
+    if (!status) {
+        return 'Khởi tạo đơn hàng';
+    }
+
+    if (status === 'awaiting_receipt') {
+        return fulfillmentMethod === 'pickup'
+            ? 'Sẵn sàng nhận tại phòng'
+            : 'Đang giao';
+    }
+
+    return getOrderStatusText(status);
 }

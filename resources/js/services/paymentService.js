@@ -8,7 +8,7 @@ import {
 } from './mappers/paymentMapper';
 
 const paymentService = {
-    async pay(orderId, method = 'mock') {
+    async pay(orderId, method = 'mock_bank') {
         const res = await api.post(`/orders/${orderId}/pay`, { method });
 
         return mapCreatePaymentResponse(res.data);

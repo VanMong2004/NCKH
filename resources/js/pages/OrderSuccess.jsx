@@ -195,7 +195,7 @@ export default function OrderSuccess() {
 
         const method = order.payment?.method || order.raw?.payment_method || '';
 
-        if (!['mock', 'vnpay'].includes(method)) {
+        if (method !== 'mock_bank') {
             toast.warning('Phương thức thanh toán này không hỗ trợ thanh toán lại');
             return;
         }
@@ -206,7 +206,7 @@ export default function OrderSuccess() {
             const payment = await paymentService.pay(order.id, method);
 
             if (payment.redirectUrl) {
-                if (method === 'mock') {
+                if (method === 'mock_bank') {
                     const savedGuestOrder = JSON.parse(
                         sessionStorage.getItem('guest_order_success') || '{}'
                     );
@@ -549,7 +549,7 @@ function getHeroState(order, paymentStatus) {
         };
     }
 
-    if (realPaymentStatus === 'success' || status === 'paid') {
+    if (realPaymentStatus === 'paid') {
         return {
             icon: CheckCircle2,
             title: 'Thanh toán thành công',
@@ -582,7 +582,12 @@ function getHeroState(order, paymentStatus) {
 }
 
 function getPaymentStatusFallback(order) {
-    if (order.status === 'paid') return 'Đã thanh toán';
+    if (order.payment?.status === 'paid' || order.raw?.payment_status === 'paid') {
+        return 'Đã thanh toán';
+    }
+    if (order.payment?.status === 'unpaid' || order.raw?.payment_status === 'unpaid') {
+        return 'Chưa thanh toán';
+    }
     if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đã hủy';
     return 'Chưa tạo thanh toán';
 }

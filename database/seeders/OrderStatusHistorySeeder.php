@@ -23,16 +23,9 @@ class OrderStatusHistorySeeder extends Seeder
                     'Đơn hàng bị hủy do quá hạn thanh toán'
                 ),
 
-                'paid' => $this->history(
-                    $order,
-                    'pending',
-                    'paid',
-                    'Thanh toán thành công'
-                ),
+                'processing' => $this->processingFlow($order),
 
-                'processing' => $this->paidAndProcessing($order),
-
-                'shipped' => $this->paidProcessingAndShipped($order),
+                'awaiting_receipt' => $this->awaitingReceiptFlow($order),
 
                 'completed' => $this->fullCompletedFlow($order),
 
@@ -41,22 +34,32 @@ class OrderStatusHistorySeeder extends Seeder
         }
     }
 
-    private function paidAndProcessing(Order $order): void
+    private function processingFlow(Order $order): void
     {
-        $this->history($order, 'pending', 'paid', 'Thanh toán thành công');
-        $this->history($order, 'paid', 'processing', 'Đơn hàng đang được chuẩn bị');
+        $note = $order->payment_status === 'paid'
+            ? 'Đơn hàng đã được thanh toán và đang được chuẩn bị'
+            : 'Đơn hàng đang được chuẩn bị';
+
+        $this->history($order, 'pending', 'processing', $note);
     }
 
-    private function paidProcessingAndShipped(Order $order): void
+    private function awaitingReceiptFlow(Order $order): void
     {
-        $this->paidAndProcessing($order);
-        $this->history($order, 'processing', 'shipped', 'Đã bàn giao cho đơn vị vận chuyển');
+        $this->processingFlow($order);
+        $this->history(
+            $order,
+            'processing',
+            'awaiting_receipt',
+            $order->fulfillment_method === 'pickup'
+                ? 'Đơn hàng đã sẵn sàng nhận tại phòng'
+                : 'Đơn hàng đang được giao đến khách hàng'
+        );
     }
 
     private function fullCompletedFlow(Order $order): void
     {
-        $this->paidProcessingAndShipped($order);
-        $this->history($order, 'shipped', 'completed', 'Khách hàng đã nhận hàng');
+        $this->awaitingReceiptFlow($order);
+        $this->history($order, 'awaiting_receipt', 'completed', 'Khách hàng đã nhận hàng');
     }
 
     private function history(

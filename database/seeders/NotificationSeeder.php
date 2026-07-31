@@ -20,7 +20,7 @@ class NotificationSeeder extends Seeder
             $latestPaidOrder = Order::query()
                 ->where('user_id', $user->id)
                 ->whereHas('payments', function ($query) {
-                    $query->where('status', 'success');
+                    $query->where('status', 'paid');
                 })
                 ->latest('id')
                 ->first();

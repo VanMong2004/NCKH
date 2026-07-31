@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import {
     formatMoney,
     getCancelReasonText,
+    getDisplayOrderStatusText,
     getNextOrderStatuses,
     getOrderStatusText,
     getPaymentMethodText,
@@ -94,7 +95,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         setConfirmDialog({
             open: true,
             title: 'Chuyển trạng thái đơn hàng',
-            message: `Chuyển đơn ${order.orderCode} từ "${order.statusText}" sang "${getOrderStatusText(statusForm.status)}"?`,
+            message: `Chuyển đơn ${order.orderCode} từ "${order.statusText}" sang "${getDisplayOrderStatusText(statusForm.status, order.fulfillmentMethod)}"?`,
             description: 'Thao tác này sẽ cập nhật trạng thái đơn hàng trên hệ thống.',
             confirmText: 'Cập nhật',
             type: 'warning',
@@ -291,7 +292,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                                     <option value="">Chọn trạng thái tiếp theo</option>
                                                     {nextStatuses.map((status) => (
                                                         <option key={status} value={status}>
-                                                            {getOrderStatusText(status)}
+                                                            {getDisplayOrderStatusText(status, order.fulfillmentMethod)}
                                                         </option>
                                                     ))}
                                                 </select>

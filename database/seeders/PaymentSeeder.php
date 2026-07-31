@@ -10,14 +10,13 @@ class PaymentSeeder extends Seeder
 {
     public function run(): void
     {
-        $onlineMethods = ['mock', 'vnpay', 'banking'];
-        $onlineIndex = 0;
-
         foreach (Order::all() as $order) {
-            $method = match ($order->status) {
-                'pending' => 'cod',
-                'cancelled' => 'mock',
-                default => $onlineMethods[$onlineIndex++ % count($onlineMethods)],
+            $method = match (true) {
+                $order->fulfillment_method === 'pickup' && $order->payment_status === 'paid' && $order->status === 'completed' => 'cash_on_pickup',
+                $order->fulfillment_method === 'pickup' && $order->payment_status !== 'paid' => 'mock_bank',
+                $order->fulfillment_method === 'delivery' && $order->payment_status === 'unpaid' => 'cod',
+                $order->fulfillment_method === 'delivery' && $order->payment_status === 'failed' => 'mock_bank',
+                default => 'mock_bank',
             };
 
             Payment::updateOrCreate([
@@ -25,27 +24,20 @@ class PaymentSeeder extends Seeder
             ], [
                 'order_id' => $order->id,
                 'method' => $method,
-                'status' => match ($order->status) {
-                    'pending' => 'pending',
-                    'cancelled' => 'failed',
-                    default => 'success',
-                },
+                'status' => $order->payment_status ?: 'unpaid',
                 'amount' => $order->total,
-                'transaction_id' => $order->status === 'pending'
+                'transaction_id' => in_array($method, ['cod', 'cash_on_pickup'], true)
                     ? null
                     : 'TXN2026' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
                 'meta' => [
                     'source' => 'seed',
                     'order_code' => $order->order_code,
+                    'fulfillment_method' => $order->fulfillment_method,
                 ],
                 'response_data' => [
                     'gateway' => $method,
                     'sandbox' => true,
-                    'result' => match ($order->status) {
-                        'pending' => 'waiting',
-                        'cancelled' => 'failed',
-                        default => 'success',
-                    },
+                    'result' => $order->payment_status,
                 ],
             ]);
         }

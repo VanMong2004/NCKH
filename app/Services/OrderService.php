@@ -118,7 +118,7 @@ class OrderService
                     ? now()->addMinutes($autoCancelMinutes)
                     : null,
                 'total' => 0,
-                'shipping_fee' => 0,
+                'shipping_fee' => $fulfillmentMethod === 'delivery' ? 35000 : 0,
                 'shipping_name' => $shipping['name'],
                 'shipping_phone' => $shipping['phone'],
                 'shipping_address' => $shipping['address'],
@@ -252,8 +252,8 @@ class OrderService
             $order->update([
                 'sub_total' => $total + $totalDiscount,
                 'discount_total' => $totalDiscount,
-                'grand_total' => $total,
-                'total' => $total,
+                'grand_total' => $total + (float) $order->shipping_fee,
+                'total' => $total + (float) $order->shipping_fee,
             ]);
 
             $order->refresh();

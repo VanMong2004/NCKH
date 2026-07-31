@@ -5,7 +5,7 @@ export default function CartBenefits() {
         {
             icon: ShieldCheck,
             title: 'Sản phẩm chính thức',
-            desc: 'Sản phẩm được quản lý bởi hệ thống cửa hàng.',
+            desc: 'Sản phẩm được quản lý bởi hệ thống của Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.',
         },
         {
             icon: PackageCheck,

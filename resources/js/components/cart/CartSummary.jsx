@@ -70,7 +70,7 @@ export default function CartSummary({
                 </button>
             )}
 
-            <div className="mt-5 text-center">
+            {/* <div className="mt-5 text-center">
                 <p className="mb-3 text-xs font-semibold text-slate-500 dark:text-slate-400">Phương thức hỗ trợ</p>
 
                 <div className="grid grid-cols-4 gap-2">
@@ -83,7 +83,7 @@ export default function CartSummary({
                         </div>
                     ))}
                 </div>
-            </div>
+            </div> */}
         </aside>
     );
 }

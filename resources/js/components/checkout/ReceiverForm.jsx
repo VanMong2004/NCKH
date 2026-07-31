@@ -72,9 +72,14 @@ export default function ReceiverForm({
             onSaveAddressChange?.(true);
         }
 
+        const normalizedValue =
+            field === 'guest_phone'
+                ? String(value || '').replace(/[^\d]/g, '').slice(0, 10)
+                : value;
+
         setReceiver((prev) => ({
             ...prev,
-            [field]: value,
+            [field]: normalizedValue,
         }));
     }
 
@@ -193,6 +198,7 @@ export default function ReceiverForm({
                     error={errors.guest_email}
                     onChange={(value) => updateField('guest_email', value)}
                     disabled={!isGuest && Boolean(user?.email)}
+                    required
                 />
 
                 <Input
@@ -200,6 +206,7 @@ export default function ReceiverForm({
                     value={receiver.province}
                     error={errors.province}
                     onChange={(value) => updateField('province', value)}
+                    required
                 />
 
                 <Input
@@ -207,6 +214,7 @@ export default function ReceiverForm({
                     value={receiver.district}
                     error={errors.district}
                     onChange={(value) => updateField('district', value)}
+                    required
                 />
 
                 <Input
@@ -231,6 +239,7 @@ export default function ReceiverForm({
                         error={errors.address_line}
                         onChange={(value) => updateField('address_line', value)}
                         icon={<MapPin size={17} />}
+                        required
                     />
                 </div>
             </div>

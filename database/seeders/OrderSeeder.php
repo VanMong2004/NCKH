@@ -17,6 +17,8 @@ class OrderSeeder extends Seeder
             [
                 'email' => 'nhat.b2200001@ctuet.edu.vn',
                 'status' => 'completed',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'paid',
                 'items' => [
                     ['Áo thun CTUT K2026', 'L', 'Trắng', 2],
                     ['Ly giữ nhiệt CTUT', null, null, 1],
@@ -25,6 +27,8 @@ class OrderSeeder extends Seeder
             [
                 'email' => 'anh.b2200102@ctuet.edu.vn',
                 'status' => 'completed',
+                'fulfillment_method' => 'pickup',
+                'payment_status' => 'paid',
                 'items' => [
                     ['Hoodie CTUT Premium', 'XL', 'Đen', 1],
                     ['Sticker CTUT', null, null, 2],
@@ -33,6 +37,8 @@ class OrderSeeder extends Seeder
             [
                 'email' => 'bao.b2300221@ctuet.edu.vn',
                 'status' => 'completed',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'paid',
                 'items' => [
                     ['Áo khoa CNTT', 'M', 'Đen', 1],
                     ['Bảng tên sinh viên CTUT', null, null, 1],
@@ -42,6 +48,8 @@ class OrderSeeder extends Seeder
             [
                 'email' => 'vy.b2400305@ctuet.edu.vn',
                 'status' => 'completed',
+                'fulfillment_method' => 'pickup',
+                'payment_status' => 'paid',
                 'items' => [
                     ['Áo Freshman Week 2026', 'S', 'Trắng', 1],
                     ['Túi tote CTUT', null, null, 1],
@@ -50,6 +58,8 @@ class OrderSeeder extends Seeder
             [
                 'email' => 'han.b2500411@ctuet.edu.vn',
                 'status' => 'completed',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'paid',
                 'items' => [
                     ['Áo khoa Cơ khí', 'L', 'Xám', 1],
                     ['Móc khóa CTUT', null, null, 2],
@@ -58,16 +68,48 @@ class OrderSeeder extends Seeder
             [
                 'email' => 'nam.b2300440@ctuet.edu.vn',
                 'status' => 'completed',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'paid',
                 'items' => [
                     ['Áo khoa Điện - Điện tử', 'M', 'Trắng', 1],
                     ['Nón lưỡi trai CTUT', null, 'Đen', 1],
                 ],
             ],
-            ['email' => 'nhat.b2200001@ctuet.edu.vn', 'status' => 'shipped', 'items' => [['Sổ tay CTUT', 'A5', null, 2], ['Bút CTUT', null, 'Mực xanh', 3]]],
-            ['email' => 'anh.b2200102@ctuet.edu.vn', 'status' => 'paid', 'items' => [['Ly giữ nhiệt CTUT', null, null, 1]]],
-            ['email' => 'bao.b2300221@ctuet.edu.vn', 'status' => 'completed', 'items' => [['Túi tote CTUT', null, null, 1], ['Sticker CTUT', null, null, 1]]],
-            ['email' => 'vy.b2400305@ctuet.edu.vn', 'status' => 'pending', 'items' => [['Áo thun CTUT K2026', 'M', 'Xanh CTUT', 1]]],
-            ['email' => 'han.b2500411@ctuet.edu.vn', 'status' => 'cancelled', 'items' => [['Hoodie CTUT Premium', 'M', 'Xám', 1]]],
+            [
+                'email' => 'nhat.b2200001@ctuet.edu.vn',
+                'status' => 'awaiting_receipt',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'paid',
+                'items' => [['Sổ tay CTUT', 'A5', null, 2], ['Bút CTUT', null, 'Mực xanh', 3]],
+            ],
+            [
+                'email' => 'anh.b2200102@ctuet.edu.vn',
+                'status' => 'processing',
+                'fulfillment_method' => 'pickup',
+                'payment_status' => 'paid',
+                'items' => [['Ly giữ nhiệt CTUT', null, null, 1]],
+            ],
+            [
+                'email' => 'bao.b2300221@ctuet.edu.vn',
+                'status' => 'completed',
+                'fulfillment_method' => 'pickup',
+                'payment_status' => 'paid',
+                'items' => [['Túi tote CTUT', null, null, 1], ['Sticker CTUT', null, null, 1]],
+            ],
+            [
+                'email' => 'vy.b2400305@ctuet.edu.vn',
+                'status' => 'pending',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'unpaid',
+                'items' => [['Áo thun CTUT K2026', 'M', 'Xanh CTUT', 1]],
+            ],
+            [
+                'email' => 'han.b2500411@ctuet.edu.vn',
+                'status' => 'cancelled',
+                'fulfillment_method' => 'delivery',
+                'payment_status' => 'failed',
+                'items' => [['Hoodie CTUT Premium', 'M', 'Xám', 1]],
+            ],
         ];
 
         foreach ($orders as $index => $data) {
@@ -87,15 +129,19 @@ class OrderSeeder extends Seeder
                 'guest_name' => null,
                 'guest_email' => null,
                 'guest_phone' => null,
+                'fulfillment_method' => $data['fulfillment_method'],
                 'shipping_name' => $user->name,
                 'shipping_phone' => $user->phone,
-                'shipping_address' => 'Ký túc xá CTUT, Ninh Kiều, Cần Thơ',
+                'shipping_address' => $data['fulfillment_method'] === 'pickup'
+                    ? 'Phòng Công tác Chính trị và Quản lý sinh viên'
+                    : 'Ký túc xá CTUT, Ninh Kiều, Cần Thơ',
                 'sub_total' => 0,
                 'discount_total' => 0,
                 'grand_total' => 0,
                 'total' => 0,
                 'shipping_fee' => 0,
                 'status' => $data['status'],
+                'payment_status' => $data['payment_status'],
                 'expired_at' => $data['status'] === 'pending' ? now()->addMinutes(15) : null,
                 'cancel_reason' => $data['status'] === 'cancelled' ? 'Khách hàng không thanh toán đúng hạn' : null,
                 'order_code' => $orderCode,
@@ -151,7 +197,7 @@ class OrderSeeder extends Seeder
                     ] : null,
                 ]);
 
-                if (in_array($data['status'], ['pending', 'paid', 'processing', 'shipped'], true)) {
+                if (in_array($data['status'], ['pending', 'processing', 'awaiting_receipt'], true)) {
                     $variant->increment('reserved_stock', $quantity);
                 }
 

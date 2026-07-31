@@ -6,14 +6,9 @@ function toNumber(value) {
 
 export function orderStatusText(status) {
     const map = {
-        pending: 'Chờ xử lý',
-        paid: 'Đã thanh toán',
-        confirmed: 'Đã xác nhận',
+        pending: 'Chờ xác nhận',
         processing: 'Đang chuẩn bị',
-        shipping: 'Đang giao',
-        shipped: 'Đang giao',
-        ready_to_pickup: 'Sẵn sàng nhận hàng',
-        delivered: 'Đã giao hàng',
+        awaiting_receipt: 'Đang chờ nhận hàng',
         completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };
@@ -25,12 +20,9 @@ export function orderStatusClass(status) {
     const map = {
         pending:
             'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50',
-        paid: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50',
         processing:
             'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900/50',
-        shipping:
-            'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-900/50',
-        shipped:
+        awaiting_receipt:
             'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-900/50',
         completed:
             'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50',
@@ -197,6 +189,13 @@ function mapTimelineItem(item = {}) {
 
 export function mapOrderDetailResponse(response = {}) {
     const item = response.data || {};
+    const fulfillmentMethod = item.fulfillment_method || '';
+    const statusText =
+        item.status === 'awaiting_receipt'
+            ? fulfillmentMethod === 'pickup'
+                ? 'Sẵn sàng nhận tại phòng'
+                : 'Đang giao'
+            : orderStatusText(item.status);
 
     return {
         success: Boolean(response.success),
@@ -211,7 +210,7 @@ export function mapOrderDetailResponse(response = {}) {
         type: item.type || '',
 
         status: item.status || '',
-        statusText: orderStatusText(item.status),
+        statusText,
         statusClass: orderStatusClass(item.status),
 
         qrCode: item.qr_code || '',
@@ -258,6 +257,14 @@ export function mapOrderDetailResponse(response = {}) {
 }
 
 function mapOrderListItem(item = {}) {
+    const fulfillmentMethod = item.fulfillment_method || '';
+    const statusText =
+        item.status === 'awaiting_receipt'
+            ? fulfillmentMethod === 'pickup'
+                ? 'Sẵn sàng nhận tại phòng'
+                : 'Đang giao'
+            : orderStatusText(item.status);
+
     return {
         id: item.id,
 
@@ -268,11 +275,12 @@ function mapOrderListItem(item = {}) {
         type: item.type || '',
 
         status: item.status || '',
-        statusText: orderStatusText(item.status),
+        statusText,
         statusClass: orderStatusClass(item.status),
 
         paymentStatus: item.payment_status || '',
         paymentMethod: item.payment_method || '',
+        fulfillmentMethod,
 
         thumbnail: item.thumbnail || '',
 
@@ -314,9 +322,8 @@ export function mapOrderListResponse(response = {}) {
 
 function paymentStatusText(status) {
     const map = {
-        pending: 'Đang chờ thanh toán',
-        processing: 'Đang xử lý',
-        success: 'Đã thanh toán',
+        unpaid: 'Chưa thanh toán',
+        paid: 'Đã thanh toán',
         failed: 'Thanh toán thất bại',
         refunded: 'Đã hoàn tiền',
     };
@@ -327,8 +334,8 @@ function paymentStatusText(status) {
 function paymentMethodText(method) {
     const map = {
         cod: 'Thanh toán khi nhận hàng',
-        mock: 'Thanh toán giả lập',
-        vnpay: 'VNPay',
+        mock_bank: 'Giả lập ngân hàng',
+        cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại phòng',
     };
 
     return map[method] || method || 'Chưa tạo thanh toán';

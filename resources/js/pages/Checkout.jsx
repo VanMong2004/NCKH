@@ -18,6 +18,11 @@ import orderService from '../services/orderService';
 import paymentService from '../services/paymentService';
 import { withMinimumDelay } from '../utils/demoDelay';
 
+const paymentMethodOptions = {
+    delivery: ['cod', 'mock_bank'],
+    pickup: ['cash_on_pickup', 'mock_bank'],
+};
+
 export default function Checkout() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -27,7 +32,6 @@ export default function Checkout() {
 
     const { cartItems, fetchCart } = useCart();
 
-    // const [selectedAddressId, setSelectedAddressId] = useState('');
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [saveAddress, setSaveAddress] = useState(false);
 
@@ -42,6 +46,7 @@ export default function Checkout() {
         postal_code: '',
     });
 
+    const [fulfillmentMethod, setFulfillmentMethod] = useState('delivery');
     const [paymentMethod, setPaymentMethod] = useState('cod');
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -59,10 +64,57 @@ export default function Checkout() {
                 ...prev,
                 guest_name: prev.guest_name || user.name || '',
                 guest_email: prev.guest_email || user.email || '',
-                guest_phone: prev.guest_phone || user.phone || '',
+                guest_phone: normalizePhone(prev.guest_phone || user.phone || ''),
             }));
         }
     }, [user]);
+
+    useEffect(() => {
+        const validMethods = paymentMethodOptions[fulfillmentMethod] || [];
+
+        if (!validMethods.includes(paymentMethod)) {
+            setPaymentMethod(validMethods[0] || '');
+        }
+    }, [fulfillmentMethod, paymentMethod]);
+
+    useEffect(() => {
+        setErrors((prev) => {
+            const next = { ...prev };
+
+            if (receiver.guest_name.trim()) {
+                delete next.guest_name;
+            }
+
+            if (
+                receiver.guest_email.trim() &&
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())
+            ) {
+                delete next.guest_email;
+            }
+
+            if (/^0\d{9}$/.test(normalizePhone(receiver.guest_phone))) {
+                delete next.guest_phone;
+            }
+
+            if (receiver.province.trim()) {
+                delete next.province;
+            }
+
+            if (receiver.district.trim()) {
+                delete next.district;
+            }
+
+            if (receiver.ward.trim()) {
+                delete next.ward;
+            }
+
+            if (receiver.address_line.trim()) {
+                delete next.address_line;
+            }
+
+            return next;
+        });
+    }, [receiver]);
 
     const checkoutItems = useMemo(() => {
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
@@ -75,9 +127,7 @@ export default function Checkout() {
 
         const selectedIds = stateCartItemIds.map((id) => String(id));
 
-        return cartItems.filter((item) => {
-            return selectedIds.includes(String(item.cartItemId));
-        });
+        return cartItems.filter((item) => selectedIds.includes(String(item.cartItemId)));
     }, [cartItems, stateCartItemIds]);
 
     const checkoutCartItemIds = useMemo(() => {
@@ -109,57 +159,81 @@ export default function Checkout() {
     }, [checkoutItems]);
 
     const checkoutTotalItems = useMemo(() => {
-        return checkoutItems.reduce((sum, item) => {
-            return sum + Number(item.quantity || 0);
-        }, 0);
+        return checkoutItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     }, [checkoutItems]);
 
-    const shippingFee = 0;
+    const shippingFee = fulfillmentMethod === 'delivery' ? 35000 : 0;
     const grandTotal = subtotal + shippingFee;
+
+    function updateFieldError(field, value) {
+        setErrors((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    }
+
+    function clearError(field) {
+        if (!errors[field]) return;
+
+        updateFieldError(field, '');
+    }
 
     function validate() {
         const nextErrors = {};
 
         if (!pendingPaymentOrder && checkoutItems.length === 0) {
-            nextErrors.cart = 'Vui lòng chọn sản phẩm cần thanh toán';
+            nextErrors.cart = 'Vui lòng chọn ít nhất một sản phẩm để đặt hàng.';
         }
 
         if (!pendingPaymentOrder && checkoutCartItemIds.length === 0) {
-            nextErrors.cart = 'Danh sách sản phẩm thanh toán không hợp lệ';
+            nextErrors.cart = 'Danh sách sản phẩm thanh toán không hợp lệ.';
         }
 
         if (!pendingPaymentOrder && !selectedAddressId) {
             if (!receiver.guest_name.trim()) {
-                nextErrors.guest_name = 'Vui lòng nhập họ tên người nhận';
+                nextErrors.guest_name = 'Vui lòng nhập họ tên người nhận.';
             }
 
-            if (receiver.guest_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())) {
-                nextErrors.guest_email = 'Email không hợp lệ';
+            if (!receiver.guest_email.trim()) {
+                nextErrors.guest_email = 'Vui lòng nhập email để nhận thông tin đơn hàng.';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())) {
+                nextErrors.guest_email = 'Email phải đúng định dạng, ví dụ: tenban@gmail.com.';
             }
 
-            if (!receiver.guest_phone.trim()) {
-                nextErrors.guest_phone = 'Vui lòng nhập số điện thoại';
+            const normalizedPhone = normalizePhone(receiver.guest_phone);
+
+            if (!normalizedPhone) {
+                nextErrors.guest_phone = 'Vui lòng nhập số điện thoại người nhận.';
+            } else if (!/^0\d{9}$/.test(normalizedPhone)) {
+                nextErrors.guest_phone = 'Số điện thoại phải gồm đúng 10 số và bắt đầu bằng số 0.';
             }
+
+            if (!receiver.province.trim()) {
+                nextErrors.province = 'Vui lòng nhập tỉnh hoặc thành phố.';
+            }
+
+            if (!receiver.district.trim()) {
+                nextErrors.district = 'Vui lòng nhập quận hoặc huyện.';
+            }
+
+            if (!receiver.ward.trim()) {
+                nextErrors.ward = 'Vui lòng nhập phường hoặc xã.';
+            }
+
+            if (!receiver.address_line.trim()) {
+                nextErrors.address_line = 'Vui lòng nhập địa chỉ cụ thể.';
+            }
+        }
+
+        if (!fulfillmentMethod) {
+            nextErrors.fulfillment_method = 'Vui lòng chọn phương thức nhận hàng.';
         }
 
         if (!paymentMethod) {
-            nextErrors.paymentMethod = 'Vui lòng chọn phương thức thanh toán';
+            nextErrors.payment_method = 'Vui lòng chọn phương thức thanh toán.';
         }
 
         setErrors(nextErrors);
-
-        if (nextErrors.cart) {
-            toast.warning(nextErrors.cart);
-        }
-
-        if (nextErrors.address) {
-            toast.warning(nextErrors.address);
-        }
-
-        if (nextErrors.paymentMethod) {
-            toast.warning(nextErrors.paymentMethod);
-        }
-
         return Object.keys(nextErrors).length === 0;
     }
 
@@ -172,9 +246,9 @@ export default function Checkout() {
                 isGuest: true,
                 orderId: order.id,
                 orderCode: order.orderCode,
-                guestPhone: receiver.guest_phone,
+                guestPhone: normalizePhone(receiver.guest_phone),
                 guestToken: order.guestToken,
-            })
+            }),
         );
     }
 
@@ -192,16 +266,17 @@ export default function Checkout() {
             }
 
             const payload = {
+                fulfillment_method: fulfillmentMethod,
                 payment_method: paymentMethod,
                 cart_item_ids: checkoutCartItemIds,
             };
 
-            if (selectedAddressId) {
+            if (selectedAddressId && fulfillmentMethod === 'delivery') {
                 payload.address_id = Number(selectedAddressId);
             } else {
                 payload.guest_name = receiver.guest_name.trim();
                 payload.guest_email = receiver.guest_email.trim();
-                payload.guest_phone = receiver.guest_phone.trim();
+                payload.guest_phone = normalizePhone(receiver.guest_phone);
                 payload.province = receiver.province.trim();
                 payload.district = receiver.district.trim();
                 payload.ward = receiver.ward.trim();
@@ -210,6 +285,7 @@ export default function Checkout() {
                 payload.save_address = Boolean(
                     user &&
                         saveAddress &&
+                        fulfillmentMethod === 'delivery' &&
                         receiver.province.trim() &&
                         receiver.district.trim() &&
                         receiver.ward.trim() &&
@@ -220,20 +296,20 @@ export default function Checkout() {
             const order = await withMinimumDelay(orderService.checkout(payload));
 
             if (!order.id) {
-                toast.error('Không lấy được mã đơn hàng');
+                toast.error('Không lấy được mã đơn hàng.');
                 return;
             }
 
             const method = order.paymentMethod || paymentMethod;
 
-            if (method === 'cod') {
+            if (method === 'cod' || method === 'cash_on_pickup') {
                 sessionStorage.removeItem('mock_payment_qr');
 
                 await fetchCart();
 
                 saveGuestOrderToSession(order);
 
-                toast.success('Đặt hàng thành công');
+                toast.success('Đặt hàng thành công.');
 
                 navigate(
                     `/order-success?order_id=${encodeURIComponent(order.id)}&order_code=${encodeURIComponent(order.orderCode)}&status=pending`,
@@ -243,11 +319,11 @@ export default function Checkout() {
                             isGuest: !user,
                             orderId: order.id,
                             orderCode: order.orderCode,
-                            guestPhone: receiver.guest_phone,
+                            guestPhone: normalizePhone(receiver.guest_phone),
                             paymentMethod: method,
-                            paymentStatus: 'pending',
+                            paymentStatus: 'unpaid',
                         },
-                    }
+                    },
                 );
 
                 return;
@@ -259,7 +335,16 @@ export default function Checkout() {
         } catch (error) {
             console.error('Checkout error:', error);
 
-            toast.error(error?.message || error?.response?.data?.message || 'Không thể đặt hàng');
+            if (error?.status === 422 && error?.errors) {
+                setErrors((prev) => ({
+                    ...prev,
+                    ...normalizeApiErrors(error.errors),
+                }));
+
+                return;
+            }
+
+            toast.error(error?.message || 'Không thể đặt hàng.');
         } finally {
             setLoading(false);
         }
@@ -280,14 +365,14 @@ export default function Checkout() {
             if (payment.redirectUrl) {
                 saveGuestOrderToSession(order);
 
-                if (method === 'mock') {
+                if (method === 'mock_bank') {
                     sessionStorage.setItem(
                         'mock_payment_qr',
                         JSON.stringify({
                             order,
                             payment,
                             callbackUrl: payment.redirectUrl,
-                            guestPhone: receiver.guest_phone,
+                            guestPhone: normalizePhone(receiver.guest_phone),
                             isGuest: !user,
                         }),
                     );
@@ -297,7 +382,7 @@ export default function Checkout() {
                             order,
                             payment,
                             callbackUrl: payment.redirectUrl,
-                            guestPhone: receiver.guest_phone,
+                            guestPhone: normalizePhone(receiver.guest_phone),
                             isGuest: !user,
                         },
                     });
@@ -309,32 +394,25 @@ export default function Checkout() {
                 return;
             }
 
-            toast.success('Đặt hàng và tạo thanh toán thành công');
+            toast.success('Đặt hàng và tạo thanh toán thành công.');
 
             saveGuestOrderToSession(order);
 
-            navigate(
-                `/order-success?order_code=${encodeURIComponent(order.orderCode)}`,
-                {
-                    replace: true,
-                    state: {
-                        isGuest: !user,
-                        orderCode: order.orderCode,
-                        guestPhone: receiver.guest_phone,
-                        paymentMethod: method,
-                    },
-                }
-            );
+            navigate(`/order-success?order_code=${encodeURIComponent(order.orderCode)}`, {
+                replace: true,
+                state: {
+                    isGuest: !user,
+                    orderCode: order.orderCode,
+                    guestPhone: normalizePhone(receiver.guest_phone),
+                    paymentMethod: method,
+                },
+            });
         } catch (paymentError) {
             console.error('Payment error:', paymentError);
 
             setPendingPaymentOrder(order);
 
-            toast.error(
-                paymentError?.message ||
-                    paymentError?.response?.data?.message ||
-                    'Không thể tạo thanh toán cho đơn hàng này',
-            );
+            toast.error(paymentError?.message || 'Không thể tạo thanh toán cho đơn hàng này.');
         }
     }
 
@@ -360,11 +438,7 @@ export default function Checkout() {
                             selectedAddressId={selectedAddressId}
                             onSelectAddress={(id) => {
                                 setSelectedAddressId(id);
-
-                                setErrors((prev) => ({
-                                    ...prev,
-                                    address: '',
-                                }));
+                                clearError('address');
                             }}
                             saveAddress={saveAddress}
                             onSaveAddressChange={setSaveAddress}
@@ -372,19 +446,26 @@ export default function Checkout() {
                         />
 
                         <PaymentMethod
-                            value={paymentMethod}
-                            error={errors.paymentMethod}
+                            fulfillmentMethod={fulfillmentMethod}
+                            paymentMethod={paymentMethod}
+                            errors={errors}
                             disabled={Boolean(pendingPaymentOrder)}
-                            grandTotal={grandTotal}
-                            onChange={(method) => {
+                            onFulfillmentChange={(method) => {
+                                if (pendingPaymentOrder) return;
+
+                                setFulfillmentMethod(method);
+                                clearError('fulfillment_method');
+                                clearError('payment_method');
+
+                                if (method === 'pickup') {
+                                    setSelectedAddressId('');
+                                }
+                            }}
+                            onPaymentChange={(method) => {
                                 if (pendingPaymentOrder) return;
 
                                 setPaymentMethod(method);
-
-                                setErrors((prev) => ({
-                                    ...prev,
-                                    paymentMethod: '',
-                                }));
+                                clearError('payment_method');
                             }}
                         />
                     </div>
@@ -407,6 +488,24 @@ export default function Checkout() {
             </main>
         </MainLayout>
     );
+}
+
+function normalizePhone(value) {
+    return String(value || '').replace(/[^\d]/g, '').slice(0, 10);
+}
+
+function normalizeApiErrors(errors = {}) {
+    const mapped = {};
+
+    Object.entries(errors).forEach(([key, value]) => {
+        mapped[key] = Array.isArray(value) ? value[0] : value;
+    });
+
+    if (mapped.paymentMethod && !mapped.payment_method) {
+        mapped.payment_method = mapped.paymentMethod;
+    }
+
+    return mapped;
 }
 
 function Breadcrumb() {

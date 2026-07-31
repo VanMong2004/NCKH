@@ -120,12 +120,13 @@ export default function VatInvoiceRequestModal({
                                 <Info label="Mã số thuế" value={existingRequest.tax_code} />
                                 <Info label="Email nhận" value={existingRequest.invoice_email} />
                                 <Info label="Ngày yêu cầu" value={existingRequest.created_at} />
+                                <Info label="Ghi chú của bạn" value={existingRequest.note} />
                                 <Info label="Ghi chú xử lý" value={existingRequest.admin_note} />
                             </div>
 
                             <p className="mt-4 rounded-xl bg-white/80 px-4 py-3 text-sm font-medium text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
-                                Hệ thống chỉ tiếp nhận và theo dõi yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử
-                                lý thủ công và gửi hóa đơn theo quy trình của cửa hàng.
+                                Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa
+                                đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.
                             </p>
                         </div>
                     </div>

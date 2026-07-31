@@ -49,10 +49,8 @@ class SiteContentSeeder extends Seeder
             ['shop', 'Sản phẩm', '/shop', 2],
             ['promotions', 'Khuyến mãi', '/promotions', 3],
             ['blog', 'Blog', '/blog', 4],
-            ['faq', 'FAQ', '/faq', 5],
-            ['about', 'Giới thiệu', '/about', 6],
-            ['contact', 'Liên hệ', '/contact', 7],
-            ['policy', 'Chính sách', '/policy', 8],
+            ['contact', 'Liên hệ', '/contact', 5],
+            ['policy', 'Chính sách', '/policy', 6],
         ];
 
         foreach ($links as [$key, $label, $url, $order]) {
@@ -66,6 +64,8 @@ class SiteContentSeeder extends Seeder
                 'is_active' => true,
             ]);
         }
+
+        $this->deleteItems($component, ['desktop_faq', 'desktop_about']);
 
         $userLinks = [
             ['profile', 'Tài khoản của tôi', '/account/profile', 1],
@@ -110,10 +110,8 @@ class SiteContentSeeder extends Seeder
             ['promotions', 'Khuyến mãi', '/promotions', 3],
             ['orders', 'Đơn hàng', '/account/orders', 4],
             ['blog', 'Blog', '/blog', 5],
-            ['faq', 'FAQ', '/faq', 6],
-            ['about', 'Giới thiệu', '/about', 7],
-            ['contact', 'Liên hệ', '/contact', 8],
-            ['policy', 'Chính sách', '/policy', 9],
+            ['contact', 'Liên hệ', '/contact', 6],
+            ['policy', 'Chính sách', '/policy', 7],
         ];
 
         foreach ($links as [$key, $label, $url, $order]) {
@@ -127,6 +125,8 @@ class SiteContentSeeder extends Seeder
                 'is_active' => true,
             ]);
         }
+
+        $this->deleteItems($component, ['mobile_faq', 'mobile_about']);
     }
 
     private function seedBottomNavigation(): void
@@ -292,7 +292,6 @@ class SiteContentSeeder extends Seeder
 
         $buttons = [
             ['shop', 'Khám phá cửa hàng', '/shop', 1],
-            ['about', 'Tìm hiểu thêm', '/about', 2],
         ];
 
         foreach ($buttons as [$key, $label, $url, $order]) {
@@ -307,6 +306,8 @@ class SiteContentSeeder extends Seeder
                 'is_active' => true,
             ]);
         }
+
+        $this->deleteItems($component, ['hero_button_about']);
 
         $cards = [
             [
@@ -407,5 +408,13 @@ class SiteContentSeeder extends Seeder
             ],
             $data
         );
+    }
+
+    private function deleteItems(SiteComponent $component, array $itemKeys): void
+    {
+        SiteComponentItem::query()
+            ->where('component_id', $component->id)
+            ->whereIn('item_key', $itemKeys)
+            ->delete();
     }
 }

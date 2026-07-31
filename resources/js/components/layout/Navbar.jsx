@@ -677,7 +677,24 @@ function Badge({ count = 0 }) {
 }
 
 function filterPublicLinks(links = []) {
-    return links.filter((item) => !['/faq', '/about'].includes(item?.link_url || ''));
+    return links.filter((item) => {
+        const rawUrl = String(item?.link_url || item?.url || '').trim().toLowerCase();
+        const normalizedUrl = rawUrl.replace(/\/+$/, '');
+        const label = String(item?.label || item?.title || '').trim().toLowerCase();
+
+        const hiddenUrls = ['/faq', '/faqs', '/about'];
+        const hiddenLabels = ['faq', 'giới thiệu', 'gioi thieu'];
+
+        if (hiddenUrls.includes(normalizedUrl)) {
+            return false;
+        }
+
+        if (hiddenLabels.includes(label)) {
+            return false;
+        }
+
+        return true;
+    });
 }
 
 function ensureGuestOrderLookupLink(links = []) {

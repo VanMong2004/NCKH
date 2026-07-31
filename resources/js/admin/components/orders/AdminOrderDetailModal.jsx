@@ -142,7 +142,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
             open: true,
             title: 'Cập nhật hóa đơn đỏ',
             message: `Chuyển yêu cầu hóa đơn đỏ của đơn ${order.orderCode} sang "${getVatInvoiceStatusText(vatInvoiceForm.status)}"?`,
-            description: 'Email n8n chưa được gọi tự động ở bước này, bạn sẽ cấu hình thủ công sau.',
+            description: '',
             confirmText: 'Cập nhật',
             type: 'warning',
             onConfirm: updateVatInvoiceStatus,

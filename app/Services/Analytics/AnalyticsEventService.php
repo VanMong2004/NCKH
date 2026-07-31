@@ -355,7 +355,7 @@ class AnalyticsEventService
     {
         $buyers = Order::query()
             ->whereNotNull('user_id')
-            ->whereIn('status', ['paid', 'processing', 'shipped', 'completed'])
+            ->whereIn('status', ['processing', 'awaiting_receipt', 'completed'])
             ->where('created_at', '>=', $from->copy()->startOfDay())
             ->select('user_id')
             ->groupBy('user_id')

@@ -143,6 +143,14 @@ class NotificationService
             return null;
         }
 
+        $awaitingReceiptTitle = $order->fulfillment_method === 'pickup'
+            ? 'Đơn hàng sẵn sàng nhận tại phòng'
+            : 'Đơn hàng đang giao';
+
+        $awaitingReceiptMessage = $order->fulfillment_method === 'pickup'
+            ? "Đơn hàng {$order->order_code} đã sẵn sàng để bạn nhận tại Phòng Công tác Chính trị và Quản lý sinh viên."
+            : "Đơn hàng {$order->order_code} đang được giao đến bạn.";
+
         $map = [
             'pending' => [
                 'type' => 'order',
@@ -168,10 +176,10 @@ class NotificationService
                 'color' => 'amber',
             ],
 
-            'shipped' => [
+            'awaiting_receipt' => [
                 'type' => 'order',
-                'title' => 'Đơn hàng đang giao',
-                'message' => "Đơn hàng {$order->order_code} đang được giao đến bạn.",
+                'title' => $awaitingReceiptTitle,
+                'message' => $awaitingReceiptMessage,
                 'icon' => 'truck',
                 'color' => 'indigo',
             ],

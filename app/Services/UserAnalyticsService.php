@@ -200,9 +200,8 @@ class UserAnalyticsService
                 ->where('user_id', $user->id)
                 ->whereIn('status', [
                     'pending',
-                    'paid',
                     'processing',
-                    'shipped',
+                    'awaiting_receipt',
                 ])
                 ->latest('updated_at')
                 ->limit(10)
@@ -231,9 +230,8 @@ class UserAnalyticsService
     private function paidStatuses(): array
     {
         return [
-            'paid',
             'processing',
-            'shipped',
+            'awaiting_receipt',
             'completed',
         ];
     }
@@ -254,9 +252,8 @@ class UserAnalyticsService
     {
         $steps = [
             'pending' => 'Đã tạo đơn',
-            'paid' => 'Đã thanh toán',
-            'processing' => 'Đang xử lý',
-            'shipped' => 'Đang giao hàng',
+            'processing' => 'Đang chuẩn bị',
+            'awaiting_receipt' => 'Đang giao / chờ nhận',
             'completed' => 'Hoàn thành',
         ];
 

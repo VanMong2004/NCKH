@@ -172,32 +172,18 @@ class AdminOrderService
 
     private function getAllowedNextStatuses(Order $order): array
     {
-        $payment = $order->payments
-            ->sortByDesc('created_at')
-            ->first();
-
-        $isCod = !$payment || $payment->method === 'cod';
-
         return [
-            'pending' => $isCod
-                ? [
-                    'processing',
-                    'cancelled',
-                ]
-                : [
-                    'paid',
-                    'cancelled',
-                ],
-            'paid' => [
+            'pending' => [
                 'processing',
                 'cancelled',
             ],
             'processing' => [
-                'shipped',
+                'awaiting_receipt',
                 'cancelled',
             ],
-            'shipped' => [
+            'awaiting_receipt' => [
                 'completed',
+                'cancelled',
             ],
             'completed' => [],
             'cancelled' => [],
@@ -209,8 +195,8 @@ class AdminOrderService
         if (
             in_array($order->status, [
                 'pending',
-                'paid',
                 'processing',
+                'awaiting_receipt',
             ], true)
         ) {
             app(OrderReleaseService::class)
@@ -222,18 +208,17 @@ class AdminOrderService
             ->first();
 
         if ($payment) {
-
-            if ($payment->status === 'pending') {
+            if ($payment->status === 'unpaid') {
                 $payment->update([
                     'status' => 'failed',
                 ]);
             }
-
         }
 
         $order->update([
             'status' => 'cancelled',
             'cancel_reason' => $reason,
+            'payment_status' => $order->payment_status === 'paid' ? 'paid' : 'failed',
         ]);
 
         app(NotificationService::class)
@@ -245,8 +230,8 @@ class AdminOrderService
 
     private function completeOrder(Order $order): void
     {
-        if ($order->status !== 'shipped') {
-            throw new RuntimeException('Chỉ được hoàn tất đơn hàng đã giao', 400);
+        if ($order->status !== 'awaiting_receipt') {
+            throw new RuntimeException('Chỉ được hoàn tất đơn hàng đang chờ nhận hàng', 400);
         }
 
         foreach ($order->items as $item) {
@@ -289,6 +274,7 @@ class AdminOrderService
 
         $order->update([
             'status' => 'completed',
+            'payment_status' => 'paid',
         ]);
 
         app(NotificationService::class)
@@ -306,13 +292,11 @@ class AdminOrderService
 
         if (
             $payment &&
-            $payment->status === 'pending'
+            $payment->status === 'unpaid'
         ) {
-
             $payment->update([
-                'status' => 'success',
+                'status' => 'paid',
             ]);
-
         }
     }
 
@@ -336,7 +320,8 @@ class AdminOrderService
                 'phone' => $order->shipping_phone,
             ],
             'status' => $order->status,
-            'payment_status' => $payment?->status ?? 'pending',
+            'payment_status' => $payment?->status ?? $order->payment_status ?? 'unpaid',
+            'fulfillment_method' => $order->fulfillment_method,
             'payment_method' => $payment?->method,
             'thumbnail' => $thumbnail,
             'item_count' => $order->items->sum('quantity'),
@@ -358,6 +343,8 @@ class AdminOrderService
             'id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'fulfillment_method' => $order->fulfillment_method,
             'status_histories' => $order->statusHistories
                 ->sortBy('created_at')
                 ->map(fn ($history) => [

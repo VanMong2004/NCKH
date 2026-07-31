@@ -22,10 +22,10 @@ class AdminAnalyticsService
         $orderOverview = Order::query()
             ->selectRaw('COUNT(*) AS total_orders')
             ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_orders")
-            ->selectRaw("SUM(CASE WHEN status IN ('paid', 'processing', 'shipped') THEN 1 ELSE 0 END) AS paid_orders")
+            ->selectRaw("SUM(CASE WHEN status IN ('processing', 'awaiting_receipt', 'completed') THEN 1 ELSE 0 END) AS paid_orders")
             ->selectRaw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders")
             ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_orders")
-            ->selectRaw('COALESCE(SUM(total), 0) AS revenue')
+            ->selectRaw("SUM(CASE WHEN status IN ('processing', 'awaiting_receipt', 'completed') THEN total ELSE 0 END) AS revenue")
             ->selectRaw("SUM(CASE WHEN status = 'completed' THEN total ELSE 0 END) AS completed_revenue")
             ->first();
 
@@ -89,9 +89,8 @@ class AdminAnalyticsService
             ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
             ->join('products', 'products.id', '=', 'product_variants.product_id')
             ->whereIn('orders.status', [
-                'paid',
                 'processing',
-                'shipped',
+                'awaiting_receipt',
                 'completed',
             ])
             ->whereBetween('orders.created_at', [$from, $to])
@@ -227,9 +226,8 @@ class AdminAnalyticsService
             ->join('products', 'products.id', '=', 'product_variants.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereIn('orders.status', [
-                'paid',
                 'processing',
-                'shipped',
+                'awaiting_receipt',
                 'completed',
             ])
             ->whereBetween('orders.created_at', [$from, $to])

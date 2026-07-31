@@ -71,7 +71,7 @@ class AdminOrderController extends Controller
     {
         try {
             $data = $request->validate([
-                'status'=>'required|string|in:paid,processing,shipped,completed,cancelled',
+                'status'=>'required|string|in:processing,awaiting_receipt,completed,cancelled',
                 'cancel_reason' => 'nullable|string|max:255',
                 'note' => 'nullable|string|max:500',
             ]);

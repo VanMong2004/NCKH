@@ -30,9 +30,15 @@ class AdminPolicyService
             $query->where('type', $filters['type']);
         }
 
-        ($filters['sort'] ?? 'latest') === 'oldest'
-            ? $query->oldest()
-            : $query->latest();
+        $sort = $filters['sort'] ?? 'sort_order_asc';
+
+        if ($sort === 'oldest') {
+            $query->oldest();
+        } elseif ($sort === 'sort_order_asc') {
+            $query->orderBy('sort_order')->orderBy('id');
+        } else {
+            $query->latest();
+        }
 
         $perPage = min(max((int) ($filters['per_page'] ?? 10), 1), 100);
         $policies = $query->paginate($perPage);
@@ -44,7 +50,16 @@ class AdminPolicyService
         return [
             'success' => true,
             'message' => 'Lấy danh sách chính sách thành công',
-            'data' => $policies,
+            'data' => [
+                'items' => $policies->items(),
+                'meta' => [
+                    'current_page' => $policies->currentPage(),
+                    'last_page' => $policies->lastPage(),
+                    'per_page' => $policies->perPage(),
+                    'total' => $policies->total(),
+                ],
+                'next_sort_order' => $this->getNextSortOrder(),
+            ],
         ];
     }
 
@@ -158,6 +173,11 @@ class AdminPolicyService
         }
 
         return $slug;
+    }
+
+    private function getNextSortOrder(): int
+    {
+        return (int) Policy::query()->max('sort_order') + 1;
     }
 
     private function formatItem(Policy $policy): array

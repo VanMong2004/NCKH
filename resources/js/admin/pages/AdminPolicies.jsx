@@ -7,6 +7,7 @@ import StatCard from '../components/ui/StatCard';
 import adminPolicyService from '../services/adminPolicyService';
 
 const sortOptions = [
+    { value: 'sort_order_asc', label: 'Thứ tự tăng dần' },
     { value: 'latest', label: 'Mới nhất' },
     { value: 'oldest', label: 'Cũ nhất' },
 ];
@@ -17,19 +18,24 @@ const statusOptions = [
     { value: '0', label: 'Đang tắt' },
 ];
 
+const defaultFilters = {
+    keyword: '',
+    type: '',
+    is_active: '',
+    sort: 'sort_order_asc',
+    page: 1,
+    per_page: 10,
+};
+
+const defaultMeta = { currentPage: 1, lastPage: 1, total: 0, perPage: 10 };
+
 export default function AdminPolicies() {
     const [policies, setPolicies] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        keyword: '',
-        type: '',
-        is_active: '',
-        sort: 'latest',
-        page: 1,
-        per_page: 10,
-    });
+    const [filters, setFilters] = useState(defaultFilters);
     const [debouncedKeyword, setDebouncedKeyword] = useState('');
-    const [meta, setMeta] = useState({ currentPage: 1, lastPage: 1, total: 0, perPage: 10 });
+    const [meta, setMeta] = useState(defaultMeta);
+    const [nextSortOrder, setNextSortOrder] = useState(1);
     const [modalState, setModalState] = useState({ open: false, mode: 'create', policy: null });
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [toggleTarget, setToggleTarget] = useState(null);
@@ -47,6 +53,7 @@ export default function AdminPolicies() {
     async function loadPolicies() {
         try {
             setLoading(true);
+
             const result = await adminPolicyService.getPolicies({
                 keyword: debouncedKeyword || undefined,
                 type: filters.type || undefined,
@@ -57,7 +64,8 @@ export default function AdminPolicies() {
             });
 
             setPolicies(result.policies || []);
-            setMeta(result.meta || { currentPage: 1, lastPage: 1, total: 0, perPage: filters.per_page });
+            setMeta(result.meta || { ...defaultMeta, perPage: filters.per_page });
+            setNextSortOrder(result.nextSortOrder || 1);
         } catch (error) {
             toast.error(error?.message || 'Không thể tải danh sách chính sách');
         } finally {
@@ -74,14 +82,7 @@ export default function AdminPolicies() {
     }
 
     function resetFilters() {
-        setFilters({
-            keyword: '',
-            type: '',
-            is_active: '',
-            sort: 'latest',
-            page: 1,
-            per_page: 10,
-        });
+        setFilters(defaultFilters);
         setDebouncedKeyword('');
     }
 
@@ -104,6 +105,12 @@ export default function AdminPolicies() {
     }
 
     async function handleSaved() {
+        setFilters((prev) => ({
+            ...prev,
+            sort: 'sort_order_asc',
+            page: 1,
+        }));
+
         await loadPolicies();
     }
 
@@ -150,7 +157,13 @@ export default function AdminPolicies() {
 
                     <button
                         type="button"
-                        onClick={() => setModalState({ open: true, mode: 'create', policy: null })}
+                        onClick={() =>
+                            setModalState({
+                                open: true,
+                                mode: 'create',
+                                policy: { sortOrder: nextSortOrder },
+                            })
+                        }
                         className={primaryButtonClass}
                     >
                         <Plus size={16} />
@@ -220,11 +233,11 @@ export default function AdminPolicies() {
                     <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
                         <thead className="bg-slate-50 dark:bg-slate-950/60">
                             <tr>
+                                <Th>Thứ tự</Th>
                                 <Th>Tiêu đề</Th>
                                 <Th>Slug</Th>
                                 <Th>Loại</Th>
                                 <Th>Trạng thái</Th>
-                                <Th>Thứ tự</Th>
                                 <Th>Cập nhật</Th>
                                 <Th className="text-right">Thao tác</Th>
                             </tr>
@@ -241,6 +254,7 @@ export default function AdminPolicies() {
                             ) : policies.length > 0 ? (
                                 policies.map((policy) => (
                                     <tr key={policy.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+                                        <Td>{policy.sortOrder}</Td>
                                         <Td>
                                             <div>
                                                 <p className="font-semibold text-slate-900 dark:text-white">{policy.title}</p>
@@ -254,7 +268,6 @@ export default function AdminPolicies() {
                                         <Td>
                                             <StatusBadge active={policy.isActive} />
                                         </Td>
-                                        <Td>{policy.sortOrder}</Td>
                                         <Td>{policy.updatedAt || '—'}</Td>
                                         <Td className="text-right">
                                             <div className="flex justify-end gap-2">
@@ -278,9 +291,7 @@ export default function AdminPolicies() {
                                 <tr>
                                     <td colSpan={7} className="px-4 py-12 text-center">
                                         <FileText size={30} className="mx-auto text-slate-300" />
-                                        <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">
-                                            Chưa có chính sách nào
-                                        </p>
+                                        <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">Chưa có chính sách nào</p>
                                     </td>
                                 </tr>
                             )}
@@ -358,8 +369,7 @@ function PolicyModal({ open, mode, policy, onClose, onSaved }) {
     if (!open) return null;
 
     const readOnly = mode === 'detail';
-    const title =
-        mode === 'create' ? 'Thêm chính sách' : mode === 'edit' ? 'Cập nhật chính sách' : 'Chi tiết chính sách';
+    const title = mode === 'create' ? 'Thêm chính sách' : mode === 'edit' ? 'Cập nhật chính sách' : 'Chi tiết chính sách';
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -512,7 +522,12 @@ function Pagination({ meta, loading, perPage, onPage, onPerPage, showing }) {
                     <option value={50}>50 / trang</option>
                 </select>
 
-                <button type="button" disabled={meta.currentPage <= 1 || loading} onClick={() => onPage(Math.max(1, meta.currentPage - 1))} className={pagerButtonClass}>
+                <button
+                    type="button"
+                    disabled={meta.currentPage <= 1 || loading}
+                    onClick={() => onPage(Math.max(1, meta.currentPage - 1))}
+                    className={pagerButtonClass}
+                >
                     Trước
                 </button>
 
@@ -520,7 +535,12 @@ function Pagination({ meta, loading, perPage, onPage, onPerPage, showing }) {
                     {meta.currentPage}/{meta.lastPage}
                 </span>
 
-                <button type="button" disabled={meta.currentPage >= meta.lastPage || loading} onClick={() => onPage(Math.min(meta.lastPage, meta.currentPage + 1))} className={pagerButtonClass}>
+                <button
+                    type="button"
+                    disabled={meta.currentPage >= meta.lastPage || loading}
+                    onClick={() => onPage(Math.min(meta.lastPage, meta.currentPage + 1))}
+                    className={pagerButtonClass}
+                >
                     Sau
                 </button>
             </div>

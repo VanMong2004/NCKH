@@ -19,19 +19,21 @@ export function mapAdminPolicy(item = {}) {
 }
 
 export function mapAdminPolicyListResponse(response = {}) {
-    const paginator = response.data || {};
-    const raw = Array.isArray(paginator.data) ? paginator.data : [];
+    const payload = response.data || {};
+    const raw = Array.isArray(payload.items) ? payload.items : [];
+    const meta = payload.meta || {};
 
     return {
         success: Boolean(response.success),
         message: response.message || '',
         policies: raw.map(mapAdminPolicy),
         meta: {
-            currentPage: toNumber(paginator.current_page || 1),
-            lastPage: toNumber(paginator.last_page || 1),
-            perPage: toNumber(paginator.per_page || raw.length || 10),
-            total: toNumber(paginator.total || raw.length),
+            currentPage: toNumber(meta.current_page || 1),
+            lastPage: toNumber(meta.last_page || 1),
+            perPage: toNumber(meta.per_page || raw.length || 10),
+            total: toNumber(meta.total || raw.length),
         },
+        nextSortOrder: toNumber(payload.next_sort_order || 1),
         raw: response,
     };
 }

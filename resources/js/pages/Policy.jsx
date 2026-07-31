@@ -158,8 +158,7 @@ function PolicyHeader() {
                     </h1>
 
                     <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
-                        Theo dõi các quy định về nhận hàng, thanh toán, hoàn trả, bảo mật và điều khoản tham gia chiến
-                        dịch.
+                        Theo dõi các quy định về nhận hàng, thanh toán, hoàn trả, bảo mật và điều khoản.
                     </p>
                 </div>
 

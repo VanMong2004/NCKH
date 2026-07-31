@@ -27,13 +27,12 @@ class OrderQueryService
     private function buildOrderTimeline(Order $order, $payment): array
     {
         $processingTime = $this->findStatusHistoryTime($order, 'processing');
-        $shippedTime = $this->findStatusHistoryTime($order, 'shipped');
+        $awaitingReceiptTime = $this->findStatusHistoryTime($order, 'awaiting_receipt');
         $completedTime = $this->findStatusHistoryTime($order, 'completed');
         $cancelledTime = $this->findStatusHistoryTime($order, 'cancelled');
-        $paidTime = $this->findStatusHistoryTime($order, 'paid')
-            ?: ($payment?->status === 'success'
-                ? optional($payment?->updated_at)->format('d/m/Y H:i')
-                : null);
+        $paidTime = $payment?->status === 'paid'
+            ? optional($payment?->updated_at)->format('d/m/Y H:i')
+            : null;
 
         $steps = [
             [
@@ -45,7 +44,7 @@ class OrderQueryService
             ],
         ];
 
-        $isOnlinePayment = in_array($payment?->method, ['mock', 'vnpay'], true);
+        $isOnlinePayment = $payment?->method === 'mock_bank';
         $isExpired = in_array($order->cancel_reason, ['expired', 'payment_timeout'], true);
         $isCancelled = $order->status === 'cancelled';
 
@@ -53,12 +52,13 @@ class OrderQueryService
             $steps[] = [
                 'key' => 'payment',
                 'label' => 'Thanh toán',
-                'status' => $payment?->status === 'success',
+                'status' => $payment?->status === 'paid',
                 'time' => $paidTime,
                 'note' => match ($payment?->status) {
-                    'pending' => 'Đang chờ thanh toán',
+                    'unpaid' => 'Đang chờ thanh toán',
                     'failed' => 'Thanh toán chưa thành công',
-                    'success' => 'Đã thanh toán thành công',
+                    'paid' => 'Đã thanh toán thành công',
+                    'refunded' => 'Đã hoàn tiền',
                     default => 'Chưa có giao dịch hoàn tất',
                 },
             ];
@@ -66,18 +66,22 @@ class OrderQueryService
 
         $steps[] = [
             'key' => 'processing',
-            'label' => 'Đang xử lý',
-            'status' => in_array($order->status, ['processing', 'shipped', 'completed'], true),
+            'label' => 'Đang chuẩn bị',
+            'status' => in_array($order->status, ['processing', 'awaiting_receipt', 'completed'], true),
             'time' => $processingTime,
             'note' => 'Đơn hàng đã được tiếp nhận và bắt đầu xử lý',
         ];
 
         $steps[] = [
-            'key' => 'shipped',
-            'label' => 'Đang giao / chờ nhận',
-            'status' => in_array($order->status, ['shipped', 'completed'], true),
-            'time' => $shippedTime,
-            'note' => 'Đơn hàng đang được giao hoặc chờ người nhận xác nhận',
+            'key' => 'awaiting_receipt',
+            'label' => $order->fulfillment_method === 'pickup'
+                ? 'Sẵn sàng nhận tại phòng'
+                : 'Đang giao',
+            'status' => in_array($order->status, ['awaiting_receipt', 'completed'], true),
+            'time' => $awaitingReceiptTime,
+            'note' => $order->fulfillment_method === 'pickup'
+                ? 'Đơn hàng đã sẵn sàng để nhận tại phòng'
+                : 'Đơn hàng đang được giao đến người nhận',
         ];
 
         $steps[] = [
@@ -106,12 +110,12 @@ class OrderQueryService
     private function buildOrderActions(Order $order, $payment): array
     {
         $paymentMethod = $payment?->method;
-        $paymentStatus = $payment?->status;
+        $paymentStatus = $payment?->status ?? $order->payment_status;
 
         $canCancel = $order->status === 'pending';
         $canPayAgain = $order->status === 'pending'
-            && in_array($paymentMethod, ['mock', 'vnpay'], true)
-            && $paymentStatus !== 'success';
+            && $paymentMethod === 'mock_bank'
+            && $paymentStatus !== 'paid';
 
         return [
             'can_cancel' => $canCancel,
@@ -184,7 +188,8 @@ class OrderQueryService
                     'order_code' => $order->order_code,
                     'title' => optional($firstItem?->productVariant?->product)->name,
                     'status' => $order->status,
-                    'payment_status' => $payment?->status ?? 'pending',
+                    'payment_status' => $payment?->status ?? $order->payment_status ?? 'unpaid',
+                    'fulfillment_method' => $order->fulfillment_method,
                     'payment_method' => $payment?->method,
                     'thumbnail' => $thumbnail,
                     'item_count' => $order->items->sum('quantity'),
@@ -233,6 +238,8 @@ class OrderQueryService
             'id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'fulfillment_method' => $order->fulfillment_method,
             'qr_code' => $order->order_code,
             'expired_at' => optional($order->expired_at)->format('d/m/Y H:i'),
             'cancel_reason' => $order->cancel_reason,
@@ -315,8 +322,8 @@ class OrderQueryService
                 ];
             })->values(),
             'pickup' => [
-                'location' => 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
-                'instruction' => 'Vui lòng mang theo MSSV, mã đơn hàng hoặc mã QR để nhận hàng.',
+                'location' => 'Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+                'instruction' => 'Vui lòng mang theo mã đơn hàng khi đến nhận hàng.',
             ],
             'timeline' => $this->buildOrderTimeline($order, $payment),
         ];
@@ -354,6 +361,7 @@ class OrderQueryService
             $order->update([
                 'status' => 'cancelled',
                 'cancel_reason' => 'user_cancelled',
+                'payment_status' => $order->payment_status === 'paid' ? 'paid' : 'failed',
             ]);
 
             OrderStatusHistory::create([
@@ -365,7 +373,7 @@ class OrderQueryService
             ]);
 
             $order->payments()
-                ->where('status', 'pending')
+                ->where('status', 'unpaid')
                 ->update([
                     'status' => 'failed',
                     'response_data' => [

@@ -87,19 +87,19 @@ class PaymentQueryService
                 ],
                 [
                     'label' => 'Thanh toán thành công',
-                    'status' => $payment->status === 'success',
-                    'time' => $payment->status === 'success'
+                    'status' => $payment->status === 'paid',
+                    'time' => $payment->status === 'paid'
                         ? optional($payment->updated_at)->format('d/m/Y H:i')
                         : null,
                 ],
             ],
 
             'receipt' => [
-                'can_download' => $payment->status === 'success',
+                'can_download' => false,
                 'receipt_code' => 'PAY-' . str_pad($payment->id, 6, '0', STR_PAD_LEFT),
             ],
 
-            'can_retry' => $payment->status==='failed'&&in_array($payment->method,['mock','vnpay']),
+            'can_retry' => $payment->status === 'failed' && $payment->method === 'mock_bank',
         ];
     }
 
@@ -147,7 +147,7 @@ class PaymentQueryService
 
                     'created_at' => $payment->created_at,
 
-                    'paid_at' => $payment->status === 'success'
+                    'paid_at' => $payment->status === 'paid'
                         ? $payment->updated_at
                         : null,
                 ];
@@ -171,15 +171,15 @@ class PaymentQueryService
         $totalTransactions = (clone $query)->count();
 
         $successTransactions = (clone $query)
-            ->where('status', 'success')
+            ->where('status', 'paid')
             ->count();
 
         $failedTransactions = (clone $query)
             ->where('status', 'failed')
             ->count();
 
-        $pendingTransactions=(clone $query)
-            ->where('status','pending')
+        $pendingTransactions = (clone $query)
+            ->where('status', 'unpaid')
             ->count();
 
         $refundedTransactions = (clone $query)
@@ -187,7 +187,7 @@ class PaymentQueryService
             ->count();
 
         $totalPaidAmount = (clone $query)
-            ->where('status', 'success')
+            ->where('status', 'paid')
             ->sum('amount');
 
         return [

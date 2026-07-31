@@ -343,10 +343,9 @@ class OrderController extends Controller
     public function cancel(Request $request, $id)
     {
         try {
-            $result = $this->orderService->cancel(
+            $result = $this->orderQueryService->cancel(
                 $request->user(),
-                (int) $id,
-                (string) $request->input('reason', '')
+                (int) $id
             );
 
             return response()->json([

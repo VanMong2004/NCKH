@@ -25,6 +25,7 @@ const groups = [
         items: [
             { label: 'Sản phẩm', to: '/admin/products', icon: Package },
             { label: 'Danh mục & Khoa', to: '/admin/catalogs', icon: Building2 },
+            { label: 'Chính sách', to: '/admin/policies', icon: FileText },
             { label: 'Khuyến mãi', to: '/admin/promotions', icon: BadgePercent },
             { label: 'Đơn hàng', to: '/admin/orders', icon: ShoppingCart },
             { label: 'Người dùng', to: '/admin/users', icon: Users },

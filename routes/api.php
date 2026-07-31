@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\UserAnalyticsController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\PolicyController;
+use App\Http\Controllers\Api\Admin\AdminPolicyController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\AboutController;
 use App\Http\Controllers\Api\SystemController;
@@ -336,6 +337,16 @@ Route::middleware(['auth:sanctum', 'admin', 'throttle:admin'])->prefix('admin')-
         Route::patch('/{id}/status', [AdminOrderController::class, 'updateStatus']);
         Route::patch('/{id}/vat-invoice-status', [AdminOrderController::class, 'updateVatInvoiceStatus']);
     });  
+
+    // ADMIN POLICIES
+    Route::prefix('policies')->group(function () {
+        Route::get('/', [AdminPolicyController::class, 'index']);
+        Route::post('/', [AdminPolicyController::class, 'store']);
+        Route::get('/{id}', [AdminPolicyController::class, 'show']);
+        Route::put('/{id}', [AdminPolicyController::class, 'update']);
+        Route::patch('/{id}/toggle-active', [AdminPolicyController::class, 'toggleActive']);
+        Route::delete('/{id}', [AdminPolicyController::class, 'destroy']);
+    });
 
     // ADMIN PRODUCTS
     Route::prefix('products')->group(function () {

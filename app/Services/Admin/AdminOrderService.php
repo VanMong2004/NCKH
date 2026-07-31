@@ -22,6 +22,7 @@ class AdminOrderService
                 'items.productVariant.product.thumbnailImage:id,product_id,url,type,position',
                 'items.productVariant.product.primaryImage:id,product_id,url,type,position',
                 'payments:id,order_id,method,status,created_at',
+                'vatInvoiceRequest:id,order_id,status,company_name,tax_code,invoice_email,admin_note,processed_by,processed_at,fulfilled_at,created_at',
             ]);
 
         if (!empty($filters['status'])) {
@@ -83,6 +84,7 @@ class AdminOrderService
             'items.productVariant.product.primaryImage:id,product_id,url,type,position',
             'payments',
             'statusHistories.changer:id,name,email',
+            'vatInvoiceRequest.processor:id,name,email',
         ])->find($id);
 
         if (!$order) {
@@ -323,6 +325,7 @@ class AdminOrderService
             'payment_status' => $payment?->status ?? $order->payment_status ?? 'unpaid',
             'fulfillment_method' => $order->fulfillment_method,
             'payment_method' => $payment?->method,
+            'vat_invoice_request' => $this->formatVatInvoiceRequest($order),
             'thumbnail' => $thumbnail,
             'item_count' => $order->items->sum('quantity'),
             'total' => (float) $order->total,
@@ -384,6 +387,7 @@ class AdminOrderService
                 'amount' => (float) $payment->amount,
                 'transaction_id' => $payment->transaction_id,
             ] : null,
+            'vat_invoice_request' => $this->formatVatInvoiceRequest($order),
             'allowed_next_statuses' => $this->getAllowedNextStatuses($order)[$order->status] ?? [],
 
             'summary' => [
@@ -442,5 +446,31 @@ class AdminOrderService
 
         return $product->thumbnailImage?->url
             ?? $product->primaryImage?->url;
+    }
+
+    private function formatVatInvoiceRequest(Order $order): ?array
+    {
+        $request = $order->vatInvoiceRequest;
+
+        if (!$request) {
+            return null;
+        }
+
+        return [
+            'id' => $request->id,
+            'status' => $request->status,
+            'company_name' => $request->company_name,
+            'tax_code' => $request->tax_code,
+            'invoice_email' => $request->invoice_email,
+            'admin_note' => $request->admin_note,
+            'processed_at' => optional($request->processed_at)->format('d/m/Y H:i'),
+            'fulfilled_at' => optional($request->fulfilled_at)->format('d/m/Y H:i'),
+            'created_at' => optional($request->created_at)->format('d/m/Y H:i'),
+            'processed_by' => $request->processor ? [
+                'id' => $request->processor->id,
+                'name' => $request->processor->name,
+                'email' => $request->processor->email,
+            ] : null,
+        ];
     }
 }

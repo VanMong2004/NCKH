@@ -10,6 +10,7 @@ import {
     getOrderStatusText,
     getPaymentMethodText,
     getPaymentStatusText,
+    getVatInvoiceStatusText,
 } from '../../mappers/adminOrderMapper';
 import adminOrderService from '../../services/adminOrderService';
 import ConfirmDialog from '../ui/ConfirmDialog';
@@ -266,6 +267,49 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                         )}
                                     </div>
                                 </Section>
+
+                                {order.vatInvoiceRequest && (
+                                    <Section title="Yêu cầu hóa đơn đỏ">
+                                        <div className="grid gap-3">
+                                            <InfoLine
+                                                label="Trạng thái"
+                                                value={getVatInvoiceStatusText(order.vatInvoiceRequest.status)}
+                                            />
+                                            <InfoLine
+                                                label="Tên đơn vị"
+                                                value={order.vatInvoiceRequest.companyName || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Mã số thuế"
+                                                value={order.vatInvoiceRequest.taxCode || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Email nhận"
+                                                value={order.vatInvoiceRequest.invoiceEmail || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Ngày yêu cầu"
+                                                value={order.vatInvoiceRequest.createdAt || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Nhân viên xử lý"
+                                                value={order.vatInvoiceRequest.processedBy?.name || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Bắt đầu xử lý"
+                                                value={order.vatInvoiceRequest.processedAt || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Hoàn tất"
+                                                value={order.vatInvoiceRequest.fulfilledAt || '—'}
+                                            />
+                                            <InfoLine
+                                                label="Ghi chú xử lý"
+                                                value={order.vatInvoiceRequest.adminNote || '—'}
+                                            />
+                                        </div>
+                                    </Section>
+                                )}
 
                                 <Section title="Tổng tiền">
                                     <div className="space-y-2 text-sm">

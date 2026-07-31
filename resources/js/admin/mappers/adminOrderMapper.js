@@ -54,6 +54,17 @@ export function getPaymentMethodText(method) {
     return map[method] || method || '-';
 }
 
+export function getVatInvoiceStatusText(status) {
+    const map = {
+        pending: 'Chờ xử lý',
+        processing: 'Đang xử lý',
+        fulfilled: 'Đã hoàn tất',
+        rejected: 'Đã từ chối',
+    };
+
+    return map[status] || status || 'Không có yêu cầu';
+}
+
 export function getCancelReasonText(reason) {
     const map = {
         user_cancelled: 'Người dùng hủy',
@@ -107,6 +118,21 @@ export function mapAdminOrder(item = {}) {
         fulfillmentMethodText: getFulfillmentMethodText(fulfillmentMethod),
         paymentMethod: item.payment_method || '',
         paymentMethodText: getPaymentMethodText(item.payment_method),
+        vatInvoiceRequest: item.vat_invoice_request
+            ? {
+                  id: item.vat_invoice_request.id,
+                  status: item.vat_invoice_request.status || '',
+                  statusText: getVatInvoiceStatusText(item.vat_invoice_request.status),
+                  companyName: item.vat_invoice_request.company_name || '',
+                  taxCode: item.vat_invoice_request.tax_code || '',
+                  invoiceEmail: item.vat_invoice_request.invoice_email || '',
+                  adminNote: item.vat_invoice_request.admin_note || '',
+                  processedAt: item.vat_invoice_request.processed_at || '',
+                  fulfilledAt: item.vat_invoice_request.fulfilled_at || '',
+                  createdAt: item.vat_invoice_request.created_at || '',
+                  processedBy: item.vat_invoice_request.processed_by || null,
+              }
+            : null,
 
         thumbnail: normalizeImage(item.thumbnail),
 
@@ -170,6 +196,22 @@ export function mapAdminOrderDetail(item = {}) {
                   statusText: getPaymentStatusText(item.payment.status),
                   amount: toNumber(item.payment.amount),
                   transactionId: item.payment.transaction_id || '',
+              }
+            : null,
+
+        vatInvoiceRequest: item.vat_invoice_request
+            ? {
+                  id: item.vat_invoice_request.id,
+                  status: item.vat_invoice_request.status || '',
+                  statusText: getVatInvoiceStatusText(item.vat_invoice_request.status),
+                  companyName: item.vat_invoice_request.company_name || '',
+                  taxCode: item.vat_invoice_request.tax_code || '',
+                  invoiceEmail: item.vat_invoice_request.invoice_email || '',
+                  adminNote: item.vat_invoice_request.admin_note || '',
+                  processedAt: item.vat_invoice_request.processed_at || '',
+                  fulfilledAt: item.vat_invoice_request.fulfilled_at || '',
+                  createdAt: item.vat_invoice_request.created_at || '',
+                  processedBy: item.vat_invoice_request.processed_by || null,
               }
             : null,
 

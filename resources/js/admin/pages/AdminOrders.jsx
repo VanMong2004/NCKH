@@ -9,6 +9,7 @@ import {
     getOrderStatusText,
     getPaymentMethodText,
     getPaymentStatusText,
+    getVatInvoiceStatusText,
 } from '../mappers/adminOrderMapper';
 import adminOrderService from '../services/adminOrderService';
 
@@ -377,6 +378,12 @@ export default function AdminOrders() {
                                                 <p className="text-xs text-slate-500">
                                                     {getPaymentMethodText(order.paymentMethod)}
                                                 </p>
+
+                                                {order.vatInvoiceRequest && (
+                                                    <p className="text-xs font-medium text-emerald-600">
+                                                        Hóa đơn đỏ: {getVatInvoiceStatusText(order.vatInvoiceRequest.status)}
+                                                    </p>
+                                                )}
                                             </div>
                                         </td>
 

@@ -94,7 +94,7 @@ export default function CheckoutSummary({
             <div className="space-y-3 text-sm">
                 <Row label={`Tạm tính (${totalItems} sản phẩm)`} value={formatMoney(originalSubtotal || subtotal)} />
 
-                <Row label="Phí vận chuyển" value={shippingFee > 0 ? formatMoney(shippingFee) : 'Tính sau'} muted />
+                <Row label="Phí vận chuyển" value={formatMoney(shippingFee)} muted />
 
                 <Row
                     label="Giảm giá"

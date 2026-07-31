@@ -22,7 +22,7 @@ class AdminPolicyController extends Controller
                 'keyword' => 'nullable|string|max:255',
                 'type' => 'nullable|string|max:100',
                 'is_active' => 'nullable|boolean',
-                'sort' => 'nullable|string|in:latest,oldest',
+                'sort' => 'nullable|string|in:latest,oldest,sort_order_asc',
                 'page' => 'nullable|integer|min:1',
                 'per_page' => 'nullable|integer|min:1|max:100',
             ], $this->messages());

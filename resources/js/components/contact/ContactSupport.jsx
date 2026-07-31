@@ -1,4 +1,4 @@
-import { ArrowRight, CreditCard, HelpCircle, PackageCheck, ShieldCheck, Tag, UserRound } from 'lucide-react';
+import { ArrowRight, CreditCard, PackageCheck, ShieldCheck, Tag, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const SUPPORT_TOPICS = [
@@ -42,10 +42,10 @@ export default function ContactSupport() {
                 </div>
 
                 <Link
-                    to="/faq"
+                    to="/policy"
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-700 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
                 >
-                    Xem FAQ
+                    Xem chính sách
                     <ArrowRight size={15} />
                 </Link>
             </div>

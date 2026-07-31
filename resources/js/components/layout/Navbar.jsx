@@ -50,16 +50,15 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
             { label: 'Sản phẩm', link_url: '/shop' },
             { label: 'Khuyến mãi', link_url: '/promotions' },
             { label: 'Blog', link_url: '/blog' },
-            { label: 'FAQ', link_url: '/faq' },
-            { label: 'Giới thiệu', link_url: '/about' },
             { label: 'Liên hệ', link_url: '/contact' },
             { label: 'Chính sách', link_url: '/policy' },
         ];
     //
 
-    const mobileLinks = Array.isArray(mobileMenu.links) && mobileMenu.links.length
-        ? mobileMenu.links
-        : desktopLinks;
+    const normalizedDesktopLinks = filterPublicLinks(desktopLinks);
+    const mobileLinks = filterPublicLinks(
+        Array.isArray(mobileMenu.links) && mobileMenu.links.length ? mobileMenu.links : normalizedDesktopLinks,
+    );
 
     const [keyword, setKeyword] = useState('');
     const [suggestions, setSuggestions] = useState([]);
@@ -423,7 +422,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                     <DesktopNavLink to="/about">Giới thiệu</DesktopNavLink>
                     <DesktopNavLink to="/contact">Liên hệ</DesktopNavLink>
                     <DesktopNavLink to="/policy">Chính sách</DesktopNavLink> */}
-                    {desktopLinks.map((item) => (
+                    {normalizedDesktopLinks.map((item) => (
                         <DesktopNavLink key={item.id || item.item_key || item.link_url} to={item.link_url || '/'}>
                             {item.label || item.title}
                         </DesktopNavLink>
@@ -673,4 +672,8 @@ function Badge({ count = 0 }) {
             {count > 99 ? '99+' : count}
         </span>
     );
+}
+
+function filterPublicLinks(links = []) {
+    return links.filter((item) => !['/faq', '/about'].includes(item?.link_url || ''));
 }

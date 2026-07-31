@@ -36,9 +36,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Blog = lazy(() => import('./pages/Blog'));
 const BlogDetail = lazy(() => import('./pages/BlogDetail'));
 const Policy = lazy(() => import('./pages/Policy'));
-const Faq = lazy(() => import('./pages/Faq'));
 const Contact = lazy(() => import('./pages/Contact'));
-const About = lazy(() => import('./pages/About'));
 
 const AccountLayout = lazy(() => import('./pages/account/AccountLayout'));
 const AccountOverview = lazy(() => import('./pages/account/AccountOverview'));
@@ -108,9 +106,7 @@ createRoot(document.getElementById('app')).render(
                             <Route path="/blog" element={<Blog />} />
                             <Route path="/blog/:slug" element={<BlogDetail />} />
                             <Route path="/policy" element={<Policy />} />
-                            <Route path="/faq" element={<Faq />} />
                             <Route path="/contact" element={<Contact />} />
-                            <Route path="/about" element={<About />} />
 
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />

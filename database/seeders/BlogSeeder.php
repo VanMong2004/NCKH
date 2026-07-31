@@ -41,7 +41,7 @@ class BlogSeeder extends Seeder
                 'author_name' => 'CTUT Store',
                 'is_featured' => $index < 2,
                 'is_published' => true,
-                'view_count' => 1000 + ($index * 500),
+                'view_count' => 0,
                 'published_at' => now()->subDays($index),
             ]);
         }

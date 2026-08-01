@@ -175,16 +175,24 @@ class GuestOrderService
     {
         $paymentMethod = $payment?->method;
         $paymentStatus = $order->payment_status ?? $payment?->status;
+        $isPendingOrder = $order->status === 'pending';
+        $isExpired = $order->expired_at && now()->greaterThan($order->expired_at);
         $supportsOnlineRepayment = $paymentMethod === 'mock_bank';
+        $supportsOfflineCancel = in_array($paymentMethod, ['cod', 'cash_on_pickup'], true);
 
-        $canCancel = false;
-        $canPayAgain = $order->status === 'pending'
+        $canCancel = $order->user_id
+            ? $isPendingOrder
+                && !$isExpired
+                && (
+                    ($supportsOnlineRepayment && in_array($paymentStatus, ['unpaid', 'failed'], true))
+                    || ($supportsOfflineCancel && $paymentStatus === 'unpaid')
+                )
+            : false;
+
+        $canPayAgain = $isPendingOrder
+            && !$isExpired
             && $supportsOnlineRepayment
-            && $paymentStatus !== 'paid';
-
-        if ($order->user_id) {
-            $canCancel = $order->status === 'pending';
-        }
+            && in_array($paymentStatus, ['unpaid', 'failed'], true);
 
         return [
             'can_cancel' => $canCancel,

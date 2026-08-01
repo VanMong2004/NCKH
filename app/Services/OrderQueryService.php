@@ -111,11 +111,22 @@ class OrderQueryService
     {
         $paymentMethod = $payment?->method;
         $paymentStatus = $order->payment_status ?? $payment?->status;
+        $isPendingOrder = $order->status === 'pending';
+        $isExpired = $order->expired_at && now()->greaterThan($order->expired_at);
+        $isOnlinePayment = $paymentMethod === 'mock_bank';
+        $isOfflinePayment = in_array($paymentMethod, ['cod', 'cash_on_pickup'], true);
 
-        $canCancel = $order->status === 'pending';
-        $canPayAgain = $order->status === 'pending'
-            && $paymentMethod === 'mock_bank'
-            && $paymentStatus !== 'paid';
+        $canCancel = $isPendingOrder
+            && !$isExpired
+            && (
+                ($isOnlinePayment && in_array($paymentStatus, ['unpaid', 'failed'], true))
+                || ($isOfflinePayment && $paymentStatus === 'unpaid')
+            );
+
+        $canPayAgain = $isPendingOrder
+            && !$isExpired
+            && $isOnlinePayment
+            && in_array($paymentStatus, ['unpaid', 'failed'], true);
 
         return [
             'can_cancel' => $canCancel,

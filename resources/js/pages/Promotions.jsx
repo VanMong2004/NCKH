@@ -80,7 +80,7 @@ export default function Promotions() {
             <main className="bg-slate-50 py-2 dark:bg-slate-950">
                 <div className="mx-auto max-w-7xl px-4">
                     <Breadcrumb />
-        
+
                     <PromotionFilters filters={filters} onChange={updateFilter} />
 
                     {loading ? (
@@ -92,7 +92,7 @@ export default function Promotions() {
                     )}
 
                     {!loading && promotions.length > 0 && (
-                        <div className="mt-3 mx-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="mx-2 mt-3 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <p className="text-sm font-semibold text-blue-950 dark:text-white">
                                 Hiển thị {promotions.length} / {meta.total} đợt khuyến mãi
                             </p>
@@ -115,7 +115,7 @@ function Breadcrumb() {
                 Trang chủ
             </Link>
             <ChevronRight size={14} />
-            <span className="text-blue-950 dark:text-blue-300">Đợt khuyến mãi</span>
+            <span className="text-blue-950 dark:text-blue-300">Khuyến mãi</span>
         </div>
     );
 }

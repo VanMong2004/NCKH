@@ -27,19 +27,22 @@ class PromotionService
             });
         }
 
+        $now = now();
+        $endingSoonUntil = $now->copy()->addDay();
+
         if (!empty($filters['status'])) {
             match ($filters['status']) {
-                'upcoming' => $query->where('start_date', '>', now()),
+                'upcoming' => $query->where('start_date', '>', $now),
                 'active' => $query
-                    ->where('start_date', '<=', now())
-                    ->where('end_date', '>=', now()),
-                'ended' => $query->where('end_date', '<', now()),
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now),
+                'ending_soon' => $query
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->where('end_date', '<=', $endingSoonUntil),
+                'ended' => $query->where('end_date', '<', $now),
                 default => null,
             };
-        } else {
-            $query
-                ->where('start_date', '<=', now())
-                ->where('end_date', '>=', now());
         }
 
         match ($filters['sort'] ?? 'latest') {

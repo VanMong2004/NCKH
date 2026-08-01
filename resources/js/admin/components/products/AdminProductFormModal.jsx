@@ -292,7 +292,9 @@ export default function AdminProductFormModal({
             return false;
         }
 
-        for (const [index, variant] of form.variants.entries()) {
+        const normalizedVariants = normalizeVariantsBeforeSubmit(form.variants);
+
+        for (const [index, variant] of normalizedVariants.entries()) {
             const price = Number(variant.price);
             const stock = Number(variant.stock);
             const reservedStock = Number(variant.reservedStock || 0);
@@ -340,6 +342,8 @@ export default function AdminProductFormModal({
         try {
             setSaving(true);
 
+            const normalizedVariants = normalizeVariantsBeforeSubmit(form.variants);
+
             const payload = {
                 name: form.name.trim(),
                 description: form.description,
@@ -349,7 +353,7 @@ export default function AdminProductFormModal({
                 is_active: form.is_active,
                 is_featured: form.is_featured,
                 images: newImages.map((image) => image.file),
-                variants: form.variants.map((variant) => ({
+                variants: normalizedVariants.map((variant) => ({
                     id: variant.id || undefined,
                     sku: variant.sku,
                     size: variant.size,
@@ -685,6 +689,8 @@ function ImagesTab({ isEdit, oldImages, newImages, onSelectImages, onRemoveNewIm
 }
 
 function VariantsTab({ variants, updateVariant, addVariant, removeVariant }) {
+    const defaultPricePlaceholder = getInheritedVariantPrice(variants);
+
     return (
         <Section
             title="Giá bán và tồn kho"
@@ -751,6 +757,11 @@ function VariantsTab({ variants, updateVariant, addVariant, removeVariant }) {
                                         min="0"
                                         value={variant.price}
                                         onChange={(e) => updateVariant(variant.uid, 'price', e.target.value)}
+                                        placeholder={
+                                            defaultPricePlaceholder
+                                                ? `Để trống sẽ lấy ${defaultPricePlaceholder} từ biến thể trước`
+                                                : 'Nhập giá cho biến thể đầu tiên'
+                                        }
                                         className={tableInputClass}
                                     />
                                 </td>
@@ -917,6 +928,43 @@ function cloneInitialForm() {
             },
         ],
     };
+}
+
+function getInheritedVariantPrice(variants = []) {
+    for (let index = variants.length - 1; index >= 0; index -= 1) {
+        const price = variants[index]?.price;
+
+        if (price !== '' && price !== null && price !== undefined) {
+            return String(price);
+        }
+    }
+
+    return '';
+}
+
+function normalizeVariantsBeforeSubmit(variants = []) {
+    let lastPrice = '';
+
+    return variants.map((variant, index) => {
+        let nextPrice = variant.price;
+
+        if ((nextPrice === '' || nextPrice === null || nextPrice === undefined) && lastPrice !== '') {
+            nextPrice = lastPrice;
+        }
+
+        if (index === 0 && (nextPrice === '' || nextPrice === null || nextPrice === undefined)) {
+            nextPrice = '';
+        }
+
+        if (nextPrice !== '' && nextPrice !== null && nextPrice !== undefined) {
+            lastPrice = String(nextPrice);
+        }
+
+        return {
+            ...variant,
+            price: nextPrice,
+        };
+    });
 }
 
 const inputClass =

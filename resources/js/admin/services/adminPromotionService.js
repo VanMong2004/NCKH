@@ -116,13 +116,8 @@ function buildPromotionFormData(payload = {}) {
     formData.append('title', normalized.title);
     formData.append('slug', normalized.slug);
     formData.append('description', normalized.description || '');
-
-    formData.append('discount_type', normalized.discount_type);
-    formData.append('discount_value', normalized.discount_value);
-
     formData.append('start_date', normalized.start_date);
     formData.append('end_date', normalized.end_date);
-
     formData.append('status', normalized.status);
     formData.append('is_active', normalized.is_active ? '1' : '0');
 

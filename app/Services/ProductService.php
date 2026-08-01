@@ -173,7 +173,11 @@ class ProductService
                 break;
 
             case 'best_selling':
-                $query->orderByDesc('sold_count');
+                $query->withSum(['variants as active_sold_stock' => function ($q) {
+                    $q->where('is_active', true);
+                }], 'sold_stock')
+                    ->orderByDesc('active_sold_stock')
+                    ->latest();
                 break;
 
             case 'popular':
@@ -224,6 +228,7 @@ class ProductService
             function () {
                 $allVariants = ProductVariant::query()
                     ->where('is_active', true)
+                    ->whereRaw('(stock - reserved_stock) > 0')
                     ->whereHas('product', function ($q) {
                         $q->where('is_active', true);
                     });

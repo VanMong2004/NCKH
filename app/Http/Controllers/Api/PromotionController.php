@@ -22,7 +22,7 @@ class PromotionController extends Controller
         try {
             $filters = $request->validate([
                 'keyword' => 'nullable|string|max:255',
-                'status' => 'nullable|in:upcoming,active,ended',
+                'status' => 'nullable|in:upcoming,active,ending_soon,ended',
                 'sort' => 'nullable|in:latest,ending_soon,popular',
                 'per_page' => 'nullable|integer|min:1|max:50',
                 'page' => 'nullable|integer|min:1',

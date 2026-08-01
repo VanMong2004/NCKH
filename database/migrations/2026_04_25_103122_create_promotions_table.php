@@ -24,9 +24,9 @@ return new class extends Migration
             $table->enum('discount_type', [
                 'percent',
                 'fixed',
-            ]);
+            ])->nullable();
 
-            $table->decimal('discount_value', 12, 2);
+            $table->decimal('discount_value', 12, 2)->nullable();
 
             $table->timestamp('start_date');
             $table->timestamp('end_date');

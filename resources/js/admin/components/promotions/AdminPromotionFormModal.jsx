@@ -57,21 +57,11 @@ export default function AdminPromotionFormModal({ open, mode = 'create', promoti
             return false;
         }
 
-        if (Number(form.discount_value || 0) <= 0) {
-            toast.warning('Giá trị giảm phải lớn hơn 0');
-            return false;
-        }
-
-        if (form.discount_type === 'percent' && Number(form.discount_value) > 100) {
-            toast.warning('Giảm theo phần trăm không được vượt quá 100%');
-            return false;
-        }
-
         return true;
     }
 
     async function handleSubmit(e) {
-        e.preventDefault();
+        e?.preventDefault?.();
 
         if (!validateForm()) return;
 
@@ -110,7 +100,9 @@ export default function AdminPromotionFormModal({ open, mode = 'create', promoti
                             {isEdit ? 'Sửa khuyến mãi' : 'Thêm khuyến mãi'}
                         </h2>
 
-                        <p className="text-sm text-slate-500">Thiết lập thông tin chính của đợt khuyến mãi.</p>
+                        <p className="text-sm text-slate-500">
+                            Thiết lập thông tin chính của đợt khuyến mãi. Mức giảm giá sẽ được cấu hình ở từng sản phẩm.
+                        </p>
                     </div>
 
                     <button
@@ -138,29 +130,6 @@ export default function AdminPromotionFormModal({ open, mode = 'create', promoti
                         </div>
 
                         <div>
-                            <Label>Loại giảm</Label>
-                            <select
-                                value={form.discount_type}
-                                onChange={(e) => updateField('discount_type', e.target.value)}
-                                className={inputClass}
-                            >
-                                <option value="percent">Theo phần trăm</option>
-                                <option value="fixed">Theo số tiền</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <Label>Giá trị giảm</Label>
-                            <Input
-                                type="number"
-                                min="0"
-                                value={form.discount_value}
-                                onChange={(e) => updateField('discount_value', e.target.value)}
-                                placeholder={form.discount_type === 'percent' ? 'VD: 10' : 'VD: 50000'}
-                            />
-                        </div>
-
-                        <div>
                             <Label>Ngày bắt đầu</Label>
                             <Input
                                 type="datetime-local"
@@ -179,7 +148,7 @@ export default function AdminPromotionFormModal({ open, mode = 'create', promoti
                         </div>
 
                         <div>
-                            <Label>Trạng thái</Label>
+                            <Label>Trạng thái quản trị</Label>
                             <select
                                 value={form.status}
                                 onChange={(e) => updateField('status', e.target.value)}

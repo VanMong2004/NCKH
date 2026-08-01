@@ -2,41 +2,59 @@
 
 namespace App\Services\Admin;
 
-use RuntimeException;
+use App\Jobs\SendPromotionSocialAutomationJob;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Promotion;
-use App\Models\Product;
 use App\Models\PromotionItem;
-use Illuminate\Support\Facades\DB;
-use App\Jobs\SendPromotionSocialAutomationJob;
 use App\Services\Social\AiSocialCaptionService;
 use App\Services\Social\N8nSocialAutomationService;
-use App\Models\SocialAutomationLog;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-
+use RuntimeException;
 
 class AdminPromotionService
 {
     public function index(array $filters = []): array
     {
-        $query = Promotion::query()
-            ->withCount('items');
+        $query = Promotion::query()->withCount('items');
 
         if (!empty($filters['keyword'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('title', 'like', '%' . $filters['keyword'] . '%')
+            $query->where(function ($builder) use ($filters) {
+                $builder->where('title', 'like', '%' . $filters['keyword'] . '%')
                     ->orWhere('slug', 'like', '%' . $filters['keyword'] . '%');
             });
         }
 
         if (!empty($filters['status'])) {
-            if ($filters['status'] === 'upcoming') {
-                $query->where('start_date', '>', now());
-            } elseif ($filters['status'] === 'ended') {
-                $query->where('end_date', '<', now());
-            } else {
-                $query->where('status', $filters['status']);
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['progress']) && $filters['progress'] !== 'all') {
+            $now = now();
+
+            if ($filters['progress'] === 'upcoming') {
+                $query->where('is_active', true)
+                    ->where('status', 'active')
+                    ->where('start_date', '>', $now);
+            } elseif ($filters['progress'] === 'ended') {
+                $query->where(function ($builder) use ($now) {
+                    $builder->where('end_date', '<', $now)
+                        ->orWhere('is_active', false)
+                        ->orWhere('status', 'inactive');
+                });
+            } elseif ($filters['progress'] === 'ending_soon') {
+                $query->where('is_active', true)
+                    ->where('status', 'active')
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->where('end_date', '<=', $now->copy()->addDay());
+            } elseif ($filters['progress'] === 'active') {
+                $query->where('is_active', true)
+                    ->where('status', 'active')
+                    ->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now);
             }
         }
 
@@ -47,8 +65,7 @@ class AdminPromotionService
             ->paginate($perPage);
 
         $promotions->setCollection(
-            $promotions->getCollection()
-                ->map(fn ($promotion) => $this->formatPromotion($promotion))
+            $promotions->getCollection()->map(fn ($promotion) => $this->formatPromotion($promotion))
         );
 
         return [
@@ -67,22 +84,22 @@ class AdminPromotionService
                 throw new RuntimeException('Khuyến mãi không tồn tại', 404);
             }
 
-            if (($data['discount_type'] ?? null) === 'percent' && ($data['discount_value'] ?? 0) > 100) {
-                throw new RuntimeException('Phần trăm giảm giá không được vượt quá 100%', 400);
-            }
+            $this->assertPromotionItemsEditable($promotion);
 
             $created = [];
             $skipped = [];
 
             foreach ($items as $index => $data) {
                 try {
+                    if (($data['discount_type'] ?? null) === 'percent' && ($data['discount_value'] ?? 0) > 100) {
+                        throw new RuntimeException('Phần trăm giảm giá không được vượt quá 100%', 400);
+                    }
+
                     $this->validateVariantBelongsToProduct($data);
                     $this->validateProductIsSellable($data);
-                    $this->validateLimitQuantity($data);
 
                     $productVariantId = $data['product_variant_id'] ?? null;
                     $variantUniqueKey = $productVariantId ? (int) $productVariantId : 0;
-
                     $exists = PromotionItem::where('promotion_id', $promotion->id)
                         ->where('product_id', $data['product_id'])
                         ->where('variant_unique_key', $variantUniqueKey)
@@ -92,10 +109,9 @@ class AdminPromotionService
                         $skipped[] = [
                             'index' => $index,
                             'product_id' => $data['product_id'],
-                            'product_variant_id' => $data['product_variant_id'] ?? null,
-                            'reason' => 'Sản phẩm/biến thể đã có trong khuyến mãi',
+                            'product_variant_id' => $productVariantId,
+                            'reason' => 'Sản phẩm hoặc biến thể đã có trong khuyến mãi',
                         ];
-
                         continue;
                     }
 
@@ -106,19 +122,16 @@ class AdminPromotionService
                         'variant_unique_key' => $variantUniqueKey,
                         'discount_type' => $data['discount_type'] ?? null,
                         'discount_value' => $data['discount_value'] ?? null,
-                        'limit_quantity' => $data['limit_quantity'] ?? null,
+                        'limit_quantity' => null,
                         'sold_quantity' => 0,
                         'reserved_quantity' => 0,
                         'is_active' => $data['is_active'] ?? true,
                     ]);
 
-                    $created[] = $this->formatItem(
-                        $item->load([
-                            'product.images',
-                            'productVariant',
-                        ])
-                    );
-
+                    $created[] = $this->formatItem($item->load([
+                        'product.images',
+                        'productVariant',
+                    ]));
                 } catch (RuntimeException $e) {
                     $skipped[] = [
                         'index' => $index,
@@ -130,16 +143,14 @@ class AdminPromotionService
             }
 
             if (count($created) === 0 && count($skipped) > 0) {
-                $firstReason = $skipped[0]['reason'] ?? 'Không có sản phẩm nào được thêm vào khuyến mãi';
-
-                throw new RuntimeException($firstReason, 422);
+                throw new RuntimeException($skipped[0]['reason'] ?? 'Không có sản phẩm nào được thêm vào khuyến mãi', 422);
             }
 
             return [
                 'success' => true,
                 'message' => count($skipped) > 0
-                    ? 'Đã thêm một phần sản phẩm khuyến mãi, một số sản phẩm bị bỏ qua'
-                    : 'Thêm danh sách sản phẩm khuyến mãi hoàn tất',
+                    ? 'Đã thêm một phần sản phẩm vào khuyến mãi, một số sản phẩm bị bỏ qua'
+                    : 'Thêm danh sách sản phẩm khuyến mãi thành công',
                 'data' => [
                     'created_count' => count($created),
                     'skipped_count' => count($skipped),
@@ -152,16 +163,16 @@ class AdminPromotionService
 
     public function store(array $data): array
     {
-        $slug = $this->generateUniqueSlug($data['title']);
+        $this->ensurePromotionCanBeActivatedOnSave(null, $data);
 
         $promotion = Promotion::create([
             'title' => $data['title'],
-            'slug' => $slug,
+            'slug' => $this->generateUniqueSlug($data['title']),
             'description' => $data['description'] ?? null,
             'banner' => null,
             'thumbnail' => null,
-            'discount_type' => $data['discount_type'],
-            'discount_value' => $data['discount_value'],
+            'discount_type' => null,
+            'discount_value' => null,
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'status' => $data['status'],
@@ -172,7 +183,6 @@ class AdminPromotionService
             'banner' => !empty($data['banner_file'])
                 ? $this->uploadPromotionImage($promotion, $data['banner_file'], 'banner')
                 : null,
-
             'thumbnail' => !empty($data['thumbnail_file'])
                 ? $this->uploadPromotionImage($promotion, $data['thumbnail_file'], 'thumbnail')
                 : null,
@@ -207,14 +217,14 @@ class AdminPromotionService
             throw new RuntimeException('Khuyến mãi không tồn tại', 404);
         }
 
-        $slug = $this->generateUniqueSlug($data['title'], $promotion->id);
+        $this->ensurePromotionCanBeActivatedOnSave($promotion, $data);
 
         $updateData = [
             'title' => $data['title'],
-            'slug' => $slug,
+            'slug' => $this->generateUniqueSlug($data['title'], $promotion->id),
             'description' => $data['description'] ?? null,
-            'discount_type' => $data['discount_type'],
-            'discount_value' => $data['discount_value'],
+            'discount_type' => null,
+            'discount_value' => null,
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'status' => $data['status'],
@@ -248,11 +258,15 @@ class AdminPromotionService
             throw new RuntimeException('Khuyến mãi không tồn tại', 404);
         }
 
+        if ($this->isPromotionLockedForItems($promotion)) {
+            throw new RuntimeException('Khuyến mãi đang diễn ra nên không thể xóa', 422);
+        }
+
         if (
             $promotion->items()
-                ->where(function ($q) {
-                    $q->where('sold_quantity', '>', 0)
-                    ->orWhere('reserved_quantity', '>', 0);
+                ->where(function ($builder) {
+                    $builder->where('sold_quantity', '>', 0)
+                        ->orWhere('reserved_quantity', '>', 0);
                 })
                 ->exists()
         ) {
@@ -263,7 +277,7 @@ class AdminPromotionService
 
             return [
                 'success' => true,
-                'message' => 'Khuyến mãi đã có phát sinh bán hàng hoặc đang có đơn giữ chỗ nên hệ thống đã tắt khuyến mãi thay vì xóa',
+                'message' => 'Khuyến mãi đã phát sinh dữ liệu nên hệ thống đã chuyển sang trạng thái đã tắt',
                 'data' => $this->formatPromotion($promotion->fresh()),
             ];
         }
@@ -292,10 +306,6 @@ class AdminPromotionService
 
         $this->ensurePromotionCanPostSocial($promotion, true);
 
-        if ($promotion->items->count() <= 0) {
-            throw new RuntimeException('Vui lòng thêm sản phẩm vào đợt khuyến mãi trước khi tạo nội dung Facebook', 422);
-        }
-
         $caption = app(AiSocialCaptionService::class)
             ->generatePromotionCaption($promotion, $style);
 
@@ -320,13 +330,6 @@ class AdminPromotionService
         }
 
         $this->ensurePromotionCanPostSocial($promotion);
-
-        if ($promotion->items->count() <= 0) {
-            throw new RuntimeException(
-                'Vui lòng thêm sản phẩm vào đợt khuyến mãi trước khi đăng Facebook',
-                422
-            );
-        }
 
         $caption = trim((string) ($data['content'] ?? ''));
         $style = $data['style'] ?? null;
@@ -387,21 +390,21 @@ class AdminPromotionService
             ->with([
                 'images',
                 'category',
-                'variants' => function ($q) {
-                    $q->where('is_active', true)
+                'variants' => function ($builder) {
+                    $builder->where('is_active', true)
                         ->whereRaw('(stock - reserved_stock) > 0')
                         ->orderBy('price');
                 },
             ])
             ->where('is_active', true)
-            ->whereHas('variants', function ($q) {
-                $q->where('is_active', true)
+            ->whereHas('variants', function ($builder) {
+                $builder->where('is_active', true)
                     ->whereRaw('(stock - reserved_stock) > 0');
             });
 
         if ($keyword) {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('name', 'like', "%{$keyword}%")
+            $query->where(function ($builder) use ($keyword) {
+                $builder->where('name', 'like', "%{$keyword}%")
                     ->orWhere('slug', 'like', "%{$keyword}%");
             });
         }
@@ -418,7 +421,6 @@ class AdminPromotionService
             $variants = $product->variants
                 ->map(function ($variant) use ($existingVariantKeys) {
                     $variantKey = (int) $variant->id;
-
                     return [
                         'id' => $variant->id,
                         'sku' => $variant->sku,
@@ -429,7 +431,7 @@ class AdminPromotionService
                         'reserved_stock' => (int) $variant->reserved_stock,
                         'available_stock' => max(0, (int) $variant->stock - (int) $variant->reserved_stock),
                         'is_active' => (bool) $variant->is_active,
-                        'already_added' => in_array($variantKey, $existingVariantKeys),
+                        'already_added' => in_array($variantKey, $existingVariantKeys, true),
                     ];
                 })
                 ->values();
@@ -439,9 +441,8 @@ class AdminPromotionService
                 'name' => $product->name,
                 'slug' => $product->slug,
                 'category' => $product->category?->name,
-                'thumbnail' => optional(
-                    $product->images->where('type', 'thumbnail')->first()
-                )->url ?? optional($product->images->first())->url,
+                'thumbnail' => optional($product->images->where('type', 'thumbnail')->first())->url
+                    ?? optional($product->images->first())->url,
                 'is_active' => (bool) $product->is_active,
                 'variants' => $variants,
             ];
@@ -469,17 +470,17 @@ class AdminPromotionService
                 throw new RuntimeException('Khuyến mãi không tồn tại', 404);
             }
 
+            $this->assertPromotionItemsEditable($promotion);
+
             if (($data['discount_type'] ?? null) === 'percent' && ($data['discount_value'] ?? 0) > 100) {
                 throw new RuntimeException('Phần trăm giảm giá không được vượt quá 100%', 400);
             }
 
             $this->validateVariantBelongsToProduct($data);
             $this->validateProductIsSellable($data);
-            $this->validateLimitQuantity($data);
 
             $productVariantId = $data['product_variant_id'] ?? null;
             $variantUniqueKey = $productVariantId ? (int) $productVariantId : 0;
-
             $exists = PromotionItem::where('promotion_id', $promotion->id)
                 ->where('product_id', $data['product_id'])
                 ->where('variant_unique_key', $variantUniqueKey)
@@ -496,7 +497,7 @@ class AdminPromotionService
                 'variant_unique_key' => $variantUniqueKey,
                 'discount_type' => $data['discount_type'] ?? null,
                 'discount_value' => $data['discount_value'] ?? null,
-                'limit_quantity' => $data['limit_quantity'] ?? null,
+                'limit_quantity' => null,
                 'sold_quantity' => 0,
                 'reserved_quantity' => 0,
                 'is_active' => $data['is_active'] ?? true,
@@ -522,24 +523,37 @@ class AdminPromotionService
                 throw new RuntimeException('Sản phẩm khuyến mãi không tồn tại', 404);
             }
 
-            $finalProductId = $data['product_id'] ?? $item->product_id;
+            $promotion = Promotion::find($item->promotion_id);
 
+            if (!$promotion) {
+                throw new RuntimeException('Khuyến mãi không tồn tại', 404);
+            }
+
+            $finalIsActive = array_key_exists('is_active', $data)
+                ? (bool) $data['is_active']
+                : (bool) $item->is_active;
+
+            if ($this->isPromotionLockedForItems($promotion) && $finalIsActive) {
+                throw new RuntimeException('Khuyến mãi đang diễn ra nên không thể chỉnh sửa sản phẩm áp dụng', 422);
+            }
+
+            $finalProductId = $data['product_id'] ?? $item->product_id;
             $finalVariantId = array_key_exists('product_variant_id', $data)
                 ? $data['product_variant_id']
                 : $item->product_variant_id;
-
             $finalVariantUniqueKey = $finalVariantId ? (int) $finalVariantId : 0;
 
             $isChangingProductOrVariant =
                 (int) $finalProductId !== (int) $item->product_id
                 || (int) ($finalVariantId ?? 0) !== (int) ($item->product_variant_id ?? 0);
 
-            if (
-                $isChangingProductOrVariant
-                && ($item->sold_quantity > 0 || $item->reserved_quantity > 0)
-            ) {
+            if ($isChangingProductOrVariant) {
+                $this->assertPromotionItemsEditable($promotion);
+            }
+
+            if ($isChangingProductOrVariant && ($item->sold_quantity > 0 || $item->reserved_quantity > 0)) {
                 throw new RuntimeException(
-                    'Sản phẩm khuyến mãi đã phát sinh bán hàng hoặc đang giữ chỗ nên không được đổi sản phẩm/biến thể',
+                    'Sản phẩm khuyến mãi đã phát sinh bán hàng hoặc đang giữ chỗ nên không được đổi sản phẩm hoặc biến thể',
                     400
                 );
             }
@@ -558,56 +572,24 @@ class AdminPromotionService
                 ->exists();
 
             if ($exists) {
-                throw new RuntimeException(
-                    'Sản phẩm/biến thể này đã tồn tại trong chương trình khuyến mãi',
-                    409
-                );
-            }
-
-            $finalLimitQuantity = array_key_exists('limit_quantity', $data)
-                ? $data['limit_quantity']
-                : $item->limit_quantity;
-
-            $this->validateLimitQuantity([
-                'product_variant_id' => $finalVariantId,
-                'limit_quantity' => $finalLimitQuantity,
-            ], $item->id);
-
-            if (
-                $finalLimitQuantity !== null
-                && (int) $finalLimitQuantity < (
-                    (int) $item->sold_quantity + (int) $item->reserved_quantity
-                )
-            ) {
-                throw new RuntimeException(
-                    'Giới hạn mới không được nhỏ hơn số lượng đã bán hoặc đang giữ chỗ',
-                    400
-                );
+                throw new RuntimeException('Sản phẩm hoặc biến thể này đã tồn tại trong chương trình khuyến mãi', 409);
             }
 
             $item->update([
                 'product_id' => $finalProductId,
                 'product_variant_id' => $finalVariantId,
                 'variant_unique_key' => $finalVariantUniqueKey,
-
-                'discount_type' => array_key_exists('discount_type', $data)
-                    ? $data['discount_type']
-                    : $item->discount_type,
-
-                'discount_value' => array_key_exists('discount_value', $data)
-                    ? $data['discount_value']
-                    : $item->discount_value,
-
-                'limit_quantity' => $finalLimitQuantity,
-
-                'is_active' => array_key_exists('is_active', $data)
-                    ? $data['is_active']
-                    : $item->is_active,
+                'discount_type' => array_key_exists('discount_type', $data) ? $data['discount_type'] : $item->discount_type,
+                'discount_value' => array_key_exists('discount_value', $data) ? $data['discount_value'] : $item->discount_value,
+                'limit_quantity' => null,
+                'is_active' => $finalIsActive,
             ]);
 
             return [
                 'success' => true,
-                'message' => 'Cập nhật sản phẩm khuyến mãi thành công',
+                'message' => $finalIsActive
+                    ? 'Cập nhật sản phẩm khuyến mãi thành công'
+                    : 'Đã tắt sản phẩm khỏi khuyến mãi',
                 'data' => $this->formatItem($item->fresh()->load([
                     'product.images',
                     'productVariant',
@@ -624,27 +606,17 @@ class AdminPromotionService
             throw new RuntimeException('Sản phẩm khuyến mãi không tồn tại', 404);
         }
 
-        if ($item->sold_quantity > 0 || $item->reserved_quantity > 0) {
-            $item->update([
-                'is_active' => false,
-            ]);
-
-            return [
-                'success' => true,
-                'message' => 'Sản phẩm khuyến mãi đã phát sinh bán hàng nên hệ thống đã tắt thay vì xóa',
-                'data' => $this->formatItem($item->fresh()->load([
-                    'product.images',
-                    'productVariant',
-                ])),
-            ];
-        }
-
-        $item->delete();
+        $item->update([
+            'is_active' => false,
+        ]);
 
         return [
             'success' => true,
-            'message' => 'Xóa sản phẩm khỏi khuyến mãi thành công',
-            'data' => null,
+            'message' => 'Đã tắt sản phẩm khỏi khuyến mãi',
+            'data' => $this->formatItem($item->fresh()->load([
+                'product.images',
+                'productVariant',
+            ])),
         ];
     }
 
@@ -662,7 +634,7 @@ class AdminPromotionService
             throw new RuntimeException('Biến thể không thuộc sản phẩm đã chọn', 400);
         }
     }
-    
+
     private function validateProductIsSellable(array $data): void
     {
         $product = Product::find($data['product_id']);
@@ -690,16 +662,12 @@ class AdminPromotionService
     {
         $action = $forCaption ? 'tạo nội dung Facebook' : 'đăng Facebook';
 
-        if (!$promotion->is_active) {
+        if (!$promotion->is_active || $promotion->status === 'inactive' || $promotion->computed_status === 'inactive') {
             throw new RuntimeException("Không thể {$action} vì khuyến mãi đang tắt", 422);
         }
 
         if ($promotion->status === 'draft' || $promotion->computed_status === 'draft') {
             throw new RuntimeException("Không thể {$action} vì khuyến mãi chưa hoạt động", 422);
-        }
-
-        if ($promotion->status === 'inactive' || $promotion->computed_status === 'inactive') {
-            throw new RuntimeException("Không thể {$action} vì khuyến mãi đang tắt", 422);
         }
 
         if ($promotion->computed_status === 'upcoming' || now()->lt($promotion->start_date)) {
@@ -727,9 +695,7 @@ class AdminPromotionService
                 return (bool) $item->productVariant->is_active;
             }
 
-            return $product->variants
-                ->where('is_active', true)
-                ->isNotEmpty();
+            return $product->variants->where('is_active', true)->isNotEmpty();
         });
 
         if (!$hasSellableProduct) {
@@ -737,8 +703,43 @@ class AdminPromotionService
         }
     }
 
+    private function ensurePromotionCanBeActivatedOnSave(?Promotion $promotion, array $data): void
+    {
+        $isActive = array_key_exists('is_active', $data)
+            ? (bool) $data['is_active']
+            : (bool) ($promotion?->is_active ?? true);
+
+        $status = $data['status'] ?? $promotion?->status ?? 'draft';
+
+        if (!$isActive || $status !== 'active') {
+            return;
+        }
+
+        if ($promotion && $promotion->items()->where('is_active', true)->exists()) {
+            return;
+        }
+
+        $itemsPayload = $data['items'] ?? null;
+
+        if (is_array($itemsPayload)) {
+            $activeItems = collect($itemsPayload)
+                ->filter(fn ($item) => is_array($item))
+                ->filter(fn ($item) => array_key_exists('is_active', $item) ? (bool) $item['is_active'] : true)
+                ->filter(fn ($item) => !empty($item['product_variant_id']) || !empty($item['product_id']));
+
+            if ($activeItems->isNotEmpty()) {
+                return;
+            }
+        }
+
+        throw new RuntimeException('Không thể bật khuyến mãi khi chưa có ít nhất 1 sản phẩm áp dụng', 422);
+    }
+
     private function formatPromotion(Promotion $promotion): array
     {
+        $computedStatus = $promotion->computed_status;
+        $timelineStatus = $this->resolveTimelineStatus($promotion);
+
         return [
             'id' => $promotion->id,
             'title' => $promotion->title,
@@ -747,14 +748,17 @@ class AdminPromotionService
             'banner' => $promotion->banner,
             'thumbnail' => $promotion->thumbnail,
             'discount_type' => $promotion->discount_type,
-            'discount_value' => (float) $promotion->discount_value,
+            'discount_value' => $promotion->discount_value !== null ? (float) $promotion->discount_value : null,
             'start_date' => optional($promotion->start_date)->format('d/m/Y H:i'),
             'end_date' => optional($promotion->end_date)->format('d/m/Y H:i'),
             'status' => $promotion->status,
-            'computed_status' => $promotion->computed_status,
+            'computed_status' => $computedStatus,
+            'timeline_status' => $timelineStatus,
+            'timeline_status_text' => $this->timelineStatusText($timelineStatus),
             'is_active' => (bool) $promotion->is_active,
             'items_count' => $promotion->items_count ?? $promotion->items()->count(),
             'created_at' => optional($promotion->created_at)->format('d/m/Y H:i'),
+            'is_item_locked' => $this->isPromotionLockedForItems($promotion),
         ];
     }
 
@@ -776,16 +780,13 @@ class AdminPromotionService
         return [
             'id' => $item->id,
             'promotion_id' => $item->promotion_id,
-
             'product' => $product ? [
                 'id' => $product->id,
                 'name' => $product->name,
                 'slug' => $product->slug,
-                'thumbnail' => optional(
-                    $product->images?->where('type', 'thumbnail')->first()
-                )->url ?? optional($product->images?->first())->url,
+                'thumbnail' => optional($product->images?->where('type', 'thumbnail')->first())->url
+                    ?? optional($product->images?->first())->url,
             ] : null,
-
             'variant' => $variant ? [
                 'id' => $variant->id,
                 'sku' => $variant->sku,
@@ -793,8 +794,10 @@ class AdminPromotionService
                 'color' => $variant->color,
                 'attributes' => $variant->attributes,
                 'price' => (float) $variant->price,
+                'stock' => (int) $variant->stock,
+                'reserved_stock' => (int) $variant->reserved_stock,
+                'available_stock' => max(0, (int) $variant->stock - (int) $variant->reserved_stock),
             ] : null,
-
             'discount_type' => $item->discount_type,
             'discount_value' => $item->discount_value,
             'limit_quantity' => $item->limit_quantity,
@@ -802,61 +805,10 @@ class AdminPromotionService
             'reserved_quantity' => (int) $item->reserved_quantity,
             'remaining_quantity' => is_null($item->limit_quantity)
                 ? null
-                : max(
-                    0,
-                    $item->limit_quantity
-                    - $item->sold_quantity
-                    - $item->reserved_quantity
-                ),
+                : max(0, $item->limit_quantity - $item->sold_quantity - $item->reserved_quantity),
             'is_active' => (bool) $item->is_active,
             'created_at' => optional($item->created_at)->format('d/m/Y H:i'),
         ];
-    }
-
-    private function validateLimitQuantity(array $data, ?int $ignoreItemId = null): void
-    {
-        if (
-            empty($data['product_variant_id'])
-            || empty($data['limit_quantity'])
-        ) {
-            return;
-        }
-
-        $variant = ProductVariant::find($data['product_variant_id']);
-
-        if (!$variant) {
-            throw new RuntimeException(
-                'Biến thể sản phẩm không tồn tại',
-                404
-            );
-        }
-
-        $availableStock = max(
-            0,
-            $variant->stock - $variant->reserved_stock
-        );
-
-        $usedLimit = PromotionItem::query()
-            ->join('promotions', 'promotions.id', '=', 'promotion_items.promotion_id')
-            ->where('promotion_items.product_variant_id', $variant->id)
-            ->whereNotNull('promotion_items.limit_quantity')
-            ->where('promotion_items.is_active', true)
-            ->where('promotions.is_active', true)
-            ->where('promotions.status', 'active')
-            ->where('promotions.end_date', '>=', now())
-            ->when($ignoreItemId, function ($q) use ($ignoreItemId) {
-                $q->where('promotion_items.id', '!=', $ignoreItemId);
-            })
-            ->sum('promotion_items.limit_quantity');
-
-        $maxAllowed = max(0, $availableStock - $usedLimit);
-
-        if ((int) $data['limit_quantity'] > $maxAllowed) {
-            throw new RuntimeException(
-                "Số lượng khuyến mãi tối đa còn có thể áp dụng cho biến thể này là {$maxAllowed}",
-                400
-            );
-        }
     }
 
     private function generateUniqueSlug(string $title, ?int $ignoreId = null): string
@@ -868,7 +820,7 @@ class AdminPromotionService
         while (
             Promotion::query()
                 ->where('slug', $slug)
-                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->when($ignoreId, fn ($builder) => $builder->where('id', '!=', $ignoreId))
                 ->exists()
         ) {
             $slug = $baseSlug . '-' . $counter;
@@ -881,27 +833,16 @@ class AdminPromotionService
     private function uploadPromotionImage($promotion, $image, string $type): string
     {
         $folderName = Str::slug($promotion->slug ?: $promotion->title);
-
         $folderPath = public_path('images/promotions/' . $folderName);
 
         if (!File::exists($folderPath)) {
             File::makeDirectory($folderPath, 0755, true);
         }
 
-        $originalName = pathinfo(
-            $image->getClientOriginalName(),
-            PATHINFO_FILENAME
-        );
-
+        $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
         $extension = $image->getClientOriginalExtension();
 
-        $fileName = $type
-            . '-'
-            . Str::slug($originalName)
-            . '-'
-            . uniqid()
-            . '.'
-            . $extension;
+        $fileName = $type . '-' . Str::slug($originalName) . '-' . uniqid() . '.' . $extension;
 
         $image->move($folderPath, $fileName);
 
@@ -915,11 +856,60 @@ class AdminPromotionService
         }
 
         $path = str_replace(url('/'), '', $url);
-
         $fullPath = public_path($path);
 
         if (File::exists($fullPath)) {
             File::delete($fullPath);
         }
+    }
+
+    private function isPromotionLockedForItems(Promotion $promotion): bool
+    {
+        return $promotion->is_active
+            && $promotion->status === 'active'
+            && now()->between($promotion->start_date, $promotion->end_date);
+    }
+
+    private function assertPromotionItemsEditable(Promotion $promotion): void
+    {
+        if ($this->isPromotionLockedForItems($promotion)) {
+            throw new RuntimeException('Khuyến mãi đang diễn ra nên không thể chỉnh sửa sản phẩm áp dụng', 422);
+        }
+    }
+
+    private function resolveTimelineStatus(Promotion $promotion): string
+    {
+        if (!$promotion->is_active || $promotion->status === 'inactive') {
+            return 'ended';
+        }
+
+        if ($promotion->status === 'draft') {
+            return 'draft';
+        }
+
+        if (now()->lt($promotion->start_date)) {
+            return 'upcoming';
+        }
+
+        if (now()->gt($promotion->end_date)) {
+            return 'ended';
+        }
+
+        if (now()->diffInSeconds($promotion->end_date, false) <= 86400) {
+            return 'ending_soon';
+        }
+
+        return 'active';
+    }
+
+    private function timelineStatusText(string $status): string
+    {
+        return match ($status) {
+            'draft' => 'Bản nháp',
+            'upcoming' => 'Sắp diễn ra',
+            'ending_soon' => 'Sắp kết thúc',
+            'ended' => 'Đã kết thúc',
+            default => 'Đang diễn ra',
+        };
     }
 }

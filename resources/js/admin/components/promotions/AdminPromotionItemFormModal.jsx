@@ -1,4 +1,4 @@
-import { Check, Loader2, PackagePlus, Search, Save, X } from 'lucide-react';
+import { Check, Loader2, PackagePlus, Save, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -8,7 +8,6 @@ import adminPromotionService from '../../services/adminPromotionService';
 const emptyForm = {
     discount_type: 'percent',
     discount_value: '',
-    limit_quantity: '',
     is_active: true,
 };
 
@@ -24,15 +23,11 @@ export default function AdminPromotionItemFormModal({
 
     const [form, setForm] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
-
     const [keyword, setKeyword] = useState('');
     const [debouncedKeyword, setDebouncedKeyword] = useState('');
-
     const [products, setProducts] = useState([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
-
     const [selectedMap, setSelectedMap] = useState({});
-
     const [meta, setMeta] = useState({
         currentPage: 1,
         lastPage: 1,
@@ -40,9 +35,7 @@ export default function AdminPromotionItemFormModal({
         total: 0,
     });
 
-    const selectedItems = useMemo(() => {
-        return Object.values(selectedMap);
-    }, [selectedMap]);
+    const selectedItems = useMemo(() => Object.values(selectedMap), [selectedMap]);
 
     useEffect(() => {
         if (!open) return;
@@ -51,15 +44,15 @@ export default function AdminPromotionItemFormModal({
             setForm({
                 discount_type: item.discountType || 'percent',
                 discount_value: item.discountValue || '',
-                limit_quantity: item.limitQuantity || '',
                 is_active: Boolean(item.isActive),
             });
-        } else {
-            setForm(emptyForm);
-            setSelectedMap({});
-            setKeyword('');
-            setDebouncedKeyword('');
+            return;
         }
+
+        setForm(emptyForm);
+        setSelectedMap({});
+        setKeyword('');
+        setDebouncedKeyword('');
     }, [open, isEdit, item]);
 
     useEffect(() => {
@@ -129,6 +122,7 @@ export default function AdminPromotionItemFormModal({
                     product_variant_id: variant.id,
                     productName: product.name,
                     variantLabel: variant.label,
+                    availableStock: variant.availableStock,
                 },
             };
         });
@@ -149,14 +143,16 @@ export default function AdminPromotionItemFormModal({
 
                 if (allSelected) {
                     delete next[key];
-                } else {
-                    next[key] = {
-                        product_id: product.id,
-                        product_variant_id: variant.id,
-                        productName: product.name,
-                        variantLabel: variant.label,
-                    };
+                    return;
                 }
+
+                next[key] = {
+                    product_id: product.id,
+                    product_variant_id: variant.id,
+                    productName: product.name,
+                    variantLabel: variant.label,
+                    availableStock: variant.availableStock,
+                };
             });
 
             return next;
@@ -174,11 +170,6 @@ export default function AdminPromotionItemFormModal({
             return false;
         }
 
-        if (form.limit_quantity !== '' && Number(form.limit_quantity) <= 0) {
-            toast.warning('Giới hạn số lượng phải lớn hơn 0');
-            return false;
-        }
-
         if (!isEdit && selectedItems.length === 0) {
             toast.warning('Vui lòng chọn ít nhất một phân loại sản phẩm');
             return false;
@@ -188,7 +179,7 @@ export default function AdminPromotionItemFormModal({
     }
 
     async function handleSubmit(e) {
-        e.preventDefault();
+        e?.preventDefault?.();
 
         if (!validateForm()) return;
 
@@ -201,18 +192,16 @@ export default function AdminPromotionItemFormModal({
                     product_variant_id: item.productVariantId || null,
                     discount_type: form.discount_type,
                     discount_value: form.discount_value,
-                    limit_quantity: form.limit_quantity,
                     is_active: form.is_active,
                 });
 
-                toast.success('Đã cập nhật sản phẩm khuyến mãi');
+                toast.success(form.is_active ? 'Đã cập nhật sản phẩm khuyến mãi' : 'Đã tắt sản phẩm khỏi khuyến mãi');
             } else {
                 const items = selectedItems.map((selected) => ({
                     product_id: selected.product_id,
                     product_variant_id: selected.product_variant_id,
                     discount_type: form.discount_type,
                     discount_value: form.discount_value,
-                    limit_quantity: form.limit_quantity,
                     is_active: form.is_active,
                 }));
 
@@ -251,8 +240,8 @@ export default function AdminPromotionItemFormModal({
 
                         <p className="text-sm text-slate-500">
                             {isEdit
-                                ? 'Cập nhật mức giảm, giới hạn và trạng thái áp dụng.'
-                                : 'Chọn sản phẩm/phân loại đang bán rồi nhập thông tin giảm giá.'}
+                                ? 'Cập nhật mức giảm và trạng thái áp dụng cho sản phẩm trong khuyến mãi.'
+                                : 'Chọn sản phẩm còn hàng rồi nhập mức giảm giá áp dụng cho từng sản phẩm.'}
                         </p>
                     </div>
 
@@ -296,18 +285,6 @@ export default function AdminPromotionItemFormModal({
                                         />
                                     </div>
 
-                                    <div>
-                                        <Label>Giới hạn số lượng</Label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={form.limit_quantity}
-                                            onChange={(e) => updateField('limit_quantity', e.target.value)}
-                                            placeholder="Bỏ trống nếu không giới hạn"
-                                            className={inputClass}
-                                        />
-                                    </div>
-
                                     <label className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200">
                                         <input
                                             type="checkbox"
@@ -326,6 +303,11 @@ export default function AdminPromotionItemFormModal({
                                         Đã chọn: {selectedItems.length} phân loại
                                     </p>
 
+                                    <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                                        Khuyến mãi sẽ dùng trực tiếp tồn kho thực tế của từng biến thể, không nhập giới
+                                        hạn số lượng riêng.
+                                    </p>
+
                                     {selectedItems.length > 0 && (
                                         <div className="mt-3 max-h-44 space-y-2 overflow-y-auto">
                                             {selectedItems.map((selected) => (
@@ -337,6 +319,9 @@ export default function AdminPromotionItemFormModal({
                                                         {selected.productName}
                                                     </p>
                                                     <p className="mt-0.5 text-slate-500">{selected.variantLabel}</p>
+                                                    <p className="mt-0.5 text-slate-500">
+                                                        Tồn kho khả dụng: {selected.availableStock}
+                                                    </p>
                                                 </div>
                                             ))}
                                         </div>
@@ -518,20 +503,28 @@ function ProductSelectCard({ product, selectedMap, onToggleVariant, onToggleAll 
                                         variant.alreadyAdded ? 'cursor-not-allowed opacity-50' : '',
                                     ].join(' ')}
                                 >
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                                             {variant.label}
                                         </p>
                                         <p className="mt-0.5 text-xs text-slate-500">
-                                            {formatMoney(variant.price)} · Còn {variant.availableStock}
+                                            {formatMoney(variant.price)} · Tồn kho khả dụng: {variant.availableStock}
                                         </p>
                                     </div>
 
-                                    {variant.alreadyAdded ? (
-                                        <span className="text-xs font-bold text-slate-400">Đã thêm</span>
-                                    ) : selected ? (
-                                        <Check size={18} className="text-blue-600" />
-                                    ) : null}
+                                    <div className="shrink-0">
+                                        {variant.alreadyAdded ? (
+                                            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                                Đã có
+                                            </span>
+                                        ) : selected ? (
+                                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
+                                                <Check size={14} />
+                                            </span>
+                                        ) : (
+                                            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-400" />
+                                        )}
+                                    </div>
                                 </button>
                             );
                         })}
@@ -544,10 +537,8 @@ function ProductSelectCard({ product, selectedMap, onToggleVariant, onToggleAll 
 
 function EditItemInfo({ item }) {
     return (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
-            <h3 className="font-bold text-slate-900 dark:text-white">Sản phẩm đang sửa</h3>
-
-            <div className="mt-4 flex gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex gap-3">
                 <img
                     src={item.productThumbnail}
                     alt={item.productName}
@@ -557,22 +548,18 @@ function EditItemInfo({ item }) {
                     }}
                 />
 
-                <div>
-                    <p className="font-bold text-slate-900 dark:text-white">{item.productName}</p>
+                <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900 dark:text-white">{item.productName}</p>
                     <p className="mt-1 text-sm text-slate-500">
-                        {item.variantSku || `#${item.productVariantId || item.productId}`}
+                        {item.variantSku || 'Tất cả phân loại'}
+                        {item.variantSize ? ` · Size ${item.variantSize}` : ''}
+                        {item.variantColor ? ` · ${item.variantColor}` : ''}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                        {item.variantSize ? `Size ${item.variantSize}` : ''}
-                        {item.variantSize && item.variantColor ? ' · ' : ''}
-                        {item.variantColor || ''}
+                        Tồn kho khả dụng: {item.variantAvailableStock || 0}
                     </p>
                 </div>
             </div>
-
-            <p className="mt-4 text-sm text-slate-500">
-                Khi đã phát sinh bán hoặc giữ chỗ, hệ thống chỉ cho sửa giảm giá, giới hạn và trạng thái.
-            </p>
         </div>
     );
 }

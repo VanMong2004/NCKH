@@ -11,14 +11,14 @@ const statuses = [
 export default function PromotionFilters({ filters, onChange }) {
     return (
         <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="grid gap-4 grid-cols-[minmax(0,1fr)_100px]">
+            <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-4">
                 <div className="flex h-12 overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-950 dark:border-slate-700 dark:bg-slate-950">
                     <input
                         value={filters.keyword}
                         onChange={(e) => onChange({ keyword: e.target.value })}
                         placeholder="Tìm đợt khuyến mãi..."
                         className="min-w-0 flex-1 bg-transparent px-4 text-sm text-slate-800 outline-none dark:text-white"
-                    />  
+                    />
 
                     <div className="flex w-12 items-center justify-center text-slate-400">
                         <Search size={18} />

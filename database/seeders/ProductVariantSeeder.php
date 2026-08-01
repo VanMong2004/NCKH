@@ -19,15 +19,15 @@ class ProductVariantSeeder extends Seeder
                 'Áo khoa Điện - Điện tử' => $this->clothing($product, 159000, ['Trắng', 'Xanh Navy']),
                 'Áo Freshman Week 2026' => $this->clothing($product, 139000, ['Trắng', 'Cam', 'Xanh CTUT']),
                 'Hoodie CTUT Premium' => $this->clothing($product, 349000, ['Đen', 'Xám']),
-                'Ly giữ nhiệt CTUT' => $this->tumbler($product),
-                'Túi tote CTUT' => $this->tote($product),
-                'Nón lưỡi trai CTUT' => $this->cap($product),
-                'Móc khóa CTUT' => $this->keychain($product),
-                'Sticker CTUT' => $this->sticker($product),
-                'Bảng tên sinh viên CTUT' => $this->badge($product),
-                'Dây đeo thẻ CTUT' => $this->lanyard($product),
-                'Sổ tay CTUT' => $this->notebook($product),
-                'Bút CTUT' => $this->pen($product),
+                'Ly giữ nhiệt CTUT' => $this->tumbler($product, 199000),
+                'Túi tote CTUT' => $this->tote($product, 89000),
+                'Nón lưỡi trai CTUT' => $this->cap($product, 119000),
+                'Móc khóa CTUT' => $this->keychain($product, 29000),
+                'Sticker CTUT' => $this->sticker($product, 19000),
+                'Bảng tên sinh viên CTUT' => $this->badge($product, 39000),
+                'Dây đeo thẻ CTUT' => $this->lanyard($product, 25000),
+                'Sổ tay CTUT' => $this->notebook($product, 69000),
+                'Bút CTUT' => $this->pen($product, 12000),
                 default => null,
             };
         }
@@ -38,7 +38,7 @@ class ProductVariantSeeder extends Seeder
         ProductVariant::updateOrCreate($identity, $values);
     }
 
-    private function clothing(Product $product, int $basePrice, array $colors): void
+    private function clothing(Product $product, int $price, array $colors): void
     {
         foreach ($colors as $color) {
             foreach (['S', 'M', 'L', 'XL'] as $size) {
@@ -52,12 +52,7 @@ class ProductVariantSeeder extends Seeder
                     'color' => $color,
                     'attributes' => ['material' => 'Cotton 65/35'],
                     'sku' => $sku,
-                    'price' => $basePrice + match ($size) {
-                        'S' => 0,
-                        'M' => 10000,
-                        'L' => 20000,
-                        'XL' => 30000,
-                    },
+                    'price' => $price,
                     'stock' => 60,
                     'reserved_stock' => 0,
                     'sold_stock' => 0,
@@ -66,9 +61,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function tumbler(Product $product): void
+    private function tumbler(Product $product, int $price): void
     {
-        foreach ([['500ml', 169000], ['750ml', 199000], ['1000ml', 249000]] as [$capacity, $price]) {
+        foreach (['500ml', '750ml', '1000ml'] as $capacity) {
             $sku = 'CTUT-TUMBLER-' . str_replace('ml', '', $capacity);
 
             $this->upsertVariant([
@@ -85,9 +80,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function tote(Product $product): void
+    private function tote(Product $product, int $price): void
     {
-        foreach ([['Canvas Standard', 89000], ['Canvas Premium', 129000]] as [$type, $price]) {
+        foreach (['Canvas Standard', 'Canvas Premium'] as $type) {
             $sku = 'CTUT-TOTE-' . Str::upper(Str::slug($type));
 
             $this->upsertVariant([
@@ -104,7 +99,7 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function cap(Product $product): void
+    private function cap(Product $product, int $price): void
     {
         foreach (['Đen', 'Xanh Navy', 'Trắng'] as $color) {
             $sku = 'CTUT-CAP-' . Str::upper(Str::slug($color));
@@ -116,7 +111,7 @@ class ProductVariantSeeder extends Seeder
                 'color' => $color,
                 'attributes' => ['adjustable' => true],
                 'sku' => $sku,
-                'price' => 119000,
+                'price' => $price,
                 'stock' => 70,
                 'reserved_stock' => 0,
                 'sold_stock' => 0,
@@ -124,9 +119,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function keychain(Product $product): void
+    private function keychain(Product $product, int $price): void
     {
-        foreach ([['Acrylic', 29000], ['Kim loại', 39000]] as [$material, $price]) {
+        foreach (['Acrylic', 'Kim loại'] as $material) {
             $sku = 'CTUT-KEY-' . Str::upper(Str::slug($material));
 
             $this->upsertVariant([
@@ -143,9 +138,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function sticker(Product $product): void
+    private function sticker(Product $product, int $price): void
     {
-        foreach ([['Combo 10 sticker', 19000], ['Combo 20 sticker', 29000]] as [$package, $price]) {
+        foreach (['Combo 10 sticker', 'Combo 20 sticker'] as $package) {
             $sku = 'CTUT-STICKER-' . Str::upper(Str::slug($package));
 
             $this->upsertVariant([
@@ -162,9 +157,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function badge(Product $product): void
+    private function badge(Product $product, int $price): void
     {
-        foreach ([['Sinh viên', 39000], ['Cán bộ', 49000]] as [$type, $price]) {
+        foreach (['Sinh viên', 'Cán bộ'] as $type) {
             $sku = 'CTUT-ID-' . Str::upper(Str::slug($type));
 
             $this->upsertVariant([
@@ -181,9 +176,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function lanyard(Product $product): void
+    private function lanyard(Product $product, int $price): void
     {
-        foreach ([['Xanh CTUT', 25000], ['Đen', 25000]] as [$color, $price]) {
+        foreach (['Xanh CTUT', 'Đen'] as $color) {
             $sku = 'CTUT-LANYARD-' . Str::upper(Str::slug($color));
 
             $this->upsertVariant([
@@ -201,9 +196,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function notebook(Product $product): void
+    private function notebook(Product $product, int $price): void
     {
-        foreach ([['A5', 49000], ['B5', 69000]] as [$size, $price]) {
+        foreach (['A5', 'B5'] as $size) {
             $sku = 'CTUT-NOTEBOOK-' . $size;
 
             $this->upsertVariant([
@@ -221,9 +216,9 @@ class ProductVariantSeeder extends Seeder
         }
     }
 
-    private function pen(Product $product): void
+    private function pen(Product $product, int $price): void
     {
-        foreach ([['Mực xanh', 12000], ['Mực đen', 12000]] as [$color, $price]) {
+        foreach (['Mực xanh', 'Mực đen'] as $color) {
             $sku = 'CTUT-PEN-' . Str::upper(Str::slug($color));
 
             $this->upsertVariant([

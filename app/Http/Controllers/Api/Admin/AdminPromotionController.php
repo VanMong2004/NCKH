@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use Throwable;
-use RuntimeException;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Services\Admin\AdminPromotionService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
 
 class AdminPromotionController extends Controller
 {
@@ -22,13 +22,13 @@ class AdminPromotionController extends Controller
         try {
             $filters = $request->validate([
                 'keyword' => 'nullable|string|max:255',
-                'status' => 'nullable|in:draft,active,inactive,upcoming,ended',
+                'status' => 'nullable|in:draft,active,inactive',
+                'progress' => 'nullable|in:all,active,ending_soon,upcoming,ended',
                 'per_page' => 'nullable|integer|min:1|max:100',
                 'page' => 'nullable|integer|min:1',
             ]);
 
             return response()->json($this->service->index($filters));
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Bộ lọc khuyến mãi không hợp lệ');
         } catch (Throwable $e) {
@@ -41,53 +41,23 @@ class AdminPromotionController extends Controller
         try {
             $data = $request->validate([
                 'items' => 'required|array|min:1',
-
                 'items.*.product_id' => 'required|integer|exists:products,id',
-
-                'items.*.product_variant_id'
-                    => 'nullable|integer|exists:product_variants,id',
-
-                'items.*.discount_type'
-                    => 'nullable|in:percent,fixed',
-
-                'items.*.discount_value'
-                    => 'nullable|numeric|min:0',
-
-                'items.*.limit_quantity'
-                    => 'nullable|integer|min:1',
-
-                'items.*.is_active'
-                    => 'nullable|boolean',
-
-                'items.*.discount_type' 
-                    => 'required|in:percent,fixed',
-                
-                'items.*.discount_value' 
-                    => 'required|numeric|min:0',
+                'items.*.product_variant_id' => 'nullable|integer|exists:product_variants,id',
+                'items.*.discount_type' => 'required|in:percent,fixed',
+                'items.*.discount_value' => 'required|numeric|min:0',
+                'items.*.is_active' => 'nullable|boolean',
             ], $this->validationMessages());
 
             return response()->json(
-                $this->service->storeItemsBulk(
-                    $id,
-                    $data['items']
-                ),
+                $this->service->storeItemsBulk($id, $data['items']),
                 201
             );
-
         } catch (ValidationException $e) {
-            return $this->validationError(
-                $e,
-                'Dữ liệu danh sách sản phẩm khuyến mãi không hợp lệ'
-            );
-
+            return $this->validationError($e, 'Dữ liệu danh sách sản phẩm khuyến mãi không hợp lệ');
         } catch (RuntimeException $e) {
             return $this->businessError($e);
-
         } catch (Throwable $e) {
-            return $this->systemError(
-                $e,
-                'Admin promotion bulk item store error'
-            );
+            return $this->systemError($e, 'Admin promotion bulk item store error');
         }
     }
 
@@ -103,7 +73,6 @@ class AdminPromotionController extends Controller
                 $this->service->store($data),
                 201
             );
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Dữ liệu tạo khuyến mãi không hợp lệ');
         } catch (RuntimeException $e) {
@@ -121,7 +90,6 @@ class AdminPromotionController extends Controller
                 'message' => 'Lấy chi tiết khuyến mãi thành công',
                 'data' => $this->service->show($id),
             ]);
-
         } catch (RuntimeException $e) {
             return $this->businessError($e);
         } catch (Throwable $e) {
@@ -140,7 +108,6 @@ class AdminPromotionController extends Controller
             return response()->json(
                 $this->service->update($id, $data)
             );
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Dữ liệu cập nhật khuyến mãi không hợp lệ');
         } catch (RuntimeException $e) {
@@ -156,7 +123,6 @@ class AdminPromotionController extends Controller
             return response()->json(
                 $this->service->destroy($id)
             );
-
         } catch (RuntimeException $e) {
             return $this->businessError($e);
         } catch (Throwable $e) {
@@ -175,18 +141,12 @@ class AdminPromotionController extends Controller
             $result['message'] = 'Đã tạo nội dung khuyến mãi bằng AI';
 
             return response()->json($result);
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Dữ liệu tạo nội dung Facebook không hợp lệ');
-
         } catch (RuntimeException $e) {
             return $this->businessError($e);
-
         } catch (Throwable $e) {
-            return $this->systemError(
-                $e,
-                'Admin promotion generate Facebook caption error'
-            );
+            return $this->systemError($e, 'Admin promotion generate Facebook caption error');
         }
     }
 
@@ -202,18 +162,12 @@ class AdminPromotionController extends Controller
             $result['message'] = 'Đã đưa đợt khuyến mãi vào hàng đợi đăng Facebook';
 
             return response()->json($result);
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Dữ liệu đăng Facebook không hợp lệ');
-
         } catch (RuntimeException $e) {
             return $this->businessError($e);
-
         } catch (Throwable $e) {
-            return $this->systemError(
-                $e,
-                'Admin promotion publish social error'
-            );
+            return $this->systemError($e, 'Admin promotion publish social error');
         }
     }
 
@@ -223,7 +177,6 @@ class AdminPromotionController extends Controller
             return response()->json(
                 $this->service->items($id)
             );
-
         } catch (RuntimeException $e) {
             return $this->businessError($e);
         } catch (Throwable $e) {
@@ -253,7 +206,6 @@ class AdminPromotionController extends Controller
                 $this->service->storeItem($id, $data),
                 201
             );
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Dữ liệu sản phẩm khuyến mãi không hợp lệ');
         } catch (RuntimeException $e) {
@@ -271,7 +223,6 @@ class AdminPromotionController extends Controller
             return response()->json(
                 $this->service->updateItem($itemId, $data)
             );
-
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Dữ liệu cập nhật sản phẩm khuyến mãi không hợp lệ');
         } catch (RuntimeException $e) {
@@ -287,7 +238,6 @@ class AdminPromotionController extends Controller
             return response()->json(
                 $this->service->destroyItem($itemId)
             );
-
         } catch (RuntimeException $e) {
             return $this->businessError($e);
         } catch (Throwable $e) {
@@ -303,8 +253,6 @@ class AdminPromotionController extends Controller
             'description' => 'nullable|string',
             'banner' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'thumbnail' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
-            'discount_type' => 'required|in:percent,fixed',
-            'discount_value' => 'required|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'status' => 'required|in:draft,active,inactive',
@@ -319,7 +267,6 @@ class AdminPromotionController extends Controller
             'product_variant_id' => 'nullable|integer|exists:product_variants,id',
             'discount_type' => 'nullable|in:percent,fixed',
             'discount_value' => 'nullable|numeric|min:0',
-            'limit_quantity' => 'nullable|integer|min:1',
             'is_active' => 'nullable|boolean',
         ];
     }
@@ -327,8 +274,8 @@ class AdminPromotionController extends Controller
     private function validationMessages(): array
     {
         return [
-            'is_active.required' => 'Vui lòng truyền trạng thái mở bán',
-            'is_active.boolean' => 'Trạng thái mở bán không hợp lệ',
+            'is_active.required' => 'Vui lòng truyền trạng thái hiển thị',
+            'is_active.boolean' => 'Trạng thái hiển thị không hợp lệ',
             'active.required' => 'Vui lòng truyền trạng thái',
             'active.boolean' => 'Trạng thái không hợp lệ',
             'title.required' => 'Vui lòng nhập tên khuyến mãi',
@@ -338,6 +285,7 @@ class AdminPromotionController extends Controller
             'slug.unique' => 'Slug khuyến mãi đã tồn tại, vui lòng chọn slug khác',
             'status.required' => 'Vui lòng chọn trạng thái khuyến mãi',
             'status.in' => 'Trạng thái khuyến mãi không hợp lệ',
+            'progress.in' => 'Diễn biến khuyến mãi không hợp lệ',
             'content.max' => 'Nội dung bài đăng không được vượt quá 5000 ký tự',
             'style.in' => 'Phong cách nội dung không hợp lệ',
             'items.required' => 'Vui lòng chọn sản phẩm khuyến mãi',
@@ -346,8 +294,6 @@ class AdminPromotionController extends Controller
             'items.*.product_id.required' => 'Vui lòng chọn sản phẩm khuyến mãi',
             'items.*.product_id.exists' => 'Sản phẩm khuyến mãi không tồn tại',
             'items.*.product_variant_id.exists' => 'Biến thể sản phẩm không tồn tại',
-            'items.*.limit_quantity.integer' => 'Số lượng khuyến mãi phải là số nguyên',
-            'items.*.limit_quantity.min' => 'Số lượng khuyến mãi phải lớn hơn 0',
             'items.*.is_active.boolean' => 'Trạng thái sản phẩm khuyến mãi không hợp lệ',
             'discount_type.required' => 'Vui lòng chọn loại khuyến mãi',
             'discount_type.in' => 'Loại khuyến mãi không hợp lệ',

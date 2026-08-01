@@ -556,9 +556,21 @@ class AdminProductService
 
     private function syncVariantsForUpdate($product, $variants)
     {
+        $fallbackPrice = null;
+
         foreach ($variants as $variantData) {
             if (!is_array($variantData)) {
                 continue;
+            }
+
+            $resolvedPrice = array_key_exists('price', $variantData)
+                && $variantData['price'] !== null
+                && $variantData['price'] !== ''
+                ? $variantData['price']
+                : $fallbackPrice;
+
+            if ($resolvedPrice !== null && $resolvedPrice !== '') {
+                $fallbackPrice = $resolvedPrice;
             }
 
             if (!empty($variantData['id'])) {
@@ -600,7 +612,7 @@ class AdminProductService
                         ? $variantData['attributes']
                         : $variant->attributes,
                     'sku' => $variantData['sku'] ?? $variant->sku,
-                    'price' => $variantData['price'] ?? $variant->price,
+                    'price' => $resolvedPrice ?? $variant->price,
                     'stock' => $newStock,
                     'is_active' => array_key_exists('is_active', $variantData)
                         ? (bool) $variantData['is_active']
@@ -632,7 +644,7 @@ class AdminProductService
                 'color' => $variantData['color'] ?? null,
                 'attributes' => $variantData['attributes'] ?? [],
                 'sku' => $variantData['sku'] ?? $this->generateSku(),
-                'price' => $variantData['price'] ?? 0,
+                'price' => $resolvedPrice ?? 0,
                 'stock' => $variantData['stock'] ?? 0,
                 'reserved_stock' => 0,
                 'sold_stock' => 0,

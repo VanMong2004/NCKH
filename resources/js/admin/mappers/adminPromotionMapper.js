@@ -49,16 +49,26 @@ export function createSlug(value) {
 function getDiscountText(type, value) {
     const number = toNumber(value);
 
-    if (type === 'percent') return `Giảm ${number}%`;
-    if (type === 'fixed') return `Giảm ${formatMoney(number)}`;
+    if (type === 'percent' && number > 0) return `Giảm ${number}%`;
+    if (type === 'fixed' && number > 0) return `Giảm ${formatMoney(number)}`;
 
-    return 'Theo khuyến mãi chính';
+    return 'Giảm theo từng sản phẩm';
 }
 
 function getStatusText(status) {
     if (status === 'draft') return 'Bản nháp';
     if (status === 'active') return 'Đang bật';
     if (status === 'inactive') return 'Đã tắt';
+    if (status === 'upcoming') return 'Sắp diễn ra';
+    if (status === 'ended') return 'Đã kết thúc';
+
+    return 'Không rõ';
+}
+
+function getTimelineText(status) {
+    if (status === 'draft') return 'Bản nháp';
+    if (status === 'active') return 'Đang diễn ra';
+    if (status === 'ending_soon') return 'Sắp kết thúc';
     if (status === 'upcoming') return 'Sắp diễn ra';
     if (status === 'ended') return 'Đã kết thúc';
 
@@ -115,36 +125,33 @@ function formatDateDisplay(value) {
 export function mapAdminPromotion(item = {}) {
     const status = item.status || '';
     const computedStatus = item.computed_status || status;
+    const timelineStatus = item.timeline_status || computedStatus;
 
     return {
         id: item.id,
         title: item.title || '',
         slug: item.slug || '',
         description: item.description || '',
-
         banner: normalizeImage(item.banner),
         thumbnail: normalizeImage(item.thumbnail),
-
+        image: normalizeImage(item.thumbnail || item.banner),
         discountType: item.discount_type || '',
-        discountValue: toNumber(item.discount_value),
+        discountValue: item.discount_value === null || item.discount_value === undefined ? null : toNumber(item.discount_value),
         discountText: getDiscountText(item.discount_type, item.discount_value),
-
         startDate: formatDateDisplay(item.start_date),
         endDate: formatDateDisplay(item.end_date),
         startDateInput: toDatetimeLocal(item.start_date),
         endDateInput: toDatetimeLocal(item.end_date),
-
         status,
         statusText: getStatusText(status),
-
         computedStatus,
         computedStatusText: getStatusText(computedStatus),
-
+        timelineStatus,
+        timelineStatusText: item.timeline_status_text || getTimelineText(timelineStatus),
         isActive: toBoolean(item.is_active),
-
+        isItemLocked: toBoolean(item.is_item_locked),
         itemsCount: toNumber(item.items_count || item.total_items),
         createdAt: item.created_at || '',
-
         raw: item,
     };
 }
@@ -155,23 +162,22 @@ export function mapAdminPromotionItem(item = {}) {
 
     return {
         id: item.id,
-
         productId: item.product_id || product.id || '',
         productName: product.name || item.product_name || '',
         productSlug: product.slug || '',
         productThumbnail: normalizeImage(product.thumbnail || item.thumbnail),
-
         productVariantId: item.product_variant_id || variant.id || '',
         variantSku: variant.sku || item.sku || '',
         variantSize: variant.size || '',
         variantColor: variant.color || '',
         variantPrice: toNumber(variant.price),
-
+        variantStock: toNumber(variant.stock),
+        variantReservedStock: toNumber(variant.reserved_stock),
+        variantAvailableStock: toNumber(variant.available_stock),
         discountType: item.discount_type || '',
         discountValue:
             item.discount_value === null || item.discount_value === undefined ? '' : toNumber(item.discount_value),
         discountText: getDiscountText(item.discount_type, item.discount_value),
-
         limitQuantity:
             item.limit_quantity === null || item.limit_quantity === undefined ? '' : toNumber(item.limit_quantity),
         soldQuantity: toNumber(item.sold_quantity),
@@ -180,9 +186,7 @@ export function mapAdminPromotionItem(item = {}) {
             item.remaining_quantity === null || item.remaining_quantity === undefined
                 ? null
                 : toNumber(item.remaining_quantity),
-
         isActive: toBoolean(item.is_active),
-
         raw: item,
     };
 }
@@ -195,19 +199,15 @@ export function mapAvailablePromotionVariant(product = {}, variant = {}) {
         productSlug: product.slug || '',
         productCategory: product.category || '',
         productThumbnail: normalizeImage(product.thumbnail),
-
         sku: variant.sku || '',
         size: variant.size || '',
         color: variant.color || '',
-
         price: toNumber(variant.price),
         stock: toNumber(variant.stock),
         reservedStock: toNumber(variant.reserved_stock),
         availableStock: toNumber(variant.available_stock),
-
         isActive: toBoolean(variant.is_active),
         alreadyAdded: toBoolean(variant.already_added),
-
         label: buildVariantLabel(variant),
         raw: variant,
     };
@@ -287,18 +287,12 @@ export function mapAdminPromotionToForm(promotion = null) {
             title: '',
             slug: '',
             description: '',
-
             banner: '',
             thumbnail: '',
             bannerFile: null,
             thumbnailFile: null,
-
-            discount_type: 'percent',
-            discount_value: '',
-
             start_date: '',
             end_date: '',
-
             status: 'draft',
             is_active: true,
         };
@@ -307,20 +301,13 @@ export function mapAdminPromotionToForm(promotion = null) {
     return {
         title: promotion.title || '',
         slug: promotion.slug || createSlug(promotion.title),
-
         description: promotion.description || '',
-
         banner: promotion.banner || '',
         thumbnail: promotion.thumbnail || '',
         bannerFile: null,
         thumbnailFile: null,
-
-        discount_type: promotion.discountType || promotion.raw?.discount_type || 'percent',
-        discount_value: promotion.discountValue || promotion.raw?.discount_value || '',
-
         start_date: promotion.startDateInput || toDatetimeLocal(promotion.raw?.start_date),
         end_date: promotion.endDateInput || toDatetimeLocal(promotion.raw?.end_date),
-
         status: promotion.status || 'draft',
         is_active: Boolean(promotion.isActive),
     };
@@ -334,13 +321,8 @@ export function normalizeAdminPromotionPayload(payload = {}) {
         title,
         slug,
         description: emptyToNull(payload.description),
-
-        discount_type: payload.discount_type || 'percent',
-        discount_value: Number(payload.discount_value || 0),
-
         start_date: payload.start_date || '',
         end_date: payload.end_date || '',
-
         status: payload.status || 'draft',
         is_active: normalizeBoolean(payload.is_active),
     };
@@ -350,18 +332,11 @@ export function normalizeAdminPromotionItemPayload(payload = {}) {
     return {
         product_id: payload.product_id,
         product_variant_id: payload.product_variant_id || null,
-
         discount_type: payload.discount_type || null,
         discount_value:
             payload.discount_value === '' || payload.discount_value === null || payload.discount_value === undefined
                 ? null
                 : Number(payload.discount_value),
-
-        limit_quantity:
-            payload.limit_quantity === '' || payload.limit_quantity === null || payload.limit_quantity === undefined
-                ? null
-                : Number(payload.limit_quantity),
-
         is_active: normalizeBoolean(payload.is_active),
     };
 }

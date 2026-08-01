@@ -123,14 +123,39 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Schema::table('vat_invoice_requests', function (Blueprint $table) {
+        //     $table->dropConstrainedForeignId('processed_by');
+        //     $table->dropColumn(['processed_at', 'fulfilled_at']);
+        // });
         Schema::table('vat_invoice_requests', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('processed_by');
-            $table->dropColumn(['processed_at', 'fulfilled_at']);
+            if (Schema::hasColumn('vat_invoice_requests', 'processed_by')) {
+                try {
+                    $table->dropForeign(['processed_by']);
+                } catch (\Throwable $e) {
+                    // Bỏ qua nếu foreign key không tồn tại
+                }
+
+                $table->dropColumn('processed_by');
+            }
+
+            $columns = [];
+
+            if (Schema::hasColumn('vat_invoice_requests', 'processed_at')) {
+                $columns[] = 'processed_at';
+            }
+
+            if (Schema::hasColumn('vat_invoice_requests', 'fulfilled_at')) {
+                $columns[] = 'fulfilled_at';
+            }
+
+            if (!empty($columns)) {
+                $table->dropColumn($columns);
+            }
         });
 
         DB::statement("
             ALTER TABLE vat_invoice_requests
-            MODIFY status ENUM('pending', 'approved', 'issued', 'rejected')
+            MODIFY status ENUM('pending', 'processing', 'fulfilled', 'rejected', 'approved', 'issued')
             NOT NULL DEFAULT 'pending'
         ");
 
@@ -143,9 +168,15 @@ return new class extends Migration
             ->update(['status' => 'issued']);
 
         DB::statement("
-            ALTER TABLE payments
-            MODIFY status ENUM('pending', 'success', 'failed', 'refunded')
+            ALTER TABLE vat_invoice_requests
+            MODIFY status ENUM('pending', 'approved', 'issued', 'rejected')
             NOT NULL DEFAULT 'pending'
+        ");
+
+        DB::statement("
+            ALTER TABLE payments
+            MODIFY status ENUM('unpaid', 'paid', 'failed', 'refunded', 'pending', 'success')
+            NOT NULL DEFAULT 'unpaid'
         ");
 
         DB::table('payments')
@@ -158,7 +189,13 @@ return new class extends Migration
 
         DB::statement("
             ALTER TABLE payments
-            MODIFY method ENUM('vnpay', 'momo', 'banking', 'baokim', 'mock', 'cod')
+            MODIFY status ENUM('pending', 'success', 'failed', 'refunded')
+            NOT NULL DEFAULT 'pending'
+        ");
+
+        DB::statement("
+            ALTER TABLE payments
+            MODIFY method ENUM('cod', 'mock_bank', 'cash_on_pickup', 'vnpay', 'momo', 'banking', 'baokim', 'mock')
             NOT NULL
         ");
 
@@ -171,14 +208,26 @@ return new class extends Migration
             ->update(['method' => 'cod']);
 
         DB::statement("
+            ALTER TABLE payments
+            MODIFY method ENUM('vnpay', 'momo', 'banking', 'baokim', 'mock', 'cod')
+            NOT NULL
+        ");
+
+        DB::statement("
             ALTER TABLE orders
-            MODIFY status ENUM('pending', 'paid', 'processing', 'shipped', 'completed', 'cancelled')
+            MODIFY status ENUM('pending', 'processing', 'awaiting_receipt', 'completed', 'cancelled', 'paid', 'shipped')
             NOT NULL DEFAULT 'pending'
         ");
 
         DB::table('orders')
             ->where('status', 'awaiting_receipt')
             ->update(['status' => 'shipped']);
+
+        DB::statement("
+            ALTER TABLE orders
+            MODIFY status ENUM('pending', 'paid', 'processing', 'shipped', 'completed', 'cancelled')
+            NOT NULL DEFAULT 'pending'
+        ");
 
         Schema::table('orders', function (Blueprint $table) {
             $table->dropColumn(['fulfillment_method', 'payment_status']);

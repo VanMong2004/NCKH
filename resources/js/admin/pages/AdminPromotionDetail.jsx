@@ -1,9 +1,10 @@
-import { ArrowLeft, BadgePercent, Edit3, Loader2, PackagePlus, RefreshCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, BadgePercent, Edit3, Loader2, PackagePlus, RefreshCcw, Power } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import AdminPromotionItemFormModal from '../components/promotions/AdminPromotionItemFormModal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { formatMoney } from '../mappers/adminPromotionMapper';
 import adminPromotionService from '../services/adminPromotionService';
 import StatCard from '../components/ui/StatCard';
@@ -14,12 +15,20 @@ export default function AdminPromotionDetail() {
     const [promotion, setPromotion] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [deletingId, setDeletingId] = useState(null);
-
+    const [submittingId, setSubmittingId] = useState(null);
     const [formState, setFormState] = useState({
         open: false,
         mode: 'create',
         item: null,
+    });
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
     });
 
     useEffect(() => {
@@ -46,6 +55,11 @@ export default function AdminPromotionDetail() {
     }
 
     function openCreateForm() {
+        if (promotion?.isItemLocked) {
+            toast.warning('Khuyến mãi đang diễn ra nên không thể thêm sản phẩm áp dụng');
+            return;
+        }
+
         setFormState({
             open: true,
             mode: 'create',
@@ -54,6 +68,11 @@ export default function AdminPromotionDetail() {
     }
 
     function openEditForm(item) {
+        if (promotion?.isItemLocked) {
+            toast.warning('Khuyến mãi đang diễn ra nên không thể chỉnh sửa sản phẩm áp dụng');
+            return;
+        }
+
         setFormState({
             open: true,
             mode: 'edit',
@@ -74,24 +93,30 @@ export default function AdminPromotionDetail() {
         closeForm();
     }
 
-    async function handleDelete(item) {
-        const ok = window.confirm(
-            `Bạn muốn xóa hoặc tắt "${item.productName}" khỏi khuyến mãi?\n\nNếu mục này đã có số lượng đã bán/đang giữ, hệ thống có thể chuyển sang trạng thái tắt thay vì xóa hẳn.`,
-        );
+    function handleDisable(item) {
+        setConfirmDialog({
+            open: true,
+            title: 'Tắt sản phẩm khỏi khuyến mãi',
+            message: `Bạn có chắc muốn tắt "${item.productName}" khỏi khuyến mãi?`,
+            description: 'Sản phẩm sẽ không còn được áp dụng trong đợt khuyến mãi này, nhưng lịch sử vẫn được giữ lại.',
+            confirmText: 'Tắt áp dụng',
+            type: 'warning',
+            onConfirm: async () => {
+                await disableItem(item);
+            },
+        });
+    }
 
-        if (!ok) return;
-
+    async function disableItem(item) {
         try {
-            setDeletingId(item.id);
-
+            setSubmittingId(item.id);
             const result = await adminPromotionService.deletePromotionItem(item.id);
-
-            toast.success(result.message || 'Đã xử lý sản phẩm khuyến mãi');
+            toast.success(result.message || 'Đã tắt sản phẩm khỏi khuyến mãi');
             await loadData();
         } catch (error) {
-            toast.error(error?.message || 'Không thể xóa sản phẩm khỏi khuyến mãi');
+            toast.error(error?.message || 'Không thể cập nhật sản phẩm khuyến mãi');
         } finally {
-            setDeletingId(null);
+            setSubmittingId(null);
         }
     }
 
@@ -101,10 +126,6 @@ export default function AdminPromotionDetail() {
             active: items.filter((item) => item.isActive).length,
             sold: items.reduce((sum, item) => sum + Number(item.soldQuantity || 0), 0),
             reserved: items.reduce((sum, item) => sum + Number(item.reservedQuantity || 0), 0),
-            remaining: items.reduce((sum, item) => {
-                if (item.remainingQuantity === null) return sum;
-                return sum + Number(item.remainingQuantity || 0);
-            }, 0),
         };
     }, [items]);
 
@@ -146,14 +167,15 @@ export default function AdminPromotionDetail() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{promotion.title}</h1>
 
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Quản lý sản phẩm, phân loại, giới hạn và số lượng đã dùng trong chương trình.
+                        Quản lý sản phẩm áp dụng, giới hạn số lượng và trạng thái kích hoạt của từng sản phẩm.
                     </p>
                 </div>
 
                 <button
                     type="button"
                     onClick={openCreateForm}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                    disabled={promotion.isItemLocked}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
                 >
                     <PackagePlus size={17} />
                     Thêm sản phẩm
@@ -161,10 +183,10 @@ export default function AdminPromotionDetail() {
             </div>
 
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <InfoCard label="Ưu đãi chính" value={promotion.discountText} />
-                <InfoCard label="Trạng thái" value={promotion.computedStatusText || promotion.statusText} />
-                <InfoCard label="Bắt đầu" value={promotion.startDate || '—'} />
-                <InfoCard label="Kết thúc" value={promotion.endDate || '—'} />
+                <InfoCard label="Ưu đãi cấp chương trình" value="Thiết lập theo từng sản phẩm" />
+                <InfoCard label="Trạng thái quản trị" value={promotion.statusText} />
+                <InfoCard label="Diễn biến" value={promotion.timelineStatusText} />
+                <InfoCard label="Thời gian" value={`${promotion.startDate || '—'} - ${promotion.endDate || '—'}`} />
             </section>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -180,7 +202,9 @@ export default function AdminPromotionDetail() {
                         <h2 className="font-bold text-slate-900 dark:text-white">Sản phẩm áp dụng</h2>
 
                         <p className="mt-1 text-sm text-slate-500">
-                            Danh sách sản phẩm hoặc phân loại đang nằm trong khuyến mãi.
+                            {promotion.isItemLocked
+                                ? 'Khuyến mãi đang diễn ra nên chỉ cho phép tắt sản phẩm khỏi chương trình.'
+                                : 'Bạn có thể thêm, sửa hoặc tắt sản phẩm áp dụng trong khuyến mãi này.'}
                         </p>
                     </div>
 
@@ -213,7 +237,7 @@ export default function AdminPromotionDetail() {
                         <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                             {items.length > 0 ? (
                                 items.map((item) => (
-                                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+                                    <tr key={item.id} className={!item.isActive ? 'opacity-60' : ''}>
                                         <td className="whitespace-nowrap px-4 py-4">
                                             <div className="flex items-center gap-3">
                                                 <img
@@ -230,9 +254,7 @@ export default function AdminPromotionDetail() {
                                                         {item.productName || 'Sản phẩm'}
                                                     </p>
 
-                                                    <p className="mt-0.5 text-xs text-slate-500">
-                                                        Mã SP: {item.productId || '—'}
-                                                    </p>
+                                                    <p className="mt-0.5 text-xs text-slate-500">Mã SP: {item.productId || '—'}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -243,13 +265,11 @@ export default function AdminPromotionDetail() {
                                                     <p className="font-semibold text-slate-700 dark:text-slate-200">
                                                         {item.variantSku || `#${item.productVariantId}`}
                                                     </p>
-
                                                     <p>
                                                         {item.variantSize ? `Size ${item.variantSize}` : ''}
                                                         {item.variantSize && item.variantColor ? ' · ' : ''}
                                                         {item.variantColor || ''}
                                                     </p>
-
                                                     {item.variantPrice > 0 && <p>{formatMoney(item.variantPrice)}</p>}
                                                 </div>
                                             ) : (
@@ -262,21 +282,17 @@ export default function AdminPromotionDetail() {
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4 text-center">
-                                            {item.limitQuantity === '' ? 'Không giới hạn' : item.limitQuantity}
+                                            {item.limitQuantity === '' ? 'Theo tồn kho' : item.limitQuantity}
                                         </td>
 
-                                        <td className="whitespace-nowrap px-4 py-4 text-center">
-                                            {item.soldQuantity || 0}
-                                        </td>
+                                        <td className="whitespace-nowrap px-4 py-4 text-center">{item.soldQuantity || 0}</td>
 
                                         <td className="whitespace-nowrap px-4 py-4 text-center">
                                             {item.reservedQuantity || 0}
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4 text-center">
-                                            {item.remainingQuantity === null
-                                                ? 'Không giới hạn'
-                                                : item.remainingQuantity}
+                                            {item.remainingQuantity === null ? 'Không giới hạn' : item.remainingQuantity}
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-4">
@@ -288,7 +304,8 @@ export default function AdminPromotionDetail() {
                                                 <button
                                                     type="button"
                                                     onClick={() => openEditForm(item)}
-                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                    disabled={promotion.isItemLocked}
+                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 >
                                                     <Edit3 size={15} />
                                                     Sửa
@@ -296,16 +313,16 @@ export default function AdminPromotionDetail() {
 
                                                 <button
                                                     type="button"
-                                                    disabled={deletingId === item.id}
-                                                    onClick={() => handleDelete(item)}
-                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-500/10"
+                                                    disabled={submittingId === item.id || !item.isActive}
+                                                    onClick={() => handleDisable(item)}
+                                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-white px-3 text-sm font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/20 dark:bg-slate-950 dark:text-amber-300 dark:hover:bg-amber-500/10"
                                                 >
-                                                    {deletingId === item.id ? (
+                                                    {submittingId === item.id ? (
                                                         <Loader2 size={15} className="animate-spin" />
                                                     ) : (
-                                                        <Trash2 size={15} />
+                                                        <Power size={15} />
                                                     )}
-                                                    Xóa
+                                                    Tắt
                                                 </button>
                                             </div>
                                         </td>
@@ -338,6 +355,17 @@ export default function AdminPromotionDetail() {
                 item={formState.item}
                 onClose={closeForm}
                 onSaved={handleSavedItem}
+            />
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                description={confirmDialog.description}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onOpenChange={(next) => setConfirmDialog((prev) => ({ ...prev, open: next }))}
             />
         </div>
     );

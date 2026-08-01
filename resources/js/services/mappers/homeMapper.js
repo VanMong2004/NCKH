@@ -13,7 +13,13 @@ function normalizeImage(url) {
         return value;
     }
 
-    return `/${value.replace(/^public\//, '')}`;
+    const normalized = value.replace(/^public\//, '').replace(/^storage\//, '');
+
+    if (normalized.startsWith('uploads/')) {
+        return `/storage/${normalized}`;
+    }
+
+    return `/${normalized}`;
 }
 
 function formatCurrency(value) {

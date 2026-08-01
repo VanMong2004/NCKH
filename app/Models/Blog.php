@@ -12,17 +12,21 @@ class Blog extends Model
 
     protected $fillable = [
         'author_id',
+        'author_name',
         'title',
         'slug',
         'summary',
+        'excerpt',
         'content',
         'thumbnail',
         'status',
+        'is_published',
         'is_featured',
         'published_at',
     ];
 
     protected $casts = [
+        'is_published' => 'boolean',
         'is_featured' => 'boolean',
         'published_at' => 'datetime',
     ];

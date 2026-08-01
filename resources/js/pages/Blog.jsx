@@ -1,4 +1,4 @@
-import { ChevronRight, Home, Loader2, RefreshCcw, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, Loader2, RefreshCcw, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -12,7 +12,8 @@ import blogService from '../services/blogService';
 export default function Blog() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [blogs, setBlogs] = useState([]);
-    const [featuredPost, setFeaturedPost] = useState(null);
+    const [featuredPosts, setFeaturedPosts] = useState([]);
+    const [featuredIndex, setFeaturedIndex] = useState(0);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState(searchParams.get('keyword') || '');
     const [meta, setMeta] = useState({
@@ -50,7 +51,7 @@ export default function Blog() {
             });
 
             setBlogs(result.blogs || []);
-            setFeaturedPost(result.featuredPost || null);
+            setFeaturedPosts(result.featuredPosts || []);
             setMeta(result.meta);
         } catch (error) {
             toast.error(error?.message || 'Không thể tải danh sách tin tức');
@@ -91,12 +92,19 @@ export default function Blog() {
     }
 
     const gridPosts = useMemo(() => {
-        if (!featuredPost) {
+        if (!featuredPosts.length) {
             return blogs;
         }
 
-        return blogs.filter((item) => item.id !== featuredPost.id);
-    }, [blogs, featuredPost]);
+        const featuredIds = new Set(featuredPosts.map((item) => item.id));
+        return blogs.filter((item) => !featuredIds.has(item.id));
+    }, [blogs, featuredPosts]);
+
+    useEffect(() => {
+        setFeaturedIndex(0);
+    }, [featuredPosts.length, filters.keyword, filters.page]);
+
+    const activeFeaturedPost = featuredPosts[featuredIndex] || null;
 
     return (
         <MainLayout>
@@ -132,7 +140,7 @@ export default function Blog() {
                         <BlogEmpty keyword={filters.keyword} onReset={resetFilters} />
                     ) : (
                         <div className="mt-6 space-y-7">
-                            {featuredPost ? (
+                            {activeFeaturedPost ? (
                                 <section>
                                     <SectionHeading
                                         title="Bài viết nổi bật"
@@ -140,7 +148,15 @@ export default function Blog() {
                                     />
 
                                     <div className="mt-4">
-                                        <BlogPostCard blog={featuredPost} featured />
+                                        <FeaturedSlider
+                                            posts={featuredPosts}
+                                            activeIndex={featuredIndex}
+                                            onSelect={setFeaturedIndex}
+                                            onPrev={() =>
+                                                setFeaturedIndex((prev) => (prev - 1 + featuredPosts.length) % featuredPosts.length)
+                                            }
+                                            onNext={() => setFeaturedIndex((prev) => (prev + 1) % featuredPosts.length)}
+                                        />
                                     </div>
                                 </section>
                             ) : null}
@@ -166,6 +182,57 @@ export default function Blog() {
                 </div>
             </main>
         </MainLayout>
+    );
+}
+
+function FeaturedSlider({ posts, activeIndex, onPrev, onNext, onSelect }) {
+    const activePost = posts[activeIndex];
+
+    if (!activePost) return null;
+
+    return (
+        <div className="space-y-4">
+            <div className="overflow-hidden rounded-[1.5rem]">
+                <BlogPostCard blog={activePost} featured />
+            </div>
+
+            {posts.length > 1 ? (
+                <div className="flex items-center justify-between gap-3">
+                    <button
+                        type="button"
+                        onClick={onPrev}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+                    >
+                        <ChevronLeft size={16} />
+                        Trước
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        {posts.map((post, index) => (
+                            <button
+                                key={post.id || post.slug}
+                                type="button"
+                                onClick={() => onSelect(index)}
+                                className={[
+                                    'h-2.5 w-2.5 rounded-full transition',
+                                    index === activeIndex ? 'bg-blue-700' : 'bg-slate-300 dark:bg-slate-700',
+                                ].join(' ')}
+                                aria-label={`Chuyển đến bài nổi bật ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={onNext}
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+                    >
+                        Sau
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            ) : null}
+        </div>
     );
 }
 

@@ -30,21 +30,21 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
     const logo = navbar.logo || site.logo || '/images/logo.png';
     const mobileLogo = navbar.mobile_logo || logo;
     const siteName = navbar.title || site.name || 'CTUT Shop';
-    const tagline = navbar.subtitle || site.tagline || 'Ket noi sinh vien voi san pham thuong hieu Truong';
+    const tagline = navbar.subtitle || site.tagline || 'Kết nối sinh viên với sản phẩm thương hiệu Trường';
 
     const payload = navbar.payload || {};
-    const searchPlaceholder = payload.search_placeholder || 'Tim san pham, khuyen mai...';
-    const mobileSearchPlaceholder = payload.mobile_search_placeholder || 'Tim san pham...';
+    const searchPlaceholder = payload.search_placeholder || 'Tìm sản phẩm, khuyến mãi...';
+    const mobileSearchPlaceholder = payload.mobile_search_placeholder || 'Tìm sản phẩm...';
 
     const desktopLinks = Array.isArray(navbar.desktop_links) && navbar.desktop_links.length
         ? navbar.desktop_links
         : [
-            { label: 'Trang chu', link_url: '/' },
-            { label: 'San pham', link_url: '/shop' },
-            { label: 'Khuyen mai', link_url: '/promotions' },
-            { label: 'Tin tuc', link_url: '/blog' },
-            { label: 'Lien he', link_url: '/contact' },
-            { label: 'Chinh sach', link_url: '/policy' },
+            { label: 'Trang chủ', link_url: '/' },
+            { label: 'Sản phẩm', link_url: '/shop' },
+            { label: 'Khuyến mãi', link_url: '/promotions' },
+            { label: 'Tin tức', link_url: '/blog' },
+            { label: 'Liên hệ', link_url: '/contact' },
+            { label: 'Chính sách', link_url: '/policy' },
         ];
 
     const normalizedDesktopLinks = ensureGuestOrderLookupLink(normalizePublicLinks(filterPublicLinks(desktopLinks)));
@@ -612,8 +612,16 @@ function normalizePublicLinks(links = []) {
         if (linkUrl === '/blog') {
             return {
                 ...item,
-                label: label.toLowerCase() === 'blog' || !label ? 'Tin tuc' : label,
-                title: label.toLowerCase() === 'blog' || !label ? 'Tin tuc' : label,
+                label: label.toLowerCase() === 'blog' || !label ? 'Tin tức' : label,
+                title: label.toLowerCase() === 'blog' || !label ? 'Tin tức' : label,
+            };
+        }
+
+        if (linkUrl === '/guest-order-lookup') {
+            return {
+                ...item,
+                label: 'Tra cứu đơn',
+                title: 'Tra cứu đơn',
             };
         }
 
@@ -628,7 +636,7 @@ function ensureGuestOrderLookupLink(links = []) {
 
     const nextLinks = [...links];
     const contactIndex = nextLinks.findIndex((item) => (item?.link_url || '') === '/contact');
-    const guestLookupLink = { label: 'Tra cuu don', link_url: '/guest-order-lookup' };
+    const guestLookupLink = { label: 'Tra cứu đơn', link_url: '/guest-order-lookup' };
 
     if (contactIndex === -1) {
         nextLinks.push(guestLookupLink);

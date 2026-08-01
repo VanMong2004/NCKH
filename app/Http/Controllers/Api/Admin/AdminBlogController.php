@@ -64,7 +64,6 @@ class AdminBlogController extends Controller
                 'thumbnail' => 'nullable|string|max:500',
                 'status' => 'required|string|in:draft,published',
                 'is_featured' => 'nullable|boolean',
-                'published_at' => 'nullable|date',
             ], $this->messages());
 
             $data['author_id'] = $request->user()?->id;
@@ -93,7 +92,6 @@ class AdminBlogController extends Controller
                 'thumbnail' => 'nullable|string|max:500',
                 'status' => 'required|string|in:draft,published',
                 'is_featured' => 'nullable|boolean',
-                'published_at' => 'nullable|date',
             ], $this->messages());
 
             return response()->json($this->service->update((int) $id, $data));
@@ -156,7 +154,6 @@ class AdminBlogController extends Controller
             'thumbnail.max' => 'Duong dan anh dai dien khong duoc vuot qua 500 ky tu',
             'status.required' => 'Vui long chon trang thai bai viet',
             'status.in' => 'Trang thai bai viet khong hop le',
-            'published_at.date' => 'Ngay gio dang bai khong hop le',
         ];
     }
 

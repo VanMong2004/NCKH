@@ -30,7 +30,7 @@ class BlogController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Lay danh sach tin tuc thanh cong',
-                'featured_post' => $this->blogService->featured(),
+                'featured_posts' => $this->blogService->featured(),
                 'data' => $blogs->items(),
                 'meta' => [
                     'current_page' => $blogs->currentPage(),

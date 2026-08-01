@@ -116,6 +116,12 @@ export default function AdminBlogs() {
     async function handleDelete() {
         if (!deleteTarget) return;
 
+        if (deleteTarget.status === 'published') {
+            toast.error('Không thể xóa bài viết đang xuất bản. Vui lòng chuyển về bản nháp trước khi xóa.');
+            setDeleteTarget(null);
+            return;
+        }
+
         await adminBlogService.deleteBlog(deleteTarget.id);
         toast.success('Đã xóa bài viết');
         setDeleteTarget(null);
@@ -303,7 +309,13 @@ export default function AdminBlogs() {
                                                 >
                                                     {blog.status === 'published' ? 'Ẩn' : 'Xuất bản'}
                                                 </button>
-                                                <button type="button" onClick={() => setDeleteTarget(blog)} className={dangerButtonClass}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeleteTarget(blog)}
+                                                    className={blog.status === 'published' ? disabledButtonClass : dangerButtonClass}
+                                                    disabled={blog.status === 'published'}
+                                                    title={blog.status === 'published' ? 'Chuyển về bản nháp trước khi xóa' : 'Xóa bài viết'}
+                                                >
                                                     <Trash2 size={15} /> Xóa
                                                 </button>
                                             </div>
@@ -356,7 +368,11 @@ export default function AdminBlogs() {
                 onOpenChange={(open) => !open && setDeleteTarget(null)}
                 title="Xóa bài viết"
                 message={`Bạn muốn xóa bài viết "${deleteTarget?.title || ''}"?`}
-                description="Dữ liệu sẽ được xóa mềm để tránh ảnh hưởng dữ liệu cũ."
+                description={
+                    deleteTarget?.status === 'published'
+                        ? 'Bài viết đang xuất bản không được phép xóa. Vui lòng chuyển về bản nháp trước.'
+                        : 'Dữ liệu sẽ được xóa mềm để tránh ảnh hưởng dữ liệu cũ.'
+                }
                 confirmText="Xóa bài viết"
                 type="danger"
                 onConfirm={handleDelete}
@@ -373,7 +389,6 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
         thumbnail: '',
         status: 'draft',
         is_featured: false,
-        published_at: '',
     });
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
@@ -388,7 +403,6 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
             thumbnail: blog?.thumbnail || '',
             status: blog?.status || 'draft',
             is_featured: blog?.isFeatured ?? false,
-            published_at: blog?.publishedAt || '',
         });
     }, [open, blog]);
 
@@ -411,7 +425,6 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                 thumbnail: form.thumbnail || undefined,
                 status: form.status,
                 is_featured: Boolean(form.is_featured),
-                published_at: form.published_at || undefined,
             };
 
             if (mode === 'create') {
@@ -439,7 +452,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
         try {
             setUploadingImage(true);
             const uploaded = await adminBlogService.uploadThumbnail(file);
-            updateField('thumbnail', uploaded.url || uploaded.path || '');
+            updateField('thumbnail', uploaded.path || uploaded.url || '');
             toast.success('Tải ảnh đại diện thành công');
         } catch (error) {
             toast.error(error?.message || 'Không thể tải ảnh đại diện');
@@ -495,7 +508,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                             </select>
                         </Field>
 
-                        <Field label="Ảnh đại diện">
+                        <Field label="Ảnh blog">
                             <div className="space-y-3">
                                 <label
                                     className={[
@@ -506,20 +519,20 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                                     {form.thumbnail ? (
                                         <img
                                             src={form.thumbnail}
-                                            alt="Ảnh đại diện bài viết"
+                                            alt="Ảnh blog"
                                             className="max-h-40 rounded-lg object-cover"
                                         />
                                     ) : (
                                         <div className="flex flex-col items-center gap-2 text-slate-500">
                                             <ImagePlus size={26} />
-                                            <p className="text-sm font-medium">Chưa có ảnh đại diện</p>
+                                            <p className="text-sm font-medium">Chưa có ảnh blog</p>
                                         </div>
                                     )}
 
                                     {!readOnly ? (
                                         <>
                                             <span className="mt-3 text-sm font-semibold text-blue-700">
-                                                {uploadingImage ? 'Đang tải ảnh lên...' : 'Chọn ảnh để tải lên'}
+                                                {uploadingImage ? 'Đang tải ảnh lên...' : 'Chọn ảnh blog để tải lên'}
                                             </span>
                                             <span className="mt-1 text-xs text-slate-500">
                                                 Hỗ trợ JPG, PNG, WEBP, GIF, SVG, AVIF
@@ -554,11 +567,10 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
 
                         <Field label="Ngày giờ đăng bài">
                             <input
-                                type="datetime-local"
-                                value={form.published_at}
-                                onChange={(e) => updateField('published_at', e.target.value)}
+                                value={blog?.publishedAtDisplay || (form.status === 'published' ? 'Tự động lấy khi xuất bản' : 'Sẽ tự động lấy khi xuất bản')}
                                 className={controlClass}
-                                disabled={readOnly}
+                                disabled
+                                readOnly
                             />
                         </Field>
                     </div>
@@ -708,6 +720,8 @@ const smallButtonClass =
     'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800';
 const dangerButtonClass =
     'inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-500/10';
+const disabledButtonClass =
+    'inline-flex h-9 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm font-semibold text-slate-400 opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500';
 const pagerButtonClass =
     'h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200';
 const publishedBadgeClass =

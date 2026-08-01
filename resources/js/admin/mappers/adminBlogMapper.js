@@ -2,6 +2,26 @@ function toNumber(value) {
     return Number(value || 0);
 }
 
+function normalizeImage(url) {
+    if (!url) return '';
+
+    const value = String(url).trim();
+
+    if (!value) return '';
+
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return value;
+    }
+
+    const normalized = value.replace(/^public\//, '').replace(/^storage\//, '');
+
+    if (normalized.startsWith('uploads/')) {
+        return `/storage/${normalized}`;
+    }
+
+    return `/${normalized}`;
+}
+
 export function mapAdminBlog(item = {}) {
     return {
         id: item.id,
@@ -9,7 +29,7 @@ export function mapAdminBlog(item = {}) {
         slug: item.slug || '',
         summary: item.summary || '',
         content: item.content || '',
-        thumbnail: item.thumbnail || '',
+        thumbnail: normalizeImage(item.thumbnail),
         authorId: item.author_id || null,
         authorName: item.author_name || 'Quan tri CTUT Store',
         status: item.status || 'draft',

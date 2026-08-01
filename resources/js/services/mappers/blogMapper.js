@@ -9,7 +9,13 @@ function normalizeImage(url) {
         return value;
     }
 
-    return `/${value.replace(/^public\//, '')}`;
+    const normalized = value.replace(/^public\//, '').replace(/^storage\//, '');
+
+    if (normalized.startsWith('uploads/')) {
+        return `/storage/${normalized}`;
+    }
+
+    return `/${normalized}`;
 }
 
 export function mapBlog(item = {}) {
@@ -30,10 +36,16 @@ export function mapBlog(item = {}) {
 
 export function mapBlogListResponse(response = {}) {
     const rawBlogs = Array.isArray(response.data) ? response.data : [];
+    const featuredRaw = Array.isArray(response.featured_posts)
+        ? response.featured_posts
+        : response.featured_post
+            ? [response.featured_post]
+            : [];
 
     return {
         blogs: rawBlogs.map(mapBlog),
-        featuredPost: response.featured_post ? mapBlog(response.featured_post) : null,
+        featuredPosts: featuredRaw.map(mapBlog),
+        featuredPost: featuredRaw.length > 0 ? mapBlog(featuredRaw[0]) : null,
         meta: {
             currentPage: Number(response.meta?.current_page || 1),
             lastPage: Number(response.meta?.last_page || 1),

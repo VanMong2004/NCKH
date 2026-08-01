@@ -2,7 +2,7 @@ import { FcGoogle } from 'react-icons/fc';
 
 export default function GoogleButton({
     disabled = true,
-    message = 'Đăng nhập Google sẽ được tích hợp sau khi hệ thống có tên miền phù hợp.',
+    message = 'Đăng nhập Google sẽ được tích hợp sau.',
 }) {
     return (
         <div className="space-y-2">

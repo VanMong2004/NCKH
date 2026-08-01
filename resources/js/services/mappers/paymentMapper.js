@@ -43,66 +43,46 @@ export function paymentStatusClass(status) {
 export function mapPayment(item = {}) {
     return {
         id: item.id,
-
         orderId: item.order_id,
         orderCode: item.order_code || item.order?.order_code || '',
-
         method: item.method || '',
         methodText: paymentMethodText(item.method),
-
         status: item.status || '',
         statusText: paymentStatusText(item.status),
         statusClass: paymentStatusClass(item.status),
-
         amount: toNumber(item.amount),
-
         transactionId: item.transaction_id || '',
-
         createdAt: item.created_at || '',
         updatedAt: item.updated_at || '',
-
         raw: item,
     };
 }
 
 export function mapCreatePaymentResponse(response = {}) {
     const data = response.data || {};
-
     return {
         success: Boolean(response.success),
         message: response.message || '',
-
         paymentId: data.payment_id,
         orderId: data.order_id,
-
         transactionId: data.transaction_id || '',
-
         redirectUrl: data.redirect_url || '',
         paymentUrl: data.redirect_url || '',
-
         raw: data,
     };
 }
 
 export function mapPaymentHistoryResponse(response = {}) {
-    const raw = Array.isArray(response.data?.data)
-        ? response.data.data
-        : Array.isArray(response.data)
-          ? response.data
-          : [];
-
+    const raw = Array.isArray(response.data?.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
     return {
         success: Boolean(response.success),
         message: response.message || '',
-
         transactions: raw.map(mapPayment),
-
         meta: {
             currentPage: toNumber(response.data?.current_page || response.meta?.current_page || 1),
             lastPage: toNumber(response.data?.last_page || response.meta?.last_page || 1),
             total: toNumber(response.data?.total || response.meta?.total || raw.length),
         },
-
         raw: response,
     };
 }
@@ -113,6 +93,5 @@ export function mapPaymentResponse(response = {}) {
 
 export function mapPaymentListResponse(response = {}) {
     const raw = Array.isArray(response.data) ? response.data : [];
-
     return raw.map(mapPayment);
 }

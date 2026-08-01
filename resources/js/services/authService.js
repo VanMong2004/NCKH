@@ -8,6 +8,11 @@ const authService = {
         return mapAuthResponse(res.data);
     },
 
+    async google(payload) {
+        const res = await api.post('/auth/google', payload);
+        return mapAuthResponse(res.data);
+    },
+
     async register(payload) {
         const res = await api.post('/auth/register', payload);
         return mapAuthResponse(res.data);

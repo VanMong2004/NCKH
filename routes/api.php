@@ -55,6 +55,7 @@ use App\Http\Controllers\Api\N8n\N8nSocialCallbackController;
 
 // PUBLIC ROUTES
 Route::prefix('auth')->middleware('throttle:auth')->group(function () {
+    Route::post('/google', [AuthController::class, 'google']);
     Route::post('/login', [AuthController::class, 'login']); // Đăng nhập
     Route::post('/register', [AuthController::class, 'register']); // Đăng ký
     Route::post('/forgot-password', [PasswordResetController::class, 'forgot']); // Quên mật khẩu (gửi email chứa link reset password)

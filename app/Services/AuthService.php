@@ -2,28 +2,30 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 use App\Models\Cart;
 use App\Models\CartItem;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Exception;
 use RuntimeException;
 
 class AuthService
 {
     protected $defaultAvatar = 'data:image/png;base64,DEFAULT_AVATAR_BASE64';
 
-    // LOGIN
     public function login(array $data)
     {
         $user = User::where('email', $data['email'])->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
-            throw new RuntimeException('Email hoặc mật khẩu không đúng', 401);
+        if (!$user) {
+            throw new RuntimeException('Tài khoản không tồn tại, vui lòng tạo tài khoản mới.', 404);
+        }
+
+        if (!Hash::check($data['password'], $user->password)) {
+            throw new RuntimeException('Sai email hoặc mật khẩu.', 401);
         }
 
         if ($user->locked_at) {
@@ -38,32 +40,64 @@ class AuthService
             $data['guest_token'] ?? null
         );
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return [
-            'success' => true,
-            'message' => 'Đăng nhập thành công',
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'mssv' => $user->mssv,
-                    'role' => $user->role,
-                    'avatar' => $user->avatar_url,
-                ],
-                'token' => $token,
-            ]
-        ];
+        return $this->buildAuthResponse($user, 'Đăng nhập thành công');
     }
 
-    // REGISTER
+    public function loginWithGoogle(array $data)
+    {
+        $googleProfile = $this->verifyGoogleCredential($data['credential']);
+        $email = Str::lower(trim($googleProfile['email']));
+        $googleId = (string) $googleProfile['sub'];
+
+        $user = User::query()
+            ->where('google_id', $googleId)
+            ->orWhere('email', $email)
+            ->first();
+
+        if ($user && $user->locked_at) {
+            throw new RuntimeException(
+                'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+                403
+            );
+        }
+
+        if (!$user) {
+            $user = User::create([
+                'name' => trim($googleProfile['name'] ?? 'Người dùng Google'),
+                'email' => $email,
+                'password' => Hash::make(Str::random(40)),
+                'google_id' => $googleId,
+                'role' => 'user',
+                'avatar' => $googleProfile['picture'] ?? $this->getDefaultAvatar(),
+            ]);
+        } else {
+            $user->google_id = $user->google_id ?: $googleId;
+
+            if (!$user->avatar && !empty($googleProfile['picture'])) {
+                $user->avatar = $googleProfile['picture'];
+            }
+
+            if (!$user->name && !empty($googleProfile['name'])) {
+                $user->name = trim($googleProfile['name']);
+            }
+        }
+
+        if (!$user->email_verified_at) {
+            $user->email_verified_at = now();
+        }
+
+        $user->save();
+
+        $this->mergeGuestCart(
+            $user,
+            $data['guest_token'] ?? null
+        );
+
+        return $this->buildAuthResponse($user, 'Đăng nhập Google thành công');
+    }
+
     public function register(array $data)
     {
- 
-        // $avatar = $data['avatar'] ?? $this->getDefaultAvatar();
-
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
@@ -73,26 +107,9 @@ class AuthService
             'avatar' => $this->getDefaultAvatar(),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return [
-            'success' => true,
-            'message' => 'Đăng ký thành công',
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'role' => $user->role,
-                    'avatar' => $user->avatar_url,
-                ],
-                'token' => $token,
-            ]
-        ];
+        return $this->buildAuthResponse($user, 'Đăng ký thành công');
     }
 
-    // ME
     public function me($user)
     {
         if (!$user) {
@@ -113,7 +130,6 @@ class AuthService
         ];
     }
 
-    // UPDATE PROFILE
     public function updateProfile($user, array $data, Request $request)
     {
         if (!$user) {
@@ -137,14 +153,14 @@ class AuthService
         }
 
         if ($request->hasFile('avatar')) {
-
-            // Xóa avatar cũ nếu không phải avatar mặc định
             if (
-                $user->avatar &&
-                !in_array($user->avatar, [
+                $user->avatar
+                && !in_array($user->avatar, [
                     '/images/user/default_avatar.png',
                     '/images/users/default_avatar.png',
                 ], true)
+                && !str_starts_with($user->avatar, 'http://')
+                && !str_starts_with($user->avatar, 'https://')
             ) {
                 $oldPath = public_path(ltrim($user->avatar, '/'));
 
@@ -154,7 +170,6 @@ class AuthService
             }
 
             $file = $request->file('avatar');
-
             $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
 
             $file->move(
@@ -178,11 +193,10 @@ class AuthService
                 'mssv' => $user->mssv,
                 'role' => $user->role,
                 'avatar' => $user->avatar_url,
-            ]
+            ],
         ];
     }
 
-    // REFRESH TOKEN
     public function refreshToken($user)
     {
         if (!$user) {
@@ -197,12 +211,11 @@ class AuthService
             'success' => true,
             'message' => 'Refresh token thành công',
             'data' => [
-                'token' => $newToken
-            ]
+                'token' => $newToken,
+            ],
         ];
     }
 
-    // LOGOUT
     public function logout($user)
     {
         if (!$user) {
@@ -217,13 +230,13 @@ class AuthService
         ];
     }
 
-    private function mergeGuestCart(User $user, ?string $guestToken): void {
+    private function mergeGuestCart(User $user, ?string $guestToken): void
+    {
         if (!$guestToken) {
             return;
         }
 
         DB::transaction(function () use ($user, $guestToken) {
-
             $guestCart = Cart::with('items')
                 ->where('guest_token', $guestToken)
                 ->where('status', 'active')
@@ -239,19 +252,15 @@ class AuthService
             ]);
 
             foreach ($guestCart->items as $guestItem) {
-
                 $userItem = CartItem::where([
                     'cart_id' => $userCart->id,
                     'product_variant_id' => $guestItem->product_variant_id,
                 ])->first();
 
                 if ($userItem) {
-
                     $userItem->quantity += $guestItem->quantity;
                     $userItem->save();
-
                 } else {
-
                     CartItem::create([
                         'cart_id' => $userCart->id,
                         'product_variant_id' => $guestItem->product_variant_id,
@@ -260,30 +269,70 @@ class AuthService
                 }
             }
 
-            CartItem::where('cart_id', $guestCart->id)
-                ->delete();
-
+            CartItem::where('cart_id', $guestCart->id)->delete();
             $guestCart->delete();
         });
     }
 
-    // DEFAULT AVATAR
-    // private function getDefaultAvatar()
-    // {
-    //     $path = public_path('images/user/default_avatar.png');
-
-    //     if (!file_exists($path)) {
-    //         return null;
-    //     }
-
-    //     $image = base64_encode(file_get_contents($path));
-
-    //     return 'data:image/png;base64,' . $image;
-    // }
     private function getDefaultAvatar(): ?string
     {
         return file_exists(public_path('images/users/default_avatar.png'))
             ? '/images/users/default_avatar.png'
             : null;
+    }
+
+    private function verifyGoogleCredential(string $credential): array
+    {
+        $clientId = config('services.google.client_id');
+
+        if (!$clientId) {
+            throw new RuntimeException('Chức năng đăng nhập Google chưa được cấu hình.', 500);
+        }
+
+        $response = Http::timeout(10)
+            ->acceptJson()
+            ->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $credential,
+            ]);
+
+        if (!$response->successful()) {
+            throw new RuntimeException('Không thể xác thực tài khoản Google. Vui lòng thử lại.', 401);
+        }
+
+        $payload = $response->json();
+        $emailVerified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if (
+            empty($payload['sub'])
+            || empty($payload['email'])
+            || !$emailVerified
+            || ($payload['aud'] ?? null) !== $clientId
+        ) {
+            throw new RuntimeException('Thông tin tài khoản Google không hợp lệ.', 401);
+        }
+
+        return $payload;
+    }
+
+    private function buildAuthResponse(User $user, string $message): array
+    {
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return [
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'mssv' => $user->mssv,
+                    'role' => $user->role,
+                    'avatar' => $user->avatar_url,
+                ],
+                'token' => $token,
+            ],
+        ];
     }
 }

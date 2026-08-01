@@ -24,7 +24,6 @@ export default function RegisterForm() {
         password: '',
         password_confirmation: '',
     });
-
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
@@ -111,7 +110,9 @@ export default function RegisterForm() {
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900 md:p-10">
             <h1 className="text-3xl font-extrabold text-blue-950 dark:text-white">Tạo tài khoản</h1>
 
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Đăng ký để mua hàng và theo dõi đơn hàng.</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Đăng ký để mua hàng và theo dõi đơn hàng.
+            </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <AuthInput
@@ -179,9 +180,7 @@ export default function RegisterForm() {
                     Đã có tài khoản?
                     <Link
                         to="/login"
-                        state={{
-                            from,
-                        }}
+                        state={{ from }}
                         className="ml-2 font-bold text-blue-700 dark:text-blue-300"
                     >
                         Đăng nhập

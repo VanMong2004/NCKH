@@ -57,6 +57,22 @@ export function AuthProvider({ children }) {
         return response;
     }
 
+    async function loginWithGoogle(credential) {
+        const response = await authService.google({
+            credential,
+            guest_token: guestTokenService.peekToken(),
+        });
+
+        const token = response.data.token;
+        const user = response.data.user;
+
+        localStorage.setItem(TOKEN_KEY, token);
+
+        setUser(user);
+
+        return response;
+    }
+
     async function register(payload) {
         const response = await authService.register({
             ...payload,
@@ -103,6 +119,7 @@ export function AuthProvider({ children }) {
                 setUser,
 
                 login,
+                loginWithGoogle,
                 register,
                 logout,
                 refreshUser,

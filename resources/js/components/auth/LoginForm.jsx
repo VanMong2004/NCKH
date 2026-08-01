@@ -28,7 +28,6 @@ export default function LoginForm() {
         email: '',
         password: '',
     });
-
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
@@ -130,7 +129,9 @@ export default function LoginForm() {
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900 md:p-10">
             <h1 className="text-3xl font-extrabold text-blue-950 dark:text-white">Đăng nhập</h1>
 
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Chào mừng bạn quay lại hệ thống.</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Chào mừng bạn quay lại hệ thống.
+            </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <AuthInput
@@ -180,9 +181,7 @@ export default function LoginForm() {
                     Chưa có tài khoản?
                     <Link
                         to="/register"
-                        state={{
-                            from,
-                        }}
+                        state={{ from }}
                         className="ml-2 font-bold text-blue-700 dark:text-blue-300"
                     >
                         Đăng ký

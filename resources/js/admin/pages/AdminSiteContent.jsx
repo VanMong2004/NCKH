@@ -283,7 +283,7 @@ function HeaderPreview({ component, onEdit, onQuickEdit }) {
                             <span>Trang chủ</span>
                             <span>Sản phẩm</span>
                             <span>Khuyến mãi</span>
-                            <span>Blog</span>
+                            <span>Tin tức</span>
                         </>
                     )}
                 </div>
@@ -446,7 +446,7 @@ function FooterPreview({ component, onEdit, onQuickEdit }) {
                                 <>
                                     <p>Trang chủ</p>
                                     <p>Sản phẩm</p>
-                                    <p>Blog</p>
+                                    <p>Tin tức</p>
                                 </>
                             )}
                         </div>

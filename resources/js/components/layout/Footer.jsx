@@ -45,9 +45,9 @@ export default function Footer({ footer }) {
                         columns.map((column) => (
                             <FooterColumn
                                 key={column.id || column.item_key}
-                                title={column.title || column.label}
+                                title={normalizeUserLabel(column.title || column.label, column.link_url || column.linkUrl || '')}
                                 links={(column.links || []).map((item) => ({
-                                    label: item.label || item.title,
+                                    label: normalizeUserLabel(item.label || item.title, item.link_url || item.linkUrl || ''),
                                     to: item.link_url || '/',
                                 }))}
                             />
@@ -60,7 +60,7 @@ export default function Footer({ footer }) {
                                     { label: 'Trang chủ', to: '/' },
                                     { label: 'Sản phẩm', to: '/shop' },
                                     { label: 'Khuyến mãi', to: '/promotions' },
-                                    { label: 'Blog', to: '/blog' },
+                                    { label: 'Tin tức', to: '/blog' },
                                 ]}
                             />
 
@@ -234,4 +234,15 @@ function resolveContactHref(item = {}) {
     }
 
     return '';
+}
+
+function normalizeUserLabel(label, linkUrl = '') {
+    const text = String(label || '').trim();
+    const url = String(linkUrl || '').trim().toLowerCase();
+
+    if (url === '/blog' || text.toLowerCase() === 'blog') {
+        return 'Tin tức';
+    }
+
+    return text;
 }

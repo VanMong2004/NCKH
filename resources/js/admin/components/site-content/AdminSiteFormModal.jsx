@@ -1657,7 +1657,7 @@ function getItemsConfig(componentKey) {
             description: 'Quản lý các link menu hiển thị trên thanh điều hướng desktop.',
             addText: 'Thêm link menu',
             emptyTitle: 'Chưa có link menu',
-            emptyDescription: 'Thêm các link như Trang chủ, Cửa hàng, Blog, Liên hệ...',
+            emptyDescription: 'Thêm các link như Trang chủ, Cửa hàng, Tin tức, Liên hệ...',
         };
     }
 

@@ -25,7 +25,7 @@ const groups = [
         items: [
             { label: 'San pham', to: '/admin/products', icon: Package },
             { label: 'Danh muc & Khoa', to: '/admin/catalogs', icon: Building2 },
-            { label: 'Blog', to: '/admin/blogs', icon: FileText },
+            { label: 'Tin tức', to: '/admin/blogs', icon: FileText },
             { label: 'Chinh sach', to: '/admin/policies', icon: FileText },
             { label: 'Khuyen mai', to: '/admin/promotions', icon: BadgePercent },
             { label: 'Don hang', to: '/admin/orders', icon: ShoppingCart },

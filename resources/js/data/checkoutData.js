@@ -36,32 +36,20 @@ export const checkoutItems = [
 export const paymentMethods = [
     {
         id: 'cod',
-        name: 'Cash on Delivery (COD)',
-        desc: 'Pay when you receive the goods',
-        icon: '💵',
+        name: 'Thanh toán khi nhận hàng',
+        desc: 'Thanh toán khi bạn nhận được sản phẩm',
+        icon: 'COD',
     },
     {
-        id: 'bank',
-        name: 'Bank Transfer',
-        desc: 'Transfer directly to our bank account',
-        icon: '🏦',
-    },
-    {
-        id: 'momo',
-        name: 'MoMo',
-        desc: 'Pay securely with MoMo wallet',
-        icon: '🟪',
-    },
-    {
-        id: 'vnpay',
-        name: 'VNPay',
-        desc: 'Pay with VNPay QR or card',
-        icon: '💳',
+        id: 'mock_bank',
+        name: 'Giả lập ngân hàng',
+        desc: 'Thanh toán qua cổng giả lập ngân hàng của hệ thống',
+        icon: 'BANK',
     },
     {
         id: 'free',
-        name: 'Free',
-        desc: 'Free order / 0đ payment',
+        name: 'Miễn phí',
+        desc: 'Đơn hàng không phát sinh thanh toán',
         icon: 'FREE',
     },
 ];

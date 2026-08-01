@@ -48,7 +48,7 @@ export function getPageKeyText(pageKey) {
         shop: 'Trang sản phẩm',
         promotion: 'Trang khuyến mãi',
         promotions: 'Trang khuyến mãi',
-        blog: 'Blog',
+        blog: 'Tin tức',
         faq: 'FAQ',
         about: 'Giới thiệu',
         contact: 'Liên hệ',

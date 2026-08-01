@@ -6,7 +6,7 @@ import SectionHeader from '../ui/SectionHeader';
 export default function NewsList({ news = [] }) {
     return (
         <section className="mt-6 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <SectionHeader title="Tin tức & sự kiện" to="/blog" actionText="Xem Blog" />
+            <SectionHeader title="Tin tức & sự kiện" to="/blog" actionText="Xem tin tức" />
 
             {news.length > 0 ? (
                 <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">

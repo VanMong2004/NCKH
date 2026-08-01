@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const pageTitles = [
     { path: '/admin/products', title: 'San pham' },
     { path: '/admin/catalogs', title: 'Danh muc & Khoa' },
-    { path: '/admin/blogs', title: 'Blog' },
+    { path: '/admin/blogs', title: 'Tin tức' },
     { path: '/admin/policies', title: 'Chinh sach' },
     { path: '/admin/promotions', title: 'Khuyen mai' },
     { path: '/admin/orders', title: 'Don hang' },

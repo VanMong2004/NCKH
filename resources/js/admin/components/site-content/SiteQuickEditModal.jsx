@@ -446,7 +446,7 @@ function QuickPreview({ type, form }) {
                     <span>Trang chủ</span>
                     <span>Sản phẩm</span>
                     <span>Khuyến mãi</span>
-                    <span>Blog</span>
+                    <span>Tin tức</span>
                 </div>
             </div>
         );

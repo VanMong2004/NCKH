@@ -77,7 +77,7 @@ export default function AccountOrderDetail() {
 
             setOrder(result);
         } catch (error) {
-            toast.error(error.message || 'Không thể tải chi tiết đơn hàng');
+            toast.error(error.message || 'Không thể tải thông tin đơn hàng');
         } finally {
             setLoading(false);
         }
@@ -89,8 +89,8 @@ export default function AccountOrderDetail() {
         setConfirmDialog({
             open: true,
             title: 'Xác nhận hủy đơn hàng',
-            message: `Bạn có chắc muốn hủy đơn "${order.code}"?`,
-            description: 'Đơn hàng sau khi hủy sẽ không thể khôi phục lại từ trang người dùng.',
+            message: `Bạn có chắc muốn hủy đơn hàng "${order.code}"?`,
+            description: 'Đơn hàng sau khi hủy sẽ không thể khôi phục và có thể ảnh hưởng tới trạng thái thanh toán tương ứng.',
             confirmText: 'Hủy đơn hàng',
             type: 'danger',
             onConfirm: async () => {
@@ -119,7 +119,7 @@ export default function AccountOrderDetail() {
         const method = order.payment?.method || order.raw?.payment_method || '';
 
         if (method !== 'mock_bank') {
-            toast.warning('Phương thức thanh toán này không hỗ trợ thanh toán lại');
+            toast.warning('Phương thức thanh toán này không hỗ trợ tạo thanh toán');
             return;
         }
 
@@ -171,7 +171,7 @@ export default function AccountOrderDetail() {
     async function openVatInvoiceModal() {
         if (!order?.id) return;
         if (!isOrderPaid(order)) {
-            toast.warning('Chỉ có thể yêu cầu hóa đơn đỏ cho đơn hàng đã thanh toán.');
+            toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn đỏ');
             return;
         }
 
@@ -277,8 +277,8 @@ export default function AccountOrderDetail() {
                                 onClick={handlePayAgain}
                                 className="rounded-xl bg-blue-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700"
                             >
-                                {paying ? 'Đang tạo thanh toán...' : 'Thanh toán lại'}
-                            </button>
+                                {paying ? 'Đang tạo thanh toán...' : 'Thanh toán'}
+                        </button>
                         )}
 
                         {canCancel && (
@@ -417,9 +417,9 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                                     {(variant?.sku || variant?.size || variant?.color) && (
                                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                             {variant?.sku ? `SKU: ${variant.sku}` : ''}
-                                            {variant?.sku && (variant?.size || variant?.color) ? ' · ' : ''}
+                                            {variant?.sku && (variant?.size || variant?.color) ? ' • ' : ''}
                                             {variant?.size ? `Size ${variant.size}` : ''}
-                                            {variant?.size && variant?.color ? ' · ' : ''}
+                                            {variant?.size && variant?.color ? ' • ' : ''}
                                             {variant?.color || ''}
                                         </p>
                                     )}
@@ -441,7 +441,7 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                                             </span>
                                         )}
 
-                                        <span className="text-slate-500 dark:text-slate-400">× {item.quantity}</span>
+                                        <span className="text-slate-500 dark:text-slate-400">x {item.quantity}</span>
                                     </div>
                                 </div>
                             </div>
@@ -454,7 +454,7 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
 
                                     {Number(item.discountAmount || 0) > 0 && (
                                         <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                            Giảm{' '}
+                                            Giảm {formatMoney(Number(item.discountAmount || 0) * Number(item.quantity || 0))}
                                             {formatMoney(Number(item.discountAmount || 0) * Number(item.quantity || 0))}
                                         </p>
                                     )}
@@ -552,7 +552,7 @@ function ReviewModal({ order, item, onClose, onSubmitted }) {
         const files = Array.from(e.target.files || []);
 
         if (files.length + form.images.length > 5) {
-            toast.warning('Chỉ được tải tối đa 5 ảnh');
+            toast.warning('Chỉ được tải lên tối đa 5 ảnh');
             return;
         }
 
@@ -599,7 +599,7 @@ function ReviewModal({ order, item, onClose, onSubmitted }) {
                 toast.success('Đã cập nhật đánh giá');
             } else {
                 await reviewService.createReview(payload);
-                toast.success('Đánh giá sản phẩm thành công');
+                toast.success('Đã gửi đánh giá sản phẩm');
             }
 
             await onSubmitted();
@@ -815,7 +815,7 @@ function PaymentCard({ order }) {
                         </span>
                     </div>
 
-                    <InfoBox label="Phương thức" value={order.payment.methodText} />
+                    <InfoBox label="Phương thức thanh toán" value={order.payment.methodText} />
                     <InfoBox label="Số tiền" value={formatMoney(order.payment.amount)} />
                     <InfoBox label="Mã giao dịch" value={order.payment.transactionId} />
                     <InfoBox label="Thời gian tạo" value={formatDate(order.payment.createdAt)} />
@@ -878,6 +878,12 @@ function TimelineCard({ order }) {
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                     {step.time || 'Đang chờ cập nhật'}
                                 </p>
+
+                                {step.note ? (
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                        {step.note}
+                                    </p>
+                                ) : null}
                             </div>
                         </div>
                     ))}
@@ -891,10 +897,10 @@ function PickupCard({ order }) {
     return (
         <Card title="Hướng dẫn nhận hàng" icon={MapPin}>
             <Guide icon={MapPin}>
-                {order.pickup?.location || 'Nhận hàng tại địa chỉ đã đăng ký hoặc theo thông báo từ cửa hàng.'}
+                {order.pickup?.location || 'Nhận hàng tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo thông báo từ cửa hàng.'}
             </Guide>
 
-            <Guide icon={Info}>{order.pickup?.instruction || 'Vui lòng giữ lại mã đơn hàng khi nhận sản phẩm.'}</Guide>
+            <Guide icon={Info}>{order.pickup?.instruction || 'Vui lòng giữ mã đơn hàng khi nhận sản phẩm.'}</Guide>
 
             <Guide icon={Phone}>Giữ liên lạc để nhân viên xác nhận khi cần.</Guide>
         </Card>

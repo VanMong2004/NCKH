@@ -215,12 +215,16 @@ class GuestOrderService
             ? optional($payment?->updated_at)->format('d/m/Y H:i')
             : null;
 
+        $isExpired = in_array($order->cancel_reason, ['expired', 'payment_timeout'], true);
+        $isCancelled = $order->status === 'cancelled';
+
         $steps = [
             [
                 'key' => 'created',
                 'label' => 'Đã tạo đơn',
                 'status' => true,
                 'time' => optional($order->created_at)->format('d/m/Y H:i'),
+                'note' => 'Hệ thống đã ghi nhận đơn hàng',
             ],
         ];
 
@@ -230,6 +234,13 @@ class GuestOrderService
                 'label' => 'Thanh toán',
                 'status' => $payment?->status === 'paid',
                 'time' => $paidTime,
+                'note' => match ($payment?->status) {
+                    'unpaid' => 'Đang chờ thanh toán',
+                    'failed' => 'Thanh toán chưa thành công',
+                    'paid' => 'Đã thanh toán thành công',
+                    'refunded' => 'Đã hoàn tiền',
+                    default => 'Chưa có giao dịch hoàn tất',
+                },
             ];
         }
 
@@ -238,6 +249,7 @@ class GuestOrderService
             'label' => 'Đang chuẩn bị',
             'status' => in_array($order->status, ['processing', 'awaiting_receipt', 'completed'], true),
             'time' => $processingTime,
+            'note' => 'Đơn hàng đã được tiếp nhận và bắt đầu xử lý',
         ];
 
         $steps[] = [
@@ -247,6 +259,9 @@ class GuestOrderService
                 : 'Đang giao',
             'status' => in_array($order->status, ['awaiting_receipt', 'completed'], true),
             'time' => $awaitingReceiptTime,
+            'note' => $order->fulfillment_method === 'pickup'
+                ? 'Đơn hàng đã sẵn sàng để nhận tại phòng'
+                : 'Đơn hàng đang được giao đến người nhận',
         ];
 
         $steps[] = [
@@ -254,14 +269,18 @@ class GuestOrderService
             'label' => 'Hoàn thành',
             'status' => $order->status === 'completed',
             'time' => $completedTime,
+            'note' => 'Đơn hàng đã hoàn tất',
         ];
 
-        if ($order->status === 'cancelled') {
+        if ($isCancelled) {
             $steps[] = [
                 'key' => 'cancelled',
-                'label' => 'Đã hủy',
+                'label' => $isExpired ? 'Đã hết hạn' : 'Đã hủy',
                 'status' => true,
                 'time' => $cancelledTime ?: optional($order->updated_at)->format('d/m/Y H:i'),
+                'note' => $isExpired
+                    ? 'Đơn hàng đã hết hạn thanh toán'
+                    : 'Đơn hàng đã bị hủy',
             ];
         }
 

@@ -180,9 +180,11 @@ function mapPickup(pickup = {}) {
 
 function mapTimelineItem(item = {}) {
     return {
+        key: item.key || '',
         label: item.label || '',
         done: Boolean(item.status),
         time: item.time || '',
+        note: item.note || '',
         raw: item,
     };
 }

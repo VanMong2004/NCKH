@@ -133,7 +133,7 @@ class OrderService
                 'changed_by' => $user?->id,
                 'old_status' => null,
                 'new_status' => 'pending',
-                'note' => 'Đơn hàng được tạo từ checkout',
+                'note' => 'Đơn hàng được tạo từ đặt hàng.',
             ]);
 
             if ($order->user_id) {

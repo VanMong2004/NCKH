@@ -77,7 +77,7 @@ export default function OrderSuccess() {
     async function openVatInvoiceModal() {
         if (!order) return;
         if (!isOrderPaid(order)) {
-            toast.warning('Chỉ có thể yêu cầu hóa đơn đỏ cho đơn hàng đã thanh toán.');
+            toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn đỏ');
             return;
         }
 
@@ -100,7 +100,7 @@ export default function OrderSuccess() {
             setVatInvoiceRequest(result);
             setVatInvoiceModalOpen(true);
         } catch (err) {
-            toast.error(err.message || 'Không thể kiểm tra yêu cầu hóa đơn đỏ');
+            toast.error(err.message || 'Không thể tải yêu cầu hóa đơn đỏ');
         }
     }
 
@@ -113,7 +113,7 @@ export default function OrderSuccess() {
             if (user) {
                 const result = await orderService.createVatInvoiceRequest(order.id, payload);
                 setVatInvoiceRequest(result);
-                toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
+                toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.');
                 return;
             }
 
@@ -125,7 +125,7 @@ export default function OrderSuccess() {
                 guestToken: savedGuestOrder.guestToken,
             });
 
-            setVatInvoiceRequest(result);
+            toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.');
             toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
         } catch (err) {
             toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
@@ -140,7 +140,7 @@ export default function OrderSuccess() {
         const method = order.payment?.method || order.raw?.payment_method || '';
 
         if (method !== 'mock_bank') {
-            toast.warning('Phương thức thanh toán này không hỗ trợ thanh toán lại');
+            toast.warning('Phương thức thanh toán này không hỗ trợ thao tác này.');
             return;
         }
 
@@ -183,10 +183,10 @@ export default function OrderSuccess() {
                 return;
             }
 
-            toast.success(payment.message || 'Đã tạo thanh toán');
+            toast.success(payment.message || 'Tạo thanh toán thành công.');
             loadOrder();
         } catch (err) {
-            toast.error(err.message || 'Không thể tạo thanh toán');
+            toast.error(err.message || 'Không thể tạo thanh toán.');
         } finally {
             setPaying(false);
         }
@@ -325,7 +325,7 @@ export default function OrderSuccess() {
 
                                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                                     {item.variant?.size && <>Size: {item.variant.size}</>}
-                                                    {item.variant?.size && item.variant?.color && ' · '}
+                                                    {item.variant?.size && item.variant?.color && ' • '}
                                                     {item.variant?.color && <>Màu: {item.variant.color}</>}
                                                 </p>
 
@@ -337,7 +337,7 @@ export default function OrderSuccess() {
 
                                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                                                     <span className="text-slate-500 dark:text-slate-400">
-                                                        SL: {item.quantity} · {formatMoney(finalPrice)}
+                                                        SL: {item.quantity} • {formatMoney(finalPrice)}
                                                     </span>
 
                                                     {hasDiscount && (
@@ -397,6 +397,12 @@ export default function OrderSuccess() {
                                             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                                 {step.time || 'Đang chờ cập nhật'}
                                             </p>
+
+                                            {step.note ? (
+                                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                    {step.note}
+                                                </p>
+                                            ) : null}
                                         </div>
                                     </div>
                                 ))}
@@ -405,8 +411,7 @@ export default function OrderSuccess() {
 
                         <Card title="Hướng dẫn nhận hàng">
                             <Guide icon={MapPin}>
-                                {order.pickup?.location ||
-                                    'Nhận hàng tại điểm giao của cửa hàng hoặc theo địa chỉ đã đăng ký.'}
+                                {order.pickup?.location || 'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
                             </Guide>
 
                             <Guide icon={Info}>
@@ -435,10 +440,9 @@ export default function OrderSuccess() {
                             onClick={handlePayAgain}
                             className="rounded-xl bg-blue-950 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
                         >
-                            {paying ? 'Đang tạo thanh toán...' : 'Thanh toán lại'}
+                            {paying ? 'Đang tạo thanh toán...' : 'Thanh toán'}
                         </button>
                     )}
-
                     <button
                         type="button"
                         disabled={!canRequestVatInvoice}
@@ -477,7 +481,7 @@ function getHeroState(order, paymentStatus) {
         return {
             icon: XCircle,
             title: 'Thanh toán chưa thành công',
-            description: 'Đơn hàng của bạn chưa được thanh toán thành công. Vui lòng kiểm tra lại trong mục đơn hàng.',
+            description: 'Đơn hàng của bạn chưa được thanh toán thành công. Vui lòng kiểm tra trong mục đơn hàng.',
             wrapperClass: 'border-red-100 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30',
             iconClass: 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400',
             titleClass: 'text-red-700 dark:text-red-400',
@@ -488,7 +492,7 @@ function getHeroState(order, paymentStatus) {
         return {
             icon: CheckCircle2,
             title: 'Thanh toán thành công',
-            description: 'Hệ thống đã ghi nhận thanh toán cho đơn hàng của bạn.',
+            description: 'Thanh toán cho đơn hàng thành công.',
             wrapperClass: 'border-emerald-100 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30',
             iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
             titleClass: 'text-emerald-700 dark:text-emerald-400',
@@ -499,7 +503,7 @@ function getHeroState(order, paymentStatus) {
         return {
             icon: Clock,
             title: 'Đặt hàng thành công',
-            description: 'Hệ thống đã ghi nhận đơn hàng của bạn và đang chờ xử lý.',
+            description: 'Đặt hàng thành công, vui lòng thanh toán trong thời gian quy định.',
             wrapperClass: 'border-amber-100 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30',
             iconClass: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
             titleClass: 'text-amber-700 dark:text-amber-400',
@@ -523,7 +527,7 @@ function getPaymentStatusFallback(order) {
     if (order.payment?.status === 'unpaid' || order.raw?.payment_status === 'unpaid') {
         return 'Chưa thanh toán';
     }
-    if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đã hủy';
+    if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đơn đã hủy';
     return 'Chưa tạo thanh toán';
 }
 

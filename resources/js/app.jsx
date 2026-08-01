@@ -195,7 +195,7 @@ createRoot(document.getElementById('app')).render(
                     </Suspense>
 
                     <ToastContainer
-                        position="bottom-left"
+                        position="top-right"
                         autoClose={2500}
                         hideProgressBar={false}
                         newestOnTop

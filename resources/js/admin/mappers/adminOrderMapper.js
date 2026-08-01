@@ -282,7 +282,7 @@ export function mapAdminOrderDetailResponse(response = {}) {
 export function getFulfillmentMethodText(method) {
     const map = {
         delivery: 'Giao hàng tận nơi',
-        pickup: 'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên',
+        pickup: 'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
     };
 
     return map[method] || method || '-';

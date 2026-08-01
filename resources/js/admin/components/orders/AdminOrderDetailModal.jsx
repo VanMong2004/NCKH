@@ -134,7 +134,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         }
 
         if (vatInvoiceForm.status === 'rejected' && !vatInvoiceForm.admin_note.trim()) {
-            toast.warning('Vui lòng nhập lý do từ chối hóa đơn đỏ');
+            toast.warning('Vui lòng nhợp lệ do từ chối hóa đơn đỏ');
             return;
         }
 
@@ -628,7 +628,7 @@ function renderVariantText(variant = {}) {
     if (variant.size) parts.push(`Size ${variant.size}`);
     if (variant.color) parts.push(variant.color);
 
-    return parts.length ? parts.join(' · ') : 'Không có phân loại';
+    return parts.length ? parts.join(' • ') : 'Không có phân loại';
 }
 
 const controlClass =

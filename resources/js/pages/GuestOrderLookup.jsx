@@ -461,6 +461,11 @@ function OrderDetailPanel({ order }) {
                                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                             {step.time || 'Đang chờ cập nhật'}
                                         </p>
+                                        {step.note ? (
+                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                {step.note}
+                                            </p>
+                                        ) : null}
                                     </div>
                                 </div>
                             ))}

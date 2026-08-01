@@ -1,4 +1,4 @@
-import { Eye, FileText, Loader2, Pencil, Plus, RefreshCcw, Star, Trash2, X } from 'lucide-react';
+import { Eye, FileText, ImagePlus, Loader2, Pencil, Plus, RefreshCcw, Star, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -7,22 +7,22 @@ import StatCard from '../components/ui/StatCard';
 import adminBlogService from '../services/adminBlogService';
 
 const sortOptions = [
-    { value: 'latest', label: 'Moi nhat' },
-    { value: 'oldest', label: 'Cu nhat' },
-    { value: 'published_desc', label: 'Ngay dang moi nhat' },
-    { value: 'published_asc', label: 'Ngay dang cu nhat' },
+    { value: 'latest', label: 'Mới nhất' },
+    { value: 'oldest', label: 'Cũ nhất' },
+    { value: 'published_desc', label: 'Ngày đăng mới nhất' },
+    { value: 'published_asc', label: 'Ngày đăng cũ nhất' },
 ];
 
 const statusOptions = [
-    { value: '', label: 'Tat ca' },
-    { value: 'draft', label: 'Ban nhap' },
-    { value: 'published', label: 'Da xuat ban' },
+    { value: '', label: 'Tất cả' },
+    { value: 'draft', label: 'Bản nháp' },
+    { value: 'published', label: 'Đã xuất bản' },
 ];
 
 const featuredOptions = [
-    { value: '', label: 'Tat ca noi bat' },
-    { value: '1', label: 'Noi bat' },
-    { value: '0', label: 'Thong thuong' },
+    { value: '', label: 'Tất cả nổi bật' },
+    { value: '1', label: 'Nổi bật' },
+    { value: '0', label: 'Thông thường' },
 ];
 
 const defaultFilters = {
@@ -72,7 +72,7 @@ export default function AdminBlogs() {
             setBlogs(result.blogs || []);
             setMeta(result.meta || { ...defaultMeta, perPage: filters.per_page });
         } catch (error) {
-            toast.error(error?.message || 'Khong the tai danh sach bai viet');
+            toast.error(error?.message || 'Không thể tải danh sách bài viết');
         } finally {
             setLoading(false);
         }
@@ -96,7 +96,7 @@ export default function AdminBlogs() {
             const detail = await adminBlogService.getBlog(blog.id);
             setModalState({ open: true, mode: 'detail', blog: detail });
         } catch (error) {
-            toast.error(error?.message || 'Khong the tai chi tiet bai viet');
+            toast.error(error?.message || 'Không thể tải chi tiết bài viết');
         }
     }
 
@@ -105,7 +105,7 @@ export default function AdminBlogs() {
             const detail = await adminBlogService.getBlog(blog.id);
             setModalState({ open: true, mode: 'edit', blog: detail });
         } catch (error) {
-            toast.error(error?.message || 'Khong the tai du lieu bai viet');
+            toast.error(error?.message || 'Không thể tải dữ liệu bài viết');
         }
     }
 
@@ -117,7 +117,7 @@ export default function AdminBlogs() {
         if (!deleteTarget) return;
 
         await adminBlogService.deleteBlog(deleteTarget.id);
-        toast.success('Da xoa bai viet');
+        toast.success('Đã xóa bài viết');
         setDeleteTarget(null);
         await loadBlogs();
     }
@@ -126,7 +126,7 @@ export default function AdminBlogs() {
         if (!statusTarget) return;
 
         await adminBlogService.updateStatus(statusTarget.id, statusTarget.nextStatus);
-        toast.success(statusTarget.nextStatus === 'published' ? 'Da xuat ban bai viet' : 'Da chuyen ve ban nhap');
+        toast.success(statusTarget.nextStatus === 'published' ? 'Đã xuất bản bài viết' : 'Đã chuyển về bản nháp');
         setStatusTarget(null);
         await loadBlogs();
     }
@@ -142,16 +142,16 @@ export default function AdminBlogs() {
         <div className="space-y-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Blog</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tin tức</h1>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Quan ly bai viet tin tuc va huong dan hien thi o khu vuc nguoi dung.
+                        Quản lý bài viết tin tức và hướng dẫn hiển thị ở khu vực người dùng.
                     </p>
                 </div>
 
                 <div className="flex gap-2">
                     <button type="button" onClick={loadBlogs} disabled={loading} className={secondaryButtonClass}>
                         {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
-                        Tai lai
+                        Tải lại
                     </button>
 
                     <button
@@ -160,16 +160,16 @@ export default function AdminBlogs() {
                         className={primaryButtonClass}
                     >
                         <Plus size={16} />
-                        Them bai viet
+                        Thêm bài viết
                     </button>
                 </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="Tong bai viet" value={summary.total} tone="blue" icon={FileText} />
-                <StatCard label="Ban nhap" value={summary.draft} tone="amber" />
-                <StatCard label="Da xuat ban" value={summary.published} tone="emerald" />
-                <StatCard label="Noi bat" value={summary.featured} tone="violet" icon={Star} />
+                <StatCard label="Tổng bài viết" value={summary.total} tone="blue" icon={FileText} />
+                <StatCard label="Bản nháp" value={summary.draft} tone="amber" />
+                <StatCard label="Đã xuất bản" value={summary.published} tone="emerald" />
+                <StatCard label="Nổi bật" value={summary.featured} tone="violet" icon={Star} />
             </div>
 
             <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -178,7 +178,7 @@ export default function AdminBlogs() {
                         <input
                             value={filters.keyword}
                             onChange={(e) => updateFilter('keyword', e.target.value)}
-                            placeholder="Tim theo tieu de, slug..."
+                            placeholder="Tìm theo tiêu đề, slug..."
                             className={controlClass + ' lg:col-span-5'}
                         />
 
@@ -219,7 +219,7 @@ export default function AdminBlogs() {
                         </select>
 
                         <button type="button" onClick={resetFilters} className={'h-10 ' + secondaryOnlyClass + ' lg:col-span-1'}>
-                            Reset
+                            Đặt lại
                         </button>
                     </div>
                 </div>
@@ -228,13 +228,13 @@ export default function AdminBlogs() {
                     <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
                         <thead className="bg-slate-50 dark:bg-slate-950/60">
                             <tr>
-                                <Th>Bai viet</Th>
-                                <Th>Trang thai</Th>
-                                <Th>Noi bat</Th>
-                                <Th>Ngay dang</Th>
-                                <Th>Nguoi tao</Th>
-                                <Th>Cap nhat</Th>
-                                <Th className="text-right">Thao tac</Th>
+                                <Th>Bài viết</Th>
+                                <Th>Trạng thái</Th>
+                                <Th>Nổi bật</Th>
+                                <Th>Ngày đăng</Th>
+                                <Th>Người tạo</Th>
+                                <Th>Cập nhật</Th>
+                                <Th className="text-right">Thao tác</Th>
                             </tr>
                         </thead>
 
@@ -243,7 +243,7 @@ export default function AdminBlogs() {
                                 <tr>
                                     <td colSpan={7} className="px-4 py-12 text-center">
                                         <Loader2 size={26} className="mx-auto animate-spin text-blue-600" />
-                                        <p className="mt-3 text-sm text-slate-500">Dang tai bai viet...</p>
+                                        <p className="mt-3 text-sm text-slate-500">Đang tải bài viết...</p>
                                     </td>
                                 </tr>
                             ) : blogs.length > 0 ? (
@@ -266,7 +266,7 @@ export default function AdminBlogs() {
                                                         {blog.title}
                                                     </p>
                                                     <p className="mt-1 max-w-[280px] line-clamp-2 text-xs text-slate-500">
-                                                        {blog.summary || 'Chua co mo ta ngan'}
+                                                        {blog.summary || 'Chưa có mô tả ngắn'}
                                                     </p>
                                                     <p className="mt-1 text-xs text-slate-400">{blog.slug}</p>
                                                 </div>
@@ -277,11 +277,11 @@ export default function AdminBlogs() {
                                         </Td>
                                         <Td>
                                             <span className={blog.isFeatured ? featuredBadgeClass : defaultBadgeClass}>
-                                                {blog.isFeatured ? 'Noi bat' : 'Thong thuong'}
+                                                {blog.isFeatured ? 'Nổi bật' : 'Thông thường'}
                                             </span>
                                         </Td>
-                                        <Td>{blog.publishedAtDisplay || 'Chua xuat ban'}</Td>
-                                        <Td>{blog.authorName || 'Quan tri CTUT Store'}</Td>
+                                        <Td>{blog.publishedAtDisplay || 'Chưa xuất bản'}</Td>
+                                        <Td>{blog.authorName || 'Quản trị CTUT Store'}</Td>
                                         <Td>{blog.updatedAt || '-'}</Td>
                                         <Td className="text-right">
                                             <div className="flex justify-end gap-2">
@@ -289,7 +289,7 @@ export default function AdminBlogs() {
                                                     <Eye size={15} /> Xem
                                                 </button>
                                                 <button type="button" onClick={() => openEdit(blog)} className={smallButtonClass}>
-                                                    <Pencil size={15} /> Sua
+                                                    <Pencil size={15} /> Sửa
                                                 </button>
                                                 <button
                                                     type="button"
@@ -301,10 +301,10 @@ export default function AdminBlogs() {
                                                     }
                                                     className={smallButtonClass}
                                                 >
-                                                    {blog.status === 'published' ? 'An' : 'Xuat ban'}
+                                                    {blog.status === 'published' ? 'Ẩn' : 'Xuất bản'}
                                                 </button>
                                                 <button type="button" onClick={() => setDeleteTarget(blog)} className={dangerButtonClass}>
-                                                    <Trash2 size={15} /> Xoa
+                                                    <Trash2 size={15} /> Xóa
                                                 </button>
                                             </div>
                                         </Td>
@@ -314,7 +314,7 @@ export default function AdminBlogs() {
                                 <tr>
                                     <td colSpan={7} className="px-4 py-12 text-center">
                                         <FileText size={30} className="mx-auto text-slate-300" />
-                                        <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">Chua co bai viet nao</p>
+                                        <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">Chưa có bài viết nào</p>
                                     </td>
                                 </tr>
                             )}
@@ -343,10 +343,10 @@ export default function AdminBlogs() {
             <ConfirmDialog
                 open={Boolean(statusTarget)}
                 onOpenChange={(open) => !open && setStatusTarget(null)}
-                title={statusTarget?.nextStatus === 'published' ? 'Xuat ban bai viet' : 'Chuyen ve ban nhap'}
-                message={`Ban muon ${statusTarget?.nextStatus === 'published' ? 'xuat ban' : 'an'} bai viet "${statusTarget?.title || ''}"?`}
-                description="Bai viet o trang thai ban nhap se khong hien thi o giao dien nguoi dung."
-                confirmText={statusTarget?.nextStatus === 'published' ? 'Xuat ban' : 'Chuyen ve ban nhap'}
+                title={statusTarget?.nextStatus === 'published' ? 'Xuất bản bài viết' : 'Chuyển về bản nháp'}
+                message={`Bạn muốn ${statusTarget?.nextStatus === 'published' ? 'xuất bản' : 'ẩn'} bài viết "${statusTarget?.title || ''}"?`}
+                description="Bài viết ở trạng thái bản nháp sẽ không hiển thị ở giao diện người dùng."
+                confirmText={statusTarget?.nextStatus === 'published' ? 'Xuất bản' : 'Chuyển về bản nháp'}
                 type="warning"
                 onConfirm={handleStatusUpdate}
             />
@@ -354,10 +354,10 @@ export default function AdminBlogs() {
             <ConfirmDialog
                 open={Boolean(deleteTarget)}
                 onOpenChange={(open) => !open && setDeleteTarget(null)}
-                title="Xoa bai viet"
-                message={`Ban muon xoa bai viet "${deleteTarget?.title || ''}"?`}
-                description="Du lieu se duoc xoa mem de tranh anh huong du lieu cu."
-                confirmText="Xoa bai viet"
+                title="Xóa bài viết"
+                message={`Bạn muốn xóa bài viết "${deleteTarget?.title || ''}"?`}
+                description="Dữ liệu sẽ được xóa mềm để tránh ảnh hưởng dữ liệu cũ."
+                confirmText="Xóa bài viết"
                 type="danger"
                 onConfirm={handleDelete}
             />
@@ -376,6 +376,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
         published_at: '',
     });
     const [saving, setSaving] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -394,7 +395,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
     if (!open) return null;
 
     const readOnly = mode === 'detail';
-    const title = mode === 'create' ? 'Them bai viet' : mode === 'edit' ? 'Cap nhat bai viet' : 'Chi tiet bai viet';
+    const title = mode === 'create' ? 'Thêm bài viết' : mode === 'edit' ? 'Cập nhật bài viết' : 'Chi tiết bài viết';
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -415,18 +416,36 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
 
             if (mode === 'create') {
                 await adminBlogService.createBlog(payload);
-                toast.success('Da tao bai viet');
+                toast.success('Đã tạo bài viết');
             } else {
                 await adminBlogService.updateBlog(blog.id, payload);
-                toast.success('Da cap nhat bai viet');
+                toast.success('Đã cập nhật bài viết');
             }
 
             onClose();
             await onSaved?.();
         } catch (error) {
-            toast.error(error?.message || 'Khong the luu bai viet');
+            toast.error(error?.message || 'Không thể lưu bài viết');
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function handleThumbnailChange(e) {
+        const file = e.target.files?.[0];
+
+        if (!file) return;
+
+        try {
+            setUploadingImage(true);
+            const uploaded = await adminBlogService.uploadThumbnail(file);
+            updateField('thumbnail', uploaded.url || uploaded.path || '');
+            toast.success('Tải ảnh đại diện thành công');
+        } catch (error) {
+            toast.error(error?.message || 'Không thể tải ảnh đại diện');
+        } finally {
+            setUploadingImage(false);
+            e.target.value = '';
         }
     }
 
@@ -444,7 +463,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                     <div>
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            {readOnly ? 'Xem noi dung bai viet dang luu trong he thong.' : 'Dien day du thong tin bai viet tin tuc.'}
+                            {readOnly ? 'Xem nội dung bài viết đang lưu trong hệ thống.' : 'Điền đầy đủ thông tin bài viết tin tức.'}
                         </p>
                     </div>
 
@@ -455,7 +474,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
 
                 <form onSubmit={handleSubmit} className="max-h-[calc(92vh-74px)] space-y-4 overflow-y-auto p-5">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Field label="Tieu de bai viet">
+                        <Field label="Tiêu đề bài viết">
                             <input
                                 value={form.title}
                                 onChange={(e) => updateField('title', e.target.value)}
@@ -464,29 +483,76 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                             />
                         </Field>
 
-                        <Field label="Trang thai">
+                        <Field label="Trạng thái">
                             <select
                                 value={form.status}
                                 onChange={(e) => updateField('status', e.target.value)}
                                 className={controlClass}
                                 disabled={readOnly}
                             >
-                                <option value="draft">Ban nhap</option>
-                                <option value="published">Da xuat ban</option>
+                                <option value="draft">Bản nháp</option>
+                                <option value="published">Đã xuất bản</option>
                             </select>
                         </Field>
 
-                        <Field label="Anh dai dien">
-                            <input
-                                value={form.thumbnail}
-                                onChange={(e) => updateField('thumbnail', e.target.value)}
-                                className={controlClass}
-                                placeholder="Nhap URL hoac duong dan anh"
-                                disabled={readOnly}
-                            />
+                        <Field label="Ảnh đại diện">
+                            <div className="space-y-3">
+                                <label
+                                    className={[
+                                        'flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-400 hover:bg-blue-50/40 dark:border-slate-700 dark:bg-slate-950',
+                                        readOnly ? 'cursor-default hover:border-slate-300 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-slate-950' : '',
+                                    ].join(' ')}
+                                >
+                                    {form.thumbnail ? (
+                                        <img
+                                            src={form.thumbnail}
+                                            alt="Ảnh đại diện bài viết"
+                                            className="max-h-40 rounded-lg object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-2 text-slate-500">
+                                            <ImagePlus size={26} />
+                                            <p className="text-sm font-medium">Chưa có ảnh đại diện</p>
+                                        </div>
+                                    )}
+
+                                    {!readOnly ? (
+                                        <>
+                                            <span className="mt-3 text-sm font-semibold text-blue-700">
+                                                {uploadingImage ? 'Đang tải ảnh lên...' : 'Chọn ảnh để tải lên'}
+                                            </span>
+                                            <span className="mt-1 text-xs text-slate-500">
+                                                Hỗ trợ JPG, PNG, WEBP, GIF, SVG, AVIF
+                                            </span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={handleThumbnailChange}
+                                                disabled={uploadingImage}
+                                            />
+                                        </>
+                                    ) : null}
+                                </label>
+
+                                {form.thumbnail ? (
+                                    <div className="flex items-center gap-2">
+                                        <input value={form.thumbnail} className={controlClass} readOnly />
+                                        {!readOnly ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => updateField('thumbnail', '')}
+                                                className={secondaryOnlyClass}
+                                            >
+                                                Xóa ảnh
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                            </div>
                         </Field>
 
-                        <Field label="Ngay gio dang bai">
+                        <Field label="Ngày giờ đăng bài">
                             <input
                                 type="datetime-local"
                                 value={form.published_at}
@@ -497,7 +563,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                         </Field>
                     </div>
 
-                    <Field label="Mo ta ngan">
+                    <Field label="Mô tả ngắn">
                         <textarea
                             rows={4}
                             value={form.summary}
@@ -507,7 +573,7 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                         />
                     </Field>
 
-                    <Field label="Noi dung bai viet">
+                    <Field label="Nội dung bài viết">
                         <textarea
                             rows={16}
                             value={form.content}
@@ -524,18 +590,18 @@ function BlogModal({ open, mode, blog, onClose, onSaved }) {
                             onChange={(e) => updateField('is_featured', e.target.checked)}
                             disabled={readOnly}
                         />
-                        Danh dau bai viet noi bat
+                        Đánh dấu bài viết nổi bật
                     </label>
 
                     <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
                         <button type="button" onClick={onClose} className={secondaryOnlyClass}>
-                            {readOnly ? 'Dong' : 'Huy'}
+                            {readOnly ? 'Đóng' : 'Hủy'}
                         </button>
 
                         {!readOnly && (
                             <button type="submit" disabled={saving} className={primaryButtonClass}>
                                 {saving ? <Loader2 size={16} className="animate-spin" /> : <SaveIcon />}
-                                {mode === 'create' ? 'Tao bai viet' : 'Luu thay doi'}
+                                {mode === 'create' ? 'Tạo bài viết' : 'Lưu thay đổi'}
                             </button>
                         )}
                     </div>
@@ -549,7 +615,7 @@ function Pagination({ meta, loading, perPage, onPage, onPerPage, showing }) {
     return (
         <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <p className="text-sm text-slate-500">
-                Hien thi <b>{showing}</b> / <b>{meta.total}</b> bai viet
+                Hiển thị <b>{showing}</b> / <b>{meta.total}</b> bài viết
             </p>
 
             <div className="flex items-center gap-2">
@@ -565,7 +631,7 @@ function Pagination({ meta, loading, perPage, onPage, onPerPage, showing }) {
                     onClick={() => onPage(Math.max(1, meta.currentPage - 1))}
                     className={pagerButtonClass}
                 >
-                    Truoc
+                    Trước
                 </button>
 
                 <span className="min-w-[80px] text-center text-sm text-slate-500">
@@ -612,7 +678,7 @@ function Field({ label, children }) {
 function StatusBadge({ status }) {
     return (
         <span className={status === 'published' ? publishedBadgeClass : draftBadgeClass}>
-            {status === 'published' ? 'Da xuat ban' : 'Ban nhap'}
+            {status === 'published' ? 'Đã xuất bản' : 'Bản nháp'}
         </span>
     );
 }

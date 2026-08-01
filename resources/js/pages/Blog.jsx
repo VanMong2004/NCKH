@@ -53,7 +53,7 @@ export default function Blog() {
             setFeaturedPost(result.featuredPost || null);
             setMeta(result.meta);
         } catch (error) {
-            toast.error(error?.message || 'Khong the tai danh sach tin tuc');
+            toast.error(error?.message || 'Không thể tải danh sách tin tức');
         } finally {
             setLoading(false);
         }
@@ -112,7 +112,7 @@ export default function Blog() {
                                 <input
                                     value={searchText}
                                     onChange={(e) => setSearchText(e.target.value)}
-                                    placeholder="Tim kiem tin tuc theo tieu de..."
+                                    placeholder="Tìm kiếm tin tức theo tiêu đề..."
                                     className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                                 />
                             </div>
@@ -121,7 +121,7 @@ export default function Blog() {
                                 type="submit"
                                 className="inline-flex h-12 items-center justify-center rounded-2xl bg-blue-950 px-5 text-sm font-bold text-white hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500"
                             >
-                                Tim kiem
+                                Tìm kiếm
                             </button>
                         </form>
                     </section>
@@ -135,8 +135,8 @@ export default function Blog() {
                             {featuredPost ? (
                                 <section>
                                     <SectionHeading
-                                        title="Bai viet noi bat"
-                                        description="Bai viet duoc uu tien hien thi tren khu vuc tin tuc."
+                                        title="Bài viết nổi bật"
+                                        description="Bài viết được ưu tiên hiển thị trên khu vực tin tức."
                                     />
 
                                     <div className="mt-4">
@@ -147,8 +147,8 @@ export default function Blog() {
 
                             <section>
                                 <SectionHeading
-                                    title="Danh sach tin tuc"
-                                    description={`${meta.total || blogs.length} bai viet dang duoc hien thi.`}
+                                    title="Danh sách tin tức"
+                                    description={`${meta.total || blogs.length} bài viết đang được hiển thị.`}
                                 />
 
                                 <div className="mt-4 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -175,10 +175,10 @@ function Breadcrumb() {
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
             <ChevronRight size={14} />
             <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
-                Trang chu
+                Trang chủ
             </Link>
             <ChevronRight size={14} />
-            <span className="text-blue-950 dark:text-blue-300">Tin tuc</span>
+            <span className="text-blue-950 dark:text-blue-300">Tin tức</span>
         </div>
     );
 }
@@ -198,7 +198,7 @@ function BlogLoading() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
                 <Loader2 size={24} className="animate-spin" />
             </div>
-            <p className="mt-4 text-sm font-bold text-blue-950 dark:text-white">Dang tai tin tuc...</p>
+            <p className="mt-4 text-sm font-bold text-blue-950 dark:text-white">Đang tải tin tức...</p>
         </div>
     );
 }
@@ -210,10 +210,10 @@ function BlogEmpty({ keyword, onReset }) {
                 <Search size={24} />
             </div>
 
-            <h2 className="mt-5 text-xl font-black text-blue-950 dark:text-white">Khong tim thay bai viet phu hop</h2>
+            <h2 className="mt-5 text-xl font-black text-blue-950 dark:text-white">Không tìm thấy bài viết phù hợp</h2>
 
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-                {keyword ? `Khong co ket qua voi tu khoa "${keyword}".` : 'Hien chua co bai viet nao duoc xuat ban.'}
+                {keyword ? `Không có kết quả với từ khóa "${keyword}".` : 'Hiện chưa có bài viết nào được xuất bản.'}
             </p>
 
             <button
@@ -222,7 +222,7 @@ function BlogEmpty({ keyword, onReset }) {
                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-950 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
             >
                 <RefreshCcw size={16} />
-                Dat lai
+                Đặt lại
             </button>
         </section>
     );

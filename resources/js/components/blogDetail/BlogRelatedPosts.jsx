@@ -1,18 +1,18 @@
 import { Link } from 'react-router-dom';
 
-export default function BlogRelatedPosts({ posts = [], title = 'Bai viet moi nhat' }) {
+export default function BlogRelatedPosts({ posts = [], title = 'Bài viết mới nhất' }) {
     return (
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-black text-blue-950 dark:text-white">{title}</h2>
 
                 <Link to="/blog" className="text-sm font-bold text-blue-600 dark:text-blue-300">
-                    Xem tat ca
+                    Xem tất cả
                 </Link>
             </div>
 
             {posts.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Chua co bai viet nao de hien thi.</p>
+                <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">Chưa có bài viết nào để hiển thị.</p>
             ) : (
                 <div className="mt-5 space-y-4">
                     {posts.map((post) => (
@@ -31,7 +31,7 @@ export default function BlogRelatedPosts({ posts = [], title = 'Bai viet moi nha
                                     {post.title}
                                 </h3>
                                 <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                                    {post.summary || 'Noi dung dang duoc cap nhat.'}
+                                    {post.summary || 'Nội dung đang được cập nhật.'}
                                 </p>
                             </div>
                         </Link>

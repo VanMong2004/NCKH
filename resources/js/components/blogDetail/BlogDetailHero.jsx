@@ -9,7 +9,7 @@ export default function BlogDetailHero({ blog, onBack }) {
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-blue-950 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-800"
             >
                 <ArrowLeft size={16} />
-                Quay lai danh sach tin tuc
+                Quay lại danh sách tin tức
             </button>
 
             <h1 className="mt-5 text-3xl font-black leading-tight text-blue-950 dark:text-white sm:text-4xl">
@@ -18,7 +18,7 @@ export default function BlogDetailHero({ blog, onBack }) {
 
             <div className="mt-5 flex flex-wrap gap-3 text-sm text-slate-500 dark:text-slate-400">
                 <MetaPill icon={CalendarDays} text={formatDate(blog.publishedAt)} />
-                <MetaPill icon={UserRound} text={blog.authorName || 'Ban quan tri CTUT UniShop'} />
+                <MetaPill icon={UserRound} text={blog.authorName || 'Ban quản trị CTUT UniShop'} />
             </div>
 
             {blog.summary ? (
@@ -34,13 +34,13 @@ function MetaPill({ icon: Icon, text }) {
     return (
         <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950">
             <Icon size={15} className="text-blue-700 dark:text-blue-300" />
-            {text || 'Dang cap nhat'}
+            {text || 'Đang cập nhật'}
         </span>
     );
 }
 
 function formatDate(value) {
-    if (!value) return 'Dang cap nhat';
+    if (!value) return 'Đang cập nhật';
 
     const date = new Date(value);
 

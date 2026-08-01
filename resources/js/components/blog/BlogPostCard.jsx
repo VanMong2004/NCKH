@@ -30,11 +30,11 @@ export default function BlogPostCard({ blog, featured = false }) {
                     </h3>
 
                     <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                        {blog.summary || 'Noi dung dang duoc cap nhat.'}
+                        {blog.summary || 'Nội dung đang được cập nhật.'}
                     </p>
 
                     <span className="mt-5 inline-flex w-fit rounded-xl bg-blue-950 px-4 py-2 text-sm font-bold text-white dark:bg-blue-600">
-                        Xem chi tiet
+                        Xem chi tiết
                     </span>
                 </div>
             </Link>
@@ -43,7 +43,7 @@ export default function BlogPostCard({ blog, featured = false }) {
 }
 
 function formatDate(value) {
-    if (!value) return 'Dang cap nhat';
+    if (!value) return 'Đang cập nhật';
 
     const date = new Date(value);
 

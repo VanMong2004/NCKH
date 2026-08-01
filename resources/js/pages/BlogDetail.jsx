@@ -23,7 +23,7 @@ export default function BlogDetail() {
 
     async function loadBlogDetail() {
         if (!slug) {
-            setError('Duong dan bai viet khong hop le.');
+            setError('Đường dẫn bài viết không hợp lệ.');
             return;
         }
 
@@ -34,7 +34,7 @@ export default function BlogDetail() {
             const result = await blogService.getBlogDetail(slug);
             setBlog(result);
         } catch (err) {
-            const message = err?.message || 'Khong the tai chi tiet bai viet';
+            const message = err?.message || 'Không thể tải chi tiết bài viết';
             setError(message);
             toast.error(message);
         } finally {
@@ -65,13 +65,13 @@ export default function BlogDetail() {
                                     <div
                                         className="prose prose-slate max-w-none prose-headings:font-black prose-headings:text-blue-950 prose-a:text-blue-700 prose-img:rounded-2xl dark:prose-invert dark:prose-headings:text-white dark:prose-a:text-blue-300"
                                         dangerouslySetInnerHTML={{
-                                            __html: blog.content || `<p>${blog.summary || 'Noi dung dang duoc cap nhat.'}</p>`,
+                                            __html: blog.content || `<p>${blog.summary || 'Nội dung đang được cập nhật.'}</p>`,
                                         }}
                                     />
                                 </div>
                             </article>
 
-                            <BlogRelatedPosts posts={blog.latestPosts || []} title="Bai viet moi nhat" />
+                            <BlogRelatedPosts posts={blog.latestPosts || []} title="Bài viết mới nhất" />
                         </div>
                     ) : null}
                 </div>
@@ -86,15 +86,15 @@ function Breadcrumb({ blogTitle }) {
             <Home size={14} className="text-blue-950 dark:text-blue-300" />
             <ChevronRight size={14} />
             <Link to="/" className="hover:text-blue-950 dark:hover:text-blue-300">
-                Trang chu
+                Trang chủ
             </Link>
             <ChevronRight size={14} />
             <Link to="/blog" className="hover:text-blue-950 dark:hover:text-blue-300">
-                Tin tuc
+                Tin tức
             </Link>
             <ChevronRight size={14} />
             <span className="line-clamp-1 max-w-[360px] text-blue-950 dark:text-blue-300">
-                {blogTitle || 'Chi tiet bai viet'}
+                {blogTitle || 'Chi tiết bài viết'}
             </span>
         </div>
     );
@@ -106,7 +106,7 @@ function BlogDetailLoading() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
                 <Loader2 size={26} className="animate-spin" />
             </div>
-            <p className="mt-4 text-sm font-bold text-blue-950 dark:text-white">Dang tai chi tiet bai viet...</p>
+            <p className="mt-4 text-sm font-bold text-blue-950 dark:text-white">Đang tải chi tiết bài viết...</p>
         </div>
     );
 }
@@ -118,9 +118,9 @@ function BlogDetailError({ message, onRetry, onBack }) {
                 <RefreshCcw size={24} />
             </div>
 
-            <h1 className="mt-5 text-xl font-black text-blue-950 dark:text-white">Khong the tai bai viet</h1>
+            <h1 className="mt-5 text-xl font-black text-blue-950 dark:text-white">Không thể tải bài viết</h1>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
-                {message || 'Bai viet khong ton tai hoac da bi an.'}
+                {message || 'Bài viết không tồn tại hoặc đã bị ẩn.'}
             </p>
 
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -129,7 +129,7 @@ function BlogDetailError({ message, onRetry, onBack }) {
                     onClick={onBack}
                     className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-blue-950 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-800"
                 >
-                    Ve danh sach tin tuc
+                    Về danh sách tin tức
                 </button>
 
                 <button
@@ -137,7 +137,7 @@ function BlogDetailError({ message, onRetry, onBack }) {
                     onClick={onRetry}
                     className="inline-flex h-11 items-center justify-center rounded-xl bg-blue-950 px-5 text-sm font-bold text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
                 >
-                    Thu lai
+                    Thử lại
                 </button>
             </div>
         </section>

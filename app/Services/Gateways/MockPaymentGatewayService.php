@@ -33,13 +33,13 @@ class MockPaymentGatewayService
         return DB::transaction(function () use ($data) {
             $payment = Payment::lockForUpdate()->findOrFail($data['payment_id']);
 
-            if (in_array($payment->status, ['paid', 'refunded'], true)) {
+            if ($payment->status !== 'unpaid') {
                 return [
-                    'message' => 'Payment đã xử lý',
+                    'message' => 'Payment Ä‘Ã£ xá»­ lÃ½',
                     'payment_id' => $payment->id,
                     'order_id' => $payment->order_id,
                     'order_code' => $payment->order?->order_code,
-                    'status' => 'paid',
+                    'status' => $payment->status,
                 ];
             }
 
@@ -70,14 +70,14 @@ class MockPaymentGatewayService
                     $order,
                     $oldStatus,
                     'cancelled',
-                    'Đơn hàng hết hạn thanh toán'
+                    'ÄÆ¡n hÃ ng háº¿t háº¡n thanh toÃ¡n'
                 );
 
                 app(NotificationService::class)->order($order->fresh(), 'cancelled');
                 app(AnalyticsEventService::class)->broadcastDashboardRefresh();
 
                 return [
-                    'message' => 'Đơn hàng đã hết hạn thanh toán',
+                    'message' => 'ÄÆ¡n hÃ ng Ä‘Ã£ háº¿t háº¡n thanh toÃ¡n',
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
                     'order_code' => $order->order_code,
@@ -94,7 +94,7 @@ class MockPaymentGatewayService
                 app(AnalyticsEventService::class)->broadcastDashboardRefresh();
 
                 return [
-                    'message' => 'Đơn hàng đã bị hủy, không thể thanh toán',
+                    'message' => 'ÄÆ¡n hÃ ng Ä‘Ã£ bá»‹ há»§y, khÃ´ng thá»ƒ thanh toÃ¡n',
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
                     'order_code' => $order->order_code,
@@ -124,12 +124,24 @@ class MockPaymentGatewayService
                         $order,
                         $oldStatus,
                         $order->status,
-                        'Thanh toán giả lập ngân hàng thành công'
+                        'Thanh toÃ¡n giáº£ láº­p ngÃ¢n hÃ ng thÃ nh cÃ´ng'
                     );
                 }
 
                 app(NotificationService::class)->order($order->fresh(), $order->status);
                 $order->load('items.productVariant');
+
+                Payment::query()
+                    ->where('order_id', $order->id)
+                    ->where('id', '!=', $payment->id)
+                    ->where('status', 'unpaid')
+                    ->update([
+                        'status' => 'failed',
+                        'response_data' => [
+                            'reason' => 'superseded_by_successful_payment',
+                            'paid_payment_id' => $payment->id,
+                        ],
+                    ]);
 
                 if (!$alreadyPaid) {
                     $this->promotionSoldService->increase($order);
@@ -151,7 +163,7 @@ class MockPaymentGatewayService
             }
 
             return [
-                'message' => 'Callback xử lý thành công',
+                'message' => 'Callback xá»­ lÃ½ thÃ nh cÃ´ng',
                 'payment_id' => $payment->id,
                 'order_id' => $order->id,
                 'order_code' => $order->order_code,

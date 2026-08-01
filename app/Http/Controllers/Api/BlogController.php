@@ -7,7 +7,6 @@ use App\Services\BlogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\QueryException;
 use RuntimeException;
 use Throwable;
 
@@ -21,7 +20,6 @@ class BlogController extends Controller
     {
         try {
             $filters = $request->validate([
-                'category' => 'nullable|string|max:100',
                 'keyword' => 'nullable|string|max:255',
                 'page' => 'nullable|integer|min:1',
                 'per_page' => 'nullable|integer|min:1',
@@ -31,7 +29,7 @@ class BlogController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lấy danh sách blog thành công',
+                'message' => 'Lay danh sach tin tuc thanh cong',
                 'featured_post' => $this->blogService->featured(),
                 'data' => $blogs->items(),
                 'meta' => [
@@ -41,15 +39,13 @@ class BlogController extends Controller
                     'total' => $blogs->total(),
                 ],
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bộ lọc blog không hợp lệ',
+                'message' => 'Bo loc tin tuc khong hop le',
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
-
         } catch (Throwable $e) {
             Log::error('Get blog list error', [
                 'message' => $e->getMessage(),
@@ -57,7 +53,7 @@ class BlogController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
+                'message' => 'Da xay ra loi he thong',
                 'data' => null,
             ], 500);
         }
@@ -76,24 +72,21 @@ class BlogController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lấy chi tiết blog thành công',
+                'message' => 'Lay chi tiet tin tuc thanh cong',
                 'data' => $this->blogService->show($data['identifier']),
             ]);
-
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Blog không hợp lệ',
+                'message' => 'Duong dan bai viet khong hop le',
                 'data' => null,
             ], 422);
-
         } catch (RuntimeException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'data' => null,
             ], 404);
-
         } catch (Throwable $e) {
             Log::error('Get blog detail error', [
                 'message' => $e->getMessage(),
@@ -101,29 +94,7 @@ class BlogController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
-                'data' => null,
-            ], 500);
-        }
-    }
-
-    public function categories()
-    {
-        try {
-            return response()->json([
-                'success' => true,
-                'message' => 'Lấy danh mục blog thành công',
-                'data' => $this->blogService->categories(),
-            ]);
-
-        } catch (Throwable $e) {
-            Log::error('Get blog categories error', [
-                'message' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Đã xảy ra lỗi hệ thống',
+                'message' => 'Da xay ra loi he thong',
                 'data' => null,
             ], 500);
         }

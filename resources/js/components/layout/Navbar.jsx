@@ -1,21 +1,16 @@
 import { ChevronDown, LayoutDashboard, LogOut, Menu, Moon, Search, ShoppingCart, Sun, User, X } from 'lucide-react';
-
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useTheme } from '../../contexts/ThemeContext';
-
 import searchService from '../../services/searchService';
-
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import SearchSuggestionDropdown from '../search/SearchSuggestionDropdown';
 
-// export default function Navbar() {
 export default function Navbar({ siteContent, unreadCount = 0, notificationRefreshKey = 0 }) {
     const navigate = useNavigate();
-
     const desktopSearchRef = useRef(null);
     const mobileSearchRef = useRef(null);
 
@@ -23,7 +18,6 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
     const { totalItems } = useCart();
     const { theme, toggleTheme } = useTheme();
 
-    //thêm
     const isAdmin =
         user?.role === 'admin' ||
         user?.role?.name === 'admin' ||
@@ -35,30 +29,30 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
 
     const logo = navbar.logo || site.logo || '/images/logo.png';
     const mobileLogo = navbar.mobile_logo || logo;
-
     const siteName = navbar.title || site.name || 'CTUT Shop';
-    const tagline = navbar.subtitle || site.tagline || 'Cùng nhau phát triển';
+    const tagline = navbar.subtitle || site.tagline || 'Ket noi sinh vien voi san pham thuong hieu Truong';
 
     const payload = navbar.payload || {};
-    const searchPlaceholder = payload.search_placeholder || 'Tìm sản phẩm, khuyến mãi...';
-    const mobileSearchPlaceholder = payload.mobile_search_placeholder || 'Tìm sản phẩm...';
+    const searchPlaceholder = payload.search_placeholder || 'Tim san pham, khuyen mai...';
+    const mobileSearchPlaceholder = payload.mobile_search_placeholder || 'Tim san pham...';
 
     const desktopLinks = Array.isArray(navbar.desktop_links) && navbar.desktop_links.length
         ? navbar.desktop_links
         : [
-            { label: 'Trang chủ', link_url: '/' },
-            { label: 'Sản phẩm', link_url: '/shop' },
-            { label: 'Khuyến mãi', link_url: '/promotions' },
-            { label: 'Blog', link_url: '/blog' },
-            { label: 'Liên hệ', link_url: '/contact' },
-            { label: 'Chính sách', link_url: '/policy' },
+            { label: 'Trang chu', link_url: '/' },
+            { label: 'San pham', link_url: '/shop' },
+            { label: 'Khuyen mai', link_url: '/promotions' },
+            { label: 'Tin tuc', link_url: '/blog' },
+            { label: 'Lien he', link_url: '/contact' },
+            { label: 'Chinh sach', link_url: '/policy' },
         ];
-    //
 
-    const normalizedDesktopLinks = ensureGuestOrderLookupLink(filterPublicLinks(desktopLinks));
+    const normalizedDesktopLinks = ensureGuestOrderLookupLink(normalizePublicLinks(filterPublicLinks(desktopLinks)));
     const mobileLinks = ensureGuestOrderLookupLink(
-        filterPublicLinks(
-            Array.isArray(mobileMenu.links) && mobileMenu.links.length ? mobileMenu.links : normalizedDesktopLinks,
+        normalizePublicLinks(
+            filterPublicLinks(
+                Array.isArray(mobileMenu.links) && mobileMenu.links.length ? mobileMenu.links : normalizedDesktopLinks,
+            ),
         ),
     );
 
@@ -67,7 +61,6 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
     const [searchHistory, setSearchHistory] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [openSearch, setOpenSearch] = useState(false);
-
     const [openMobileMenu, setOpenMobileMenu] = useState(false);
     const [openMobileSearch, setOpenMobileSearch] = useState(false);
     const [openUserMenu, setOpenUserMenu] = useState(false);
@@ -99,7 +92,6 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
     useEffect(() => {
         function handleClickOutside(e) {
             const clickedDesktop = desktopSearchRef.current && desktopSearchRef.current.contains(e.target);
-
             const clickedMobile = mobileSearchRef.current && mobileSearchRef.current.contains(e.target);
 
             if (!clickedDesktop && !clickedMobile) {
@@ -125,7 +117,6 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
 
         try {
             setSearchLoading(true);
-
             const data = await searchService.suggestions(text);
             setSuggestions(data);
         } catch {
@@ -172,10 +163,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
 
     function goSearch(value) {
         const selected = typeof value === 'object' && value !== null ? value : null;
-
-        const text = String(
-            selected?.keyword || selected?.label || selected?.name || selected?.title || value || '',
-        ).trim();
+        const text = String(selected?.keyword || selected?.label || selected?.name || selected?.title || value || '').trim();
 
         if (!text) return;
 
@@ -220,7 +208,6 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
 
     async function handleLogout() {
         await logout();
-
         setOpenUserMenu(false);
         setSearchHistory([]);
         navigate('/login');
@@ -230,40 +217,25 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
             <div className="mx-auto max-w-7xl px-4">
                 <div className="flex h-16 items-center justify-between gap-4 md:h-20">
-                    <button
-                        type="button"
-                        onClick={() => setOpenMobileMenu(true)}
-                        className="text-blue-950 dark:text-white md:hidden"
-                    >
+                    <button type="button" onClick={() => setOpenMobileMenu(true)} className="text-blue-950 dark:text-white md:hidden">
                         <Menu size={22} />
                     </button>
 
                     <Link to="/" className="flex shrink-0 items-center gap-3">
-                        {/* <img src="/images/logo.png" alt="CTUT" className="h-9 w-9 rounded" /> */}
                         <img src={logo} alt={siteName} className="h-9 w-9 rounded object-cover" />
 
                         <div>
-                            {/* <h1 className="text-sm font-bold text-blue-950 dark:text-white md:text-lg">CTUT Shop</h1> */}
                             <h1 className="text-sm font-bold text-blue-950 dark:text-white md:text-lg">{siteName}</h1>
-
-                            <p className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">
-                                {/* Cùng nhau phát triển */}
-                                {tagline}
-                            </p>
+                            <p className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">{tagline}</p>
                         </div>
                     </Link>
 
-                    <form
-                        ref={desktopSearchRef}
-                        onSubmit={handleSearch}
-                        className="relative hidden max-w-xl flex-1 md:block"
-                    >
+                    <form ref={desktopSearchRef} onSubmit={handleSearch} className="relative hidden max-w-xl flex-1 md:block">
                         <div className="flex h-10 overflow-hidden rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
                             <input
                                 value={keyword}
                                 onFocus={handleInputFocus}
                                 onChange={handleInputChange}
-                                // placeholder="Tìm sản phẩm, khuyến mãi..."
                                 placeholder={searchPlaceholder}
                                 className="min-w-0 flex-1 px-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:bg-slate-900 dark:text-white"
                             />
@@ -275,21 +247,18 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                         setKeyword('');
                                         setSuggestions([]);
                                     }}
-                                    className="flex w-10 items-center justify-center text-slate-400 transition hover:text-slate-700 dark:hover:text-white"
+                                    className="flex w-10 items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white"
                                 >
                                     <X size={16} />
                                 </button>
                             ) : null}
 
-                            <button
-                                type="submit"
-                                className="flex w-12 items-center justify-center bg-blue-950 text-white transition hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500"
-                            >
+                            <button type="submit" className="flex w-12 items-center justify-center bg-blue-950 text-white hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500">
                                 <Search size={18} />
                             </button>
                         </div>
 
-                        {openSearch && (
+                        {openSearch ? (
                             <SearchSuggestionDropdown
                                 suggestions={suggestions}
                                 history={searchHistory}
@@ -300,7 +269,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                 onDeleteHistory={handleDeleteHistory}
                                 onClearHistory={handleClearHistory}
                             />
-                        )}
+                        ) : null}
                     </form>
 
                     <div className="flex items-center gap-3 text-blue-950 dark:text-white md:gap-4">
@@ -316,7 +285,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                     setSearchHistory([]);
                                 }
                             }}
-                            className="rounded-lg p-2 transition hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden"
+                            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden"
                         >
                             <Search size={20} />
                         </button>
@@ -324,32 +293,28 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                         <button
                             type="button"
                             onClick={toggleTheme}
-                            className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-
-                            <span className="hidden lg:inline">{theme === 'dark' ? 'Sáng' : 'Tối'}</span>
+                            <span className="hidden lg:inline">{theme === 'dark' ? 'Sang' : 'Toi'}</span>
                         </button>
 
-                        {isAdmin && (
+                        {isAdmin ? (
                             <Link
                                 to="/admin/dashboard"
                                 className="hidden h-10 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-700 hover:bg-blue-100 md:inline-flex dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
                             >
                                 <LayoutDashboard size={16} />
-                                Quản trị
+                                Quan tri
                             </Link>
-                        )}
+                        ) : null}
 
-                        <NotificationDropdown
-                            unreadCount={unreadCount}
-                            refreshKey={notificationRefreshKey}
-                        />
+                        <NotificationDropdown unreadCount={unreadCount} refreshKey={notificationRefreshKey} />
 
                         <Link
                             to="/cart"
-                            className="relative hidden rounded-lg p-2 transition hover:bg-slate-100 dark:hover:bg-slate-800 md:block"
-                            aria-label="Giỏ hàng"
+                            className="relative hidden rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 md:block"
+                            aria-label="Gio hang"
                         >
                             <ShoppingCart size={20} />
                             <Badge count={totalItems} />
@@ -361,27 +326,27 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                     <button
                                         type="button"
                                         onClick={() => setOpenUserMenu((prev) => !prev)}
-                                        className="flex items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                                             <User size={18} />
                                         </div>
 
                                         <span className="max-w-[120px] truncate text-sm font-semibold">
-                                            Xin chào, {user.name || 'Bạn'}
+                                            Xin chao, {user.name || 'Ban'}
                                         </span>
 
                                         <ChevronDown size={16} />
                                     </button>
 
-                                    {openUserMenu && (
+                                    {openUserMenu ? (
                                         <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
                                             <Link
                                                 to="/account/profile"
                                                 onClick={() => setOpenUserMenu(false)}
                                                 className="block px-4 py-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
                                             >
-                                                Tài khoản của tôi
+                                                Tai khoan cua toi
                                             </Link>
 
                                             <Link
@@ -389,7 +354,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                                 onClick={() => setOpenUserMenu(false)}
                                                 className="block px-4 py-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
                                             >
-                                                Đơn hàng của tôi
+                                                Don hang cua toi
                                             </Link>
 
                                             <button
@@ -398,32 +363,21 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                                 className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-slate-800"
                                             >
                                                 <LogOut size={16} />
-                                                Đăng xuất
+                                                Dang xuat
                                             </button>
                                         </div>
-                                    )}
+                                    ) : null}
                                 </>
                             ) : (
-                                <Link
-                                    to="/login"
-                                    className="rounded-lg bg-blue-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-900"
-                                >
-                                    Đăng nhập
+                                <Link to="/login" className="rounded-lg bg-blue-950 px-4 py-2 text-sm font-bold text-white hover:bg-blue-900">
+                                    Dang nhap
                                 </Link>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <nav className="hidden items-center justify-start ps-2 gap-8 border-t border-slate-100 py-3 text-sm font-semibold text-blue-950 dark:border-slate-800 dark:text-slate-100 md:flex">
-                    {/* <DesktopNavLink to="/">Trang chủ</DesktopNavLink>
-                    <DesktopNavLink to="/shop">Sản phẩm</DesktopNavLink>
-                    <DesktopNavLink to="/promotions">Khuyến mãi</DesktopNavLink>
-                    <DesktopNavLink to="/blog">Blog</DesktopNavLink>
-                    <DesktopNavLink to="/faq">FAQ</DesktopNavLink>
-                    <DesktopNavLink to="/about">Giới thiệu</DesktopNavLink>
-                    <DesktopNavLink to="/contact">Liên hệ</DesktopNavLink>
-                    <DesktopNavLink to="/policy">Chính sách</DesktopNavLink> */}
+                <nav className="hidden items-center justify-start gap-8 border-t border-slate-100 py-3 ps-2 text-sm font-semibold text-blue-950 dark:border-slate-800 dark:text-slate-100 md:flex">
                     {normalizedDesktopLinks.map((item) => (
                         <DesktopNavLink key={item.id || item.item_key || item.link_url} to={item.link_url || '/'}>
                             {item.label || item.title}
@@ -432,16 +386,12 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                 </nav>
             </div>
 
-            {openMobileSearch && (
+            {openMobileSearch ? (
                 <div className="fixed inset-0 z-[60] bg-white dark:bg-slate-950 md:hidden">
                     <div className="border-b border-slate-200 p-4 dark:border-slate-800">
                         <div ref={mobileSearchRef} className="relative">
                             <div className="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={closeSearch}
-                                    className="rounded-xl p-3 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                >
+                                <button type="button" onClick={closeSearch} className="rounded-xl p-3 hover:bg-slate-100 dark:hover:bg-slate-800">
                                     <X size={20} />
                                 </button>
 
@@ -452,7 +402,6 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                             value={keyword}
                                             onFocus={handleInputFocus}
                                             onChange={handleInputChange}
-                                            // placeholder="Tìm sản phẩm..."
                                             placeholder={mobileSearchPlaceholder}
                                             className="min-w-0 flex-1 bg-transparent px-4 text-sm outline-none dark:text-white"
                                         />
@@ -464,16 +413,13 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                                     setKeyword('');
                                                     setSuggestions([]);
                                                 }}
-                                                className="flex w-10 items-center justify-center text-slate-400 transition hover:text-slate-700 dark:hover:text-white"
+                                                className="flex w-10 items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white"
                                             >
                                                 <X size={16} />
                                             </button>
                                         ) : null}
 
-                                        <button
-                                            type="submit"
-                                            className="flex w-12 items-center justify-center bg-blue-950 text-white dark:bg-blue-600"
-                                        >
+                                        <button type="submit" className="flex w-12 items-center justify-center bg-blue-950 text-white dark:bg-blue-600">
                                             <Search size={18} />
                                         </button>
                                     </div>
@@ -481,7 +427,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                             </div>
 
                             <div className="mt-3">
-                                {openSearch && (
+                                {openSearch ? (
                                     <SearchSuggestionDropdown
                                         suggestions={suggestions}
                                         history={searchHistory}
@@ -492,20 +438,14 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                         onDeleteHistory={handleDeleteHistory}
                                         onClearHistory={handleClearHistory}
                                     />
-                                )}
+                                ) : null}
                             </div>
                         </div>
                     </div>
                 </div>
-            )}
+            ) : null}
 
-            {openMobileMenu && (
-                // <MobileMenu
-                //     user={user}
-                //     totalItems={totalItems}
-                //     onClose={() => setOpenMobileMenu(false)}
-                //     onLogout={handleLogout}
-                // />
+            {openMobileMenu ? (
                 <MobileMenu
                     user={user}
                     isAdmin={isAdmin}
@@ -517,7 +457,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                     onClose={() => setOpenMobileMenu(false)}
                     onLogout={handleLogout}
                 />
-            )}
+            ) : null}
         </header>
     );
 }
@@ -527,9 +467,7 @@ function DesktopNavLink({ to, children }) {
         <NavLink
             to={to}
             className={({ isActive }) =>
-                `transition hover:text-blue-700 dark:hover:text-blue-300 ${
-                    isActive ? 'text-blue-700 dark:text-blue-300' : ''
-                }`
+                `transition hover:text-blue-700 dark:hover:text-blue-300 ${isActive ? 'text-blue-700 dark:text-blue-300' : ''}`
             }
         >
             {children}
@@ -537,23 +475,18 @@ function DesktopNavLink({ to, children }) {
     );
 }
 
-// function MobileMenu({ user, totalItems, onClose, onLogout }) {
 function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links = [], onClose, onLogout }) {
     return (
         <div className="fixed inset-0 z-50 md:hidden">
-            <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Đóng menu" />
+            <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Dong menu" />
 
             <div className="relative h-full w-[82%] max-w-sm overflow-y-auto bg-white p-5 shadow-xl dark:bg-slate-950">
                 <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        {/* <h2 className="font-bold text-blue-950 dark:text-white">CTUT Shop</h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Cùng nhau phát triển</p> */}
-                        <div className="flex items-center gap-3">
-                            <img src={logo} alt={siteName} className="h-9 w-9 rounded object-cover" />
-                            <div>
-                                <h2 className="font-bold text-blue-950 dark:text-white">{siteName}</h2>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{tagline}</p>
-                            </div>
+                    <div className="flex items-center gap-3">
+                        <img src={logo} alt={siteName} className="h-9 w-9 rounded object-cover" />
+                        <div>
+                            <h2 className="font-bold text-blue-950 dark:text-white">{siteName}</h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{tagline}</p>
                         </div>
                     </div>
 
@@ -567,41 +500,6 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                 </div>
 
                 <div className="space-y-2">
-                    {/* <MobileNavLink to="/" onClose={onClose}>
-                        Trang chủ
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/shop" onClose={onClose}>
-                        Sản phẩm
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/account/orders" onClose={onClose}>
-                        Đơn hàng
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/promotions" onClose={onClose}>
-                        Khuyến mãi
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/blog" onClose={onClose}>
-                        Blog
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/faq" onClose={onClose}>
-                        FAQ
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/about" onClose={onClose}>
-                        Giới thiệu
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/contact" onClose={onClose}>
-                        Liên hệ
-                    </MobileNavLink>
-
-                    <MobileNavLink to="/policy" onClose={onClose}>
-                        Chính sách
-                    </MobileNavLink> */}
                     {links.map((item) => (
                         <MobileNavLink
                             key={item.id || item.item_key || item.link_url}
@@ -614,24 +512,33 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                 </div>
 
                 <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-800">
-                    {isAdmin && (
+                    <Link
+                        to="/cart"
+                        onClick={onClose}
+                        className="mb-3 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-blue-950 dark:border-slate-700 dark:text-white"
+                    >
+                        <span>Gio hang</span>
+                        <span>{totalItems || 0}</span>
+                    </Link>
+
+                    {isAdmin ? (
                         <Link
                             to="/admin/dashboard"
                             onClick={onClose}
                             className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-blue-950 px-4 py-3 text-sm font-bold text-white"
                         >
                             <LayoutDashboard size={18} />
-                            Vào trang quản trị
+                            Vao trang quan tri
                         </Link>
-                    )}
-                    
+                    ) : null}
+
                     {user ? (
                         <button
                             type="button"
                             onClick={onLogout}
                             className="w-full rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-500 dark:bg-red-950/30"
                         >
-                            Đăng xuất
+                            Dang xuat
                         </button>
                     ) : (
                         <Link
@@ -639,7 +546,7 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                             onClick={onClose}
                             className="block rounded-xl bg-blue-950 px-4 py-3 text-center text-sm font-bold text-white"
                         >
-                            Đăng nhập
+                            Dang nhap
                         </Link>
                     )}
                 </div>
@@ -683,7 +590,7 @@ function filterPublicLinks(links = []) {
         const label = String(item?.label || item?.title || '').trim().toLowerCase();
 
         const hiddenUrls = ['/faq', '/faqs', '/about'];
-        const hiddenLabels = ['faq', 'giới thiệu', 'gioi thieu'];
+        const hiddenLabels = ['faq', 'gioi thieu', 'giới thiệu'];
 
         if (hiddenUrls.includes(normalizedUrl)) {
             return false;
@@ -697,6 +604,23 @@ function filterPublicLinks(links = []) {
     });
 }
 
+function normalizePublicLinks(links = []) {
+    return links.map((item) => {
+        const linkUrl = String(item?.link_url || item?.url || '').trim();
+        const label = String(item?.label || item?.title || '').trim();
+
+        if (linkUrl === '/blog') {
+            return {
+                ...item,
+                label: label.toLowerCase() === 'blog' || !label ? 'Tin tuc' : label,
+                title: label.toLowerCase() === 'blog' || !label ? 'Tin tuc' : label,
+            };
+        }
+
+        return item;
+    });
+}
+
 function ensureGuestOrderLookupLink(links = []) {
     if (links.some((item) => (item?.link_url || '') === '/guest-order-lookup')) {
         return links;
@@ -704,8 +628,7 @@ function ensureGuestOrderLookupLink(links = []) {
 
     const nextLinks = [...links];
     const contactIndex = nextLinks.findIndex((item) => (item?.link_url || '') === '/contact');
-
-    const guestLookupLink = { label: 'Tra cứu đơn', link_url: '/guest-order-lookup' };
+    const guestLookupLink = { label: 'Tra cuu don', link_url: '/guest-order-lookup' };
 
     if (contactIndex === -1) {
         nextLinks.push(guestLookupLink);

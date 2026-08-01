@@ -17,14 +17,13 @@ export function mapBlog(item = {}) {
         id: item.id,
         title: item.title || '',
         slug: item.slug || '',
-        excerpt: item.excerpt || '',
+        summary: item.summary || '',
         content: item.content || '',
         thumbnail: normalizeImage(item.thumbnail),
-        category: item.category || '',
-        authorName: item.author_name || '',
+        authorName: item.author_name || 'Ban quan tri CTUT UniShop',
         isFeatured: Boolean(item.is_featured),
         publishedAt: item.published_at || '',
-        relatedPosts: Array.isArray(item.related_posts) ? item.related_posts.map(mapBlog) : [],
+        latestPosts: Array.isArray(item.latest_posts) ? item.latest_posts.map(mapBlog) : [],
         raw: item,
     };
 }
@@ -34,16 +33,13 @@ export function mapBlogListResponse(response = {}) {
 
     return {
         blogs: rawBlogs.map(mapBlog),
-
         featuredPost: response.featured_post ? mapBlog(response.featured_post) : null,
-
         meta: {
             currentPage: Number(response.meta?.current_page || 1),
             lastPage: Number(response.meta?.last_page || 1),
             perPage: Number(response.meta?.per_page || rawBlogs.length || 10),
             total: Number(response.meta?.total || rawBlogs.length || 0),
         },
-
         message: response.message || '',
         success: Boolean(response.success),
     };
@@ -51,10 +47,4 @@ export function mapBlogListResponse(response = {}) {
 
 export function mapBlogDetailResponse(response = {}) {
     return mapBlog(response.data || {});
-}
-
-export function mapBlogCategoriesResponse(response = {}) {
-    const raw = Array.isArray(response.data) ? response.data : [];
-
-    return raw.filter(Boolean).map((item) => String(item));
 }

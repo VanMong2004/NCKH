@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\UserAnalyticsController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\PolicyController;
+use App\Http\Controllers\Api\Admin\AdminBlogController;
 use App\Http\Controllers\Api\Admin\AdminPolicyController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\AboutController;
@@ -137,9 +138,8 @@ Route::prefix('faqs')->group(function () {
 
 // BLOG (PUBLIC)
 Route::prefix('blogs')->group(function () {
-    Route::get('/', [BlogController::class, 'index']); // Lấy danh sách bài viết, có hỗ trợ filter theo category và keyword (tìm kiếm trong title và content), có hỗ trợ pagination
-    Route::get('/categories', [BlogController::class, 'categories']); // Lấy danh sách category của blog (chỉ lấy category của những bài viết đang active, có sắp xếp theo thứ tự alphabet)
-    Route::get('/{identifier}', [BlogController::class, 'show']); // Lấy chi tiết bài viết, có thể tìm kiếm bằng id hoặc slug, trả về thông tin chi tiết của bài viết, bao gồm cả danh sách 4 bài viết liên quan (cùng category, không bao gồm bài viết hiện tại, có sắp xếp theo lượt xem giảm dần)
+    Route::get('/', [BlogController::class, 'index']);
+    Route::get('/{identifier}', [BlogController::class, 'show']);
 });
 
 // SEARCH SUGGESTIONS
@@ -346,6 +346,16 @@ Route::middleware(['auth:sanctum', 'admin', 'throttle:admin'])->prefix('admin')-
         Route::put('/{id}', [AdminPolicyController::class, 'update']);
         Route::patch('/{id}/toggle-active', [AdminPolicyController::class, 'toggleActive']);
         Route::delete('/{id}', [AdminPolicyController::class, 'destroy']);
+    });
+
+    // ADMIN BLOGS
+    Route::prefix('blogs')->group(function () {
+        Route::get('/', [AdminBlogController::class, 'index']);
+        Route::post('/', [AdminBlogController::class, 'store']);
+        Route::get('/{id}', [AdminBlogController::class, 'show']);
+        Route::post('/{id}', [AdminBlogController::class, 'update']);
+        Route::patch('/{id}/status', [AdminBlogController::class, 'updateStatus']);
+        Route::delete('/{id}', [AdminBlogController::class, 'destroy']);
     });
 
     // ADMIN PRODUCTS

@@ -4,18 +4,19 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const pageTitles = [
-    { path: '/admin/products', title: 'Sản phẩm' },
-    { path: '/admin/catalogs', title: 'Danh mục & Khoa' },
-    { path: '/admin/policies', title: 'Chính sách' },
-    { path: '/admin/promotions', title: 'Khuyến mãi' },
-    { path: '/admin/orders', title: 'Đơn hàng' },
-    { path: '/admin/users', title: 'Người dùng' },
-    { path: '/admin/contacts', title: 'Liên hệ' },
-    { path: '/admin/reviews', title: 'Đánh giá' },
-    { path: '/admin/site-content', title: 'Nội dung site' },
-    { path: '/admin/chat-knowledge', title: 'Tài liệu AI' },
-    { path: '/admin/chat-conversations', title: 'Hội thoại AI' },
-    { path: '/admin/analytics', title: 'Thống kê' },
+    { path: '/admin/products', title: 'San pham' },
+    { path: '/admin/catalogs', title: 'Danh muc & Khoa' },
+    { path: '/admin/blogs', title: 'Blog' },
+    { path: '/admin/policies', title: 'Chinh sach' },
+    { path: '/admin/promotions', title: 'Khuyen mai' },
+    { path: '/admin/orders', title: 'Don hang' },
+    { path: '/admin/users', title: 'Nguoi dung' },
+    { path: '/admin/contacts', title: 'Lien he' },
+    { path: '/admin/reviews', title: 'Danh gia' },
+    { path: '/admin/site-content', title: 'Noi dung site' },
+    { path: '/admin/chat-knowledge', title: 'Tai lieu AI' },
+    { path: '/admin/chat-conversations', title: 'Hoi thoai AI' },
+    { path: '/admin/analytics', title: 'Thong ke' },
 ];
 
 export default function AdminTopbar({ onOpenSidebar }) {
@@ -50,7 +51,7 @@ export default function AdminTopbar({ onOpenSidebar }) {
                     <Search size={17} className="text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Tìm nhanh..."
+                        placeholder="Tim nhanh..."
                         className="w-full bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400 dark:text-slate-200"
                     />
                 </div>
@@ -70,9 +71,9 @@ export default function AdminTopbar({ onOpenSidebar }) {
 
                     <div className="max-w-[160px]">
                         <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                            {user?.name || user?.full_name || 'Quản trị CTUT Store'}
+                            {user?.name || user?.full_name || 'Quan tri CTUT Store'}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Quản trị</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Quan tri</p>
                     </div>
                 </div>
 
@@ -80,7 +81,7 @@ export default function AdminTopbar({ onOpenSidebar }) {
                     type="button"
                     onClick={handleLogout}
                     className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
-                    title="Đăng xuất"
+                    title="Dang xuat"
                 >
                     <LogOut size={20} />
                 </button>

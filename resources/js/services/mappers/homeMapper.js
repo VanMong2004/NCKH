@@ -140,11 +140,11 @@ function mapHomeNews(item = {}) {
         title: item.title || '',
         slug: item.slug || '',
 
-        description: item.excerpt || item.description || '',
+        description: item.summary || item.excerpt || item.description || '',
         image: normalizeImage(item.thumbnail || item.image),
 
         date: item.published_at || item.date || '',
-        category: item.category || '',
+        category: '',
 
         raw: item,
     };
@@ -245,10 +245,10 @@ export function mapBlogToHomeNews(blog = {}) {
         id: blog.id,
         title: blog.title || '',
         slug: blog.slug || '',
-        description: blog.excerpt || blog.description || '',
+        description: blog.summary || blog.description || '',
         image: normalizeImage(blog.thumbnail || blog.image),
         date: blog.published_at || '',
-        category: blog.category || '',
+        category: '',
         raw: blog,
     };
 }

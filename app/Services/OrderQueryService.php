@@ -110,7 +110,7 @@ class OrderQueryService
     private function buildOrderActions(Order $order, $payment): array
     {
         $paymentMethod = $payment?->method;
-        $paymentStatus = $payment?->status ?? $order->payment_status;
+        $paymentStatus = $order->payment_status ?? $payment?->status;
 
         $canCancel = $order->status === 'pending';
         $canPayAgain = $order->status === 'pending'
@@ -188,7 +188,7 @@ class OrderQueryService
                     'order_code' => $order->order_code,
                     'title' => optional($firstItem?->productVariant?->product)->name,
                     'status' => $order->status,
-                    'payment_status' => $payment?->status ?? $order->payment_status ?? 'unpaid',
+                    'payment_status' => $order->payment_status ?? $payment?->status ?? 'unpaid',
                     'fulfillment_method' => $order->fulfillment_method,
                     'payment_method' => $payment?->method,
                     'thumbnail' => $thumbnail,

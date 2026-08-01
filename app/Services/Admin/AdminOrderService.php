@@ -413,7 +413,7 @@ class AdminOrderService
                 'phone' => $order->shipping_phone,
             ],
             'status' => $order->status,
-            'payment_status' => $payment?->status ?? $order->payment_status ?? 'unpaid',
+            'payment_status' => $order->payment_status ?? $payment?->status ?? 'unpaid',
             'fulfillment_method' => $order->fulfillment_method,
             'payment_method' => $payment?->method,
             'vat_invoice_request' => $this->formatVatInvoiceRequest($order),

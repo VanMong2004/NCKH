@@ -174,7 +174,7 @@ class GuestOrderService
     private function buildOrderActions(Order $order, $payment): array
     {
         $paymentMethod = $payment?->method;
-        $paymentStatus = $payment?->status ?? $order->payment_status;
+        $paymentStatus = $order->payment_status ?? $payment?->status;
         $supportsOnlineRepayment = $paymentMethod === 'mock_bank';
 
         $canCancel = false;

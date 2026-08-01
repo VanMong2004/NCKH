@@ -47,7 +47,7 @@ export function getPaymentStatusText(status) {
 export function getPaymentMethodText(method) {
     const map = {
         cod: 'COD',
-        mock_bank: 'Giả lập ngân hàng',
+        mock_bank: 'Chuyển khoản ngân hàng',
         cash_on_pickup: 'Thanh toán tại phòng',
     };
 
@@ -77,25 +77,12 @@ export function getCancelReasonText(reason) {
     return map[reason] || reason || '-';
 }
 
-export function getNextOrderStatuses(status, paymentMethod = '') {
+export function getNextOrderStatuses(status) {
     const map = {
-        pending: [
-            'processing',
-            'cancelled',
-        ],
-
-        processing: [
-            'awaiting_receipt',
-            'cancelled',
-        ],
-
-        awaiting_receipt: [
-            'completed',
-            'cancelled',
-        ],
-
+        pending: ['processing', 'cancelled'],
+        processing: ['awaiting_receipt', 'cancelled'],
+        awaiting_receipt: ['completed', 'cancelled'],
         completed: [],
-
         cancelled: [],
     };
 
@@ -125,7 +112,7 @@ export function mapAdminOrder(item = {}) {
 
         paymentStatus: item.payment_status || '',
         paymentStatusText: getPaymentStatusText(item.payment_status),
-        fulfillmentMethod: fulfillmentMethod,
+        fulfillmentMethod,
         fulfillmentMethodText: getFulfillmentMethodText(fulfillmentMethod),
         paymentMethod: item.payment_method || '',
         paymentMethodText: getPaymentMethodText(item.payment_method),
@@ -163,7 +150,7 @@ export function mapAdminOrder(item = {}) {
         createdAt: item.created_at || '',
         allowedNextStatuses: Array.isArray(item.allowed_next_statuses)
             ? item.allowed_next_statuses
-            : getNextOrderStatuses(item.status, item.payment_method),
+            : getNextOrderStatuses(item.status),
 
         raw: item,
     };
@@ -176,7 +163,7 @@ export function mapAdminOrderDetail(item = {}) {
         status: item.status,
         fulfillment_method: item.fulfillment_method,
         customer: item.customer,
-        payment_status: item.payment?.status,
+        payment_status: item.payment_status,
         payment_method: item.payment?.method,
         total: item.summary?.total || item.summary?.grand_total,
         expired_at: item.expired_at,
@@ -240,19 +227,14 @@ export function mapAdminOrderDetail(item = {}) {
                   productVariantId: orderItem.product_variant_id,
                   productName: orderItem.product_name || '',
                   thumbnail: normalizeImage(orderItem.thumbnail),
-
                   variant: orderItem.variant || {},
-
                   price: toNumber(orderItem.price),
                   originalPrice: toNumber(orderItem.original_price),
                   discountAmount: toNumber(orderItem.discount_amount),
                   finalPrice: toNumber(orderItem.final_price),
-
                   quantity: toNumber(orderItem.quantity),
                   total: toNumber(orderItem.total),
-
                   promotion: orderItem.promotion || null,
-
                   raw: orderItem,
               }))
             : [],

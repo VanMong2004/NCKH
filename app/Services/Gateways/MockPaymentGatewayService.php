@@ -35,7 +35,7 @@ class MockPaymentGatewayService
 
             if ($payment->status !== 'unpaid') {
                 return [
-                    'message' => 'Payment Ä‘Ã£ xá»­ lÃ½',
+                    'message' => 'Payment đã xử lý',
                     'payment_id' => $payment->id,
                     'order_id' => $payment->order_id,
                     'order_code' => $payment->order?->order_code,
@@ -70,14 +70,14 @@ class MockPaymentGatewayService
                     $order,
                     $oldStatus,
                     'cancelled',
-                    'ÄÆ¡n hÃ ng háº¿t háº¡n thanh toÃ¡n'
+                    'Đơn hàng hết hạn thanh toán'
                 );
 
                 app(NotificationService::class)->order($order->fresh(), 'cancelled');
                 app(AnalyticsEventService::class)->broadcastDashboardRefresh();
 
                 return [
-                    'message' => 'ÄÆ¡n hÃ ng Ä‘Ã£ háº¿t háº¡n thanh toÃ¡n',
+                    'message' => 'Đơn hàng đã hết hạn thanh toán',
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
                     'order_code' => $order->order_code,
@@ -94,7 +94,7 @@ class MockPaymentGatewayService
                 app(AnalyticsEventService::class)->broadcastDashboardRefresh();
 
                 return [
-                    'message' => 'ÄÆ¡n hÃ ng Ä‘Ã£ bá»‹ há»§y, khÃ´ng thá»ƒ thanh toÃ¡n',
+                    'message' => 'Đơn hàng đã bị hủy, không thể thanh toán',
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
                     'order_code' => $order->order_code,
@@ -124,7 +124,7 @@ class MockPaymentGatewayService
                         $order,
                         $oldStatus,
                         $order->status,
-                        'Thanh toÃ¡n giáº£ láº­p ngÃ¢n hÃ ng thÃ nh cÃ´ng'
+                        'Thanh toán giả lập ngân hàng thành công'
                     );
                 }
 
@@ -163,7 +163,7 @@ class MockPaymentGatewayService
             }
 
             return [
-                'message' => 'Callback xá»­ lÃ½ thÃ nh cÃ´ng',
+                'message' => 'Callback xử lý thành công',
                 'payment_id' => $payment->id,
                 'order_id' => $order->id,
                 'order_code' => $order->order_code,

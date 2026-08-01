@@ -21,7 +21,7 @@ class PaymentService
     public function pay($user, ?string $guestToken, int $orderId, string $method)
     {
         if (!$user && !$guestToken) {
-            throw new RuntimeException('Thiáº¿u mÃ£ Ä‘Æ¡n hÃ ng khÃ¡ch', 400);
+            throw new RuntimeException('Thiếu mã đơn hàng khách', 400);
         }
 
         return DB::transaction(function () use ($user, $guestToken, $orderId, $method) {
@@ -37,22 +37,22 @@ class PaymentService
             $order = $orderQuery->find($orderId);
 
             if (!$order) {
-                throw new RuntimeException('ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i', 404);
+                throw new RuntimeException('Đơn hàng không tồn tại', 404);
             }
 
             $this->validatePaymentMethodForOrder($order, $method);
 
             if ($order->payment_status === 'paid') {
-                throw new RuntimeException('ÄÆ¡n hÃ ng Ä‘Ã£ Ä‘Æ°á»£c thanh toÃ¡n', 409);
+                throw new RuntimeException('Đơn hàng đã được thanh toán', 409);
             }
 
             if ($order->expired_at && now()->greaterThan($order->expired_at)) {
                 $this->expireOrder($order, $user?->id);
-                throw new RuntimeException('ÄÆ¡n hÃ ng Ä‘Ã£ háº¿t háº¡n thanh toÃ¡n', 400);
+                throw new RuntimeException('Đơn hàng đã hết hạn thanh toán', 400);
             }
 
             if ($method !== 'mock_bank') {
-                throw new RuntimeException('PhÆ°Æ¡ng thá»©c nÃ y khÃ´ng há»— trá»£ táº¡o thanh toÃ¡n láº¡i', 422);
+                throw new RuntimeException('Phương thức này không hỗ trợ tạo thanh toán lại', 422);
             }
 
             $pendingPayment = Payment::query()
@@ -94,7 +94,7 @@ class PaymentService
         return match ($payment->method) {
             'mock_bank' => $this->mockGateway->create($payment),
             'cod', 'cash_on_pickup' => $this->buildOfflinePaymentResponse($payment),
-            default => throw new RuntimeException('PhÆ°Æ¡ng thá»©c thanh toÃ¡n khÃ´ng Ä‘Æ°á»£c há»— trá»£', 400),
+            default => throw new RuntimeException('Phương thức thanh toán không được hỗ trợ', 400),
         };
     }
 
@@ -104,7 +104,7 @@ class PaymentService
 
         return match ($method) {
             'mock_bank' => $this->mockGateway->callback($data),
-            default => throw new RuntimeException('Callback khÃ´ng há»£p lá»‡', 400),
+            default => throw new RuntimeException('Callback không hợp lệ', 400),
         };
     }
 
@@ -144,7 +144,7 @@ class PaymentService
             'need_callback' => false,
             'amount' => (float) $payment->amount,
             'redirect_url' => null,
-            'message' => 'ÄÆ¡n hÃ ng Ä‘Ã£ Ä‘Æ°á»£c táº¡o thÃ nh cÃ´ng.',
+            'message' => 'Đơn hàng đã được tạo thành công.',
         ];
     }
 
@@ -157,7 +157,7 @@ class PaymentService
         ];
 
         if (!in_array($method, $validCombinations[$fulfillmentMethod] ?? [], true)) {
-            throw new RuntimeException('PhÆ°Æ¡ng thá»©c thanh toÃ¡n khÃ´ng phÃ¹ há»£p vá»›i hÃ¬nh thá»©c nháº­n hÃ ng', 422);
+            throw new RuntimeException('Phương thức thanh toán không phù hợp với hình thức nhận hàng', 422);
         }
     }
 
@@ -188,7 +188,7 @@ class PaymentService
             'changed_by' => $changedBy,
             'old_status' => $oldStatus,
             'new_status' => 'cancelled',
-            'note' => 'ÄÆ¡n hÃ ng háº¿t háº¡n trÆ°á»›c khi táº¡o láº¡i thanh toÃ¡n',
+            'note' => 'Đơn hàng hết hạn trước khi tạo lại thanh toán',
         ]);
 
         if ($order->user_id) {

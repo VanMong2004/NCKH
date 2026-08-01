@@ -42,7 +42,7 @@ export const paymentMethods = [
     },
     {
         id: 'mock_bank',
-        name: 'Giả lập ngân hàng',
+        name: 'Chuyển khoản ngân hàng',
         desc: 'Thanh toán qua cổng giả lập ngân hàng của hệ thống',
         icon: 'BANK',
     },

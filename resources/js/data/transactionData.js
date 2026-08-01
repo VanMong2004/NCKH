@@ -6,7 +6,7 @@ export const transactions = [
         status: 'Hoàn thành',
         date: '20/05/2024 · 10:30',
         title: '3 sản phẩm',
-        subtitle: 'Giả lập ngân hàng',
+        subtitle: 'Chuyển khoản ngân hàng',
         total: '1.055.000 đ',
         images: ['/images/product-shirt.jpg', '/images/product-bag.jpg'],
         steps: ['Đã đặt', 'Đã thanh toán', 'Đang chuẩn bị', 'Đã giao'],

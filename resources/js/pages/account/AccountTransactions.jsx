@@ -24,7 +24,7 @@ const STATUS_OPTIONS = [
 
 const METHOD_OPTIONS = [
     { value: '', label: 'Tất cả phương thức' },
-    { value: 'mock_bank', label: 'Giả lập ngân hàng' },
+    { value: 'mock_bank', label: 'Chuyển khoản ngân hàng' },
     { value: 'cod', label: 'Thanh toán khi nhận hàng' },
     { value: 'cash_on_pickup', label: 'Thanh toán trực tiếp khi nhận tại phòng' },
 ];

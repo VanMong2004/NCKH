@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import MainLayout from '../layout/MainLayout';
 import LoadingOverlay from '../components/common/LoadingOverlay';
+import MainLayout from '../layout/MainLayout';
 import { wait } from '../utils/demoDelay';
 
 function formatCurrency(value) {
@@ -80,7 +80,7 @@ export default function MockPaymentQr() {
             <LoadingOverlay
                 show={submitting}
                 text="Đang xác nhận thanh toán..."
-                description="Hệ thống đang xác minh giao dịch mô phỏng và chuẩn bị kết quả thanh toán."
+                description="Hệ thống đang xác minh giao dịch và chuẩn bị kết quả thanh toán."
             />
 
             <main className="mx-auto max-w-5xl px-4 py-6">
@@ -111,7 +111,7 @@ export default function MockPaymentQr() {
                                     Quét QR để thanh toán
                                 </h1>
                                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    Đây là màn thanh toán mô phỏng cho đơn hàng online.
+                                    Vui lòng quét mã QR hoặc sao chép nội dung chuyển khoản để hoàn tất thanh toán đơn hàng.
                                 </p>
                             </div>
                         </div>
@@ -159,7 +159,7 @@ export default function MockPaymentQr() {
                         <div className="mt-4 space-y-3 text-sm">
                             <InfoRow label="Mã đơn" value={order.orderCode || order.code || '-'} />
                             <InfoRow label="Mã giao dịch" value={payment.transactionId || '-'} />
-                            <InfoRow label="Phương thức" value="Thanh toán giả lập banking" />
+                            <InfoRow label="Phương thức" value="Chuyển khoản ngân hàng" />
                             <InfoRow label="Tạm tính" value={formatCurrency(order.subTotal)} />
                             <InfoRow label="Giảm giá" value={formatCurrency(order.discount)} />
                             <InfoRow label="Tổng cộng" value={formatCurrency(order.grandTotal)} strong />

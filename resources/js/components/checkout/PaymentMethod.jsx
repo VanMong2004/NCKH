@@ -25,8 +25,8 @@ const paymentMethodsByFulfillment = {
         },
         {
             value: 'mock_bank',
-            title: 'Giả lập ngân hàng',
-            desc: 'Dùng để mô phỏng luồng thanh toán chuyển khoản trực tuyến.',
+            title: 'Chuyển khoản ngân hàng',
+            desc: 'Thanh toán trước qua mã QR hoặc chuyển khoản ngân hàng.',
             icon: CreditCard,
         },
     ],
@@ -39,8 +39,8 @@ const paymentMethodsByFulfillment = {
         },
         {
             value: 'mock_bank',
-            title: 'Giả lập ngân hàng',
-            desc: 'Dùng để mô phỏng luồng thanh toán chuyển khoản trực tuyến.',
+            title: 'Chuyển khoản ngân hàng',
+            desc: 'Thanh toán trước qua mã QR hoặc chuyển khoản ngân hàng.',
             icon: CreditCard,
         },
     ],
@@ -140,8 +140,6 @@ function OptionCard({ method, active, disabled, onClick }) {
 
             <div className="min-w-0 flex-1">
                 <p className="mt-2 font-semibold text-blue-950 dark:text-white">{method.title}</p>
-                {/* <p className="font-bold text-blue-950 dark:text-white">{method.title}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{method.desc}</p> */}
             </div>
         </button>
     );

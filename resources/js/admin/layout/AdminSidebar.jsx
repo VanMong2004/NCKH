@@ -17,29 +17,29 @@ import { NavLink } from 'react-router-dom';
 
 const groups = [
     {
-        title: 'Tong quan',
+        title: 'Tổng quan',
         items: [{ label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true }],
     },
     {
-        title: 'Quan ly',
+        title: 'Quản lý',
         items: [
-            { label: 'San pham', to: '/admin/products', icon: Package },
-            { label: 'Danh muc & Khoa', to: '/admin/catalogs', icon: Building2 },
+            { label: 'Sản phẩm', to: '/admin/products', icon: Package },
+            { label: 'Danh mục & Khoa', to: '/admin/catalogs', icon: Building2 },
             { label: 'Tin tức', to: '/admin/blogs', icon: FileText },
-            { label: 'Chinh sach', to: '/admin/policies', icon: FileText },
-            { label: 'Khuyen mai', to: '/admin/promotions', icon: BadgePercent },
-            { label: 'Don hang', to: '/admin/orders', icon: ShoppingCart },
-            { label: 'Nguoi dung', to: '/admin/users', icon: Users },
-            { label: 'Lien he', to: '/admin/contacts', icon: Mail },
-            { label: 'Danh gia', to: '/admin/reviews', icon: Star },
-            { label: 'Noi dung site', to: '/admin/site-content', icon: FileText },
-            { label: 'Tai lieu AI', to: '/admin/chat-knowledge', icon: Bot },
-            { label: 'Hoi thoai AI', to: '/admin/chat-conversations', icon: MessageSquareText },
+            { label: 'Chính sách', to: '/admin/policies', icon: FileText },
+            { label: 'Khuyến mãi', to: '/admin/promotions', icon: BadgePercent },
+            { label: 'Đơn hàng', to: '/admin/orders', icon: ShoppingCart },
+            { label: 'Người dùng', to: '/admin/users', icon: Users },
+            { label: 'Liên hệ', to: '/admin/contacts', icon: Mail },
+            { label: 'Đánh giá', to: '/admin/reviews', icon: Star },
+            { label: 'Nội dung site', to: '/admin/site-content', icon: FileText },
+            { label: 'Tài liệu AI', to: '/admin/chat-knowledge', icon: Bot },
+            { label: 'Hội thoại AI', to: '/admin/chat-conversations', icon: MessageSquareText },
         ],
     },
     {
-        title: 'Bao cao',
-        items: [{ label: 'Thong ke', to: '/admin/analytics', icon: BarChart3 }],
+        title: 'Báo cáo',
+        items: [{ label: 'Thống kê', to: '/admin/analytics', icon: BarChart3 }],
     },
 ];
 
@@ -49,7 +49,7 @@ export default function AdminSidebar({ open, onClose }) {
             {open && (
                 <button
                     type="button"
-                    aria-label="Dong menu"
+                    aria-label="Đóng menu"
                     onClick={onClose}
                     className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden"
                 />

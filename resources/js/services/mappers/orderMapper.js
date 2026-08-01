@@ -355,7 +355,7 @@ function paymentStatusText(status) {
 function paymentMethodText(method) {
     const map = {
         cod: 'Thanh toán khi nhận hàng',
-        mock_bank: 'Giả lập ngân hàng',
+        mock_bank: 'Chuyển khoản ngân hàng',
         cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại phòng',
     };
 

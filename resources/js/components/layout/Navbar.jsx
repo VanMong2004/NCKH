@@ -296,7 +296,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                             className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                            <span className="hidden lg:inline">{theme === 'dark' ? 'Sang' : 'Toi'}</span>
+                            <span className="hidden lg:inline">{theme === 'dark' ? 'Sáng' : 'Tối'}</span>
                         </button>
 
                         {isAdmin ? (
@@ -305,7 +305,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                 className="hidden h-10 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-bold text-blue-700 hover:bg-blue-100 md:inline-flex dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
                             >
                                 <LayoutDashboard size={16} />
-                                Quan tri
+                                Quản trị
                             </Link>
                         ) : null}
 
@@ -314,7 +314,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                         <Link
                             to="/cart"
                             className="relative hidden rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 md:block"
-                            aria-label="Gio hang"
+                            aria-label="Giỏ hàng"
                         >
                             <ShoppingCart size={20} />
                             <Badge count={totalItems} />
@@ -333,7 +333,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                         </div>
 
                                         <span className="max-w-[120px] truncate text-sm font-semibold">
-                                            Xin chao, {user.name || 'Ban'}
+                                            Xin chào, {user.name || 'Bạn'}
                                         </span>
 
                                         <ChevronDown size={16} />
@@ -346,7 +346,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                                 onClick={() => setOpenUserMenu(false)}
                                                 className="block px-4 py-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
                                             >
-                                                Tai khoan cua toi
+                                                Tài khoản của tôi
                                             </Link>
 
                                             <Link
@@ -354,7 +354,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                                 onClick={() => setOpenUserMenu(false)}
                                                 className="block px-4 py-3 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
                                             >
-                                                Don hang cua toi
+                                                Đơn hàng của tôi
                                             </Link>
 
                                             <button
@@ -363,14 +363,14 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                                                 className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-slate-800"
                                             >
                                                 <LogOut size={16} />
-                                                Dang xuat
+                                                Đăng xuất
                                             </button>
                                         </div>
                                     ) : null}
                                 </>
                             ) : (
                                 <Link to="/login" className="rounded-lg bg-blue-950 px-4 py-2 text-sm font-bold text-white hover:bg-blue-900">
-                                    Dang nhap
+                                    Đăng nhập
                                 </Link>
                             )}
                         </div>
@@ -478,7 +478,7 @@ function DesktopNavLink({ to, children }) {
 function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links = [], onClose, onLogout }) {
     return (
         <div className="fixed inset-0 z-50 md:hidden">
-            <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Dong menu" />
+            <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Đóng menu" />
 
             <div className="relative h-full w-[82%] max-w-sm overflow-y-auto bg-white p-5 shadow-xl dark:bg-slate-950">
                 <div className="mb-6 flex items-center justify-between">
@@ -517,7 +517,7 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                         onClick={onClose}
                         className="mb-3 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-blue-950 dark:border-slate-700 dark:text-white"
                     >
-                        <span>Gio hang</span>
+                        <span>Giỏ hàng</span>
                         <span>{totalItems || 0}</span>
                     </Link>
 
@@ -528,7 +528,7 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                             className="mb-3 flex items-center justify-center gap-2 rounded-xl bg-blue-950 px-4 py-3 text-sm font-bold text-white"
                         >
                             <LayoutDashboard size={18} />
-                            Vao trang quan tri
+                            Vào trang quản trị
                         </Link>
                     ) : null}
 
@@ -538,7 +538,7 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                             onClick={onLogout}
                             className="w-full rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-500 dark:bg-red-950/30"
                         >
-                            Dang xuat
+                            Đăng xuất
                         </button>
                     ) : (
                         <Link
@@ -546,7 +546,7 @@ function MobileMenu({ user, isAdmin, totalItems, siteName, tagline, logo, links 
                             onClick={onClose}
                             className="block rounded-xl bg-blue-950 px-4 py-3 text-center text-sm font-bold text-white"
                         >
-                            Dang nhap
+                            Đăng nhập
                         </Link>
                     )}
                 </div>

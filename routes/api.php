@@ -20,13 +20,11 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserAnalyticsController;
-use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\PolicyController;
 use App\Http\Controllers\Api\Admin\AdminBlogController;
 use App\Http\Controllers\Api\Admin\AdminPolicyController;
 use App\Http\Controllers\Api\ContactController;
-use App\Http\Controllers\Api\AboutController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\GuestOrderController;
 use App\Http\Controllers\Api\PromotionController;
@@ -130,12 +128,6 @@ Route::post('/payment/callback', [PaymentController::class, 'callback']);
 Route::middleware('throttle:webhook')
 ->post('/webhooks/notifications/create',[NotificationController::class,'create']); // API này chỉ dành cho admin hoặc hệ thống tạo notification, không phải người dùng cuối
 
-// FAQ (PUBLIC)
-Route::prefix('faqs')->group(function () {
-    Route::get('/', [FaqController::class, 'index']); // Lấy danh sách FAQ, có hỗ trợ filter theo category và keyword (tìm kiếm trong question và answer)
-    Route::get('/categories', [FaqController::class, 'categories']); // Lấy danh sách category của FAQ (chỉ lấy category của những FAQ đang active, có sắp xếp theo thứ tự alphabet)
-});
-
 // BLOG (PUBLIC)
 Route::prefix('blogs')->group(function () {
     Route::get('/', [BlogController::class, 'index']);
@@ -156,9 +148,6 @@ Route::prefix('policies')->group(function () {
 // CONTACT (PUBLIC)
 Route::get('/contact-info', [ContactController::class, 'info']); // Lấy thông tin liên hệ (địa chỉ, email, số điện thoại, v.v.)
 Route::post('/contact', [ContactController::class, 'submit'])->middleware('throttle:contact'); // Gửi thông tin liên hệ (tên, email, subject, message), có thể dùng cho form contact trên website hoặc app, thông tin gửi lên sẽ được lưu vào database và gửi email thông báo cho admin
-
-// ABOUT (PUBLIC)
-Route::get('/about', [AboutController::class, 'show']); // Lấy thông tin về chúng tôi (có thể bao gồm cả sứ mệnh, tầm nhìn, giá trị cốt lõi, lịch sử hình thành, v.v.)
 
 // SYSTEM STATE (PUBLIC) - DÙNG CHO VIỆC CHECK TÌNH TRẠNG
 Route::get('/system/state',[SystemController::class,'state']);

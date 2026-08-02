@@ -214,9 +214,6 @@ class GuestOrderService
         $awaitingReceiptTime = $this->findStatusHistoryTime($order, 'awaiting_receipt');
         $completedTime = $this->findStatusHistoryTime($order, 'completed');
         $cancelledTime = $this->findStatusHistoryTime($order, 'cancelled');
-        $paidTime = $payment?->status === 'paid'
-            ? optional($payment?->updated_at)->format('d/m/Y H:i')
-            : null;
 
         $isExpired = in_array($order->cancel_reason, ['expired', 'payment_timeout'], true);
         $isCancelled = $order->status === 'cancelled';
@@ -232,19 +229,7 @@ class GuestOrderService
         ];
 
         if ($payment?->method === 'mock_bank') {
-            $steps[] = [
-                'key' => 'payment',
-                'label' => 'Thanh toán',
-                'status' => $payment?->status === 'paid',
-                'time' => $paidTime,
-                'note' => match ($payment?->status) {
-                    'unpaid' => 'Đang chờ thanh toán',
-                    'failed' => 'Thanh toán chưa thành công',
-                    'paid' => 'Đã thanh toán thành công',
-                    'refunded' => 'Đã hoàn tiền',
-                    default => 'Chưa có giao dịch hoàn tất',
-                },
-            ];
+            $steps = array_merge($steps, $this->buildPaymentTimelineSteps($order));
         }
 
         $steps[] = [
@@ -288,6 +273,58 @@ class GuestOrderService
         }
 
         return $steps;
+    }
+
+    private function buildPaymentTimelineSteps(Order $order): array
+    {
+        $payments = $order->payments
+            ->where('method', 'mock_bank')
+            ->sortBy('created_at')
+            ->values();
+
+        if ($payments->isEmpty()) {
+            return [];
+        }
+
+        $multipleAttempts = $payments->count() > 1;
+
+        return $payments->map(function ($payment, $index) use ($order, $multipleAttempts) {
+            $attempt = $index + 1;
+            $suffix = $multipleAttempts ? " lần {$attempt}" : '';
+
+            $label = match ($payment->status) {
+                'paid' => "Thanh toán thành công{$suffix}",
+                'failed' => "Thanh toán chưa thành công{$suffix}",
+                'refunded' => "Đã hoàn tiền{$suffix}",
+                default => "Chờ thanh toán{$suffix}",
+            };
+
+            $note = match ($payment->status) {
+                'paid' => 'Hệ thống đã xác nhận giao dịch thanh toán thành công.',
+                'failed' => 'Giao dịch thanh toán chưa thành công. Bạn có thể thanh toán tiếp nếu đơn vẫn còn hiệu lực.',
+                'refunded' => 'Khoản thanh toán này đã được hoàn lại.',
+                default => $order->status === 'cancelled'
+                    && in_array($order->cancel_reason, ['expired', 'payment_timeout'], true)
+                    ? 'Đơn hàng đã quá hạn thanh toán nên giao dịch không còn hiệu lực.'
+                    : (
+                        $order->expired_at
+                            ? 'Vui lòng hoàn tất thanh toán trước hạn để đơn hàng được tiếp tục xử lý.'
+                            : 'Hệ thống đang chờ bạn hoàn tất thanh toán.'
+                    ),
+            };
+
+            return [
+                'key' => 'payment_' . $payment->id,
+                'label' => $label,
+                'status' => $payment->status !== 'unpaid',
+                'time' => optional(
+                    in_array($payment->status, ['paid', 'failed', 'refunded'], true)
+                        ? $payment->updated_at
+                        : $payment->created_at
+                )->format('d/m/Y H:i'),
+                'note' => $note,
+            ];
+        })->toArray();
     }
 
     private function findStatusHistoryTime(Order $order, string $status): ?string

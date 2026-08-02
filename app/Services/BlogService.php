@@ -64,7 +64,7 @@ class BlogService
             ->first();
 
         if (!$blog) {
-            throw new RuntimeException('Bai viet khong ton tai');
+            throw new RuntimeException('Bài viết không tồn tại');
         }
 
         $latestPostsQuery = Blog::query()
@@ -177,9 +177,9 @@ class BlogService
         if ($this->hasAuthorIdColumn()) {
             return $blog->author?->full_name
                 ?? $blog->author?->name
-                ?? 'Ban quan tri CTUT UniShop';
+                ?? 'Ban quản trị CTUT UniShop';
         }
 
-        return $blog->author_name ?: 'Ban quan tri CTUT UniShop';
+        return $blog->author_name ?: 'Ban quản trị CTUT UniShop';
     }
 }

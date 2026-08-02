@@ -48,7 +48,7 @@ class SiteContentSeeder extends Seeder
             ['home', 'Trang chủ', '/', 1],
             ['shop', 'Sản phẩm', '/shop', 2],
             ['promotions', 'Khuyến mãi', '/promotions', 3],
-            ['blog', 'Blog', '/blog', 4],
+            ['blog', 'Tin tức', '/blog', 4],
             ['contact', 'Liên hệ', '/contact', 5],
             ['policy', 'Chính sách', '/policy', 6],
         ];
@@ -109,7 +109,7 @@ class SiteContentSeeder extends Seeder
             ['shop', 'Sản phẩm', '/shop', 2],
             ['promotions', 'Khuyến mãi', '/promotions', 3],
             ['orders', 'Đơn hàng', '/account/orders', 4],
-            ['blog', 'Blog', '/blog', 5],
+            ['blog', 'Tin tức', '/blog', 5],
             ['contact', 'Liên hệ', '/contact', 6],
             ['policy', 'Chính sách', '/policy', 7],
         ];
@@ -194,7 +194,7 @@ class SiteContentSeeder extends Seeder
             ['home', 'Trang chủ', '/', 1],
             ['shop', 'Sản phẩm', '/shop', 2],
             ['promotions', 'Khuyến mãi', '/promotions', 3],
-            ['blog', 'Blog', '/blog', 4],
+            ['blog', 'Tin tức', '/blog', 4],
         ];
 
         foreach ($quickLinks as [$key, $label, $url, $order]) {

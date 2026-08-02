@@ -158,7 +158,7 @@ class AiSocialCaptionService
             'Yêu cầu định dạng:',
             '- 5 đến 10 dòng ngắn, dễ đọc.',
             '- Có lời kêu gọi hành động vừa phải.',
-            '- Có hashtag #CTUTStore #CTUT.',
+            '- Có hashtag #CTUTUniShop #CTUT.',
             '- Không tự tạo mã giảm giá, không đổi giá, không bịa thông tin.',
         ]);
     }
@@ -202,7 +202,7 @@ class AiSocialCaptionService
             'Yêu cầu định dạng:',
             '- 5 đến 10 dòng ngắn, dễ đọc.',
             '- Có lời kêu gọi hành động vừa phải.',
-            '- Có hashtag #CTUTStore #CTUT #KhuyenMai.',
+            '- Có hashtag #CTUTUniShop #CTUT #KhuyenMai.',
             '- Không tự tạo mã giảm giá, không đổi mức giảm, không bịa thông tin.',
         ]);
     }

@@ -210,7 +210,7 @@ class N8nSocialAutomationService
             'caption_template' => [
                 'title' => 'Sản phẩm mới tại CTUT UniShop',
                 'hashtags' => [
-                    '#CTUTStore',
+                    '#CTUTUniShop',
                     '#CTUT',
                     '#SanPhamMoi',
                 ],
@@ -397,7 +397,7 @@ class N8nSocialAutomationService
             'caption_template' => [
                 'title' => 'Khuyến mãi mới tại CTUT UniShop',
                 'hashtags' => [
-                    '#CTUTStore',
+                    '#CTUTUniShop',
                     '#CTUT',
                     '#KhuyenMai',
                 ],

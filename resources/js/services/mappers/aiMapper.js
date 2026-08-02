@@ -155,7 +155,7 @@ export function mapAiConversationDetailResponse(response = {}) {
 
         return {
             id: data.id || null,
-            title: data.title || 'Há»™i thoáº¡i AI',
+            title: data.title || 'Hội thoại AI',
             guestToken: data.guest_token || '',
             messages: pairs,
             raw: data,

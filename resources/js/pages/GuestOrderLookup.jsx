@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Clock, Mail, Phone, Search } from 'lucide-react';
 
 import MainLayout from '../layout/MainLayout';
 import guestOrderService from '../services/guestOrderService';
+import { cancelReasonText } from '../services/mappers/orderMapper';
 
 const LOOKUP_MODES = {
     order_code_email: 'order_code_email',
@@ -355,6 +356,12 @@ function OrderDetailPanel({ order }) {
                     <InfoBox label="Phương thức" value={order.payment?.methodText || 'Đang cập nhật'} />
                     <InfoBox label="Tổng tiền" value={formatMoney(order.summary?.grandTotal)} />
                 </div>
+
+                {order.cancelReason ? (
+                    <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+                        Lý do hủy: {cancelReasonText(order.cancelReason)}
+                    </div>
+                ) : null}
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1fr_360px]">

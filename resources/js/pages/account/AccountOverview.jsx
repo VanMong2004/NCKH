@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 
 import AnalyticsMetricCards from '../../components/analytics/AnalyticsMetricCards';
+import OrderStatusDonutChart from '../../components/analytics/OrderStatusDonutChart';
 import SalesChart from '../../components/analytics/SalesChart';
 import TopProductsChart from '../../components/analytics/TopProductsChart';
-import OrderStatusDonutChart from '../../components/analytics/OrderStatusDonutChart';
-
 import analyticsService from '../../services/analyticsService';
 
 export default function AccountOverview() {
@@ -24,11 +23,9 @@ export default function AccountOverview() {
             setError('');
 
             const data = await analyticsService.overview();
-
             setAnalytics(data);
         } catch (err) {
             console.error('User analytics error:', err);
-
             setError(err?.message || err?.response?.data?.message || 'Không thể tải thống kê cá nhân');
         } finally {
             setLoading(false);

@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 
 import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 import orderService from '../../services/orderService';
+import { cancelReasonText } from '../../services/mappers/orderMapper';
 
 const pickupPaymentText =
     'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
@@ -388,17 +389,6 @@ function paymentMethodLabel(method) {
     };
 
     return map[method] || 'Chưa xác định';
-}
-
-function cancelReasonText(reason) {
-    const map = {
-        user_cancelled: 'Người dùng hủy',
-        expired: 'Hết hạn thanh toán',
-        payment_timeout: 'Hết hạn thanh toán',
-        payment_failed: 'Thanh toán thất bại',
-    };
-
-    return map[reason] || reason;
 }
 
 function formatMoney(value) {

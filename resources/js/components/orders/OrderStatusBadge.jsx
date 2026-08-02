@@ -1,4 +1,4 @@
-export default function OrderStatusBadge({ status }) {
+export default function OrderStatusBadge({ status, fulfillmentMethod = 'delivery' }) {
     const map = {
         pending: {
             label: 'Chờ xác nhận',
@@ -9,7 +9,7 @@ export default function OrderStatusBadge({ status }) {
             className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300',
         },
         awaiting_receipt: {
-            label: 'Đang chờ nhận hàng',
+            label: fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao',
             className: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300',
         },
         completed: {
@@ -23,7 +23,7 @@ export default function OrderStatusBadge({ status }) {
     };
 
     const item = map[status] || {
-        label: status || 'Chờ xử lý',
+        label: 'Đang cập nhật',
         className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
     };
 

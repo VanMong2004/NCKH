@@ -28,6 +28,7 @@ import { toast } from 'react-toastify';
 import orderService from '../../services/orderService';
 import paymentService from '../../services/paymentService';
 import reviewService from '../../services/reviewService';
+import { cancelReasonText } from '../../services/mappers/orderMapper';
 import VatInvoiceRequestModal from '../../components/order/VatInvoiceRequestModal';
 import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
 
@@ -967,17 +968,6 @@ function LoadingBox({ text }) {
             {text}
         </div>
     );
-}
-
-function cancelReasonText(reason) {
-    const map = {
-        user_cancelled: 'Người dùng hủy',
-        expired: 'Hết hạn thanh toán',
-        payment_timeout: 'Hết hạn thanh toán',
-        payment_failed: 'Thanh toán thất bại',
-    };
-
-    return map[reason] || reason;
 }
 
 function formatMoney(value) {

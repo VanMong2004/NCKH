@@ -2,6 +2,22 @@ function toNumber(value) {
     return Number(value || 0);
 }
 
+function resolveAwaitingReceiptText(fulfillmentMethod) {
+    return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
+}
+
+export function orderStatusText(status, fulfillmentMethod = 'delivery') {
+    const map = {
+        pending: 'Chờ xác nhận',
+        processing: 'Đang chuẩn bị',
+        awaiting_receipt: resolveAwaitingReceiptText(fulfillmentMethod),
+        completed: 'Hoàn thành',
+        cancelled: 'Đã hủy',
+    };
+
+    return map[status] || status || 'Đang cập nhật';
+}
+
 export function mapOrderProgressStep(step = {}) {
     return {
         key: step.key || '',
@@ -16,7 +32,8 @@ export function mapOrderTracking(item = {}) {
         id: item.id,
         orderCode: item.order_code || '',
         status: item.status || '',
-        statusText: orderStatusText(item.status),
+        fulfillmentMethod: item.fulfillment_method || '',
+        statusText: orderStatusText(item.status, item.fulfillment_method),
         total: toNumber(item.total),
         updatedAt: item.updated_at || '',
         progress: Array.isArray(item.progress) ? item.progress.map(mapOrderProgressStep) : [],
@@ -35,7 +52,7 @@ export function mapMonthlyItem(item = {}) {
 export function mapStatusItem(item = {}) {
     return {
         status: item.status || '',
-        statusText: orderStatusText(item.status),
+        statusText: orderStatusText(item.status, item.fulfillment_method),
         total: toNumber(item.total),
         raw: item,
     };
@@ -57,7 +74,8 @@ export function mapHighestOrder(item = null) {
         id: item.id,
         orderCode: item.order_code || '',
         status: item.status || '',
-        statusText: orderStatusText(item.status),
+        fulfillmentMethod: item.fulfillment_method || '',
+        statusText: orderStatusText(item.status, item.fulfillment_method),
         total: toNumber(item.total),
         createdAt: item.created_at || '',
         raw: item,
@@ -182,16 +200,4 @@ export function mapInterestsAnalyticsResponse(response = {}) {
 
 export function mapTrackingAnalyticsResponse(response = {}) {
     return mapTrackingAnalytics(response.data || {});
-}
-
-export function orderStatusText(status) {
-    const map = {
-        pending: 'Chờ xác nhận',
-        processing: 'Đang chuẩn bị',
-        awaiting_receipt: 'Đang chờ nhận hàng',
-        completed: 'Hoàn thành',
-        cancelled: 'Đã hủy',
-    };
-
-    return map[status] || status || 'Đang cập nhật';
 }

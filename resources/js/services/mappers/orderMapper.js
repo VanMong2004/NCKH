@@ -31,6 +31,18 @@ export function orderStatusClass(status) {
     return map[status] || 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-700';
 }
 
+export function cancelReasonText(reason) {
+    const map = {
+        user_cancelled: 'Người dùng hủy',
+        expired: 'Hết hạn thanh toán',
+        payment_timeout: 'Hết hạn thanh toán',
+        payment_failed: 'Thanh toán thất bại',
+        admin_cancelled: 'Quản trị viên hủy',
+    };
+
+    return map[reason] || reason || 'Đang cập nhật';
+}
+
 function mapCheckoutOrderItem(item = {}) {
     const originalPrice = toNumber(item.original_price || item.price);
     const discountAmount = toNumber(item.discount_amount);

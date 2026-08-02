@@ -14,7 +14,7 @@ export default function OrderCard({ order, onCancel, onConfirm }) {
                     <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-lg font-extrabold text-blue-950 dark:text-white">{order.code}</h2>
 
-                        <OrderStatusBadge status={order.status} />
+                        <OrderStatusBadge status={order.status} fulfillmentMethod={order.fulfillmentMethod} />
                     </div>
 
                     <div className="mt-3 space-y-2 text-sm text-slate-500 dark:text-slate-400">

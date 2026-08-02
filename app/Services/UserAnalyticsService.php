@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Review;
 use App\Models\RecentlyViewedProduct;
+use App\Models\Review;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -67,7 +67,7 @@ class UserAnalyticsService
                     'total' => (int) $item->total,
                 ]),
         ];
-    }   
+    }
 
     public function spending($user, int $months = 12)
     {
@@ -124,6 +124,7 @@ class UserAnalyticsService
                     'id' => $highestOrder->id,
                     'order_code' => $highestOrder->order_code,
                     'status' => $highestOrder->status,
+                    'fulfillment_method' => $highestOrder->fulfillment_method,
                     'total' => (float) $highestOrder->total,
                     'created_at' => optional($highestOrder->created_at)->format('d/m/Y H:i'),
                 ]
@@ -242,28 +243,32 @@ class UserAnalyticsService
             'id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
+            'fulfillment_method' => $order->fulfillment_method,
             'total' => (float) $order->total,
             'updated_at' => optional($order->updated_at)->format('d/m/Y H:i'),
-            'progress' => $this->orderProgress($order->status),
+            'progress' => $this->orderProgress($order),
         ];
     }
 
-    private function orderProgress(string $status): array
+    private function orderProgress(Order $order): array
     {
+        $awaitingReceiptLabel = $order->fulfillment_method === 'pickup'
+            ? 'Sẵn sàng nhận tại phòng'
+            : 'Đang giao';
+
         $steps = [
             'pending' => 'Đã tạo đơn',
             'processing' => 'Đang chuẩn bị',
-            'awaiting_receipt' => 'Đang giao / chờ nhận',
+            'awaiting_receipt' => $awaitingReceiptLabel,
             'completed' => 'Hoàn thành',
         ];
 
         $keys = array_keys($steps);
-
-        $currentIndex = array_search($status, $keys);
+        $currentIndex = array_search($order->status, $keys, true);
 
         return collect($steps)
             ->map(function ($label, $key) use ($currentIndex, $keys) {
-                $stepIndex = array_search($key, $keys);
+                $stepIndex = array_search($key, $keys, true);
 
                 return [
                     'key' => $key,

@@ -1,5 +1,3 @@
-import { ChevronRight, Home } from 'lucide-react';
-
 export default function OrdersHeader({ status, onStatusChange, total = 0 }) {
     const statuses = [
         { value: '', label: 'Tất cả trạng thái' },

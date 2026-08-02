@@ -43,13 +43,9 @@ export default function OrderSuccess() {
             setError('');
 
             const state = location.state || {};
+            const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
-            const savedGuestOrder = JSON.parse(
-                sessionStorage.getItem('guest_order_success') || '{}'
-            );
-
-            const savedOrderId =
-                state.orderId || savedGuestOrder.orderId || orderIdParam;
+            const savedOrderId = state.orderId || savedGuestOrder.orderId || orderIdParam;
             const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;
 
             if (!orderCode) {
@@ -61,9 +57,7 @@ export default function OrderSuccess() {
                 user && savedOrderId
                     ? await orderService.getOrderDetail(savedOrderId)
                     : await guestOrderService.getByCode(orderCode, {
-                          guestToken: isGuestOrder
-                              ? savedGuestOrder.guestToken
-                              : null,
+                          guestToken: isGuestOrder ? savedGuestOrder.guestToken : null,
                       });
 
             setOrder(result);
@@ -89,9 +83,7 @@ export default function OrderSuccess() {
                 return;
             }
 
-            const savedGuestOrder = JSON.parse(
-                sessionStorage.getItem('guest_order_success') || '{}'
-            );
+            const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
             const result = await guestOrderService.getVatInvoiceRequest(order.code, {
                 guestToken: savedGuestOrder.guestToken,
@@ -113,20 +105,22 @@ export default function OrderSuccess() {
             if (user) {
                 const result = await orderService.createVatInvoiceRequest(order.id, payload);
                 setVatInvoiceRequest(result);
-                toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.');
+                toast.success(
+                    'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
+                );
                 return;
             }
 
-            const savedGuestOrder = JSON.parse(
-                sessionStorage.getItem('guest_order_success') || '{}'
-            );
+            const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
             const result = await guestOrderService.createVatInvoiceRequest(order.code, payload, {
                 guestToken: savedGuestOrder.guestToken,
             });
 
-            toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.');
-            toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
+            setVatInvoiceRequest(result);
+            toast.success(
+                'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
+            );
         } catch (err) {
             toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
         } finally {
@@ -151,9 +145,7 @@ export default function OrderSuccess() {
 
             if (payment.redirectUrl) {
                 if (method === 'mock_bank') {
-                    const savedGuestOrder = JSON.parse(
-                        sessionStorage.getItem('guest_order_success') || '{}'
-                    );
+                    const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
                     sessionStorage.setItem(
                         'mock_payment_qr',
@@ -236,10 +228,10 @@ export default function OrderSuccess() {
 
                     {user ? (
                         <Link
-                        to="/account/orders"
-                        className="mt-4 inline-block rounded-xl bg-blue-950 px-5 py-3 text-white dark:bg-blue-700"
-                    >
-                        Xem đơn hàng của tôi
+                            to="/account/orders"
+                            className="mt-4 inline-block rounded-xl bg-blue-950 px-5 py-3 text-white dark:bg-blue-700"
+                        >
+                            Xem đơn hàng của tôi
                         </Link>
                     ) : null}
                 </div>
@@ -411,14 +403,18 @@ export default function OrderSuccess() {
 
                         <Card title="Hướng dẫn nhận hàng">
                             <Guide icon={MapPin}>
-                                {order.pickup?.location || 'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
+                                {order.pickup?.location ||
+                                    'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
                             </Guide>
 
                             <Guide icon={Info}>
-                                {order.pickup?.instruction || 'Mang theo thông tin đơn hàng khi đến nhận sản phẩm.'}
+                                {order.pickup?.instruction ||
+                                    'Mang theo thông tin đơn hàng khi đến nhận sản phẩm.'}
                             </Guide>
 
-                            <Guide icon={Phone}>Vui lòng giữ liên lạc để nhân viên xác nhận khi cần.</Guide>
+                            <Guide icon={Phone}>
+                                Vui lòng giữ liên lạc để nhân viên xác nhận khi cần.
+                            </Guide>
                         </Card>
                     </div>
                 </section>
@@ -426,10 +422,10 @@ export default function OrderSuccess() {
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                     {user ? (
                         <Link
-                        to={`/account/orders/${order.id}`}
-                        className="rounded-xl bg-blue-950 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 dark:bg-blue-700 dark:hover:bg-blue-600"
-                    >
-                        Xem chi tiết đơn hàng
+                            to={`/account/orders/${order.id}`}
+                            className="rounded-xl bg-blue-950 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 dark:bg-blue-700 dark:hover:bg-blue-600"
+                        >
+                            Xem chi tiết đơn hàng
                         </Link>
                     ) : null}
 

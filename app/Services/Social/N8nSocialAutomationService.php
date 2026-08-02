@@ -208,7 +208,7 @@ class N8nSocialAutomationService
                 'images' => $productImages,
             ],
             'caption_template' => [
-                'title' => 'Sản phẩm mới tại CTUT Store',
+                'title' => 'Sản phẩm mới tại CTUT UniShop',
                 'hashtags' => [
                     '#CTUTStore',
                     '#CTUT',
@@ -395,7 +395,7 @@ class N8nSocialAutomationService
                 'products_count' => $promotion->items->count(),
             ],
             'caption_template' => [
-                'title' => 'Khuyến mãi mới tại CTUT Store',
+                'title' => 'Khuyến mãi mới tại CTUT UniShop',
                 'hashtags' => [
                     '#CTUTStore',
                     '#CTUT',

@@ -347,7 +347,7 @@
 </div>
 
 <div class="footer">
-    CTUT Store - Báo cáo thống kê cá nhân được tạo tự động
+    CTUT UniShop - Báo cáo thống kê cá nhân được tạo tự động
 </div>
 
 </body>

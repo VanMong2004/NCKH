@@ -8,12 +8,12 @@ export default function Footer({ footer }) {
     const socials = Array.isArray(footer?.socials) ? footer.socials : [];
     const payload = footer?.payload || {};
 
-    const title = brand.title || 'CTUT Shop';
+    const title = brand.title || 'CTUT UniShop';
     const subtitle = brand.subtitle || 'Cùng nhau phát triển';
     const content =
         brand.content || 'Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của Trường.';
     const logo = brand.logo || '/images/logo.png';
-    const copyright = payload.copyright || '© 2026 CTUT Shop. All rights reserved.';
+    const copyright = payload.copyright || '© 2026 CTUT UniShop. All rights reserved.';
 
     return (
         <footer className="border-t border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">

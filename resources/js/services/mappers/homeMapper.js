@@ -194,8 +194,8 @@ function mapHeroSlider(hero = {}) {
     return {
         id: hero.id,
 
-        badge: hero.badge || hero.payload?.badge || 'CTUT Shop',
-        title: hero.title || 'CTUT Shop',
+        badge: hero.badge || hero.payload?.badge || 'CTUT UniShop',
+        title: hero.title || 'CTUT UniShop',
         subtitle: hero.subtitle || '',
         description: hero.description || '',
 

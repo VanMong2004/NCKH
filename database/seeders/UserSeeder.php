@@ -11,7 +11,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $users = [
-            ['name' => 'Quản trị CTUT Store', 'email' => 'admin@ctuet.edu.vn', 'phone' => '0901000001', 'mssv' => null, 'role' => 'admin', 'avatar' => '/images/users/default_avatar.png'],
+            ['name' => 'Quản trị CTUT UniShop', 'email' => 'admin@ctuet.edu.vn', 'phone' => '0901000001', 'mssv' => null, 'role' => 'admin', 'avatar' => '/images/users/default_avatar.png'],
             ['name' => 'Bùi Hữu Nhật', 'email' => 'nhat.b2200001@ctuet.edu.vn', 'phone' => '0901000002', 'mssv' => 'B2200001', 'role' => 'user', 'avatar' => '/images/users/default_avatar.png'],
             ['name' => 'Nguyễn Minh Anh', 'email' => 'anh.b2200102@ctuet.edu.vn', 'phone' => '0901000003', 'mssv' => 'B2200102', 'role' => 'user', 'avatar' => '/images/users/default_avatar.png'],
             ['name' => 'Trần Quốc Bảo', 'email' => 'bao.b2300221@ctuet.edu.vn', 'phone' => '0901000004', 'mssv' => 'B2300221', 'role' => 'user', 'avatar' => '/images/users/default_avatar.png'],

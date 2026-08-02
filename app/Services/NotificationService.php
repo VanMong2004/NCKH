@@ -187,7 +187,7 @@ class NotificationService
             'completed' => [
                 'type' => 'order',
                 'title' => 'Đơn hàng hoàn tất',
-                'message' => "Đơn hàng {$order->order_code} đã hoàn tất. Cảm ơn bạn đã mua hàng tại CTUT Store.",
+                'message' => "Đơn hàng {$order->order_code} đã hoàn tất. Cảm ơn bạn đã mua hàng tại CTUT UniShop.",
                 'icon' => 'circle-check',
                 'color' => 'emerald',
             ],
@@ -276,7 +276,7 @@ class NotificationService
 
     //         'completed' => [
     //             'title' => 'Hoàn thành đơn hàng',
-    //             'message' => "Cảm ơn bạn đã mua hàng tại CTUT Store.",
+    //             'message' => "Cảm ơn bạn đã mua hàng tại CTUT UniShop.",
     //         ],
 
     //         'cancelled' => [

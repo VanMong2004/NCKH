@@ -89,7 +89,7 @@ class ChatConversationSummaryService
                 ->timeout(60)
                 ->post($baseUrl . '/responses', [
                     'model' => config('services.openai.chat_model'),
-                    'instructions' => 'Tóm tắt hội thoại bán hàng CTUT Store bằng tiếng Việt. Giữ lại: nhu cầu khách hàng, sản phẩm đã hỏi, size/màu/giá/tồn kho quan trọng, đơn hàng/chính sách liên quan, các ràng buộc cần nhớ. Viết ngắn gọn, không quá 180 từ.',
+                    'instructions' => 'Tóm tắt hội thoại bán hàng CTUT UniShop bằng tiếng Việt. Giữ lại: nhu cầu khách hàng, sản phẩm đã hỏi, size/màu/giá/tồn kho quan trọng, đơn hàng/chính sách liên quan, các ràng buộc cần nhớ. Viết ngắn gọn, không quá 180 từ.',
                     'input' => [
                         [
                             'role' => 'user',

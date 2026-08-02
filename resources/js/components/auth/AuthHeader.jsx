@@ -5,7 +5,7 @@ export default function AuthHeader({ question, linkText, linkHref, siteContent }
     const site = siteContent?.site || {};
 
     const logo = navbar.logo || site.logo || '/images/logo.png';
-    const title = navbar.title || site.name || 'CTUT Shop';
+    const title = navbar.title || site.name || 'CTUT UniShop';
     const subtitle = navbar.subtitle || site.tagline || 'Cùng nhau phát triển';
 
     console.log('AUTH HEADER:', siteContent);

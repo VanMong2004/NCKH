@@ -135,7 +135,7 @@
 
     <div class="header">
         <h1>Phiếu thanh toán</h1>
-        <div class="muted">CTUT Store - Bill đơn hàng {{ $order->order_code }}</div>
+        <div class="muted">CTUT UniShop - Bill đơn hàng {{ $order->order_code }}</div>
     </div>
 
     <table class="grid">
@@ -213,7 +213,7 @@
     </table>
 
     <div class="note">
-        Phiếu này dùng để xác nhận thông tin thanh toán nội bộ của CTUT Store. Đây không phải hóa đơn giá trị gia tăng.
+        Phiếu này dùng để xác nhận thông tin thanh toán nội bộ của CTUT UniShop. Đây không phải hóa đơn giá trị gia tăng.
     </div>
 </body>
 </html>

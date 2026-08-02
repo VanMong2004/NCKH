@@ -43,7 +43,7 @@ export const paymentMethods = [
     {
         id: 'mock_bank',
         name: 'Chuyển khoản ngân hàng',
-        desc: 'Thanh toán qua cổng giả lập ngân hàng của hệ thống',
+        desc: 'Thanh toán qua cổng chuyển khoản ngân hàng của hệ thống',
         icon: 'BANK',
     },
     {

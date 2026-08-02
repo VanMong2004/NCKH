@@ -1275,7 +1275,7 @@ function SmartMainTab({ form, updateField, uploadingField, onUpload }) {
                             <input
                                 value={form.title}
                                 onChange={(e) => updateField('title', e.target.value)}
-                                placeholder="Ví dụ: CTUT Shop"
+                                placeholder="Ví dụ: CTUT UniShop"
                                 className={inputClass}
                             />
                         </Field>
@@ -1353,7 +1353,7 @@ function SmartMainTab({ form, updateField, uploadingField, onUpload }) {
                             <input
                                 value={form.subtitle}
                                 onChange={(e) => updateField('subtitle', e.target.value)}
-                                placeholder="Ví dụ: CTUT Shop"
+                                placeholder="Ví dụ: CTUT UniShop"
                                 className={inputClass}
                             />
                         </Field>
@@ -1423,7 +1423,7 @@ function SmartMainTab({ form, updateField, uploadingField, onUpload }) {
                             <input
                                 value={form.title}
                                 onChange={(e) => updateField('title', e.target.value)}
-                                placeholder="CTUT Shop"
+                                placeholder="CTUT UniShop"
                                 className={inputClass}
                             />
                         </Field>
@@ -1451,7 +1451,7 @@ function SmartMainTab({ form, updateField, uploadingField, onUpload }) {
                             <input
                                 value={readPayload(form, 'copyright')}
                                 onChange={(e) => updatePayloadField(form, updateField, 'copyright', e.target.value)}
-                                placeholder="© 2026 CTUT Shop. All rights reserved."
+                                placeholder="© 2026 CTUT UniShop. All rights reserved."
                                 className={inputClass}
                             />
                         </Field>

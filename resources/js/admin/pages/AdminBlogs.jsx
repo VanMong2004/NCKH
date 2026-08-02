@@ -287,7 +287,7 @@ export default function AdminBlogs() {
                                             </span>
                                         </Td>
                                         <Td>{blog.publishedAtDisplay || 'Chưa xuất bản'}</Td>
-                                        <Td>{blog.authorName || 'Quản trị CTUT Store'}</Td>
+                                        <Td>{blog.authorName || 'Quản trị CTUT UniShop'}</Td>
                                         <Td>{blog.updatedAt || '-'}</Td>
                                         <Td className="text-right">
                                             <div className="flex justify-end gap-2">

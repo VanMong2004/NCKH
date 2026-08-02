@@ -29,7 +29,7 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
 
     const logo = navbar.logo || site.logo || '/images/logo.png';
     const mobileLogo = navbar.mobile_logo || logo;
-    const siteName = navbar.title || site.name || 'CTUT Shop';
+    const siteName = navbar.title || site.name || 'CTUT UniShop';
     const tagline = navbar.subtitle || site.tagline || 'Kết nối sinh viên với sản phẩm thương hiệu Trường';
 
     const payload = navbar.payload || {};

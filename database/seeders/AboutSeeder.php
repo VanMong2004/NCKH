@@ -10,12 +10,12 @@ class AboutSeeder extends Seeder
     public function run(): void
     {
         About::updateOrCreate(['is_active' => true], [
-            'title' => 'CTUT Store',
+            'title' => 'CTUT UniShop',
             'slogan' => 'Kết nối sinh viên CTUT',
             'banner' => 'images/about/banner.jpg',
 
             'description' =>
-                'CTUT Store là cửa hàng chính thức của Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.',
+                'CTUT UniShop là cửa hàng chính thức của Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.',
 
             'mission' =>
                 'Mang đến sản phẩm chất lượng cho sinh viên và giảng viên.',

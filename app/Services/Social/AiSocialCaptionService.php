@@ -34,7 +34,7 @@ class AiSocialCaptionService
             'input' => [
                 [
                     'role' => 'system',
-                    'content' => 'Bạn là trợ lý viết nội dung Facebook cho CTUT Store. Chỉ tạo nội dung bài đăng, không tự thay đổi tên sản phẩm, giá, liên kết, chương trình khuyến mãi hoặc thông tin quan trọng. Viết bằng tiếng Việt, tự nhiên, đúng sự thật, không bịa khuyến mãi.',
+                    'content' => 'Bạn là trợ lý viết nội dung Facebook cho CTUT UniShop. Chỉ tạo nội dung bài đăng, không tự thay đổi tên sản phẩm, giá, liên kết, chương trình khuyến mãi hoặc thông tin quan trọng. Viết bằng tiếng Việt, tự nhiên, đúng sự thật, không bịa khuyến mãi.',
                 ],
                 [
                     'role' => 'user',
@@ -88,7 +88,7 @@ class AiSocialCaptionService
             'input' => [
                 [
                     'role' => 'system',
-                    'content' => 'Bạn là trợ lý viết nội dung Facebook cho CTUT Store. Chỉ tạo nội dung bài đăng, không tự thay đổi tên khuyến mãi, mức giảm, thời gian, liên kết hoặc thông tin quan trọng. Viết bằng tiếng Việt, tự nhiên, đúng sự thật, không bịa ưu đãi.',
+                    'content' => 'Bạn là trợ lý viết nội dung Facebook cho CTUT UniShop. Chỉ tạo nội dung bài đăng, không tự thay đổi tên khuyến mãi, mức giảm, thời gian, liên kết hoặc thông tin quan trọng. Viết bằng tiếng Việt, tự nhiên, đúng sự thật, không bịa ưu đãi.',
                 ],
                 [
                     'role' => 'user',

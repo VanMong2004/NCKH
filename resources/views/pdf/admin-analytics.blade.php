@@ -253,7 +253,7 @@
 </div>
 
 <div class="footer">
-    CTUT Store - Báo cáo được tạo tự động từ hệ thống quản trị
+    CTUT UniShop - Báo cáo được tạo tự động từ hệ thống quản trị
 </div>
 
 </body>

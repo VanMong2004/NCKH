@@ -138,7 +138,7 @@
 
     <div class="section">
         <div class="section-title">Đơn vị bán hàng</div>
-        <div><strong>Tên đơn vị:</strong> CTUT Store</div>
+        <div><strong>Tên đơn vị:</strong> CTUT UniShop</div>
         <div><strong>Mã số thuế:</strong> 0000000000</div>
         <div><strong>Địa chỉ:</strong> Trường Đại học Kỹ thuật - Công nghệ Cần Thơ</div>
     </div>

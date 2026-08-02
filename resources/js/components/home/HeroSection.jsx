@@ -12,7 +12,7 @@ import 'swiper/css/pagination';
 const STATIC_SLIDES = [
     {
         id: 'static-1',
-        title: 'CTUT Shop',
+        title: 'CTUT UniShop',
         subtitle: 'Sản phẩm sinh viên CTUT',
         description: 'Khám phá đồng phục, phụ kiện, quà tặng và các sản phẩm dành cho sinh viên CTUT.',
         image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1800',
@@ -43,8 +43,8 @@ export default function HeroSection({ heroSlider }) {
                   .filter((item) => item?.image || item?.mobileImage)
                   .map((item) => ({
                         id: item.id || item.itemKey || item.item_key,
-                        title: item.title || heroSlider?.title || 'CTUT Shop',
-                        subtitle: item.subtitle || heroSlider?.subtitle || 'CTUT Shop',
+                        title: item.title || heroSlider?.title || 'CTUT UniShop',
+                        subtitle: item.subtitle || heroSlider?.subtitle || 'CTUT UniShop',
                         description: item.content || item.description || heroSlider?.description || '',
                         image:
                             item.image ||
@@ -80,8 +80,8 @@ export default function HeroSection({ heroSlider }) {
             return [
                 {
                     id: 'hero-api-background',
-                    title: heroSlider.title || 'CTUT Shop',
-                    subtitle: heroSlider.subtitle || heroSlider.badge || 'CTUT Shop',
+                    title: heroSlider.title || 'CTUT UniShop',
+                    subtitle: heroSlider.subtitle || heroSlider.badge || 'CTUT UniShop',
                     description: heroSlider.description || '',
                     image: heroSlider.backgroundImage || heroSlider.background_image,
                     mobileImage: heroSlider.mobileBackgroundImage || heroSlider.mobile_background_image || '',
@@ -145,7 +145,7 @@ export default function HeroSection({ heroSlider }) {
                             <div className="absolute inset-0 z-20 flex items-center px-5 sm:px-8 lg:px-12">
                                 <div className="max-w-3xl">
                                     <div className="inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white shadow-sm backdrop-blur">
-                                        {slide.subtitle || 'CTUT Shop'}
+                                        {slide.subtitle || 'CTUT UniShop'}
                                     </div>
 
                                     <h1 className="mt-5 text-3xl font-black leading-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">

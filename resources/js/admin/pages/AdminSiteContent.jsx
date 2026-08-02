@@ -237,7 +237,7 @@ function HeaderPreview({ component, onEdit, onQuickEdit }) {
     const payload = component?.payload || {};
     const links = component?.items?.filter((item) => item.groupKey === 'desktop_links') || [];
 
-    const title = component?.title || 'CTUT Shop';
+    const title = component?.title || 'CTUT UniShop';
     const subtitle = component?.subtitle || 'Cùng nhau phát triển';
     const logo = component?.image || '/images/logo.png';
 
@@ -293,7 +293,7 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
         firstSlide?.title ||
         component?.title ||
         'Kết nối sản phẩm, hoạt động và trải nghiệm sinh viên';
-    const subtitle = firstSlide?.subtitle || component?.subtitle || 'CTUT Shop';
+    const subtitle = firstSlide?.subtitle || component?.subtitle || 'CTUT UniShop';
     const content =
         firstSlide?.content ||
         component?.content ||
@@ -335,7 +335,7 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
 }
 
 function AuthBannerPreview({ component, onEdit, onQuickEdit }) {
-    const title = component?.title || 'Đăng nhập CTUT Shop';
+    const title = component?.title || 'Đăng nhập CTUT UniShop';
     const subtitle = component?.subtitle || 'Chào mừng bạn quay lại';
     const content =
         component?.content ||
@@ -371,7 +371,7 @@ function FooterPreview({ component, onEdit, onQuickEdit }) {
     const columns = component?.items?.filter((item) => item.groupKey === 'footer_columns') || [];
     const contacts = component?.items?.filter((item) => item.groupKey === 'footer_contacts') || [];
 
-    const title = component?.title || 'CTUT Shop';
+    const title = component?.title || 'CTUT UniShop';
     const subtitle = component?.subtitle || 'Cùng nhau phát triển';
     const content =
         component?.content ||

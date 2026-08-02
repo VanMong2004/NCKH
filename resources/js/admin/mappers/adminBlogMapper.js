@@ -31,7 +31,7 @@ export function mapAdminBlog(item = {}) {
         content: item.content || '',
         thumbnail: normalizeImage(item.thumbnail),
         authorId: item.author_id || null,
-        authorName: item.author_name || 'Quan tri CTUT Store',
+        authorName: item.author_name || 'Quản trị CTUT UniShop',
         status: item.status || 'draft',
         isFeatured: Boolean(item.is_featured),
         publishedAt: item.published_at || '',

@@ -65,7 +65,7 @@ export default function AdminSidebar({ open, onClose }) {
                     <div className="flex items-center gap-3">
                         <img
                             src="/images/logo.png"
-                            alt="CTUT Shop"
+                            alt="CTUT UniShop"
                             className="h-9 w-9 rounded-lg object-contain"
                             onError={(e) => {
                                 e.currentTarget.style.display = 'none';
@@ -73,7 +73,7 @@ export default function AdminSidebar({ open, onClose }) {
                         />
 
                         <div>
-                            <h1 className="text-sm font-extrabold text-slate-900 dark:text-white">CTUT Shop</h1>
+                            <h1 className="text-sm font-extrabold text-slate-900 dark:text-white">CTUT UniShop</h1>
                             <p className="text-xs text-slate-500 dark:text-slate-400">Bảng quản trị</p>
                         </div>
                     </div>

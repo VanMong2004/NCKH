@@ -26,7 +26,7 @@ export function mapBlog(item = {}) {
         summary: item.summary || '',
         content: item.content || '',
         thumbnail: normalizeImage(item.thumbnail),
-        authorName: item.author_name || 'Ban quan tri CTUT UniShop',
+        authorName: item.author_name || 'Ban quản trị CTUT UniShop',
         isFeatured: Boolean(item.is_featured),
         publishedAt: item.published_at || '',
         latestPosts: Array.isArray(item.latest_posts) ? item.latest_posts.map(mapBlog) : [],

@@ -430,7 +430,7 @@ function QuickPreview({ type, form }) {
 
                     <div>
                         <p className="font-black text-blue-950 dark:text-white">
-                            {form.title || 'CTUT Shop'}
+                            {form.title || 'CTUT UniShop'}
                         </p>
                         <p className="text-sm text-slate-500">
                             {form.subtitle || 'Cùng nhau phát triển'}
@@ -476,7 +476,7 @@ function QuickPreview({ type, form }) {
                     <div className="absolute inset-0 flex items-center px-8">
                         <div className="max-w-2xl">
                             <span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wider text-white">
-                                {activeSlide.subtitle || 'CTUT Shop'}
+                                {activeSlide.subtitle || 'CTUT UniShop'}
                             </span>
 
                             <h2 className="mt-4 text-4xl font-black text-white">
@@ -535,7 +535,7 @@ function QuickPreview({ type, form }) {
                 <div className="absolute inset-0 flex items-center px-8">
                     <div className="max-w-2xl">
                         <span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wider text-white">
-                            {form.subtitle || 'CTUT Shop'}
+                            {form.subtitle || 'CTUT UniShop'}
                         </span>
 
                         <h2 className="mt-4 text-4xl font-black text-white">
@@ -573,7 +573,7 @@ function QuickPreview({ type, form }) {
                         </p>
 
                         <h2 className="mt-4 text-4xl font-black">
-                            {form.title || 'Đăng nhập CTUT Shop'}
+                            {form.title || 'Đăng nhập CTUT UniShop'}
                         </h2>
 
                         <p className="mt-4 text-sm leading-6 text-white/80">
@@ -592,7 +592,7 @@ function QuickPreview({ type, form }) {
                     <img src={form.image || '/images/logo.png'} alt="Logo" className="h-12 w-12 rounded-lg object-cover" />
 
                     <div>
-                        <p className="font-black text-blue-950 dark:text-white">{form.title || 'CTUT Shop'}</p>
+                        <p className="font-black text-blue-950 dark:text-white">{form.title || 'CTUT UniShop'}</p>
                         <p className="text-sm text-slate-500">{form.subtitle || 'Cùng nhau phát triển'}</p>
                     </div>
                 </div>
@@ -664,7 +664,7 @@ function SlidesManagerFields({ form, setForm, uploadImage, uploading }) {
                     id: null,
                     item_key: `hero_slide_${Date.now()}`,
                     title: '',
-                    subtitle: 'CTUT Shop',
+                    subtitle: 'CTUT UniShop',
                     content: '',
                     image: '',
                     mobile_image: '',

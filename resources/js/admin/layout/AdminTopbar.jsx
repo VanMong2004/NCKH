@@ -71,7 +71,7 @@ export default function AdminTopbar({ onOpenSidebar }) {
 
                     <div className="max-w-[160px]">
                         <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                            {user?.name || user?.full_name || 'Quản trị CTUT Store'}
+                            {user?.name || user?.full_name || 'Quản trị CTUT UniShop'}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Quản trị</p>
                     </div>

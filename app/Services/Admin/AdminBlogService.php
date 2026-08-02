@@ -64,7 +64,7 @@ class AdminBlogService
 
         return [
             'success' => true,
-            'message' => 'Lay danh sach tin tuc thanh cong',
+            'message' => 'Lấy danh sách tin tức thành công',
             'data' => [
                 'items' => $blogs->items(),
                 'meta' => [
@@ -88,12 +88,12 @@ class AdminBlogService
         $blog = $query->find($id);
 
         if (!$blog) {
-            throw new RuntimeException('Bai viet khong ton tai', 404);
+            throw new RuntimeException('Bài viết không tồn tại', 404);
         }
 
         return [
             'success' => true,
-            'message' => 'Lay chi tiet tin tuc thanh cong',
+            'message' => 'Lấy chi tiết tin tức thành công',
             'data' => $this->formatDetail($blog),
         ];
     }
@@ -104,7 +104,7 @@ class AdminBlogService
 
         return [
             'success' => true,
-            'message' => 'Tao bai viet thanh cong',
+            'message' => 'Tạo bài viết thành công',
             'data' => $this->formatDetail($this->refreshBlog($blog)),
         ];
     }
@@ -114,14 +114,14 @@ class AdminBlogService
         $blog = Blog::query()->find($id);
 
         if (!$blog) {
-            throw new RuntimeException('Bai viet khong ton tai', 404);
+            throw new RuntimeException('Bài viết không tồn tại', 404);
         }
 
         $blog->update($this->buildPersistenceData($data, $blog));
 
         return [
             'success' => true,
-            'message' => 'Cap nhat bai viet thanh cong',
+            'message' => 'Cập nhật bài viết thành công',
             'data' => $this->formatDetail($this->refreshBlog($blog)),
         ];
     }
@@ -131,18 +131,18 @@ class AdminBlogService
         $blog = Blog::query()->find($id);
 
         if (!$blog) {
-            throw new RuntimeException('Bai viet khong ton tai', 404);
+            throw new RuntimeException('Bài viết không tồn tại', 404);
         }
 
         if ($this->resolveStatus($blog) === 'published') {
-            throw new RuntimeException('Khong the xoa bai viet dang xuat ban. Vui long chuyen ve ban nhap truoc khi xoa.', 422);
+            throw new RuntimeException('Không thể xóa bài viết đang xuất bản. Vui lòng chuyển về bản nháp trước khi xóa.', 422);
         }
 
         $blog->delete();
 
         return [
             'success' => true,
-            'message' => 'Xoa bai viet thanh cong',
+            'message' => 'Xóa bài viết thành công',
             'data' => null,
         ];
     }
@@ -152,7 +152,7 @@ class AdminBlogService
         $blog = Blog::query()->find($id);
 
         if (!$blog) {
-            throw new RuntimeException('Bai viet khong ton tai', 404);
+            throw new RuntimeException('Bài viết không tồn tại', 404);
         }
 
         $payload = [
@@ -171,7 +171,7 @@ class AdminBlogService
 
         return [
             'success' => true,
-            'message' => $status === 'published' ? 'Da xuat ban bai viet' : 'Da chuyen bai viet ve ban nhap',
+            'message' => $status === 'published' ? 'Đã xuất bản bài viết' : 'Đã chuyển bài viết về bản nháp',
             'data' => $this->formatDetail($this->refreshBlog($blog)),
         ];
     }
@@ -299,10 +299,10 @@ class AdminBlogService
     private function resolveAuthorName(Blog $blog): string
     {
         if ($this->hasAuthorIdColumn()) {
-            return $blog->author?->full_name ?? $blog->author?->name ?? 'Quan tri CTUT Store';
+            return $blog->author?->full_name ?? $blog->author?->name ?? 'Quản trị CTUT UniShop';
         }
 
-        return $blog->author_name ?: 'Quan tri CTUT Store';
+        return $blog->author_name ?: 'Quản trị CTUT UniShop';
     }
 
     private function buildPersistenceData(array $data, ?Blog $blog = null): array
@@ -331,7 +331,7 @@ class AdminBlogService
         if ($this->hasAuthorIdColumn()) {
             $payload['author_id'] = $data['author_id'] ?? $blog?->author_id;
         } elseif (!$blog) {
-            $payload['author_name'] = trim((string) ($data['author_name'] ?? 'Quan tri CTUT Store')) ?: 'Quan tri CTUT Store';
+            $payload['author_name'] = trim((string) ($data['author_name'] ?? 'Quản trị CTUT UniShop')) ?: 'Quản trị CTUT UniShop';
         }
 
         return $payload;

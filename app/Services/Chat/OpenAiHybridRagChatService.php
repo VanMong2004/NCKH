@@ -351,7 +351,7 @@ class OpenAiHybridRagChatService
             'product_variant' => $this->handleProductInfoIntent($message, $user, 'get_product_variants', 'product_variant', $entities),
             'order_query' => $this->handleOrderIntent($message, $user),
             'promotion_query' => $this->handlePromotionIntent($message, $user),
-            default => $this->dynamicEmptyResponse('rag', [], 'Hiện tại tôi chưa tìm thấy thông tin này trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT Store để được xác nhận.'),
+            default => $this->dynamicEmptyResponse('rag', [], 'Hiện tại tôi chưa tìm thấy thông tin này trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT UniShop để được xác nhận.'),
         };
     }
 
@@ -653,7 +653,7 @@ class OpenAiHybridRagChatService
 
         return [
             'response_id' => null,
-            'answer' => "Hiện CTUT Store đang có các chương trình khuyến mãi:\n{$lines}",
+            'answer' => "Hiện CTUT UniShop đang có các chương trình khuyến mãi:\n{$lines}",
             'intent' => 'promotion_query',
             'sources' => [],
             'tool_calls' => $toolCalls,

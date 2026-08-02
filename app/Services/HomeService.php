@@ -129,7 +129,7 @@ class HomeService
         return [
             'name' => $navbar?->title
                 ?? $footer?->title
-                ?? 'CTUT Shop',
+                ?? 'CTUT UniShop',
 
             'tagline' => $navbar?->subtitle
                 ?? $footer?->subtitle
@@ -145,7 +145,7 @@ class HomeService
     {
         if (!$component) {
             return [
-                'title' => 'CTUT Shop',
+                'title' => 'CTUT UniShop',
                 'subtitle' => 'Cùng nhau phát triển',
                 'logo' => '/images/logo.png',
                 'payload' => [],
@@ -178,7 +178,7 @@ class HomeService
     {
         if (!$component) {
             return [
-                'title' => 'CTUT Shop',
+                'title' => 'CTUT UniShop',
                 'subtitle' => 'Cùng nhau phát triển',
                 'logo' => '/images/logo.png',
                 'payload' => [],
@@ -225,7 +225,7 @@ class HomeService
         if (!$component) {
             return [
                 'brand' => [
-                    'title' => 'CTUT Shop',
+                    'title' => 'CTUT UniShop',
                     'subtitle' => 'Cùng nhau phát triển',
                     'content' => null,
                     'logo' => '/images/logo.png',
@@ -284,7 +284,7 @@ class HomeService
     {
         if (!$component) {
             return [
-                'badge' => 'CTUT Shop',
+                'badge' => 'CTUT UniShop',
                 'title' => 'Kết nối sản phẩm, hoạt động và trải nghiệm sinh viên',
                 'description' => null,
                 'background_image' => '/images/system/Rectangle_3897.jpg',
@@ -328,7 +328,7 @@ class HomeService
         if (!$component) {
             return [
                 'title' => 'Chào mừng quay lại',
-                'subtitle' => 'CTUT Shop',
+                'subtitle' => 'CTUT UniShop',
                 'description' => 'Đăng nhập để mua hàng, quản lý giỏ hàng và theo dõi đơn hàng.',
                 'image' => '/images/bg-sign.png',
                 'mobile_image' => null,

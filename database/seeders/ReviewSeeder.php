@@ -16,7 +16,7 @@ class ReviewSeeder extends Seeder
                 'Chất lượng vượt mong đợi, rất đáng tiền.',
                 'Đóng gói cẩn thận, nhận hàng nhanh.',
                 'Màu sắc đẹp, chất liệu tốt.',
-                'Rất hài lòng, sẽ tiếp tục ủng hộ CTUT Store.',
+                'Rất hài lòng, sẽ tiếp tục ủng hộ CTUT UniShop.',
             ],
             4 => [
                 'Sản phẩm tốt, giao đúng hẹn.',

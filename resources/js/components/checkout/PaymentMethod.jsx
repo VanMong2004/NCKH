@@ -9,7 +9,7 @@ const fulfillmentMethods = [
     },
     {
         value: 'pickup',
-        title: 'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+        title: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
         desc: 'Bạn đến nhận hàng trực tiếp tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ và có thể thanh toán tại chỗ.',
         icon: MapPinned,
     },

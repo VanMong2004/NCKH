@@ -26,7 +26,7 @@ const METHOD_OPTIONS = [
     { value: '', label: 'Tất cả phương thức' },
     { value: 'mock_bank', label: 'Chuyển khoản ngân hàng' },
     { value: 'cod', label: 'Thanh toán khi nhận hàng' },
-    { value: 'cash_on_pickup', label: 'Thanh toán trực tiếp khi nhận tại phòng' },
+    { value: 'cash_on_pickup', label: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ' },
 ];
 
 export default function AccountTransactions() {

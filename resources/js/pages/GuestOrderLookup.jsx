@@ -32,11 +32,7 @@ export default function GuestOrderLookup() {
             return lookupResult.order || null;
         }
 
-        return (
-            lookupResult.orders.find((order) => order.code === selectedOrderCode)
-            || lookupResult.orders[0]
-            || null
-        );
+        return lookupResult.orders.find((order) => order.code === selectedOrderCode) || lookupResult.orders[0] || null;
     }, [lookupResult, selectedOrderCode]);
 
     function updateField(field, value) {
@@ -148,16 +144,12 @@ export default function GuestOrderLookup() {
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
                             <Search size={14} />
-                            Xem đơn hàng
+                            Tra cứu đơn hàng
                         </div>
 
-                        {/* <h1 className="mt-4 text-3xl font-extrabold text-blue-950 dark:text-white">
-                            Xem đơn hàng
-                        </h1> */}
-
                         <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            Bạn có thể tra cứu theo mã đơn hàng và email, hoặc nhập số điện thoại cùng email để xem
-                            lịch sử các đơn đã đặt.
+                            Bạn có thể tra cứu theo mã đơn hàng và email, hoặc nhập số điện thoại cùng email để xem lịch sử
+                            các đơn đã đặt.
                         </p>
                     </div>
 
@@ -307,9 +299,7 @@ function InputField({ label, value, onChange, placeholder, error, icon: Icon = n
 
             <div
                 className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 dark:bg-slate-950 ${
-                    error
-                        ? 'border-red-300 dark:border-red-500/50'
-                        : 'border-slate-200 dark:border-slate-700'
+                    error ? 'border-red-300 dark:border-red-500/50' : 'border-slate-200 dark:border-slate-700'
                 }`}
             >
                 {Icon ? <Icon size={18} className="text-slate-400" /> : null}

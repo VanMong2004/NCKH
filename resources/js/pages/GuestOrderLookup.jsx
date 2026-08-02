@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Clock, Mail, Phone, Search } from 'lucide-react';
+import { CheckCircle2, Circle, Mail, Phone, Search } from 'lucide-react';
 
 import MainLayout from '../layout/MainLayout';
 import guestOrderService from '../services/guestOrderService';

@@ -74,7 +74,7 @@ export default function AdminSidebar({ open, onClose }) {
 
                         <div>
                             <h1 className="text-sm font-extrabold text-slate-900 dark:text-white">CTUT Shop</h1>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Admin panel</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Bảng quản trị</p>
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
 
-export default function SearchBar({ placeholder = 'Search...', className = '' }) {
+export default function SearchBar({ placeholder = 'Tìm kiếm...', className = '' }) {
     return (
         <div className={`flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white ${className}`}>
             <input type="text" placeholder={placeholder} className="min-w-0 flex-1 px-4 py-3 text-sm outline-none" />

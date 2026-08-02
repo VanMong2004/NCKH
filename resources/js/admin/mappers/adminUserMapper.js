@@ -35,11 +35,10 @@ export function getUserRoleText(role) {
 
 export function getOrderStatusText(status) {
     const map = {
-        pending: 'Chờ xử lý',
-        paid: 'Đã thanh toán',
-        processing: 'Đang xử lý',
-        shipped: 'Đã giao hàng',
-        completed: 'Hoàn tất',
+        pending: 'Chờ xác nhận',
+        processing: 'Đang chuẩn bị',
+        awaiting_receipt: 'Đang chờ nhận hàng',
+        completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };
 
@@ -53,23 +52,15 @@ export function mapAdminUser(item = {}) {
         email: item.email || '',
         phone: item.phone || '',
         mssv: item.mssv || '',
-
         role: item.role || 'user',
         roleText: getUserRoleText(item.role),
-
         avatarUrl: normalizeImage(item.avatar_url),
-
         ordersCount: toNumber(item.orders_count),
         reviewsCount: toNumber(item.reviews_count),
-
         isDeleted: toBoolean(item.is_deleted),
-
         isLocked: toBoolean(item.is_locked),
-
         lockedAt: item.locked_at || '',
-
         createdAt: item.created_at || '',
-
         raw: item,
     };
 }
@@ -77,7 +68,6 @@ export function mapAdminUser(item = {}) {
 export function mapAdminUserDetail(item = {}) {
     return {
         ...mapAdminUser(item),
-
         addresses: Array.isArray(item.addresses)
             ? item.addresses.map((address) => ({
                   id: address.id,
@@ -88,7 +78,6 @@ export function mapAdminUserDetail(item = {}) {
                   raw: address,
               }))
             : [],
-
         recentOrders: Array.isArray(item.recent_orders)
             ? item.recent_orders.map((order) => ({
                   id: order.id,
@@ -100,7 +89,6 @@ export function mapAdminUserDetail(item = {}) {
                   raw: order,
               }))
             : [],
-
         raw: item,
     };
 }

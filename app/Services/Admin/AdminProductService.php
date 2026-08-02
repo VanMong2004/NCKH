@@ -350,9 +350,8 @@ class AdminProductService
             ->whereHas('order', function ($q) {
                 $q->whereIn('status', [
                     'pending',
-                    'paid',
                     'processing',
-                    'shipped',
+                    'awaiting_receipt',
                 ]);
             })
             ->exists();

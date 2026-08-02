@@ -262,7 +262,7 @@ export function getFulfillmentMethodText(method) {
 export function getDisplayOrderStatusText(status, fulfillmentMethod = '') {
     if (!status) return 'Khởi tạo đơn hàng';
     if (status === 'awaiting_receipt') {
-        return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ' : 'Đang giao';
+        return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận' : 'Đang giao';
     }
     return getOrderStatusText(status);
 }

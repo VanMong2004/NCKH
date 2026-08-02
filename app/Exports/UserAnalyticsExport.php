@@ -218,11 +218,9 @@ class UserAnalyticsExport implements WithMultipleSheets
 
     private function orderStatusLabel(?string $status): string
     {
-        return match ($status) {
-            'pending' => 'Chờ xử lý',
-            'paid' => 'Đã thanh toán',
-            'processing' => 'Đang xử lý',
-            'shipped' => 'Đang giao hàng',
+        return match ($status) {            'pending' => 'Chờ xác nhận',
+            'processing' => 'Đang chuẩn bị',
+            'awaiting_receipt' => 'Đang chờ nhận hàng',
             'completed' => 'Hoàn thành',
             'cancelled' => 'Đã hủy',
             default => $status ?? '',

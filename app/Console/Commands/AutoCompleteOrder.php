@@ -22,14 +22,14 @@ class AutoCompleteOrder extends Command
      * @var string
      */
     // protected $description = 'Command description';
-    protected $description = 'Auto complete orders after 3 days shipped';
+    protected $description = 'Auto complete orders after 3 days awaiting receipt';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $orders = Order::where('status', 'shipped')
+        $orders = Order::where('status', 'awaiting_receipt')
             ->where('updated_at', '<=', now()->subDays(3))
             ->with('items.productVariant')
             ->get();

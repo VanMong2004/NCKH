@@ -1,7 +1,7 @@
 export const shopProducts = [
     {
         id: 1,
-        name: 'ABC Polo Shirt',
+        name: 'Áo polo CTUT',
         category: 'Đồng phục',
         price: 250000,
         priceText: '250.000 đ',
@@ -14,7 +14,7 @@ export const shopProducts = [
     },
     {
         id: 2,
-        name: 'ABC Backpack',
+        name: 'Balo CTUT',
         category: 'Balo sinh viên',
         price: 320000,
         priceText: '320.000 đ',
@@ -27,7 +27,7 @@ export const shopProducts = [
     },
     {
         id: 3,
-        name: 'ABC Cap',
+        name: 'Nón kết CTUT',
         category: 'Nón kết',
         price: 120000,
         priceText: '120.000 đ',
@@ -40,7 +40,7 @@ export const shopProducts = [
     },
     {
         id: 4,
-        name: 'Student ID Card',
+        name: 'Bảng tên sinh viên',
         category: 'Thẻ sinh viên',
         price: 45000,
         priceText: '45.000 đ',
@@ -53,7 +53,7 @@ export const shopProducts = [
     },
     {
         id: 5,
-        name: 'ABC Hoodie',
+        name: 'Áo hoodie CTUT',
         category: 'Áo khoác nỉ',
         price: 450000,
         priceText: '450.000 đ',
@@ -66,7 +66,7 @@ export const shopProducts = [
     },
     {
         id: 6,
-        name: 'ABC Water Bottle',
+        name: 'Bình nước CTUT',
         category: 'Bình nước',
         price: 150000,
         priceText: '150.000 đ',
@@ -79,7 +79,7 @@ export const shopProducts = [
     },
     {
         id: 7,
-        name: 'ABC Tote Bag',
+        name: 'Túi tote CTUT',
         category: 'Túi tote',
         price: 180000,
         priceText: '180.000 đ',
@@ -92,7 +92,7 @@ export const shopProducts = [
     },
     {
         id: 8,
-        name: 'ABC Jacket',
+        name: 'Áo khoác gió CTUT',
         category: 'Áo khoác gió',
         price: 350000,
         priceText: '350.000 đ',
@@ -108,13 +108,13 @@ export const shopProducts = [
 export const filterOptions = {
     ratings: [
         { label: '5 sao', count: 128 },
-        { label: '4 sao & up', count: 312 },
-        { label: '3 sao & up', count: 542 },
-        { label: '2 sao & up', count: 745 },
+        { label: '4 sao trở lên', count: 312 },
+        { label: '3 sao trở lên', count: 542 },
+        { label: '2 sao trở lên', count: 745 },
     ],
     stock: [
-        { label: 'In Stock', count: 956 },
-        { label: 'Out Of Stock', count: 292 },
+        { label: 'Còn hàng', count: 956 },
+        { label: 'Hết hàng', count: 292 },
     ],
     sizes: [
         { label: 'XS', count: 120 },

@@ -100,7 +100,7 @@ export default function AdminDashboard() {
                         </div>
 
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+                            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Bảng điều khiển</h1>
 
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                 Tổng quan nhanh tình hình vận hành CTUT UniShop.
@@ -150,6 +150,7 @@ export default function AdminDashboard() {
                     loading={loading}
                 />
             </div>
+
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {modules.map((item) => (
                     <Link

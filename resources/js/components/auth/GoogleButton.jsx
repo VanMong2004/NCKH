@@ -2,7 +2,7 @@ import { FcGoogle } from 'react-icons/fc';
 
 export default function GoogleButton({
     disabled = true,
-    message = 'Đăng nhập Google sẽ được tích hợp sau.',
+    message = 'Đăng nhập Google sẽ được bổ sung sau.',
 }) {
     return (
         <div className="space-y-2">
@@ -13,7 +13,7 @@ export default function GoogleButton({
                 title={message}
             >
                 <FcGoogle size={22} />
-                Đăng nhập với Google
+                Đăng nhập bằng Google
             </button>
 
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">{message}</p>

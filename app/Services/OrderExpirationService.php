@@ -58,7 +58,7 @@ class OrderExpirationService
                 'changed_by' => $changedBy,
                 'old_status' => $oldStatus,
                 'new_status' => 'cancelled',
-                'note' => 'Đơn hàng đã hết hạn thanh toán',
+                'note' => 'Đơn hàng tự động hủy do hết hạn thanh toán',
             ]);
 
             if ($lockedOrder->user_id) {

@@ -18,7 +18,7 @@ import { NavLink } from 'react-router-dom';
 const groups = [
     {
         title: 'Tổng quan',
-        items: [{ label: 'Dashboard', to: '/admin', icon: LayoutDashboard, end: true }],
+        items: [{ label: 'Bảng điều khiển', to: '/admin', icon: LayoutDashboard, end: true }],
     },
     {
         title: 'Quản lý',

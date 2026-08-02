@@ -24,7 +24,7 @@ export default function AdminTopbar({ onOpenSidebar }) {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const currentTitle = pageTitles.find((item) => location.pathname.startsWith(item.path))?.title || 'Dashboard';
+    const currentTitle = pageTitles.find((item) => location.pathname.startsWith(item.path))?.title || 'Bảng điều khiển';
 
     async function handleLogout() {
         await logout();

@@ -1,16 +1,16 @@
 export default function PreferredSettings() {
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-lg font-bold text-blue-950">Preferred Settings</h2>
+            <h2 className="text-lg font-bold text-blue-950">Tùy chọn ưu tiên</h2>
 
             <div className="mt-5 space-y-4">
-                <Select label="Language" value="English" />
-                <Select label="Currency" value="VND (đ)" />
+                <Select label="Ngôn ngữ" value="Tiếng Việt" />
+                <Select label="Tiền tệ" value="VND (đ)" />
 
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="font-bold text-blue-950">Email Notifications</p>
-                        <p className="text-sm text-slate-500">Receive updates about orders and offers.</p>
+                        <p className="font-bold text-blue-950">Thông báo qua email</p>
+                        <p className="text-sm text-slate-500">Nhận cập nhật về đơn hàng và ưu đãi mới.</p>
                     </div>
 
                     <button className="h-6 w-11 rounded-full bg-blue-600 p-1">

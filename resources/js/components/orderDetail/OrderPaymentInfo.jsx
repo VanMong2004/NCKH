@@ -17,11 +17,8 @@ export default function OrderPaymentInfo({ order }) {
 
             <div className="space-y-3">
                 <Row label="Phương thức" value={payment?.methodText || getFallbackMethodText(order)} />
-
                 <Row label="Trạng thái" value={payment?.statusText || 'Chưa tạo thanh toán'} />
-
                 <Row label="Số tiền" value={formatMoney(payment?.amount || summary.grandTotal)} />
-
                 <Row label="Mã giao dịch" value={payment?.transactionId || '—'} />
             </div>
         </section>
@@ -32,7 +29,6 @@ function Row({ label, value }) {
     return (
         <div className="flex justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-950">
             <span className="font-semibold dark:text-white">{label}</span>
-
             <span className="text-right text-slate-500 dark:text-slate-400">{value}</span>
         </div>
     );

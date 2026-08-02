@@ -100,7 +100,7 @@ class UserAnalyticsExport implements WithMultipleSheets
         return $this->mapRows($orders['recent_orders'] ?? [], fn ($item, $index) => [
             $index + 1,
             $item['order_code'] ?? '',
-            $this->orderStatusLabel($item['status'] ?? ''),
+            $this->orderStatusLabel($item['status'] ?? '', $item['fulfillment_method'] ?? 'delivery'),
             $this->money($item['total'] ?? 0),
             $item['updated_at'] ?? '',
         ]);
@@ -119,7 +119,7 @@ class UserAnalyticsExport implements WithMultipleSheets
     {
         return $this->mapRows($orders['status_breakdown'] ?? [], fn ($item, $index) => [
             $index + 1,
-            $this->orderStatusLabel($item['status'] ?? ''),
+            $this->orderStatusLabel($item['status'] ?? '', $item['fulfillment_method'] ?? 'delivery'),
             $item['total'] ?? 0,
         ]);
     }
@@ -178,7 +178,7 @@ class UserAnalyticsExport implements WithMultipleSheets
         return $this->mapRows($tracking['orders'] ?? [], fn ($item, $index) => [
             $index + 1,
             $item['order_code'] ?? '',
-            $this->orderStatusLabel($item['status'] ?? ''),
+            $this->orderStatusLabel($item['status'] ?? '', $item['fulfillment_method'] ?? 'delivery'),
             $this->money($item['total'] ?? 0),
             $item['updated_at'] ?? '',
         ]);
@@ -216,12 +216,12 @@ class UserAnalyticsExport implements WithMultipleSheets
         return number_format((float) $value, 0, ',', '.') . ' đ';
     }
 
-    private function orderStatusLabel(?string $status): string
+    private function orderStatusLabel(?string $status, string $fulfillmentMethod = 'delivery'): string
     {
         return match ($status) {
             'pending' => 'Chờ xác nhận',
             'processing' => 'Đang chuẩn bị',
-            'awaiting_receipt' => 'Đang chờ nhận hàng',
+            'awaiting_receipt' => $fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao',
             'completed' => 'Hoàn thành',
             'cancelled' => 'Đã hủy',
             default => $status ?? '',

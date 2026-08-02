@@ -117,7 +117,6 @@ Route::prefix('guest/orders')->group(function () {
     Route::post('/lookup', [GuestOrderController::class,'lookup']);
     Route::get('/{orderCode}/vat-invoice-request', [GuestOrderController::class, 'vatInvoiceRequest']);
     Route::post('/{orderCode}/vat-invoice-request', [GuestOrderController::class, 'storeVatInvoiceRequest']);
-    Route::get('/{orderCode}', [GuestOrderController::class, 'showByCode']);
 });
 
 // PAYMENT CALLBACK PUBLIC (DÙNG CHO VIỆC NHẬN CALLBACK TỪ CỔNG THANH TOÁN, KHÔNG CẦN XÁC THỰC TOKEN VÌ CỔNG THANH TOÁN SẼ GỬI CALLBACK VÀO ĐÂY) - IGNORE

@@ -46,7 +46,7 @@ export default function OrderSuccess() {
             const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
             const savedOrderId = state.orderId || savedGuestOrder.orderId || orderIdParam;
-            const isGuestOrder = state.isGuest || savedGuestOrder.isGuest || !user;
+            const guestEmail = state.guestEmail || savedGuestOrder.guestEmail || '';
 
             if (!orderCode) {
                 setError('Không tìm thấy mã đơn hàng.');
@@ -56,9 +56,17 @@ export default function OrderSuccess() {
             const result =
                 user && savedOrderId
                     ? await orderService.getOrderDetail(savedOrderId)
-                    : await guestOrderService.getByCode(orderCode, {
-                          guestToken: isGuestOrder ? savedGuestOrder.guestToken : null,
-                      });
+                    : guestEmail
+                      ? (await guestOrderService.lookup({
+                            order_code: orderCode,
+                            email: guestEmail,
+                        })).order
+                      : null;
+
+            if (!result) {
+                setError('Không đủ thông tin để tra cứu đơn hàng.');
+                return;
+            }
 
             setOrder(result);
         } catch (err) {

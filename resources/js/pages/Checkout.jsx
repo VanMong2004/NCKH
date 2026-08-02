@@ -246,6 +246,7 @@ export default function Checkout() {
                 isGuest: true,
                 orderId: order.id,
                 orderCode: order.orderCode,
+                guestEmail: receiver.guest_email.trim(),
                 guestPhone: normalizePhone(receiver.guest_phone),
                 guestToken: order.guestToken,
             }),

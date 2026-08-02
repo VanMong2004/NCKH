@@ -33,11 +33,13 @@ export function getUserRoleText(role) {
     return map[role] || role || 'Không rõ';
 }
 
-export function getOrderStatusText(status) {
+export function getOrderStatusText(status, fulfillmentMethod = 'delivery') {
+    const awaitingReceiptText = fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
+
     const map = {
         pending: 'Chờ xác nhận',
         processing: 'Đang chuẩn bị',
-        awaiting_receipt: 'Đang chờ nhận hàng',
+        awaiting_receipt: awaitingReceiptText,
         completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };
@@ -83,7 +85,7 @@ export function mapAdminUserDetail(item = {}) {
                   id: order.id,
                   orderCode: order.order_code || '',
                   status: order.status || '',
-                  statusText: getOrderStatusText(order.status),
+                  statusText: getOrderStatusText(order.status, order.fulfillment_method || 'delivery'),
                   total: toNumber(order.total),
                   createdAt: order.created_at || '',
                   raw: order,

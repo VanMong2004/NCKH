@@ -115,19 +115,21 @@ export function mapAdminOrder(item = {}) {
         fulfillmentMethodText: getFulfillmentMethodText(fulfillmentMethod),
         paymentMethod: item.payment_method || '',
         paymentMethodText: getPaymentMethodText(item.payment_method),
-        vatInvoiceRequest: item.vat_invoice_request ? {
-            id: item.vat_invoice_request.id,
-            status: item.vat_invoice_request.status || '',
-            statusText: getVatInvoiceStatusText(item.vat_invoice_request.status),
-            companyName: item.vat_invoice_request.company_name || '',
-            taxCode: item.vat_invoice_request.tax_code || '',
-            invoiceEmail: item.vat_invoice_request.invoice_email || '',
-            adminNote: item.vat_invoice_request.admin_note || '',
-            processedAt: item.vat_invoice_request.processed_at || '',
-            fulfilledAt: item.vat_invoice_request.fulfilled_at || '',
-            createdAt: item.vat_invoice_request.created_at || '',
-            processedBy: item.vat_invoice_request.processed_by || null,
-        } : null,
+        vatInvoiceRequest: item.vat_invoice_request
+            ? {
+                  id: item.vat_invoice_request.id,
+                  status: item.vat_invoice_request.status || '',
+                  statusText: getVatInvoiceStatusText(item.vat_invoice_request.status),
+                  companyName: item.vat_invoice_request.company_name || '',
+                  taxCode: item.vat_invoice_request.tax_code || '',
+                  invoiceEmail: item.vat_invoice_request.invoice_email || '',
+                  adminNote: item.vat_invoice_request.admin_note || '',
+                  processedAt: item.vat_invoice_request.processed_at || '',
+                  fulfilledAt: item.vat_invoice_request.fulfilled_at || '',
+                  createdAt: item.vat_invoice_request.created_at || '',
+                  processedBy: item.vat_invoice_request.processed_by || null,
+              }
+            : null,
         thumbnail: normalizeImage(item.thumbnail),
         customer: {
             userId: customer.user_id || null,
@@ -171,28 +173,32 @@ export function mapAdminOrderDetail(item = {}) {
             phone: item.receiver?.phone || '',
             address: item.receiver?.address || '',
         },
-        payment: item.payment ? {
-            id: item.payment.id,
-            method: item.payment.method || '',
-            methodText: getPaymentMethodText(item.payment.method),
-            status: item.payment.status || '',
-            statusText: getPaymentStatusText(item.payment.status),
-            amount: toNumber(item.payment.amount),
-            transactionId: item.payment.transaction_id || '',
-        } : null,
-        vatInvoiceRequest: item.vat_invoice_request ? {
-            id: item.vat_invoice_request.id,
-            status: item.vat_invoice_request.status || '',
-            statusText: getVatInvoiceStatusText(item.vat_invoice_request.status),
-            companyName: item.vat_invoice_request.company_name || '',
-            taxCode: item.vat_invoice_request.tax_code || '',
-            invoiceEmail: item.vat_invoice_request.invoice_email || '',
-            adminNote: item.vat_invoice_request.admin_note || '',
-            processedAt: item.vat_invoice_request.processed_at || '',
-            fulfilledAt: item.vat_invoice_request.fulfilled_at || '',
-            createdAt: item.vat_invoice_request.created_at || '',
-            processedBy: item.vat_invoice_request.processed_by || null,
-        } : null,
+        payment: item.payment
+            ? {
+                  id: item.payment.id,
+                  method: item.payment.method || '',
+                  methodText: getPaymentMethodText(item.payment.method),
+                  status: item.payment.status || '',
+                  statusText: getPaymentStatusText(item.payment.status),
+                  amount: toNumber(item.payment.amount),
+                  transactionId: item.payment.transaction_id || '',
+              }
+            : null,
+        vatInvoiceRequest: item.vat_invoice_request
+            ? {
+                  id: item.vat_invoice_request.id,
+                  status: item.vat_invoice_request.status || '',
+                  statusText: getVatInvoiceStatusText(item.vat_invoice_request.status),
+                  companyName: item.vat_invoice_request.company_name || '',
+                  taxCode: item.vat_invoice_request.tax_code || '',
+                  invoiceEmail: item.vat_invoice_request.invoice_email || '',
+                  adminNote: item.vat_invoice_request.admin_note || '',
+                  processedAt: item.vat_invoice_request.processed_at || '',
+                  fulfilledAt: item.vat_invoice_request.fulfilled_at || '',
+                  createdAt: item.vat_invoice_request.created_at || '',
+                  processedBy: item.vat_invoice_request.processed_by || null,
+              }
+            : null,
         summary: {
             subTotal: toNumber(item.summary?.sub_total),
             shippingFee: toNumber(item.summary?.shipping_fee),
@@ -200,32 +206,36 @@ export function mapAdminOrderDetail(item = {}) {
             grandTotal: toNumber(item.summary?.grand_total),
             total: toNumber(item.summary?.total),
         },
-        items: Array.isArray(item.items) ? item.items.map((orderItem) => ({
-            id: orderItem.id,
-            productVariantId: orderItem.product_variant_id,
-            productName: orderItem.product_name || '',
-            thumbnail: normalizeImage(orderItem.thumbnail),
-            variant: orderItem.variant || {},
-            price: toNumber(orderItem.price),
-            originalPrice: toNumber(orderItem.original_price),
-            discountAmount: toNumber(orderItem.discount_amount),
-            finalPrice: toNumber(orderItem.final_price),
-            quantity: toNumber(orderItem.quantity),
-            total: toNumber(orderItem.total),
-            promotion: orderItem.promotion || null,
-            raw: orderItem,
-        })) : [],
-        statusHistories: Array.isArray(item.status_histories) ? item.status_histories.map((history) => ({
-            id: history.id,
-            oldStatus: history.old_status || '',
-            oldStatusText: getDisplayOrderStatusText(history.old_status, item.fulfillment_method),
-            newStatus: history.new_status || '',
-            newStatusText: getDisplayOrderStatusText(history.new_status, item.fulfillment_method),
-            note: history.note || '',
-            changedBy: history.changed_by || null,
-            createdAt: history.created_at || '',
-            raw: history,
-        })) : [],
+        items: Array.isArray(item.items)
+            ? item.items.map((orderItem) => ({
+                  id: orderItem.id,
+                  productVariantId: orderItem.product_variant_id,
+                  productName: orderItem.product_name || '',
+                  thumbnail: normalizeImage(orderItem.thumbnail),
+                  variant: orderItem.variant || {},
+                  price: toNumber(orderItem.price),
+                  originalPrice: toNumber(orderItem.original_price),
+                  discountAmount: toNumber(orderItem.discount_amount),
+                  finalPrice: toNumber(orderItem.final_price),
+                  quantity: toNumber(orderItem.quantity),
+                  total: toNumber(orderItem.total),
+                  promotion: orderItem.promotion || null,
+                  raw: orderItem,
+              }))
+            : [],
+        statusHistories: Array.isArray(item.status_histories)
+            ? item.status_histories.map((history) => ({
+                  id: history.id,
+                  oldStatus: history.old_status || '',
+                  oldStatusText: getDisplayOrderStatusText(history.old_status, item.fulfillment_method),
+                  newStatus: history.new_status || '',
+                  newStatusText: getDisplayOrderStatusText(history.new_status, item.fulfillment_method),
+                  note: history.note || '',
+                  changedBy: history.changed_by || null,
+                  createdAt: history.created_at || '',
+                  raw: history,
+              }))
+            : [],
         raw: item,
     };
 }
@@ -262,7 +272,7 @@ export function getFulfillmentMethodText(method) {
 export function getDisplayOrderStatusText(status, fulfillmentMethod = '') {
     if (!status) return 'Khởi tạo đơn hàng';
     if (status === 'awaiting_receipt') {
-        return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận' : 'Đang giao';
+        return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
     }
     return getOrderStatusText(status);
 }

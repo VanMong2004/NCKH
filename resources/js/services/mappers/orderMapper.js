@@ -7,11 +7,15 @@ function toNumber(value) {
 const pickupPaymentText =
     'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
-export function orderStatusText(status) {
+function resolveAwaitingReceiptText(fulfillmentMethod) {
+    return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
+}
+
+export function orderStatusText(status, fulfillmentMethod = 'delivery') {
     const map = {
         pending: 'Chờ xác nhận',
         processing: 'Đang chuẩn bị',
-        awaiting_receipt: 'Đang chờ nhận hàng',
+        awaiting_receipt: resolveAwaitingReceiptText(fulfillmentMethod),
         completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };
@@ -75,7 +79,7 @@ export function mapCheckoutOrderResponse(response = {}) {
         orderCode: item.order_code || '',
         guestToken: item.guestToken || item.guest_token || '',
         status: item.status || '',
-        statusText: orderStatusText(item.status),
+        statusText: orderStatusText(item.status, item.fulfillment_method || 'delivery'),
         statusClass: orderStatusClass(item.status),
         subTotal: toNumber(item.sub_total),
         shippingFee: toNumber(item.shipping_fee),
@@ -166,10 +170,6 @@ function mapTimelineItem(item = {}) {
     };
 }
 
-function resolveAwaitingReceiptText(fulfillmentMethod) {
-    return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
-}
-
 function paymentStatusText(status) {
     const map = {
         unpaid: 'Chưa thanh toán',
@@ -193,10 +193,7 @@ function paymentMethodText(method) {
 
 function mapOrderDetail(item = {}) {
     const fulfillmentMethod = item.fulfillment_method || '';
-    const statusText =
-        item.status === 'awaiting_receipt'
-            ? resolveAwaitingReceiptText(fulfillmentMethod)
-            : orderStatusText(item.status);
+    const statusText = orderStatusText(item.status, fulfillmentMethod);
 
     return {
         id: item.id,
@@ -268,10 +265,6 @@ export function mapGuestOrderLookupResponse(response = {}) {
 
 function mapOrderListItem(item = {}) {
     const fulfillmentMethod = item.fulfillment_method || '';
-    const statusText =
-        item.status === 'awaiting_receipt'
-            ? resolveAwaitingReceiptText(fulfillmentMethod)
-            : orderStatusText(item.status);
 
     return {
         id: item.id,
@@ -280,7 +273,7 @@ function mapOrderListItem(item = {}) {
         title: item.title || 'Đơn hàng',
         type: item.type || '',
         status: item.status || '',
-        statusText,
+        statusText: orderStatusText(item.status, fulfillmentMethod),
         statusClass: orderStatusClass(item.status),
         paymentStatus: item.payment_status || '',
         paymentMethod: item.payment_method || '',

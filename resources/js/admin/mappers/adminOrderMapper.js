@@ -46,7 +46,7 @@ export function getPaymentStatusText(status) {
 
 export function getPaymentMethodText(method) {
     const map = {
-        cod: 'COD',
+        cod: 'Thanh toán khi nhận hàng',
         mock_bank: 'Chuyển khoản ngân hàng',
         cash_on_pickup: 'Thanh toán tại phòng',
     };

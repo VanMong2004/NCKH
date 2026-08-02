@@ -17,7 +17,7 @@ const orderStatusOptions = [
     { value: '', label: 'Tất cả trạng thái đơn hàng' },
     { value: 'pending', label: 'Chờ xác nhận' },
     { value: 'processing', label: 'Đang chuẩn bị' },
-    { value: 'awaiting_receipt', label: 'Đang giao / Sẵn sàng nhận' },
+    { value: 'awaiting_receipt', label: 'Đang giao hoặc sẵn sàng nhận' },
     { value: 'completed', label: 'Hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
 ];

@@ -1,18 +1,12 @@
 import { useEffect, useState } from 'react';
-import {
-    ChevronLeft,
-    ChevronRight,
-    ChevronRight as CrumbRight,
-    CreditCard,
-    Home,
-    ReceiptText,
-    Search,
-    XCircle,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, CreditCard, ReceiptText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import paymentService from '../../services/paymentService';
+
+const pickupPaymentText =
+    'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả trạng thái' },
@@ -26,18 +20,16 @@ const METHOD_OPTIONS = [
     { value: '', label: 'Tất cả phương thức' },
     { value: 'mock_bank', label: 'Chuyển khoản ngân hàng' },
     { value: 'cod', label: 'Thanh toán khi nhận hàng' },
-    { value: 'cash_on_pickup', label: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ' },
+    { value: 'cash_on_pickup', label: pickupPaymentText },
 ];
 
 export default function AccountTransactions() {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(false);
-
     const [filters, setFilters] = useState({
         status: '',
         method: '',
     });
-
     const [meta, setMeta] = useState({
         currentPage: 1,
         lastPage: 1,
@@ -181,7 +173,7 @@ function TransactionCard({ transaction }) {
                     </div>
                 </div>
 
-                <div className="flex flex-col-2 justify-between items-center md:flex-col gap-2 md:items-end">
+                <div className="flex flex-col-2 items-center justify-between gap-2 md:flex-col md:items-end">
                     <p className="text-xl font-extrabold text-blue-950 dark:text-blue-300">
                         {formatMoney(transaction.amount)}
                     </p>

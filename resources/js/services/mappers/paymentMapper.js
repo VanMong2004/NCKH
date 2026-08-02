@@ -2,11 +2,14 @@ function toNumber(value) {
     return Number(value || 0);
 }
 
+const pickupPaymentText =
+    'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+
 export function paymentMethodText(method) {
     const map = {
         cod: 'Thanh toán khi nhận hàng',
         mock_bank: 'Chuyển khoản ngân hàng',
-        cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+        cash_on_pickup: pickupPaymentText,
     };
 
     return map[method] || method || 'Chưa xác định';
@@ -60,6 +63,7 @@ export function mapPayment(item = {}) {
 
 export function mapCreatePaymentResponse(response = {}) {
     const data = response.data || {};
+
     return {
         success: Boolean(response.success),
         message: response.message || '',
@@ -74,6 +78,7 @@ export function mapCreatePaymentResponse(response = {}) {
 
 export function mapPaymentHistoryResponse(response = {}) {
     const raw = Array.isArray(response.data?.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
+
     return {
         success: Boolean(response.success),
         message: response.message || '',
@@ -93,5 +98,6 @@ export function mapPaymentResponse(response = {}) {
 
 export function mapPaymentListResponse(response = {}) {
     const raw = Array.isArray(response.data) ? response.data : [];
+
     return raw.map(mapPayment);
 }

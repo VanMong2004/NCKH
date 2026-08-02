@@ -1,5 +1,8 @@
 import { CreditCard } from 'lucide-react';
 
+const pickupPaymentText =
+    'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+
 export default function OrderPaymentInfo({ order }) {
     const payment = order?.payment || null;
     const summary = order?.summary || {};
@@ -41,7 +44,7 @@ function getFallbackMethodText(order) {
     const map = {
         cod: 'Thanh toán khi nhận hàng',
         mock_bank: 'Chuyển khoản ngân hàng',
-        cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+        cash_on_pickup: pickupPaymentText,
     };
 
     return map[method] || 'Chưa xác định';

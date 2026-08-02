@@ -3,14 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import ProductGrid from '../components/product/ProductGrid';
-
 import MobileFilterModal from '../components/shop/MobileFilterModal';
 import ProductPagination from '../components/shop/ProductPagination';
 import ProductSidebar from '../components/shop/ProductSidebar';
-import ShopFeatures from '../components/shop/ShopFeatures';
-
 import MainLayout from '../layout/MainLayout';
-
 import productService from '../services/productService';
 
 const PRODUCT_PER_PAGE = 12;
@@ -51,14 +47,11 @@ export default function Shop() {
     const initialFilters = parseFiltersFromUrl(location.search);
 
     const [openFilter, setOpenFilter] = useState(false);
-
     const [filters, setFilters] = useState(initialFilters);
     const [draftFilters, setDraftFilters] = useState(initialFilters);
-
     const [products, setProducts] = useState([]);
     const [meta, setMeta] = useState(defaultMeta);
     const [filterOptions, setFilterOptions] = useState(defaultFilterOptions);
-
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const requestIdRef = useRef(0);
@@ -66,13 +59,13 @@ export default function Shop() {
     const hasActiveFilter = useMemo(() => {
         return Boolean(
             filters.keyword ||
-            filters.category_id ||
-            filters.min_price ||
-            filters.max_price ||
-            filters.sizes ||
-            filters.colors ||
-            filters.rating ||
-            filters.in_stock,
+                filters.category_id ||
+                filters.min_price ||
+                filters.max_price ||
+                filters.sizes ||
+                filters.colors ||
+                filters.rating ||
+                filters.in_stock,
         );
     }, [filters]);
 
@@ -115,7 +108,6 @@ export default function Shop() {
             }
 
             console.error(err);
-
             setProducts([]);
             setError(err.message || 'Không thể tải danh sách sản phẩm.');
         } finally {
@@ -235,7 +227,6 @@ export default function Shop() {
                         {!loading && !error && products.length > 0 && (
                             <>
                                 <ProductGrid products={products} />
-
                                 <ProductPagination meta={meta} onPageChange={handlePageChange} />
                             </>
                         )}
@@ -245,7 +236,6 @@ export default function Shop() {
                         )}
                     </div>
                 </section>
-
             </main>
 
             <MobileFilterModal

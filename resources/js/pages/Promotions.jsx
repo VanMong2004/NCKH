@@ -10,10 +10,8 @@ import promotionService from '../services/promotionService';
 
 export default function Promotions() {
     const [searchParams, setSearchParams] = useSearchParams();
-
     const [promotions, setPromotions] = useState([]);
     const [loading, setLoading] = useState(false);
-
     const [meta, setMeta] = useState({
         currentPage: 1,
         lastPage: 1,
@@ -80,7 +78,6 @@ export default function Promotions() {
             <main className="bg-slate-50 py-2 dark:bg-slate-950">
                 <div className="mx-auto max-w-7xl px-4">
                     <Breadcrumb />
-
                     <PromotionFilters filters={filters} onChange={updateFilter} />
 
                     {loading ? (

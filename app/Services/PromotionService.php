@@ -152,11 +152,11 @@ class PromotionService
                     'remaining_quantity' => is_null($item->limit_quantity)
                         ? null
                         : max(
-                                0,
-                                $item->limit_quantity
-                                - $item->sold_quantity
-                                - $item->reserved_quantity
-                            ),
+                            0,
+                            $item->limit_quantity
+                            - $item->sold_quantity
+                            - $item->reserved_quantity
+                        ),
                 ])
                 ->values(),
 
@@ -231,11 +231,11 @@ class PromotionService
                         'remaining_quantity' => is_null($item->limit_quantity)
                             ? null
                             : max(
-                                    0,
-                                    $item->limit_quantity
-                                    - $item->sold_quantity
-                                    - $item->reserved_quantity
-                                ),                        
+                                0,
+                                $item->limit_quantity
+                                - $item->sold_quantity
+                                - $item->reserved_quantity
+                            ),
                         'is_active' => $item->is_active,
                     ];
                 })

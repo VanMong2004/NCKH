@@ -4,9 +4,9 @@ export default function RecentReviews({ reviews }) {
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-blue-950">Recent Reviews</h2>
+                <h2 className="text-lg font-bold text-blue-950">Đánh giá gần đây</h2>
                 <a href="#" className="text-sm font-bold text-blue-700">
-                    View All Reviews
+                    Xem tất cả đánh giá
                 </a>
             </div>
 

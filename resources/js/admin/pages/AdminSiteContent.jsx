@@ -92,9 +92,7 @@ export default function AdminSiteContent() {
     }, [components]);
 
     const componentMap = useMemo(() => {
-        return Object.fromEntries(
-            components.map((item) => [item.componentKey, item]),
-        );
+        return Object.fromEntries(components.map((item) => [item.componentKey, item]));
     }, [components]);
 
     return (
@@ -106,7 +104,7 @@ export default function AdminSiteContent() {
                     </h1>
 
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Xem mô phỏng Header, Slider, Footer rồi bấm vào từng khu vực để chỉnh sửa.
+                        Xem mô phỏng header, slider, footer rồi bấm vào từng khu vực để chỉnh sửa.
                     </p>
                 </div>
 
@@ -141,13 +139,13 @@ export default function AdminSiteContent() {
                             component={componentMap.hero_slider}
                             onEdit={() => openEditor(componentMap.hero_slider)}
                             onQuickEdit={openQuickEdit}
-                        />                        
+                        />
 
                         <FooterPreview
                             component={componentMap.footer}
                             onEdit={() => openEditor(componentMap.footer)}
                             onQuickEdit={openQuickEdit}
-                        />                        
+                        />
                     </WebsitePreviewFrame>
 
                     <AuthBannerPreview
@@ -224,15 +222,13 @@ function WebsitePreviewFrame({ children }) {
                 </div>
 
                 <div className="hidden rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800 sm:block">
-                    Preview trang chủ
+                    Xem trước trang chủ
                 </div>
 
                 <MonitorSmartphone size={18} className="text-slate-400" />
             </div>
 
-            <div className="bg-white dark:bg-slate-900">
-                {children}
-            </div>
+            <div className="bg-white dark:bg-slate-900">{children}</div>
         </section>
     );
 }
@@ -273,11 +269,7 @@ function HeaderPreview({ component, onEdit, onQuickEdit }) {
 
                 <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold text-blue-950 dark:text-slate-100">
                     {links.length > 0 ? (
-                        links.map((item) => (
-                            <span key={item.id}>
-                                {item.label || item.title}
-                            </span>
-                        ))
+                        links.map((item) => <span key={item.id}>{item.label || item.title}</span>)
                     ) : (
                         <>
                             <span>Trang chủ</span>
@@ -294,24 +286,14 @@ function HeaderPreview({ component, onEdit, onQuickEdit }) {
 
 function HeroPreview({ component, onEdit, onQuickEdit }) {
     const slides = component?.items?.filter((item) => item.groupKey === 'hero_slides') || [];
-
     const firstSlide = slides[0];
 
-    const image =
-        firstSlide?.image ||
-        component?.image ||
-        '/images/system/Rectangle_3897.jpg';
-
+    const image = firstSlide?.image || component?.image || '/images/system/Rectangle_3897.jpg';
     const title =
         firstSlide?.title ||
         component?.title ||
         'Kết nối sản phẩm, hoạt động và trải nghiệm sinh viên';
-
-    const subtitle =
-        firstSlide?.subtitle ||
-        component?.subtitle ||
-        'CTUT Shop';
-
+    const subtitle = firstSlide?.subtitle || component?.subtitle || 'CTUT Shop';
     const content =
         firstSlide?.content ||
         component?.content ||
@@ -325,12 +307,7 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
                     className="absolute inset-0 z-10 cursor-pointer"
                 />
 
-                <img
-                    src={image}
-                    alt={title}
-                    className="h-full w-full object-cover opacity-80"
-                />
-
+                <img src={image} alt={title} className="h-full w-full object-cover opacity-80" />
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-950/90 via-blue-950/60 to-transparent" />
 
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-center px-8">
@@ -339,13 +316,9 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
                             {subtitle}
                         </span>
 
-                        <h2 className="mt-4 text-3xl font-black text-white md:text-5xl">
-                            {title}
-                        </h2>
+                        <h2 className="mt-4 text-3xl font-black text-white md:text-5xl">{title}</h2>
 
-                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-white/85">
-                            {content}
-                        </p>
+                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-white/85">{content}</p>
 
                         <div className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-black text-blue-950">
                             {firstSlide?.linkText || 'Xem cửa hàng'}
@@ -364,34 +337,30 @@ function HeroPreview({ component, onEdit, onQuickEdit }) {
 function AuthBannerPreview({ component, onEdit, onQuickEdit }) {
     const title = component?.title || 'Đăng nhập CTUT Shop';
     const subtitle = component?.subtitle || 'Chào mừng bạn quay lại';
-    const content = 
+    const content =
         component?.content ||
         'Đăng nhập để nhận thêm nhiều ưu đãi và theo dõi đơn hàng của bạn.';
     const image = component?.image || '/images/system/auth-banner.jpg';
 
     return (
-        <PreviewBlock label="Auth Banner" onEdit={onEdit} disabled={!component}>
+        <PreviewBlock label="Banner đăng nhập" onEdit={onEdit} disabled={!component}>
             <div
                 onClick={() => onQuickEdit('auth-banner', component)}
                 className="relative h-[600px] cursor-pointer overflow-hidden rounded-3xl"
             >
-                {/* Background Image */}
-                <img
-                    src={image}
-                    alt={title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                />
+                <img src={image} alt={title} className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-white/15" />
 
-                {/* Nội dung */}
                 <div className="relative z-10 flex h-full flex-col justify-start px-10 pt-12">
+                    <span className="text-sm font-semibold uppercase tracking-wide text-indigo-700">
+                        {subtitle}
+                    </span>
+
                     <h2 className="mt-2 max-w-xl text-4xl font-extrabold leading-tight text-indigo-950">
                         {title}
                     </h2>
 
-                    <p className="mt-4 max-w-md text-base leading-8 text-slate-700">
-                        {content}
-                    </p>
+                    <p className="mt-4 max-w-md text-base leading-8 text-slate-700">{content}</p>
                 </div>
             </div>
         </PreviewBlock>
@@ -404,7 +373,9 @@ function FooterPreview({ component, onEdit, onQuickEdit }) {
 
     const title = component?.title || 'CTUT Shop';
     const subtitle = component?.subtitle || 'Cùng nhau phát triển';
-    const content = component?.content || 'Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của nhà trường.';
+    const content =
+        component?.content ||
+        'Cửa hàng trực tuyến phục vụ sinh viên, giảng viên và các hoạt động của nhà trường.';
     const logo = component?.image || '/images/logo.png';
 
     return (
@@ -416,32 +387,22 @@ function FooterPreview({ component, onEdit, onQuickEdit }) {
                         className="cursor-pointer rounded-xl p-2 hover:bg-blue-50 dark:hover:bg-slate-800"
                     >
                         <div className="flex items-center gap-3">
-                            <img
-                                src={logo}
-                                alt={title}
-                                className="h-11 w-11 rounded-lg object-cover"
-                            />
+                            <img src={logo} alt={title} className="h-11 w-11 rounded-lg object-cover" />
 
                             <div>
-                                <p className="font-black text-blue-950 dark:text-white">
-                                    {title}
-                                </p>
+                                <p className="font-black text-blue-950 dark:text-white">{title}</p>
                                 <p className="text-xs text-slate-500">{subtitle}</p>
                             </div>
                         </div>
 
-                        <p className="mt-4 line-clamp-3 text-sm text-slate-500">
-                            {content}
-                        </p>
+                        <p className="mt-4 line-clamp-3 text-sm text-slate-500">{content}</p>
                     </div>
 
                     <div>
                         <p className="font-bold text-slate-900 dark:text-white">Liên kết</p>
                         <div className="mt-3 space-y-2 text-sm text-slate-500">
                             {columns.length > 0 ? (
-                                columns.slice(0, 4).map((item) => (
-                                    <p key={item.id}>{item.title || item.label}</p>
-                                ))
+                                columns.slice(0, 4).map((item) => <p key={item.id}>{item.title || item.label}</p>)
                             ) : (
                                 <>
                                     <p>Trang chủ</p>
@@ -456,9 +417,7 @@ function FooterPreview({ component, onEdit, onQuickEdit }) {
                         <p className="font-bold text-slate-900 dark:text-white">Liên hệ</p>
                         <div className="mt-3 space-y-2 text-sm text-slate-500">
                             {contacts.length > 0 ? (
-                                contacts.slice(0, 4).map((item) => (
-                                    <p key={item.id}>{item.label}</p>
-                                ))
+                                contacts.slice(0, 4).map((item) => <p key={item.id}>{item.label}</p>)
                             ) : (
                                 <>
                                     <p>Cần Thơ, Việt Nam</p>
@@ -506,7 +465,6 @@ function PreviewBlock({ label, onEdit, disabled, children }) {
 
 function ComponentCard({ component, onEdit }) {
     const config = getComponentConfig(component.componentKey);
-
     const Icon = config.icon;
 
     return (
@@ -523,13 +481,8 @@ function ComponentCard({ component, onEdit }) {
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <p className="font-black text-slate-900 dark:text-white">
-                                {config.title}
-                            </p>
-
-                            <p className="mt-1 text-sm text-slate-500">
-                                {config.description}
-                            </p>
+                            <p className="font-black text-slate-900 dark:text-white">{config.title}</p>
+                            <p className="mt-1 text-sm text-slate-500">{config.description}</p>
                         </div>
 
                         <span
@@ -545,13 +498,9 @@ function ComponentCard({ component, onEdit }) {
                     </div>
 
                     <div className="mt-4 flex items-center justify-between text-sm">
-                        <span className="text-slate-500">
-                            {component.itemsCount || 0} mục con
-                        </span>
+                        <span className="text-slate-500">{component.itemsCount || 0} mục con</span>
 
-                        <span className="font-bold text-blue-700 dark:text-blue-300">
-                            Chỉnh sửa →
-                        </span>
+                        <span className="font-bold text-blue-700 dark:text-blue-300">Chỉnh sửa →</span>
                     </div>
                 </div>
             </div>

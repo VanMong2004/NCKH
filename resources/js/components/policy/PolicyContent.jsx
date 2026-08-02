@@ -166,7 +166,7 @@ function getFallbackSections(policy) {
                 ],
             },
             {
-                title: 'QR Check-in',
+                title: 'Xác nhận bằng mã QR',
                 icon: QrCode,
                 items: [
                     'Vui lòng xuất trình mã QR trong email hoặc trang chi tiết đơn hàng khi nhận sản phẩm.',

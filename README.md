@@ -1,4 +1,4 @@
-# CTUT Store (NCKH)
+# CTUT UniShop (NCKH)
 
 > Hệ thống thương mại điện tử dành cho Trường Đại học Kỹ thuật - Công nghệ Cần Thơ (CTUT).
 
@@ -6,7 +6,7 @@
 
 # Tổng quan
 
-CTUT Store là hệ thống thương mại điện tử được xây dựng theo mô hình:
+CTUT UniShop là hệ thống thương mại điện tử được xây dựng theo mô hình:
 
 * Laravel 10 REST API
 * React 18 Single Page Application
@@ -198,4 +198,4 @@ docs/troubleshooting.md
 
 # License
 
-Internal Project - CTUT Store
+Internal Project - CTUT UniShop

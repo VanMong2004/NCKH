@@ -12,7 +12,7 @@ actor "Hệ thống\nthanh toán" as PaymentSystem
 actor "Chatbot AI" as Chatbot
 actor "n8n" as N8N
 
-rectangle "Cổng dịch vụ số CTUT Store" {
+rectangle "Cổng dịch vụ số CTUT UniShop" {
   usecase "Xem sản phẩm" as UC_ViewProduct
   usecase "Tìm kiếm sản phẩm" as UC_Search
   usecase "Thêm giỏ hàng" as UC_Cart

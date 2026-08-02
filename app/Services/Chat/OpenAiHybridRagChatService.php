@@ -754,7 +754,7 @@ class OpenAiHybridRagChatService
             'chinh sach', 'faq', 'cau hoi thuong gap', 'huong dan', 'huong dan mua hang',
             'cach mua', 'cach dat hang', 'doi tra', 'hoan tien', 'hoan tra', 'bao hanh',
             'thanh toan', 'thanh toan khi nhan hang', 'cod', 'giao hang', 'nhan hang',
-            'lien he', 'ho tro', 'gioi thieu', 'ctut unishop', 'ctut store',
+            'lien he', 'ho tro', 'gioi thieu', 'ctut unishop', 'CTUT UniShop',
             'cua hang la gi', 'quy dinh',
         ]);
         $hasPriceSignal = $this->containsAny($text, [

@@ -121,7 +121,7 @@ export default function MockPaymentQr() {
 
                             <div className="space-y-4">
                                 <InfoRow label="Ngân hàng" value="CTUT Bank" />
-                                <InfoRow label="Chủ tài khoản" value="CTUT STORE" />
+                                <InfoRow label="Chủ tài khoản" value="CTUT UniShop" />
                                 <InfoRow label="Số tài khoản" value="202606290001" />
                                 <InfoRow label="Số tiền" value={formatCurrency(order.grandTotal || payment.raw?.amount)} strong />
 

@@ -36,16 +36,17 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
     const searchPlaceholder = payload.search_placeholder || 'Tìm sản phẩm, khuyến mãi...';
     const mobileSearchPlaceholder = payload.mobile_search_placeholder || 'Tìm sản phẩm...';
 
-    const desktopLinks = Array.isArray(navbar.desktop_links) && navbar.desktop_links.length
-        ? navbar.desktop_links
-        : [
-            { label: 'Trang chủ', link_url: '/' },
-            { label: 'Sản phẩm', link_url: '/shop' },
-            { label: 'Khuyến mãi', link_url: '/promotions' },
-            { label: 'Tin tức', link_url: '/blog' },
-            { label: 'Liên hệ', link_url: '/contact' },
-            { label: 'Chính sách', link_url: '/policy' },
-        ];
+    const desktopLinks =
+        Array.isArray(navbar.desktop_links) && navbar.desktop_links.length
+            ? navbar.desktop_links
+            : [
+                  { label: 'Trang chủ', link_url: '/' },
+                  { label: 'Sản phẩm', link_url: '/shop' },
+                  { label: 'Khuyến mãi', link_url: '/promotions' },
+                  { label: 'Tin tức', link_url: '/blog' },
+                  { label: 'Liên hệ', link_url: '/contact' },
+                  { label: 'Chính sách', link_url: '/policy' },
+              ];
 
     const normalizedDesktopLinks = ensureGuestOrderLookupLink(normalizePublicLinks(filterPublicLinks(desktopLinks)));
     const mobileLinks = ensureGuestOrderLookupLink(

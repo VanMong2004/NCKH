@@ -159,11 +159,11 @@ export default function AccountOrderDetail() {
                 return;
             }
 
-            toast.success(payment.message || 'Đã tạo thanh toán');
+            toast.success(payment.message || 'Đã chuyển sang bước thanh toán');
 
             loadOrder();
         } catch (error) {
-            toast.error(error.message || 'Không thể tạo thanh toán');
+            toast.error(error.message || 'Không thể chuyển sang bước thanh toán');
         } finally {
             setPaying(false);
         }
@@ -195,7 +195,9 @@ export default function AccountOrderDetail() {
             const result = await orderService.createVatInvoiceRequest(order.id, payload);
 
             setVatInvoiceRequest(result);
-            toast.success('Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Hóa đơn đỏ sẽ được gửi kèm cùng với sản phẩm. Nếu có thắc mắc hãy liên hệ quản trị viên.');
+            toast.success(
+                'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
+            );
         } catch (error) {
             toast.error(error.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
         } finally {
@@ -278,8 +280,8 @@ export default function AccountOrderDetail() {
                                 onClick={handlePayAgain}
                                 className="rounded-xl bg-blue-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700"
                             >
-                                {paying ? 'Đang tạo thanh toán...' : 'Thanh toán'}
-                        </button>
+                                {paying ? 'Đang chuyển sang bước thanh toán...' : 'Thanh toán'}
+                            </button>
                         )}
 
                         {canCancel && (
@@ -898,7 +900,8 @@ function PickupCard({ order }) {
     return (
         <Card title="Hướng dẫn nhận hàng" icon={MapPin}>
             <Guide icon={MapPin}>
-                {order.pickup?.location || 'Nhận hàng tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo thông báo từ cửa hàng.'}
+                {order.pickup?.location ||
+                    'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo thông báo từ cửa hàng.'}
             </Guide>
 
             <Guide icon={Info}>{order.pickup?.instruction || 'Vui lòng giữ mã đơn hàng khi nhận sản phẩm.'}</Guide>

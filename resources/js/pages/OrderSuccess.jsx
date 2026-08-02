@@ -183,10 +183,10 @@ export default function OrderSuccess() {
                 return;
             }
 
-            toast.success(payment.message || 'Tạo thanh toán thành công.');
+            toast.success(payment.message || 'Đã chuyển sang bước thanh toán.');
             loadOrder();
         } catch (err) {
-            toast.error(err.message || 'Không thể tạo thanh toán.');
+            toast.error(err.message || 'Không thể chuyển sang bước thanh toán.');
         } finally {
             setPaying(false);
         }
@@ -444,7 +444,7 @@ export default function OrderSuccess() {
                             onClick={handlePayAgain}
                             className="rounded-xl bg-blue-950 px-6 py-3 text-center text-sm font-bold text-white transition hover:bg-blue-900 disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
                         >
-                            {paying ? 'Đang tạo thanh toán...' : 'Thanh toán'}
+                            {paying ? 'Đang chuyển sang bước thanh toán...' : 'Thanh toán'}
                         </button>
                     )}
                     <button

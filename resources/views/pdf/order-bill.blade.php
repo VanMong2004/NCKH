@@ -107,30 +107,31 @@
     @php
         $orderStatusText = [
             'pending' => 'Chờ xác nhận',
-            'paid' => 'Đã thanh toán',
-            'processing' => 'Đang xử lý',
-            'shipped' => 'Đang giao hàng',
+            'processing' => 'Đang chuẩn bị',
+            'awaiting_receipt' => $order->fulfillment_method === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao',
             'completed' => 'Hoàn thành',
             'cancelled' => 'Đã hủy',
         ][$order->status] ?? $order->status;
 
         $paymentMethodText = [
             'cod' => 'Thanh toán khi nhận hàng',
-            'mock' => 'Thanh toán giả lập banking',
-            'vnpay' => 'VNPay',
+            'mock_bank' => 'Chuyển khoản ngân hàng',
+            'cash_on_pickup' => 'Thanh toán trực tiếp khi nhận tại phòng',
             'bank_transfer' => 'Chuyển khoản ngân hàng',
             'banking' => 'Chuyển khoản ngân hàng',
-            'momo' => 'MoMo',
+            'mock' => 'Chuyển khoản ngân hàng',
         ][$payment?->method] ?? ($payment?->method ?: '---');
 
         $paymentStatusText = [
-            'pending' => 'Đang chờ',
+            'unpaid' => 'Chưa thanh toán',
+            'paid' => 'Đã thanh toán',
+            'failed' => 'Thanh toán thất bại',
+            'refunded' => 'Đã hoàn tiền',
+            'pending' => 'Chưa thanh toán',
             'processing' => 'Đang xử lý',
             'success' => 'Đã thanh toán',
-            'failed' => 'Thất bại',
             'cancelled' => 'Đã hủy',
-            'refunded' => 'Đã hoàn tiền',
-        ][$payment?->status] ?? ($payment?->status ?: 'pending');
+        ][$payment?->status] ?? ($payment?->status ?: 'Chưa thanh toán');
     @endphp
 
     <div class="header">

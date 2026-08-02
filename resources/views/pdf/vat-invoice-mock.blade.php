@@ -25,8 +25,8 @@
         }
 
         .header {
-            text-align: center;
             margin-bottom: 18px;
+            text-align: center;
         }
 
         .header h1 {
@@ -107,25 +107,27 @@
     @php
         $paymentMethodText = [
             'cod' => 'Thanh toán khi nhận hàng',
-            'mock' => 'Thanh toán giả lập banking',
-            'vnpay' => 'VNPay',
+            'mock_bank' => 'Chuyển khoản ngân hàng',
+            'cash_on_pickup' => 'Thanh toán trực tiếp khi nhận tại phòng',
             'bank_transfer' => 'Chuyển khoản ngân hàng',
             'banking' => 'Chuyển khoản ngân hàng',
-            'momo' => 'MoMo',
+            'mock' => 'Chuyển khoản ngân hàng',
         ][$payment?->method] ?? ($payment?->method ?: '---');
 
         $paymentStatusText = [
-            'pending' => 'Đang chờ',
+            'unpaid' => 'Chưa thanh toán',
+            'paid' => 'Đã thanh toán',
+            'failed' => 'Thanh toán thất bại',
+            'refunded' => 'Đã hoàn tiền',
+            'pending' => 'Chưa thanh toán',
             'processing' => 'Đang xử lý',
             'success' => 'Đã thanh toán',
-            'failed' => 'Thất bại',
             'cancelled' => 'Đã hủy',
-            'refunded' => 'Đã hoàn tiền',
-        ][$payment?->status] ?? ($payment?->status ?: 'pending');
+        ][$payment?->status] ?? ($payment?->status ?: 'Chưa thanh toán');
     @endphp
 
     <div class="mock-badge">
-        Hóa đơn GTGT mô phỏng - Không có giá trị pháp lý - MISA mock provider
+        Hóa đơn GTGT mô phỏng - Không có giá trị pháp lý - Dùng cho kiểm thử nội bộ
     </div>
 
     <div class="header">
@@ -201,7 +203,7 @@
     </table>
 
     <div class="footer">
-        PDF này được tạo bởi mock provider để kiểm thử luồng tích hợp MISA. Không dùng để kê khai thuế hoặc hạch toán.
+        PDF này chỉ dùng để kiểm thử nội bộ luồng xử lý hóa đơn đỏ. Khi tích hợp nhà cung cấp hóa đơn thật sau này, phần template/mock hiện tại sẽ được thay bằng luồng phát hành thực tế.
     </div>
 </body>
 </html>

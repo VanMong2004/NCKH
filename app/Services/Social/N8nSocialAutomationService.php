@@ -521,8 +521,8 @@ class N8nSocialAutomationService
             '[link sản phẩm]',
             '[link khuyến mãi]',
             '[link]',
-            '[link sáº£n pháº©m]',
-            '[link khuyáº¿n mÃ£i]',
+            '[link sản phẩm]',
+            '[link khuyến mãi]',
         ];
     }
 

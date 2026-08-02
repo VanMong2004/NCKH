@@ -31,7 +31,7 @@ class ContactSeeder extends Seeder
                 'email' => 'vy@gmail.com',
                 'phone' => '0907777777',
                 'subject' => 'Liên hệ hỗ trợ',
-                'message' => 'Không thanh toán được Momo.',
+                'message' => 'Em cần hỗ trợ thanh toán chuyển khoản ngân hàng cho đơn hàng.',
                 'status' => 'pending',
             ],
         ];

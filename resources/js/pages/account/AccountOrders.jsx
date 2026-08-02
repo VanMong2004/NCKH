@@ -394,6 +394,7 @@ function cancelReasonText(reason) {
     const map = {
         user_cancelled: 'Người dùng hủy',
         expired: 'Hết hạn thanh toán',
+        payment_timeout: 'Hết hạn thanh toán',
         payment_failed: 'Thanh toán thất bại',
     };
 

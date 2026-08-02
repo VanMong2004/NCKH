@@ -68,7 +68,7 @@ export function getVatInvoiceStatusText(status) {
 export function getCancelReasonText(reason) {
     const map = {
         user_cancelled: 'Người dùng hủy',
-        admin_cancelled: 'Admin hủy đơn',
+        admin_cancelled: 'Quản trị viên hủy đơn',
         expired: 'Hết hạn thanh toán',
         payment_timeout: 'Hết hạn thanh toán',
         payment_failed: 'Thanh toán thất bại',

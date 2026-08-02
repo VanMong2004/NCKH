@@ -33,7 +33,7 @@ export const transactions = [
         status: 'Đang xử lý',
         date: '17/05/2024 · 16:45',
         title: 'ABC Cap',
-        subtitle: 'COD',
+        subtitle: 'Thanh toán khi nhận hàng',
         total: '120.000 đ',
         images: ['/images/product-cap.jpg'],
         steps: ['Đã đặt', 'Đang chuẩn bị', 'Đang giao', 'Đã giao'],

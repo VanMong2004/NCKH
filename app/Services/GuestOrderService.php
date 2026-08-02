@@ -85,6 +85,9 @@ class GuestOrderService
 
     private function formatOrder(Order $order): array
     {
+        $order = app(OrderExpirationService::class)
+            ->expireIfNeeded($order);
+
         $payment = $order->payments
             ->sortByDesc('created_at')
             ->first();

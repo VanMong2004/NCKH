@@ -3,11 +3,9 @@
 namespace App\Services;
 
 use App\Models\Order;
-use App\Models\OrderStatusHistory;
 use App\Models\Payment;
 use App\Services\Analytics\AnalyticsEventService;
 use App\Services\Gateways\MockPaymentGatewayService;
-use App\Services\NotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -47,7 +45,9 @@ class PaymentService
             }
 
             if ($order->expired_at && now()->greaterThan($order->expired_at)) {
-                $this->expireOrder($order, $user?->id);
+                app(OrderExpirationService::class)
+                    ->expireIfNeeded($order, $user?->id);
+
                 throw new RuntimeException('Đơn hàng đã hết hạn thanh toán', 400);
             }
 
@@ -159,45 +159,6 @@ class PaymentService
         if (!in_array($method, $validCombinations[$fulfillmentMethod] ?? [], true)) {
             throw new RuntimeException('Phương thức thanh toán không phù hợp với hình thức nhận hàng', 422);
         }
-    }
-
-    private function expireOrder(Order $order, ?int $changedBy = null): void
-    {
-        app(\App\Services\Admin\OrderReleaseService::class)
-            ->release($order);
-
-        $oldStatus = $order->status;
-
-        $order->payments()
-            ->where('status', 'unpaid')
-            ->update([
-                'status' => 'failed',
-                'response_data' => [
-                    'reason' => 'payment_timeout',
-                ],
-            ]);
-
-        $order->update([
-            'status' => 'cancelled',
-            'cancel_reason' => 'expired',
-            'payment_status' => 'failed',
-        ]);
-
-        OrderStatusHistory::create([
-            'order_id' => $order->id,
-            'changed_by' => $changedBy,
-            'old_status' => $oldStatus,
-            'new_status' => 'cancelled',
-            'note' => 'Đơn hàng hết hạn trước khi tạo thanh toán mới',
-        ]);
-
-        if ($order->user_id) {
-            app(NotificationService::class)
-                ->order($order->fresh(), 'cancelled');
-        }
-
-        app(AnalyticsEventService::class)
-            ->broadcastDashboardRefresh();
     }
 
     private function getOrderAutoCancelMinutes(): int

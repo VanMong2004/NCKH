@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Home, Package, Search, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Package, Search, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import orderService from '../../services/orderService';
 import ConfirmDialog from '../../admin/components/ui/ConfirmDialog';
+import orderService from '../../services/orderService';
+
+const pickupPaymentText =
+    'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả' },
@@ -22,9 +25,7 @@ export default function AccountOrders() {
         keyword: '',
         sort: 'latest',
     });
-
     const [loading, setLoading] = useState(false);
-
     const [meta, setMeta] = useState({
         currentPage: 1,
         lastPage: 1,
@@ -100,7 +101,7 @@ export default function AccountOrders() {
         }
     }
 
-    async function handleCancel(orderId) {
+    function handleCancel(orderId) {
         const order = orders.find((item) => item.id === orderId);
 
         setConfirmDialog({
@@ -114,8 +115,6 @@ export default function AccountOrders() {
                 await cancelOrder(orderId);
             },
         });
-
-        return;
     }
 
     return (
@@ -283,7 +282,7 @@ function OrderCard({ order, onCancel }) {
                     </div>
                 </div>
 
-                <div className="flex flex-col-2 justify-between items-center md:flex-col gap-2 md:items-end">
+                <div className="flex flex-col-2 items-center justify-between gap-2 md:flex-col md:items-end">
                     <p className="text-xl font-extrabold text-blue-950 dark:text-blue-300">
                         {formatMoney(order.total)}
                     </p>
@@ -317,7 +316,9 @@ function EmptyOrders() {
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <XCircle className="mx-auto text-slate-400" size={42} />
             <p className="mt-3 text-lg font-bold text-blue-950 dark:text-white">Chưa có đơn hàng</p>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Các đơn hàng của bạn sẽ hiển thị tại đây.</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Các đơn hàng của bạn sẽ hiển thị tại đây.
+            </p>
             <Link
                 to="/shop"
                 className="mt-5 inline-flex rounded-xl bg-blue-950 px-5 py-3 text-sm font-bold text-white dark:bg-blue-700"
@@ -383,7 +384,7 @@ function paymentMethodLabel(method) {
     const map = {
         cod: 'Thanh toán khi nhận hàng',
         mock_bank: 'Chuyển khoản ngân hàng',
-        cash_on_pickup: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+        cash_on_pickup: pickupPaymentText,
     };
 
     return map[method] || 'Chưa xác định';

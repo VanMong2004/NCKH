@@ -174,7 +174,10 @@ class OrderQueryService
         $orders = $query->paginate($perPage);
 
         $orders->setCollection(
-            $orders->getCollection()->map(function ($order) {
+            $orders->getCollection()->map(function ($order) use ($user) {
+                $order = app(OrderExpirationService::class)
+                    ->expireIfNeeded($order, $user?->id);
+
                 $payment = $order->payments
                     ->sortByDesc('created_at')
                     ->first();
@@ -234,6 +237,9 @@ class OrderQueryService
         if (!$order) {
             throw new RuntimeException('Đơn hàng không tồn tại', 404);
         }
+
+        $order = app(OrderExpirationService::class)
+            ->expireIfNeeded($order, $user?->id);
 
         $payment = $order->payments
             ->sortByDesc('created_at')

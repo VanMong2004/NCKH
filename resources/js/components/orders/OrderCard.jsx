@@ -5,7 +5,7 @@ import OrderStatusBadge from './OrderStatusBadge';
 
 export default function OrderCard({ order, onCancel, onConfirm }) {
     const canCancel = order.status === 'pending';
-    const canConfirm = order.status === 'delivered';
+    const canConfirm = order.status === 'awaiting_receipt' && order.fulfillmentMethod === 'pickup';
 
     return (
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">

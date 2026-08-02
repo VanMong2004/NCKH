@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Models\VatInvoiceRequest;
 use Illuminate\Support\Facades\DB;
 use App\Services\NotificationService;
+use App\Services\VatInvoiceEmailWebhookService;
 
 class AdminOrderService
 {
@@ -240,8 +241,15 @@ class AdminOrderService
             }
 
             $request->update($payload);
+            $request = $request->fresh(['processor:id,name,email']);
 
-            $order->setRelation('vatInvoiceRequest', $request->fresh(['processor:id,name,email']));
+            app(VatInvoiceEmailWebhookService::class)->sendStatusUpdated(
+                $order,
+                $request,
+                $oldStatus
+            );
+
+            $order->setRelation('vatInvoiceRequest', $request);
 
             return [
                 'success' => true,

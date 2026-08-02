@@ -107,6 +107,8 @@ class VatInvoiceRequestService
                 'note' => $data['note'] ?? null,
             ]);
 
+            app(VatInvoiceEmailWebhookService::class)->sendCreated($order, $request);
+
             return $this->format($request);
         });
     }

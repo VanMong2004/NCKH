@@ -52,7 +52,7 @@ class PaymentService
             }
 
             if ($method !== 'mock_bank') {
-                throw new RuntimeException('Phương thức này không hỗ trợ tạo thanh toán lại', 422);
+                throw new RuntimeException('Phương thức này không hỗ trợ tạo thanh toán mới cho đơn hàng', 422);
             }
 
             $pendingPayment = Payment::query()
@@ -188,7 +188,7 @@ class PaymentService
             'changed_by' => $changedBy,
             'old_status' => $oldStatus,
             'new_status' => 'cancelled',
-            'note' => 'Đơn hàng hết hạn trước khi tạo lại thanh toán',
+            'note' => 'Đơn hàng hết hạn trước khi tạo thanh toán mới',
         ]);
 
         if ($order->user_id) {

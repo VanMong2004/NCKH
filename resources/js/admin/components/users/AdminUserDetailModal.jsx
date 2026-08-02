@@ -426,8 +426,7 @@ export default function AdminUserDetailModal({ open, userId, onClose, onUpdated 
 
                                     {role === 'admin' && (
                                         <div className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">
-                                            Quản trị viên có thể truy cập khu vực admin. Chỉ cấp quyền này cho người tin
-                                            cậy.
+                                            Quản trị viên có thể truy cập khu vực admin. Chỉ cấp quyền này cho người tin cậy.
                                         </div>
                                     )}
                                 </Section>

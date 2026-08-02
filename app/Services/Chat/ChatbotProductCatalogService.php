@@ -271,7 +271,7 @@ class ChatbotProductCatalogService
         if ($name === '') {
             return [
                 'found' => false,
-                'message' => 'Ten khuyen mai khong hop le.',
+                'message' => 'Tên khuyến mãi không hợp lệ.',
             ];
         }
 
@@ -280,7 +280,7 @@ class ChatbotProductCatalogService
         if (!$promotion) {
             return [
                 'found' => false,
-                'message' => 'Khong tim thay khuyen mai phu hop trong he thong.',
+                'message' => 'Không tìm thấy khuyến mãi phù hợp trong hệ thống.',
             ];
         }
 
@@ -298,7 +298,7 @@ class ChatbotProductCatalogService
         if ($query === '') {
             return [
                 'found' => false,
-                'message' => 'Tu khoa khuyen mai khong hop le.',
+                'message' => 'Từ khóa khuyến mãi không hợp lệ.',
                 'promotions' => [],
             ];
         }
@@ -363,7 +363,7 @@ class ChatbotProductCatalogService
         if (!$promotion) {
             return [
                 'found' => false,
-                'message' => 'Khong tim thay chuong trinh khuyen mai phu hop trong he thong.',
+                'message' => 'Không tìm thấy chương trình khuyến mãi phù hợp trong hệ thống.',
                 'products' => [],
             ];
         }

@@ -78,6 +78,7 @@ export default function OrderSuccess() {
 
     async function openVatInvoiceModal() {
         if (!order) return;
+
         if (!isOrderPaid(order)) {
             toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn đỏ');
             return;
@@ -412,7 +413,7 @@ export default function OrderSuccess() {
                         <Card title="Hướng dẫn nhận hàng">
                             <Guide icon={MapPin}>
                                 {order.pickup?.location ||
-                                    'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
+                                    'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
                             </Guide>
 
                             <Guide icon={Info}>
@@ -447,6 +448,7 @@ export default function OrderSuccess() {
                             {paying ? 'Đang chuyển sang bước thanh toán...' : 'Thanh toán'}
                         </button>
                     )}
+
                     <button
                         type="button"
                         disabled={!canRequestVatInvoice}
@@ -518,41 +520,26 @@ function getHeroState(order, paymentStatus) {
         icon: CheckCircle2,
         title: 'Đặt hàng thành công',
         description: 'Hệ thống đã ghi nhận đơn hàng của bạn.',
-        wrapperClass: 'border-emerald-100 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30',
-        iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
-        titleClass: 'text-emerald-700 dark:text-emerald-400',
+        wrapperClass: 'border-blue-100 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/30',
+        iconClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+        titleClass: 'text-blue-700 dark:text-blue-300',
     };
-}
-
-function getPaymentStatusFallback(order) {
-    if (order.payment?.status === 'paid' || order.raw?.payment_status === 'paid') {
-        return 'Đã thanh toán';
-    }
-    if (order.payment?.status === 'unpaid' || order.raw?.payment_status === 'unpaid') {
-        return 'Chưa thanh toán';
-    }
-    if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đơn đã hủy';
-    return 'Chưa có thông tin thanh toán';
-}
-
-function isOrderPaid(order) {
-    return order?.payment?.status === 'paid' || order?.raw?.payment_status === 'paid';
 }
 
 function Card({ title, children }) {
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="mb-4 text-lg font-bold text-blue-950 dark:text-white">{title}</h2>
-            {children}
+            <h2 className="text-lg font-bold text-blue-950 dark:text-white">{title}</h2>
+            <div className="mt-4">{children}</div>
         </section>
     );
 }
 
 function InfoBox({ label, value }) {
     return (
-        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950">
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="mt-1 font-bold text-blue-950 dark:text-white">{value || '—'}</p>
+        <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-950">
+            <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="mt-1 break-words text-lg font-bold text-blue-950 dark:text-white">{value || '—'}</p>
         </div>
     );
 }
@@ -561,7 +548,6 @@ function Row({ label, value, strong = false, positive = false }) {
     return (
         <div className="flex items-center justify-between gap-4">
             <span className="font-semibold text-slate-600 dark:text-slate-300">{label}</span>
-
             <span
                 className={`text-right ${
                     strong
@@ -588,6 +574,10 @@ function Guide({ icon: Icon, children }) {
     );
 }
 
+function formatDate(value) {
+    return value || '—';
+}
+
 function formatMoney(value) {
     return new Intl.NumberFormat('vi-VN', {
         style: 'currency',
@@ -595,18 +585,19 @@ function formatMoney(value) {
     }).format(Number(value || 0));
 }
 
-function formatDate(value) {
-    if (!value) return '—';
+function isOrderPaid(order) {
+    return order?.payment?.status === 'paid' || order?.raw?.payment_status === 'paid';
+}
 
-    if (typeof value === 'string' && value.includes('/')) {
-        return value;
-    }
+function getPaymentStatusFallback(order) {
+    const status = order?.raw?.payment_status || '';
 
-    const date = new Date(value);
+    const map = {
+        unpaid: 'Chưa thanh toán',
+        paid: 'Đã thanh toán',
+        failed: 'Thất bại',
+        refunded: 'Đã hoàn tiền',
+    };
 
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
-
-    return date.toLocaleString('vi-VN');
+    return map[status] || 'Chưa có thông tin thanh toán';
 }

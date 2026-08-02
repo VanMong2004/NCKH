@@ -11,22 +11,25 @@ export default function OrderTimeLine({ order }) {
             icon: CheckCircle2,
         },
         {
-            key: 'confirmed',
-            title: 'Xác nhận đơn',
-            desc: 'Nhân viên kiểm tra đơn hàng.',
-            icon: Clock,
-        },
-        {
             key: 'processing',
-            title: 'Chuẩn bị hàng',
-            desc: 'Sản phẩm đang được chuẩn bị.',
+            title: 'Xác nhận và chuẩn bị',
+            desc: 'Nhân viên đang kiểm tra và chuẩn bị đơn hàng.',
             icon: PackageCheck,
         },
         {
-            key: 'shipping',
-            title: 'Giao/nhận hàng',
-            desc: 'Đơn hàng đang được giao hoặc chờ nhận.',
+            key: 'awaiting_receipt',
+            title: order.fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao',
+            desc:
+                order.fulfillmentMethod === 'pickup'
+                    ? 'Đơn hàng đã sẵn sàng để nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.'
+                    : 'Đơn hàng đang được giao đến địa chỉ bạn đã đăng ký.',
             icon: Truck,
+        },
+        {
+            key: 'completed',
+            title: 'Hoàn thành',
+            desc: 'Đơn hàng đã hoàn tất.',
+            icon: Clock,
         },
     ];
 

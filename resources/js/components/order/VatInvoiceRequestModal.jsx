@@ -94,7 +94,7 @@ export default function VatInvoiceRequestModal({
                                 Yêu cầu hóa đơn đỏ
                             </h2>
                             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                Thông tin này sẽ được gửi cho admin xử lý hóa đơn VAT.
+                                Thông tin này sẽ được gửi cho quản trị viên để xử lý hóa đơn VAT.
                             </p>
                         </div>
                     </div>

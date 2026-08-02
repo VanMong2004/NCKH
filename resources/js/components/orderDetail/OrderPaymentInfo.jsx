@@ -17,7 +17,7 @@ export default function OrderPaymentInfo({ order }) {
 
             <div className="space-y-3">
                 <Row label="Phương thức" value={payment?.methodText || getFallbackMethodText(order)} />
-                <Row label="Trạng thái" value={payment?.statusText || 'Chưa tạo thanh toán'} />
+                <Row label="Trạng thái" value={payment?.statusText || 'Chưa có thông tin thanh toán'} />
                 <Row label="Số tiền" value={formatMoney(payment?.amount || summary.grandTotal)} />
                 <Row label="Mã giao dịch" value={payment?.transactionId || '—'} />
             </div>
@@ -43,7 +43,7 @@ function getFallbackMethodText(order) {
         cash_on_pickup: pickupPaymentText,
     };
 
-    return map[method] || 'Chưa xác định';
+    return map[method] || 'Chưa có thông tin thanh toán';
 }
 
 function formatMoney(v) {

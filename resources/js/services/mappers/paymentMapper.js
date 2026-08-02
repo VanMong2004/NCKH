@@ -12,7 +12,7 @@ export function paymentMethodText(method) {
         cash_on_pickup: pickupPaymentText,
     };
 
-    return map[method] || method || 'Chưa xác định';
+    return map[method] || method || 'Chưa có thông tin thanh toán';
 }
 
 export function paymentStatusText(status) {
@@ -23,7 +23,7 @@ export function paymentStatusText(status) {
         refunded: 'Đã hoàn tiền',
     };
 
-    return map[status] || status || 'Chưa tạo thanh toán';
+    return map[status] || status || 'Chưa có thông tin thanh toán';
 }
 
 export function paymentStatusClass(status) {

@@ -421,7 +421,7 @@ export default function Checkout() {
         <MainLayout>
             <LoadingOverlay
                 show={loading}
-                text={pendingPaymentOrder ? 'Đang tạo thanh toán...' : 'Đang xử lý đơn hàng...'}
+                text={pendingPaymentOrder ? 'Đang chuyển sang bước thanh toán...' : 'Đang xử lý đơn hàng...'}
                 description="Vui lòng chờ trong giây lát, hệ thống đang kiểm tra giỏ hàng và thông tin thanh toán."
             />
 
@@ -483,7 +483,7 @@ export default function Checkout() {
                         onCheckout={handleCheckout}
                         loading={loading}
                         buttonText={pendingPaymentOrder ? 'Thanh toán' : 'Đặt hàng'}
-                        loadingText={pendingPaymentOrder ? 'Đang tạo thanh toán...' : 'Đang xử lý đơn hàng...'}
+                        loadingText={pendingPaymentOrder ? 'Đang chuyển sang bước thanh toán...' : 'Đang xử lý đơn hàng...'}
                     />
                 </section>
             </main>

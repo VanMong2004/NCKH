@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả' },
     { value: 'pending', label: 'Chờ xác nhận' },
     { value: 'processing', label: 'Đang chuẩn bị' },
-    { value: 'awaiting_receipt', label: 'Đang giao / Sẵn sàng nhận' },
+    { value: 'awaiting_receipt', label: 'Đang giao hoặc sẵn sàng nhận' },
     { value: 'completed', label: 'Hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
 ];
@@ -378,7 +378,7 @@ function paymentStatusLabel(status) {
         refunded: 'Đã hoàn tiền',
     };
 
-    return map[status] || 'Chưa tạo thanh toán';
+    return map[status] || 'Chưa có thông tin thanh toán';
 }
 
 function paymentMethodLabel(method) {
@@ -388,7 +388,7 @@ function paymentMethodLabel(method) {
         cash_on_pickup: pickupPaymentText,
     };
 
-    return map[method] || 'Chưa xác định';
+    return map[method] || 'Chưa có thông tin thanh toán';
 }
 
 function formatMoney(value) {

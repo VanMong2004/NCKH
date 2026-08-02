@@ -278,7 +278,7 @@ export default function OrderSuccess() {
                                 />
                                 <InfoBox
                                     label="Phương thức"
-                                    value={order.payment?.methodText || 'COD / Chưa tạo thanh toán'}
+                                    value={order.payment?.methodText || 'Chưa có thông tin thanh toán'}
                                 />
                                 <InfoBox label="Ngày đặt" value={formatDate(order.createdAt)} />
                                 <InfoBox label="Tổng tiền" value={formatMoney(order.summary?.grandTotal)} />
@@ -532,7 +532,7 @@ function getPaymentStatusFallback(order) {
         return 'Chưa thanh toán';
     }
     if (order.status === 'cancelled') return 'Thanh toán thất bại hoặc đơn đã hủy';
-    return 'Chưa tạo thanh toán';
+    return 'Chưa có thông tin thanh toán';
 }
 
 function isOrderPaid(order) {

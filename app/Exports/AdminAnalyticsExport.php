@@ -43,15 +43,14 @@ class AdminAnalyticsExport implements WithMultipleSheets
         return [
             ['Đơn hàng', 'Tổng số đơn hàng', $overview['total_orders'] ?? 0],
             ['Đơn hàng', 'Đơn đang chờ xử lý', $overview['pending_orders'] ?? 0],
-            ['Đơn hàng', 'Đơn đã thanh toán', $overview['paid_orders'] ?? 0],
+            ['Đơn hàng', 'Đơn đã vào luồng xử lý', $overview['paid_orders'] ?? 0],
             ['Đơn hàng', 'Đơn đã hủy', $overview['cancelled_orders'] ?? 0],
             ['Đơn hàng', 'Đơn hoàn thành', $overview['completed_orders'] ?? 0],
 
-            ['Doanh thu', 'Doanh thu đơn đã thanh toán', $this->money($overview['revenue'] ?? 0)],
+            ['Doanh thu', 'Doanh thu đơn đã vào luồng xử lý', $this->money($overview['revenue'] ?? 0)],
             ['Doanh thu', 'Doanh thu đơn hoàn thành', $this->money($overview['completed_revenue'] ?? 0)],
 
             ['Người dùng', 'Tổng người dùng', $overview['total_users'] ?? 0],
-
             ['Sản phẩm', 'Tổng sản phẩm', $overview['total_products'] ?? 0],
             ['Sản phẩm', 'Sản phẩm đang bán', $overview['active_products'] ?? 0],
 

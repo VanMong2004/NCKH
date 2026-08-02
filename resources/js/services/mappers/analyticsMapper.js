@@ -186,11 +186,9 @@ export function mapTrackingAnalyticsResponse(response = {}) {
 
 export function orderStatusText(status) {
     const map = {
-        pending: 'Đã tạo đơn',
-        paid: 'Đã thanh toán',
-        processing: 'Đang xử lý',
-        ready_to_pickup: 'Sẵn sàng nhận hàng',
-        delivered: 'Đã giao',
+        pending: 'Chờ xác nhận',
+        processing: 'Đang chuẩn bị',
+        awaiting_receipt: 'Đang chờ nhận hàng',
         completed: 'Hoàn thành',
         cancelled: 'Đã hủy',
     };

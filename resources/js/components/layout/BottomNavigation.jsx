@@ -30,10 +30,11 @@ export default function BottomNavigation({ bottomNavigation }) {
             { label: 'Giỏ hàng', to: '/cart', icon: ShoppingCart, badge: totalItems },
             { label: 'Tài khoản', to: '/account/profile', icon: UserRound },
         ];
+    const columnCount = Math.max(items.length || 1, 1);
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-950/95">
-            <div className="grid h-16 grid-cols-5">
+            <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
                 {items.map((item) => {
                     const Icon = item.icon;
                     const active = isActiveRoute(location.pathname, item.to);

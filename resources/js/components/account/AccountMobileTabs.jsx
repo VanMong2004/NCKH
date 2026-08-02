@@ -1,18 +1,9 @@
-import { Home, MapPin, Package, User, WalletCards } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
-const menus = [
-    { label: 'Tổng quan', icon: Home, path: '/account/overview' },
-    { label: 'Hồ sơ', icon: User, path: '/account/profile' },
-    { label: 'Địa chỉ', icon: MapPin, path: '/account/addresses' },
-    { label: 'Đơn hàng', icon: Package, path: '/account/orders' },
-    { label: 'Thanh toán', icon: WalletCards, path: '/account/transactions' },
-];
-
-export default function AccountMobileTabs() {
+export default function AccountMobileTabs({ menus = [] }) {
     return (
         <div className="mb-2 flex gap-2 overflow-x-auto pb-2 lg:hidden">
-            {menus.map(({ label, icon: Icon, path }) => (
+            {menus.map(({ label, mobileLabel, icon: Icon, path }) => (
                 <NavLink
                     key={path}
                     to={path}
@@ -26,7 +17,7 @@ export default function AccountMobileTabs() {
                     }
                 >
                     <Icon size={16} />
-                    {label}
+                    {mobileLabel || label}
                 </NavLink>
             ))}
         </div>

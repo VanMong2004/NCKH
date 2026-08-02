@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Bell, ChevronRight, Home, MapPin, Megaphone, Package, User, WalletCards } from 'lucide-react';
+import { Bell, ChevronRight, Home, MapPin, Package, User, WalletCards } from 'lucide-react';
 
 import MainLayout from '../../layout/MainLayout';
 import AccountSidebar from '../../components/account/AccountSidebar';

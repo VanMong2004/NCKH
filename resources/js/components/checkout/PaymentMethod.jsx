@@ -1,5 +1,7 @@
 import { Banknote, CreditCard, MapPinned, Truck } from 'lucide-react';
 
+const pickupLocation = 'Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+
 const fulfillmentMethods = [
     {
         value: 'delivery',
@@ -9,8 +11,8 @@ const fulfillmentMethods = [
     },
     {
         value: 'pickup',
-        title: 'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
-        desc: 'Bạn đến nhận hàng trực tiếp tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ và có thể thanh toán tại chỗ.',
+        title: `Nhận tại ${pickupLocation}`,
+        desc: `Bạn đến nhận hàng trực tiếp tại ${pickupLocation} và có thể thanh toán tại chỗ.`,
         icon: MapPinned,
     },
 ];
@@ -33,8 +35,8 @@ const paymentMethodsByFulfillment = {
     pickup: [
         {
             value: 'cash_on_pickup',
-            title: 'Thanh toán trực tiếp khi nhận tại phòng',
-            desc: 'Thanh toán bằng tiền mặt khi đến nhận hàng tại phòng.',
+            title: `Thanh toán trực tiếp khi nhận tại ${pickupLocation}`,
+            desc: `Thanh toán bằng tiền mặt khi đến nhận hàng tại ${pickupLocation}.`,
             icon: Banknote,
         },
         {

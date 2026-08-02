@@ -116,26 +116,28 @@ class VNPayService
                 ];
             }
 
-            $status = ($data['vnp_ResponseCode'] === '00') ? 'success' : 'failed';
+            $status = ($data['vnp_ResponseCode'] === '00') ? 'paid' : 'failed';
 
             $payment->update([
                 'status' => $status,
-                'response_data' => $data
+                'response_data' => $data,
             ]);
 
-            if ($status === 'success') {
-                $wasPaid = $order->status === 'paid';
+            if ($status === 'paid') {
                 $oldStatus = $order->status;
+                $alreadyPaid = $order->payment_status === 'paid';
 
                 $order->update([
-                    'status' => 'paid'
+                    'payment_status' => 'paid',
+                    'status' => $order->status === 'pending' ? 'processing' : $order->status,
+                    'cancel_reason' => null,
                 ]);
 
-                if (!$wasPaid) {
+                if ($oldStatus !== $order->status) {
                     $this->createStatusHistory(
                         $order,
                         $oldStatus,
-                        'paid',
+                        $order->status,
                         'Thanh toán VNPay thành công'
                     );
                 }
@@ -143,18 +145,19 @@ class VNPayService
                 app(NotificationService::class)
                     ->order(
                         $order->fresh(),
-                        'paid'
+                        $order->status
                     );
 
                 $order->load('items.productVariant');
 
-                if (!$wasPaid) {
+                if (!$alreadyPaid) {
                     $this->promotionSoldService->increase($order);
                 }
 
                 event(new OrderPaid($order));
             } else {
                 $order->update([
+                    'payment_status' => 'failed',
                     'cancel_reason' => null,
                 ]);
 

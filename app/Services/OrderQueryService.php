@@ -351,8 +351,22 @@ class OrderQueryService
                 throw new RuntimeException('Đơn hàng không tồn tại', 404);
             }
 
-            if ($order->status !== 'pending') {
-                throw new RuntimeException('Chỉ được hủy đơn hàng đang chờ xử lý', 400);
+            $payment = $order->payments->sortByDesc('id')->first();
+            $paymentMethod = $payment?->method;
+            $paymentStatus = $order->payment_status ?? $payment?->status;
+            $isExpired = $order->expired_at && now()->greaterThan($order->expired_at);
+            $isOnlinePayment = $paymentMethod === 'mock_bank';
+            $isOfflinePayment = in_array($paymentMethod, ['cod', 'cash_on_pickup'], true);
+
+            $canCancel = $order->status === 'pending'
+                && !$isExpired
+                && (
+                    ($isOnlinePayment && in_array($paymentStatus, ['unpaid', 'failed'], true))
+                    || ($isOfflinePayment && $paymentStatus === 'unpaid')
+                );
+
+            if (!$canCancel) {
+                throw new RuntimeException('Đơn hàng hiện không thể hủy', 400);
             }
 
             app(\App\Services\Admin\OrderReleaseService::class)

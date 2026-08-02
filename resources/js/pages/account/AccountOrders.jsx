@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả' },
     { value: 'pending', label: 'Chờ xác nhận' },
     { value: 'processing', label: 'Đang chuẩn bị' },
-    { value: 'awaiting_receipt', label: 'Đang chờ nhận hàng' },
+    { value: 'awaiting_receipt', label: 'Đang giao / Sẵn sàng nhận' },
     { value: 'completed', label: 'Hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },
 ];

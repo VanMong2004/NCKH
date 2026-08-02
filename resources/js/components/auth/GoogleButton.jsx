@@ -16,9 +16,7 @@ export default function GoogleButton({
                 Đăng nhập với Google
             </button>
 
-            <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-                {message}
-            </p>
+            <p className="text-center text-xs text-slate-500 dark:text-slate-400">{message}</p>
         </div>
     );
 }

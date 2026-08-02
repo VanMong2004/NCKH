@@ -15,7 +15,7 @@ export default function PickupForm() {
                     </span>
 
                     <select className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-950 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
-                        <option>Cơ sở chính ABC University</option>
+                        <option>Phòng Công tác Chính trị và Quản lý sinh viên</option>
                     </select>
                 </label>
 
@@ -23,10 +23,12 @@ export default function PickupForm() {
                     <Building2 size={22} className="mt-1 shrink-0 text-blue-950 dark:text-blue-300" />
 
                     <div>
-                        <p className="font-bold text-blue-950 dark:text-white">ABC University - Cơ sở chính</p>
+                        <p className="font-bold text-blue-950 dark:text-white">
+                            Phòng Công tác Chính trị và Quản lý sinh viên
+                        </p>
 
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            123 University Road, City, Country
+                            Trường Đại học Kỹ thuật - Công nghệ Cần Thơ
                         </p>
                     </div>
                 </div>

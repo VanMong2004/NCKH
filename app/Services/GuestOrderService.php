@@ -164,7 +164,7 @@ class GuestOrderService
                 ];
             })->values(),
             'pickup' => [
-                'location' => 'Phòng Công tác Chính trị và Quản lý sinh viên',
+                'location' => 'Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
                 'instruction' => 'Vui lòng mang theo mã đơn hàng hoặc mã QR khi đến nhận hàng.',
             ],
             'timeline' => $this->buildOrderTimeline($order, $payment),

@@ -100,6 +100,25 @@ export function getNextVatInvoiceStatuses(status) {
     return map[status] || [];
 }
 
+export function getFulfillmentMethodText(method) {
+    const map = {
+        delivery: 'Giao hàng tận nơi',
+        pickup: 'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+    };
+
+    return map[method] || method || '-';
+}
+
+export function getDisplayOrderStatusText(status, fulfillmentMethod = '') {
+    if (!status) return 'Khởi tạo đơn hàng';
+
+    if (status === 'awaiting_receipt') {
+        return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
+    }
+
+    return getOrderStatusText(status);
+}
+
 export function mapAdminOrder(item = {}) {
     const customer = item.customer || {};
     const fulfillmentMethod = item.fulfillment_method || '';
@@ -243,6 +262,7 @@ export function mapAdminOrderDetail(item = {}) {
 export function mapAdminOrderListResponse(response = {}) {
     const paginator = response.data || {};
     const raw = Array.isArray(paginator.data) ? paginator.data : [];
+
     return {
         success: Boolean(response.success),
         message: response.message || '',
@@ -259,20 +279,4 @@ export function mapAdminOrderListResponse(response = {}) {
 
 export function mapAdminOrderDetailResponse(response = {}) {
     return mapAdminOrderDetail(response.data || {});
-}
-
-export function getFulfillmentMethodText(method) {
-    const map = {
-        delivery: 'Giao hàng tận nơi',
-        pickup: 'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
-    };
-    return map[method] || method || '-';
-}
-
-export function getDisplayOrderStatusText(status, fulfillmentMethod = '') {
-    if (!status) return 'Khởi tạo đơn hàng';
-    if (status === 'awaiting_receipt') {
-        return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
-    }
-    return getOrderStatusText(status);
 }

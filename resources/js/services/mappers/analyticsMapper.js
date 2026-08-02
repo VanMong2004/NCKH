@@ -174,12 +174,10 @@ export function mapUserAnalyticsOverviewResponse(response = {}) {
         spending,
         interests,
         tracking,
-
         summary: {
             totalOrders: orders.totalOrders,
             totalSpent: spending.totalSpent,
         },
-
         success: Boolean(response.success),
         message: response.message || '',
         raw: data,

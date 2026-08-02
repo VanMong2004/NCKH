@@ -170,6 +170,27 @@ function resolveAwaitingReceiptText(fulfillmentMethod) {
     return fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao';
 }
 
+function paymentStatusText(status) {
+    const map = {
+        unpaid: 'Chưa thanh toán',
+        paid: 'Đã thanh toán',
+        failed: 'Thanh toán thất bại',
+        refunded: 'Đã hoàn tiền',
+    };
+
+    return map[status] || status || 'Chưa tạo thanh toán';
+}
+
+function paymentMethodText(method) {
+    const map = {
+        cod: 'Thanh toán khi nhận hàng',
+        mock_bank: 'Chuyển khoản ngân hàng',
+        cash_on_pickup: pickupPaymentText,
+    };
+
+    return map[method] || method || 'Chưa tạo thanh toán';
+}
+
 function mapOrderDetail(item = {}) {
     const fulfillmentMethod = item.fulfillment_method || '';
     const statusText =
@@ -292,25 +313,4 @@ export function mapOrderListResponse(response = {}) {
         },
         raw: response,
     };
-}
-
-function paymentStatusText(status) {
-    const map = {
-        unpaid: 'Chưa thanh toán',
-        paid: 'Đã thanh toán',
-        failed: 'Thanh toán thất bại',
-        refunded: 'Đã hoàn tiền',
-    };
-
-    return map[status] || status || 'Chưa tạo thanh toán';
-}
-
-function paymentMethodText(method) {
-    const map = {
-        cod: 'Thanh toán khi nhận hàng',
-        mock_bank: 'Chuyển khoản ngân hàng',
-        cash_on_pickup: pickupPaymentText,
-    };
-
-    return map[method] || method || 'Chưa tạo thanh toán';
 }

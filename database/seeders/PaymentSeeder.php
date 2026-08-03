@@ -10,17 +10,27 @@ class PaymentSeeder extends Seeder
 {
     public function run(): void
     {
+        $methods = [
+            'ORD-2026-00001' => 'mock_bank',
+            'ORD-2026-00002' => 'cash_on_pickup',
+            'ORD-2026-00003' => 'cod',
+            'ORD-2026-00004' => 'mock_bank',
+            'ORD-2026-00005' => 'cod',
+            'ORD-2026-00006' => 'cod',
+            'ORD-2026-00007' => 'mock_bank',
+            'ORD-2026-00008' => 'mock_bank',
+            'ORD-2026-00009' => 'cash_on_pickup',
+            'ORD-2026-00010' => 'cod',
+            'ORD-2026-00011' => 'mock_bank',
+            'ORD-2026-00012' => 'cash_on_pickup',
+        ];
+
         foreach (Order::all() as $order) {
-            $method = match (true) {
-                $order->fulfillment_method === 'pickup' && $order->payment_status === 'paid' && $order->status === 'completed' => 'cash_on_pickup',
-                $order->fulfillment_method === 'pickup' && $order->payment_status !== 'paid' => 'mock_bank',
-                $order->fulfillment_method === 'delivery' && $order->payment_status === 'unpaid' => 'cod',
-                $order->fulfillment_method === 'delivery' && $order->payment_status === 'failed' => 'mock_bank',
-                default => 'mock_bank',
-            };
+            $method = $methods[$order->order_code] ?? 'mock_bank';
 
             Payment::updateOrCreate([
                 'order_id' => $order->id,
+                'method' => $method,
             ], [
                 'order_id' => $order->id,
                 'method' => $method,
@@ -28,7 +38,7 @@ class PaymentSeeder extends Seeder
                 'amount' => $order->total,
                 'transaction_id' => in_array($method, ['cod', 'cash_on_pickup'], true)
                     ? null
-                    : 'TXN2026' . str_pad($order->id, 8, '0', STR_PAD_LEFT),
+                    : 'TXN2026' . str_pad((string) $order->id, 8, '0', STR_PAD_LEFT),
                 'meta' => [
                     'source' => 'seed',
                     'order_code' => $order->order_code,

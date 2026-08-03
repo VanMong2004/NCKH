@@ -21,7 +21,7 @@ class PromotionItemSeeder extends Seeder
             ],
             'Flash Sale cuối tuần CTUT' => [
                 ['type' => 'variant', 'product' => 'Ly giữ nhiệt CTUT', 'attributes' => ['capacity' => '750ml'], 'discount_type' => 'fixed', 'discount_value' => 15000],
-                ['type' => 'variant', 'product' => 'Sticker CTUT', 'attributes' => ['package' => 'Combo 20 sticker'], 'discount_type' => 'fixed', 'discount_value' => 15000],
+                ['type' => 'variant', 'product' => 'Sticker CTUT', 'attributes' => ['package' => 'Combo 20 sticker'], 'discount_type' => 'fixed', 'discount_value' => 5000],
                 ['type' => 'variant', 'product' => 'Bảng tên sinh viên CTUT', 'attributes' => ['type' => 'Sinh viên'], 'discount_type' => 'fixed', 'discount_value' => 15000],
             ],
             'Tuần lễ khai giảng sắp tới' => [
@@ -33,6 +33,12 @@ class PromotionItemSeeder extends Seeder
                 ['type' => 'product', 'product' => 'Nón lưỡi trai CTUT', 'discount_type' => 'percent', 'discount_value' => 25],
                 ['type' => 'product', 'product' => 'Móc khóa CTUT', 'discount_type' => 'percent', 'discount_value' => 25],
                 ['type' => 'product', 'product' => 'Túi tote CTUT', 'discount_type' => 'percent', 'discount_value' => 25],
+            ],
+            'Ưu đãi nội bộ chờ duyệt' => [
+                ['type' => 'product', 'product' => 'Áo khoa CNTT', 'discount_type' => 'fixed', 'discount_value' => 10000],
+            ],
+            'Đợt ưu đãi tạm dừng' => [
+                ['type' => 'product', 'product' => 'Áo khoa Điện - Điện tử', 'discount_type' => 'percent', 'discount_value' => 8],
             ],
         ];
 
@@ -51,7 +57,13 @@ class PromotionItemSeeder extends Seeder
                 }
 
                 if ($rule['type'] === 'product') {
-                    $this->upsertProductPromotionItem($promotion->id, $product->id, $rule['discount_type'], $rule['discount_value']);
+                    $this->upsertProductPromotionItem(
+                        $promotion->id,
+                        $product->id,
+                        $rule['discount_type'],
+                        $rule['discount_value'],
+                        $promotion->is_active
+                    );
                     continue;
                 }
 
@@ -61,13 +73,25 @@ class PromotionItemSeeder extends Seeder
                     continue;
                 }
 
-                $this->upsertVariantPromotionItem($promotion->id, $product->id, $variant, $rule['discount_type'], $rule['discount_value']);
+                $this->upsertVariantPromotionItem(
+                    $promotion->id,
+                    $product->id,
+                    $variant,
+                    $rule['discount_type'],
+                    $rule['discount_value'],
+                    $promotion->is_active
+                );
             }
         }
     }
 
-    private function upsertProductPromotionItem(int $promotionId, int $productId, string $discountType, float $discountValue): void
-    {
+    private function upsertProductPromotionItem(
+        int $promotionId,
+        int $productId,
+        string $discountType,
+        float $discountValue,
+        bool $isActive
+    ): void {
         PromotionItem::updateOrCreate([
             'promotion_id' => $promotionId,
             'product_id' => $productId,
@@ -82,7 +106,7 @@ class PromotionItemSeeder extends Seeder
             'limit_quantity' => null,
             'sold_quantity' => 0,
             'reserved_quantity' => 0,
-            'is_active' => true,
+            'is_active' => $isActive,
         ]);
     }
 
@@ -91,7 +115,8 @@ class PromotionItemSeeder extends Seeder
         int $productId,
         ProductVariant $variant,
         string $discountType,
-        float $discountValue
+        float $discountValue,
+        bool $isActive
     ): void {
         PromotionItem::updateOrCreate([
             'promotion_id' => $promotionId,
@@ -107,7 +132,7 @@ class PromotionItemSeeder extends Seeder
             'limit_quantity' => null,
             'sold_quantity' => 0,
             'reserved_quantity' => 0,
-            'is_active' => true,
+            'is_active' => $isActive,
         ]);
     }
 

@@ -44,9 +44,7 @@ class ProductVariantSeeder extends Seeder
             foreach (['S', 'M', 'L', 'XL'] as $size) {
                 $sku = sprintf('CTUT-%d-%s-%s', $product->id, $size, Str::upper(Str::slug($color)));
 
-                $this->upsertVariant([
-                    'sku' => $sku,
-                ], [
+                $this->upsertVariant(['sku' => $sku], [
                     'product_id' => $product->id,
                     'size' => $size,
                     'color' => $color,
@@ -66,9 +64,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['500ml', '750ml', '1000ml'] as $capacity) {
             $sku = 'CTUT-TUMBLER-' . str_replace('ml', '', $capacity);
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'attributes' => ['capacity' => $capacity, 'material' => 'Inox 304'],
                 'sku' => $sku,
@@ -85,9 +81,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Canvas Standard', 'Canvas Premium'] as $type) {
             $sku = 'CTUT-TOTE-' . Str::upper(Str::slug($type));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'attributes' => ['material' => $type],
                 'sku' => $sku,
@@ -104,9 +98,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Đen', 'Xanh Navy', 'Trắng'] as $color) {
             $sku = 'CTUT-CAP-' . Str::upper(Str::slug($color));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'color' => $color,
                 'attributes' => ['adjustable' => true],
@@ -124,9 +116,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Acrylic', 'Kim loại'] as $material) {
             $sku = 'CTUT-KEY-' . Str::upper(Str::slug($material));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'attributes' => ['material' => $material],
                 'sku' => $sku,
@@ -143,9 +133,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Combo 10 sticker', 'Combo 20 sticker'] as $package) {
             $sku = 'CTUT-STICKER-' . Str::upper(Str::slug($package));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'attributes' => ['package' => $package],
                 'sku' => $sku,
@@ -162,9 +150,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Sinh viên', 'Cán bộ'] as $type) {
             $sku = 'CTUT-ID-' . Str::upper(Str::slug($type));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'attributes' => ['type' => $type],
                 'sku' => $sku,
@@ -181,9 +167,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Xanh CTUT', 'Đen'] as $color) {
             $sku = 'CTUT-LANYARD-' . Str::upper(Str::slug($color));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'color' => $color,
                 'attributes' => ['material' => 'Polyester'],
@@ -201,9 +185,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['A5', 'B5'] as $size) {
             $sku = 'CTUT-NOTEBOOK-' . $size;
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'size' => $size,
                 'attributes' => ['pages' => 120],
@@ -221,9 +203,7 @@ class ProductVariantSeeder extends Seeder
         foreach (['Mực xanh', 'Mực đen'] as $color) {
             $sku = 'CTUT-PEN-' . Str::upper(Str::slug($color));
 
-            $this->upsertVariant([
-                'sku' => $sku,
-            ], [
+            $this->upsertVariant(['sku' => $sku], [
                 'product_id' => $product->id,
                 'color' => $color,
                 'attributes' => ['type' => 'Bút bi'],

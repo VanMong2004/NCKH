@@ -78,7 +78,7 @@ class NotificationSeeder extends Seeder
                 'user_id' => $user->id,
                 'type' => 'system',
                 'title' => 'Chào mừng đến CTUT UniShop',
-                'message' => 'Cảm ơn bạn đã sử dụng hệ thống. Chúc bạn có trải nghiệm mua sắm vui vẻ.',
+                'message' => 'Cảm ơn bạn đã sử dụng hệ thống. Chúc bạn có trải nghiệm mua sắm thuận tiện và dễ dàng.',
                 'icon' => 'bell',
                 'color' => 'slate',
                 'action_url' => '/',

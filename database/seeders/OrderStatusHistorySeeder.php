@@ -15,20 +15,10 @@ class OrderStatusHistorySeeder extends Seeder
 
             match ($order->status) {
                 'pending' => null,
-
-                'cancelled' => $this->history(
-                    $order,
-                    'pending',
-                    'cancelled',
-                    'Đơn hàng bị hủy do quá hạn thanh toán'
-                ),
-
+                'cancelled' => $this->history($order, 'pending', 'cancelled', 'Đơn hàng bị hủy do hết hạn thanh toán'),
                 'processing' => $this->processingFlow($order),
-
                 'awaiting_receipt' => $this->awaitingReceiptFlow($order),
-
                 'completed' => $this->fullCompletedFlow($order),
-
                 default => null,
             };
         }
@@ -46,6 +36,7 @@ class OrderStatusHistorySeeder extends Seeder
     private function awaitingReceiptFlow(Order $order): void
     {
         $this->processingFlow($order);
+
         $this->history(
             $order,
             'processing',
@@ -62,12 +53,8 @@ class OrderStatusHistorySeeder extends Seeder
         $this->history($order, 'awaiting_receipt', 'completed', 'Khách hàng đã nhận hàng');
     }
 
-    private function history(
-        Order $order,
-        ?string $oldStatus,
-        string $newStatus,
-        string $note
-    ): void {
+    private function history(Order $order, ?string $oldStatus, string $newStatus, string $note): void
+    {
         OrderStatusHistory::updateOrCreate([
             'order_id' => $order->id,
             'old_status' => $oldStatus,

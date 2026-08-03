@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
                 ['email' => $user['email']],
                 [
                     ...$user,
-                    'password' => Hash::make('123456'),
+                    'password' => Hash::make('12345678'),
                     'email_verified_at' => now()->subDays(30),
                 ]
             );

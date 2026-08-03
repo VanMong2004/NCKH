@@ -11,6 +11,8 @@ use Illuminate\Database\Seeder;
 
 class OrderSeeder extends Seeder
 {
+    private const PICKUP_ADDRESS = 'Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+
     public function run(): void
     {
         $orders = [
@@ -19,6 +21,7 @@ class OrderSeeder extends Seeder
                 'status' => 'completed',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'paid',
+                'shipping_address' => 'Ký túc xá CTUT, khu A, An Khánh, Ninh Kiều, Cần Thơ',
                 'items' => [
                     ['Áo thun CTUT K2026', 'L', 'Trắng', 2],
                     ['Ly giữ nhiệt CTUT', null, null, 1],
@@ -39,6 +42,7 @@ class OrderSeeder extends Seeder
                 'status' => 'completed',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'paid',
+                'shipping_address' => 'Khu dân cư Hưng Phú, Hưng Phú, Cái Răng, Cần Thơ',
                 'items' => [
                     ['Áo khoa CNTT', 'M', 'Đen', 1],
                     ['Bảng tên sinh viên CTUT', null, null, 1],
@@ -60,6 +64,7 @@ class OrderSeeder extends Seeder
                 'status' => 'completed',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'paid',
+                'shipping_address' => 'Đường Võ Văn Kiệt, Long Hòa, Bình Thủy, Cần Thơ',
                 'items' => [
                     ['Áo khoa Cơ khí', 'L', 'Xám', 1],
                     ['Móc khóa CTUT', null, null, 2],
@@ -70,6 +75,7 @@ class OrderSeeder extends Seeder
                 'status' => 'completed',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'paid',
+                'shipping_address' => 'Đường Mậu Thân, Hưng Lợi, Ninh Kiều, Cần Thơ',
                 'items' => [
                     ['Áo khoa Điện - Điện tử', 'M', 'Trắng', 1],
                     ['Nón lưỡi trai CTUT', null, 'Đen', 1],
@@ -80,35 +86,61 @@ class OrderSeeder extends Seeder
                 'status' => 'awaiting_receipt',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'paid',
-                'items' => [['Sổ tay CTUT', 'A5', null, 2], ['Bút CTUT', null, 'Mực xanh', 3]],
+                'shipping_address' => 'Ký túc xá CTUT, khu A, An Khánh, Ninh Kiều, Cần Thơ',
+                'items' => [
+                    ['Sổ tay CTUT', 'A5', null, 2],
+                    ['Bút CTUT', null, 'Mực xanh', 3],
+                ],
             ],
             [
                 'email' => 'anh.b2200102@ctuet.edu.vn',
                 'status' => 'processing',
                 'fulfillment_method' => 'pickup',
                 'payment_status' => 'paid',
-                'items' => [['Ly giữ nhiệt CTUT', null, null, 1]],
+                'items' => [
+                    ['Ly giữ nhiệt CTUT', null, null, 1],
+                ],
             ],
             [
                 'email' => 'bao.b2300221@ctuet.edu.vn',
-                'status' => 'completed',
+                'status' => 'awaiting_receipt',
                 'fulfillment_method' => 'pickup',
                 'payment_status' => 'paid',
-                'items' => [['Túi tote CTUT', null, null, 1], ['Sticker CTUT', null, null, 1]],
+                'items' => [
+                    ['Túi tote CTUT', null, null, 1],
+                    ['Sticker CTUT', null, null, 1],
+                ],
             ],
             [
                 'email' => 'vy.b2400305@ctuet.edu.vn',
                 'status' => 'pending',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'unpaid',
-                'items' => [['Áo thun CTUT K2026', 'M', 'Xanh CTUT', 1]],
+                'shipping_address' => 'Hẻm 51 đường 3/2, An Bình, Ninh Kiều, Cần Thơ',
+                'items' => [
+                    ['Áo thun CTUT K2026', 'M', 'Xanh CTUT', 1],
+                ],
             ],
             [
                 'email' => 'han.b2500411@ctuet.edu.vn',
                 'status' => 'cancelled',
                 'fulfillment_method' => 'delivery',
                 'payment_status' => 'failed',
-                'items' => [['Hoodie CTUT Premium', 'M', 'Xám', 1]],
+                'shipping_address' => 'Đường Võ Văn Kiệt, Long Hòa, Bình Thủy, Cần Thơ',
+                'items' => [
+                    ['Hoodie CTUT Premium', 'M', 'Xám', 1],
+                ],
+                'cancel_reason' => 'Hết hạn thanh toán',
+            ],
+            [
+                'email' => 'user@example.com',
+                'status' => 'pending',
+                'fulfillment_method' => 'pickup',
+                'payment_status' => 'unpaid',
+                'items' => [
+                    ['Bút CTUT', null, 'Mực đen', 2],
+                    ['Sổ tay CTUT', 'B5', null, 1],
+                ],
             ],
         ];
 
@@ -119,7 +151,7 @@ class OrderSeeder extends Seeder
                 continue;
             }
 
-            $orderCode = 'ORD-2026-' . str_pad($index + 1, 5, '0', STR_PAD_LEFT);
+            $orderCode = 'ORD-2026-' . str_pad((string) ($index + 1), 5, '0', STR_PAD_LEFT);
 
             $order = Order::firstOrCreate([
                 'order_code' => $orderCode,
@@ -133,8 +165,8 @@ class OrderSeeder extends Seeder
                 'shipping_name' => $user->name,
                 'shipping_phone' => $user->phone,
                 'shipping_address' => $data['fulfillment_method'] === 'pickup'
-                    ? 'Phòng Công tác Chính trị và Quản lý sinh viên'
-                    : 'Ký túc xá CTUT, Ninh Kiều, Cần Thơ',
+                    ? self::PICKUP_ADDRESS
+                    : ($data['shipping_address'] ?? 'Ký túc xá CTUT, Ninh Kiều, Cần Thơ'),
                 'sub_total' => 0,
                 'discount_total' => 0,
                 'grand_total' => 0,
@@ -142,9 +174,8 @@ class OrderSeeder extends Seeder
                 'shipping_fee' => 0,
                 'status' => $data['status'],
                 'payment_status' => $data['payment_status'],
-                'expired_at' => $data['status'] === 'pending' ? now()->addMinutes(15) : null,
-                'cancel_reason' => $data['status'] === 'cancelled' ? 'Khách hàng không thanh toán đúng hạn' : null,
-                'order_code' => $orderCode,
+                'expired_at' => $data['payment_status'] === 'unpaid' ? now()->addMinutes(15) : null,
+                'cancel_reason' => $data['cancel_reason'] ?? null,
             ]);
 
             if (!$order->wasRecentlyCreated) {
@@ -155,9 +186,9 @@ class OrderSeeder extends Seeder
             $discountTotal = 0;
 
             foreach ($data['items'] as [$productName, $size, $color, $quantity]) {
-                $variant = ProductVariant::whereHas('product', fn ($q) => $q->where('name', $productName))
-                    ->when($size, fn ($q) => $q->where('size', $size))
-                    ->when($color, fn ($q) => $q->where('color', $color))
+                $variant = ProductVariant::whereHas('product', fn ($query) => $query->where('name', $productName))
+                    ->when($size, fn ($query) => $query->where('size', $size))
+                    ->when($color, fn ($query) => $query->where('color', $color))
                     ->first();
 
                 if (!$variant) {
@@ -165,10 +196,10 @@ class OrderSeeder extends Seeder
                 }
 
                 $promotionItem = $this->findPromotionItem($variant);
-                $discount = $promotionItem ? $this->discountAmount($variant->price, $promotionItem) : 0;
-                $finalPrice = max(0, $variant->price - $discount);
+                $discount = $promotionItem ? $this->discountAmount((float) $variant->price, $promotionItem) : 0;
+                $finalPrice = max(0, (float) $variant->price - $discount);
 
-                $subTotal += $variant->price * $quantity;
+                $subTotal += (float) $variant->price * $quantity;
                 $discountTotal += $discount * $quantity;
 
                 OrderItem::updateOrCreate([
@@ -206,7 +237,7 @@ class OrderSeeder extends Seeder
                 }
             }
 
-            $shippingFee = $subTotal >= 300000 ? 0 : 30000;
+            $shippingFee = $data['fulfillment_method'] === 'pickup' ? 0 : 35000;
 
             $order->update([
                 'sub_total' => $subTotal,
@@ -238,9 +269,9 @@ class OrderSeeder extends Seeder
     private function discountAmount(float $price, PromotionItem $promotionItem): float
     {
         if ($promotionItem->discount_type === 'percent') {
-            return round($price * $promotionItem->discount_value / 100, 2);
+            return round($price * (float) $promotionItem->discount_value / 100, 2);
         }
 
-        return min($price, $promotionItem->discount_value);
+        return min($price, (float) $promotionItem->discount_value);
     }
 }

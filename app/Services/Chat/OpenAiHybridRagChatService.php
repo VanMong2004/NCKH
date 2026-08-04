@@ -288,6 +288,29 @@ class OpenAiHybridRagChatService
         }
 
         if (in_array($intent, ['clarify', 'unknown'], true)) {
+            $contextualResult = $this->resolveContextualFollowUp($conversation, $latestMessage, $user, $entities);
+
+            if ($contextualResult !== null) {
+                return [
+                    ...$contextualResult,
+                    'debug' => [
+                        'intent' => $contextualResult['intent'] ?? $intent,
+                        'original_message' => $entities['original_message'] ?? $latestMessage,
+                        'normalized_message' => $entities['normalized_message'] ?? null,
+                        'entities' => $entities,
+                        'confidence' => $entities['confidence'],
+                        'source_used' => 'conversation_context',
+                        'tool_count' => count($contextualResult['tool_calls'] ?? []),
+                        'tool_names' => collect($contextualResult['tool_calls'] ?? [])->pluck('name')->unique()->values()->toArray(),
+                        'product_count' => count($contextualResult['products'] ?? []),
+                        'promotion_count' => count($contextualResult['promotions'] ?? []),
+                        'source_count' => 0,
+                        'tool_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                        'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                    ],
+                ];
+            }
+
             return [
                 ...$this->clarifyResponse($entities),
                 'debug' => [
@@ -366,7 +389,7 @@ class OpenAiHybridRagChatService
             'product_stock' => $this->handleProductInfoIntent($message, $user, 'get_product_stock', 'product_stock', $entities),
             'product_variant' => $this->handleProductInfoIntent($message, $user, 'get_product_variants', 'product_variant', $entities),
             'order_query' => $this->handleOrderIntent($message, $user),
-            'promotion_query' => $this->handlePromotionIntent($message, $user),
+            'promotion_query' => $this->handlePromotionIntentV2($message, $user),
             default => $this->dynamicEmptyResponse('rag', [], 'Hiện tại tôi chưa tìm thấy thông tin này trong hệ thống. Bạn vui lòng liên hệ bộ phận hỗ trợ của CTUT UniShop để được xác nhận.'),
         };
     }
@@ -602,14 +625,14 @@ class OpenAiHybridRagChatService
         if ($this->isPromotionProductQuestion($message)) {
             $result = $this->productToolService->execute('get_promotion_products', [
                 'query' => $promotionQuery,
-                'limit' => 6,
+                'limit' => 12,
             ], $user);
 
             $toolCalls[] = [
                 'name' => 'get_promotion_products',
                 'arguments' => [
                     'query' => $promotionQuery,
-                    'limit' => 6,
+                    'limit' => 12,
                 ],
                 'result' => $result,
                 'summary' => $this->summarizeToolResult('get_promotion_products', $result),
@@ -1398,6 +1421,202 @@ class OpenAiHybridRagChatService
             ->unique(fn ($promotion) => ($promotion['id'] ?? '') . '|' . ($promotion['title'] ?? ''))
             ->values()
             ->toArray();
+    }
+
+    private function handlePromotionIntentV2(string $message, $user): array
+    {
+        $promotionQuery = $this->extractPromotionQuery($message);
+        $toolCalls = [];
+
+        if ($this->isPromotionProductQuestion($message)) {
+            $result = $this->productToolService->execute('get_promotion_products', [
+                'query' => $promotionQuery,
+                'limit' => 12,
+            ], $user);
+
+            $toolCalls[] = [
+                'name' => 'get_promotion_products',
+                'arguments' => [
+                    'query' => $promotionQuery,
+                    'limit' => 12,
+                ],
+                'result' => $result,
+                'summary' => $this->summarizeToolResult('get_promotion_products', $result),
+            ];
+
+            $products = $this->extractProductsFromToolCalls($toolCalls);
+            $promotions = $this->extractPromotionsFromToolCalls($toolCalls);
+
+            if (empty($products)) {
+                return $this->dynamicEmptyResponse('promotion_query', $toolCalls, 'Hiện chưa có sản phẩm khuyến mãi phù hợp.');
+            }
+
+            $promotionTitle = data_get($result, 'promotion.title', 'chương trình khuyến mãi đang diễn ra');
+            $promotionUrl = data_get($result, 'promotion.url');
+            $answer = 'Mình tìm thấy ' . count($products) . " sản phẩm trong {$promotionTitle}:\n"
+                . $this->buildProductListingLines($products)
+                . "\nBạn muốn xem chi tiết sản phẩm nào? Chỉ cần nhắn tên sản phẩm, mình sẽ gửi link ngay.";
+
+            if ($promotionUrl) {
+                $answer .= "\nBạn cũng có thể xem toàn bộ chương trình tại: {$promotionUrl}";
+            }
+
+            return [
+                'response_id' => null,
+                'answer' => $answer,
+                'intent' => 'promotion_query',
+                'sources' => [],
+                'tool_calls' => $toolCalls,
+                'products' => $products,
+                'promotions' => $promotions,
+            ];
+        }
+
+        return $this->handlePromotionIntent($message, $user);
+    }
+
+    private function resolveContextualFollowUp(ChatConversation $conversation, string $latestMessage, $user, array $entities): ?array
+    {
+        $context = $this->getLatestAssistantContext($conversation);
+
+        if (!$context) {
+            return null;
+        }
+
+        $normalized = $this->normalizeVietnameseText($latestMessage);
+        $products = $context['products'] ?? [];
+        $promotions = $context['promotions'] ?? [];
+        $lastIntent = data_get($context, 'metadata.intent');
+
+        if ($lastIntent !== 'promotion_query' || empty($products)) {
+            return null;
+        }
+
+        if ($this->isPromotionContinuationQuestion($normalized)) {
+            $promotionTitle = data_get($promotions, '0.title')
+                ?? data_get($products, '0.promotion.title')
+                ?? 'chương trình khuyến mãi hiện tại';
+            $promotionUrl = data_get($promotions, '0.url') ?? data_get($products, '0.promotion.url');
+            $answer = "Trong {$promotionTitle} hiện có " . count($products) . " sản phẩm:\n"
+                . $this->buildProductListingLines($products)
+                . "\nBạn muốn xem chi tiết sản phẩm nào? Chỉ cần nhắn tên sản phẩm, mình sẽ gửi link ngay.";
+
+            if ($promotionUrl) {
+                $answer .= "\nTrang khuyến mãi: {$promotionUrl}";
+            }
+
+            return [
+                'response_id' => null,
+                'answer' => $answer,
+                'intent' => 'promotion_query',
+                'sources' => [],
+                'tool_calls' => [],
+                'products' => $products,
+                'promotions' => $promotions,
+            ];
+        }
+
+        $selectedProduct = $this->resolveReferencedProductFromContext($normalized, $products);
+
+        if (!$selectedProduct) {
+            return null;
+        }
+
+        $productUrl = $selectedProduct['product_url'] ?? $selectedProduct['url'] ?? null;
+        $answer = "Đây là sản phẩm bạn đang hỏi: {$selectedProduct['name']}.";
+
+        if ($productUrl) {
+            $answer .= "\nLink xem chi tiết: {$productUrl}";
+        }
+
+        return [
+            'response_id' => null,
+            'answer' => $answer,
+            'intent' => 'product_search',
+            'sources' => [],
+            'tool_calls' => [],
+            'products' => [$selectedProduct],
+            'promotions' => $promotions,
+        ];
+    }
+
+    private function getLatestAssistantContext(ChatConversation $conversation): ?array
+    {
+        $message = $this->sessionService->recentMessages($conversation, 8)
+            ->reverse()
+            ->first(function ($item) {
+                return $item->role === 'assistant'
+                    && (!empty(data_get($item->metadata, 'products')) || !empty(data_get($item->metadata, 'promotions')));
+            });
+
+        if (!$message) {
+            return null;
+        }
+
+        return [
+            'metadata' => $message->metadata ?? [],
+            'products' => data_get($message->metadata, 'products', []),
+            'promotions' => data_get($message->metadata, 'promotions', []),
+        ];
+    }
+
+    private function isPromotionContinuationQuestion(string $normalizedMessage): bool
+    {
+        return $this->containsAny($normalizedMessage, [
+            'con san pham nao nua khong',
+            'con san pham nao khong',
+            'con cai nao nua khong',
+            'con nua khong',
+            'liet ke lai san pham',
+            'co may san pham',
+            'tat ca san pham khuyen mai',
+        ]);
+    }
+
+    private function resolveReferencedProductFromContext(string $normalizedMessage, array $products): ?array
+    {
+        if (preg_match('/(?:san pham|sp|cai|thu)\s*(\d{1,2})/u', $normalizedMessage, $matches)) {
+            $index = max(1, (int) $matches[1]) - 1;
+
+            return $products[$index] ?? null;
+        }
+
+        foreach ($products as $product) {
+            $name = $this->normalizeVietnameseText((string) ($product['name'] ?? ''));
+
+            if ($name !== '' && str_contains($normalizedMessage, $name)) {
+                return $product;
+            }
+        }
+
+        return null;
+    }
+
+    private function buildProductListingLines(array $products): string
+    {
+        return collect($products)
+            ->values()
+            ->map(function ($product, int $index) {
+                $price = $this->formatChatMoney(
+                    $product['promotion_price']
+                    ?? $product['final_price']
+                    ?? $product['price']
+                    ?? null
+                );
+
+                return ($index + 1) . '. ' . ($product['name'] ?? 'Sản phẩm')
+                    . ($price ? ' - ' . $price : '');
+            })
+            ->implode("\n");
+    }
+
+    private function formatChatMoney(mixed $value): ?string
+    {
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        return number_format((float) $value, 0, ',', '.') . ' đ';
     }
 
     private function extractAnswer(array $response): string

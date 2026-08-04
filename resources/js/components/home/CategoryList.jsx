@@ -13,7 +13,6 @@ import { useState } from 'react';
 import SectionHeader from '../ui/SectionHeader';
 
 export default function CategoryList({ categories = [] }) {
-    console.log('HOME CATEGORIES:', categories);
     const [openId, setOpenId] = useState(null);
 
     function toggleCategory(category) {

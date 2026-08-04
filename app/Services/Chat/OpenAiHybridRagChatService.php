@@ -9,11 +9,27 @@ use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use JsonException;
 use RuntimeException;
 use Throwable;
 
 class OpenAiHybridRagChatService
 {
+    private const GPT_INTENT_ALLOWLIST = [
+        'small_talk',
+        'order_query',
+        'promotion_query',
+        'off_topic',
+        'static_knowledge',
+        'clarify',
+        'product_price',
+        'product_stock',
+        'product_variant',
+        'product_search',
+        'rag',
+        'unknown',
+    ];
+
     public function __construct(
         protected ProductChatToolService $productToolService,
         protected ChatSessionService $sessionService,
@@ -817,7 +833,7 @@ class OpenAiHybridRagChatService
             $confidence = 0.65;
         }
 
-        return [
+        $entities = [
             'intent' => $intent,
             'original_message' => $message,
             'normalized_message' => $text,
@@ -833,7 +849,172 @@ class OpenAiHybridRagChatService
             'is_off_topic' => $isOffTopic,
             'has_static_knowledge_signal' => $hasStaticKnowledgeSignal,
             'has_dynamic_signal' => $hasCatalogSignal || $hasPriceSignal || $hasStockSignal || $hasVariantSignal || $hasPromotionSignal || $hasOrderSignal,
+            'classification_source' => 'rule',
+            'rule_intent' => $intent,
         ];
+
+        return $this->refineEntitiesWithGpt($message, $entities);
+    }
+
+    private function refineEntitiesWithGpt(string $message, array $ruleEntities): array
+    {
+        if (!$this->shouldUseGptIntentClassifier($message, $ruleEntities)) {
+            return $ruleEntities;
+        }
+
+        $gptEntities = $this->classifyIntentWithGpt($message, $ruleEntities);
+
+        if ($gptEntities === null) {
+            return $ruleEntities;
+        }
+
+        $merged = array_merge($ruleEntities, array_filter([
+            'intent' => $gptEntities['intent'] ?? null,
+            'product_query' => $gptEntities['product_query'] ?? null,
+            'category_query' => $gptEntities['category_query'] ?? null,
+            'department_query' => $gptEntities['department_query'] ?? null,
+            'size' => $gptEntities['size'] ?? null,
+            'color' => $gptEntities['color'] ?? null,
+            'price_min' => $gptEntities['price_min'] ?? null,
+            'price_max' => $gptEntities['price_max'] ?? null,
+        ], fn ($value) => $value !== null && $value !== ''));
+
+        $merged['confidence'] = max(
+            (float) ($ruleEntities['confidence'] ?? 0),
+            min(0.99, (float) ($gptEntities['confidence'] ?? 0))
+        );
+        $merged['classification_source'] = 'gpt_fallback';
+        $merged['gpt_intent'] = $gptEntities['intent'] ?? null;
+        $merged['gpt_confidence'] = $gptEntities['confidence'] ?? null;
+
+        if (
+            in_array($merged['intent'] ?? null, ['rag', 'static_knowledge'], true)
+            && !empty($ruleEntities['has_dynamic_signal'])
+        ) {
+            $merged['intent'] = $ruleEntities['intent'] === 'rag' ? 'clarify' : $ruleEntities['intent'];
+        }
+
+        if (
+            in_array($merged['intent'] ?? null, ['product_price', 'product_stock', 'product_variant'], true)
+            && trim((string) ($merged['product_query'] ?? '')) === ''
+        ) {
+            $merged['intent'] = 'clarify';
+        }
+
+        return $merged;
+    }
+
+    private function shouldUseGptIntentClassifier(string $message, array $ruleEntities): bool
+    {
+        if (!config('services.openai.intent_classifier_enabled', true)) {
+            return false;
+        }
+
+        if (mb_strlen(trim($message)) < 5) {
+            return false;
+        }
+
+        $intent = $ruleEntities['intent'] ?? 'unknown';
+        $confidence = (float) ($ruleEntities['confidence'] ?? 0);
+
+        if (in_array($intent, ['small_talk', 'off_topic'], true) && $confidence >= 0.9) {
+            return false;
+        }
+
+        if (in_array($intent, ['order_query', 'promotion_query'], true) && $confidence >= 0.88) {
+            return false;
+        }
+
+        if ($intent === 'static_knowledge' && $confidence >= 0.9) {
+            return false;
+        }
+
+        return $confidence < (float) config('services.openai.intent_classifier_threshold', 0.78)
+            || in_array($intent, ['clarify', 'rag'], true);
+    }
+
+    private function classifyIntentWithGpt(string $message, array $ruleEntities): ?array
+    {
+        try {
+            $response = $this->createResponse([
+                'model' => config('services.openai.chat_model'),
+                'instructions' => $this->intentClassifierPrompt(),
+                'input' => [[
+                    'role' => 'user',
+                    'content' => json_encode([
+                        'message' => $message,
+                        'rule_intent' => $ruleEntities['intent'] ?? 'unknown',
+                        'rule_confidence' => $ruleEntities['confidence'] ?? 0,
+                        'rule_product_query' => $ruleEntities['product_query'] ?? '',
+                        'rule_category_query' => $ruleEntities['category_query'] ?? null,
+                        'rule_department_query' => $ruleEntities['department_query'] ?? null,
+                        'rule_size' => $ruleEntities['size'] ?? null,
+                        'rule_color' => $ruleEntities['color'] ?? null,
+                        'rule_price_min' => $ruleEntities['price_min'] ?? null,
+                        'rule_price_max' => $ruleEntities['price_max'] ?? null,
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ]],
+                'max_output_tokens' => 250,
+            ]);
+
+            $payload = $this->parseIntentClassifierPayload($this->extractAnswer($response));
+            $intent = $payload['intent'] ?? null;
+
+            if (!is_string($intent) || !in_array($intent, self::GPT_INTENT_ALLOWLIST, true)) {
+                return null;
+            }
+
+            return [
+                'intent' => $intent,
+                'product_query' => trim((string) ($payload['product_query'] ?? '')) ?: null,
+                'category_query' => $this->normalizeNullableString($payload['category_query'] ?? null),
+                'department_query' => $this->normalizeNullableString($payload['department_query'] ?? null),
+                'size' => $this->normalizeNullableString($payload['size'] ?? null),
+                'color' => $this->normalizeNullableString($payload['color'] ?? null),
+                'price_min' => is_numeric($payload['price_min'] ?? null) ? (float) $payload['price_min'] : null,
+                'price_max' => is_numeric($payload['price_max'] ?? null) ? (float) $payload['price_max'] : null,
+                'confidence' => is_numeric($payload['confidence'] ?? null) ? (float) $payload['confidence'] : 0.7,
+            ];
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function parseIntentClassifierPayload(string $answer): ?array
+    {
+        $answer = trim($answer);
+
+        if ($answer === '') {
+            return null;
+        }
+
+        $decoded = json_decode($answer, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        if (preg_match('/\{.*\}/s', $answer, $matches) !== 1) {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($matches[0], true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return null;
+        }
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function normalizeNullableString(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value !== '' ? $value : null;
     }
 
     private function shouldClarifyProductQuestion(array $entities): bool
@@ -1499,6 +1680,49 @@ Chỉ dùng file_search cho dữ liệu tĩnh do admin upload như FAQ, chính s
 Không dùng file_search để trả lời hoặc suy đoán dữ liệu động: sản phẩm đang bán, giá, tồn kho, size, màu, biến thể, khuyến mãi đang chạy hoặc đơn hàng.
 Nếu không có nguồn từ tài liệu, hãy nói rõ chưa tìm thấy thông tin trong tài liệu hỗ trợ của CTUT UniShop.
 Luôn trả lời bằng tiếng Việt, ngắn gọn, tự nhiên, không dùng markdown.
+PROMPT;
+    }
+
+    private function intentClassifierPrompt(): string
+    {
+        return <<<PROMPT
+Bạn là bộ phân loại ý định cho chatbot của CTUT UniShop.
+
+Nhiệm vụ:
+- Đọc câu người dùng.
+- Chọn đúng 1 intent trong danh sách:
+  small_talk, order_query, promotion_query, off_topic, static_knowledge, clarify, product_price, product_stock, product_variant, product_search, rag, unknown
+- Nếu câu hỏi liên quan dữ liệu động như sản phẩm, giá, tồn kho, màu, size, biến thể, khuyến mãi đang có, đơn hàng thì phải ưu tiên intent động tương ứng.
+- Chỉ trả static_knowledge khi câu hỏi là chính sách, hướng dẫn, liên hệ, đổi trả, thanh toán, giao nhận, giới thiệu cửa hàng hoặc FAQ.
+- Nếu câu quá mơ hồ, thiếu tên sản phẩm, hoặc không đủ thông tin để biết người dùng đang hỏi gì thì trả clarify.
+- Nếu câu nằm ngoài phạm vi cửa hàng CTUT UniShop thì trả off_topic.
+- Không được tự bịa dữ liệu. Chỉ phân loại và trích xuất thực thể.
+
+Thực thể cần trích xuất nếu có:
+- product_query
+- category_query
+- department_query
+- size
+- color
+- price_min
+- price_max
+
+Yêu cầu đầu ra:
+- Chỉ trả đúng 1 object JSON hợp lệ.
+- Không thêm giải thích, không thêm markdown, không thêm văn bản ngoài JSON.
+
+Mẫu:
+{
+  "intent": "product_price",
+  "confidence": 0.88,
+  "product_query": "ao thun ctut",
+  "category_query": null,
+  "department_query": null,
+  "size": "M",
+  "color": "xanh",
+  "price_min": null,
+  "price_max": null
+}
 PROMPT;
     }
 }

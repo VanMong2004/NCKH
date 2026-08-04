@@ -60,6 +60,8 @@ return [
         'chat_max_history' => (int) env('OPENAI_CHAT_MAX_HISTORY', 12),
         'chat_summary_threshold' => (int) env('OPENAI_CHAT_SUMMARY_THRESHOLD', 30),
         'chat_session_expire_days' => (int) env('OPENAI_CHAT_SESSION_EXPIRE_DAYS', 7),
+        'intent_classifier_enabled' => filter_var(env('OPENAI_INTENT_CLASSIFIER_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        'intent_classifier_threshold' => (float) env('OPENAI_INTENT_CLASSIFIER_THRESHOLD', 0.78),
     ],
 
     'misa_invoice' => [

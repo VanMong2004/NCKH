@@ -222,6 +222,7 @@ export default function ReceiverForm({
                     value={receiver.ward}
                     error={errors.ward}
                     onChange={(value) => updateField('ward', value)}
+                    required
                 />
 
                 <Input

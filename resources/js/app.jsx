@@ -90,9 +90,23 @@ function AnalyticsRouteTracker() {
     return null;
 }
 
+function ScrollToTop() {
+    const location = useLocation();
+
+    React.useEffect(() => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth',
+        });
+    }, [location.pathname]);
+
+    return null;
+}
+
 createRoot(document.getElementById('app')).render(
     <BrowserRouter>
         <AnalyticsRouteTracker />
+        <ScrollToTop />
         <ThemeProvider>
             <AuthProvider>
                 <CartProvider>
@@ -121,7 +135,7 @@ createRoot(document.getElementById('app')).render(
                                 path="/checkout"
                                 element={
                                     // <ProtectedRoute>
-                                        <Checkout />
+                                    <Checkout />
                                     // </ProtectedRoute>
                                 }
                             />
@@ -130,7 +144,7 @@ createRoot(document.getElementById('app')).render(
                                 path="/order-success/:orderId"
                                 element={
                                     // <ProtectedRoute>
-                                        <OrderSuccess />
+                                    <OrderSuccess />
                                     // </ProtectedRoute>
                                 }
                             />
@@ -142,7 +156,7 @@ createRoot(document.getElementById('app')).render(
                                 path="/payment/result"
                                 element={
                                     // <ProtectedRoute>
-                                        <PaymentResult />
+                                    <PaymentResult />
                                     // </ProtectedRoute>
                                 }
                             />

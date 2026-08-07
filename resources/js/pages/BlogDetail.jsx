@@ -17,7 +17,6 @@ export default function BlogDetail() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
         loadBlogDetail();
     }, [slug]);
 
@@ -65,7 +64,9 @@ export default function BlogDetail() {
                                     <div
                                         className="prose prose-slate max-w-none prose-headings:font-black prose-headings:text-blue-950 prose-a:text-blue-700 prose-img:rounded-2xl dark:prose-invert dark:prose-headings:text-white dark:prose-a:text-blue-300"
                                         dangerouslySetInnerHTML={{
-                                            __html: blog.content || `<p>${blog.summary || 'Nội dung đang được cập nhật.'}</p>`,
+                                            __html:
+                                                blog.content ||
+                                                `<p>${blog.summary || 'Nội dung đang được cập nhật.'}</p>`,
                                         }}
                                     />
                                 </div>

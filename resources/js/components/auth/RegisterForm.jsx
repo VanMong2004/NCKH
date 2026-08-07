@@ -30,9 +30,11 @@ export default function RegisterForm() {
     function handleChange(e) {
         const { name, value } = e.target;
 
+        const normalizedValue = name === 'phone' ? normalizePhone(value) : value;
+
         setForm((prev) => ({
             ...prev,
-            [name]: value,
+            [name]: normalizedValue,
         }));
 
         setErrors((prev) => ({
@@ -46,6 +48,15 @@ export default function RegisterForm() {
 
         if (!form.name.trim()) nextErrors.name = 'Vui lòng nhập họ tên';
         if (!form.email.trim()) nextErrors.email = 'Vui lòng nhập email';
+
+        const normalizedPhone = normalizePhone(form.phone);
+
+        if (!normalizedPhone) {
+            nextErrors.phone = 'Vui lòng nhập số điện thoại.';
+        } else if (!/^0\d{9}$/.test(normalizedPhone)) {
+            nextErrors.phone = 'Số điện thoại phải gồm đúng 10 số và bắt đầu bằng số 0.';
+        }
+
         if (!form.password) nextErrors.password = 'Vui lòng nhập mật khẩu';
 
         if (form.password && form.password.length < 6) {
@@ -110,9 +121,7 @@ export default function RegisterForm() {
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg dark:border-slate-800 dark:bg-slate-900 md:p-10">
             <h1 className="text-3xl font-extrabold text-blue-950 dark:text-white">Tạo tài khoản</h1>
 
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Đăng ký để mua hàng và theo dõi đơn hàng.
-            </p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Đăng ký để mua hàng và theo dõi đơn hàng.</p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <AuthInput
@@ -178,11 +187,7 @@ export default function RegisterForm() {
 
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                     Đã có tài khoản?
-                    <Link
-                        to="/login"
-                        state={{ from }}
-                        className="ml-2 font-bold text-blue-700 dark:text-blue-300"
-                    >
+                    <Link to="/login" state={{ from }} className="ml-2 font-bold text-blue-700 dark:text-blue-300">
                         Đăng nhập
                     </Link>
                 </p>
@@ -209,4 +214,10 @@ function normalizeErrors(err) {
     });
 
     return result;
+}
+
+function normalizePhone(value) {
+    return String(value || '')
+        .replace(/[^\d]/g, '')
+        .slice(0, 10);
 }

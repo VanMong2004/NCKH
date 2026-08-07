@@ -91,8 +91,12 @@ export default function ProfileForm({ user }) {
             nextErrors.email = 'Email không hợp lệ';
         }
 
-        if (form.phone && form.phone.trim().length > 20) {
-            nextErrors.phone = 'Số điện thoại không được vượt quá 20 ký tự';
+        const normalizedPhone = normalizePhone(form.phone);
+
+        if (!normalizedPhone) {
+            nextErrors.phone = 'Vui lòng nhập số điện thoại.';
+        } else if (!/^0\d{9}$/.test(normalizedPhone)) {
+            nextErrors.phone = 'Số điện thoại phải gồm đúng 10 số và bắt đầu bằng số 0.';
         }
 
         if (form.mssv && form.mssv.trim().length > 50) {
@@ -117,7 +121,7 @@ export default function ProfileForm({ user }) {
             payload.append('_method', 'PUT');
             payload.append('name', form.name.trim());
             payload.append('email', form.email.trim());
-            payload.append('phone', form.phone.trim());
+            payload.append('phone', normalizePhone(form.phone));
             payload.append('mssv', form.mssv.trim());
 
             if (avatarFile) {
@@ -173,13 +177,9 @@ export default function ProfileForm({ user }) {
                         />
                     </div>
 
-                    <p className="mt-3 text-sm font-bold text-blue-950 dark:text-white">
-                        {form.name || 'Người dùng'}
-                    </p>
+                    <p className="mt-3 text-sm font-bold text-blue-950 dark:text-white">{form.name || 'Người dùng'}</p>
 
-                    <p className="mt-1 text-xs text-slate-500">
-                        Bấm icon camera để đổi ảnh
-                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Bấm icon camera để đổi ảnh</p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -204,7 +204,7 @@ export default function ProfileForm({ user }) {
                         label="Số điện thoại"
                         value={form.phone}
                         error={errors.phone}
-                        onChange={(v) => handleChange('phone', v)}
+                        onChange={(v) => handleChange('phone', normalizePhone(v))}
                     />
 
                     <Input
@@ -253,4 +253,10 @@ function Input({ label, value, onChange, error, placeholder, icon: Icon }) {
             {error && <p className="mt-1 text-xs font-semibold text-red-500">{error}</p>}
         </label>
     );
+}
+
+function normalizePhone(value) {
+    return String(value || '')
+        .replace(/[^\d]/g, '')
+        .slice(0, 10);
 }

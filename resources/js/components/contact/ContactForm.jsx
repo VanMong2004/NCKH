@@ -26,9 +26,11 @@ export default function ContactForm({ submitting = false, onSubmit }) {
     const messageLength = useMemo(() => form.message.length, [form.message]);
 
     function updateField(field, value) {
+        const normalizedValue = field === 'phone' ? normalizePhone(value) : value;
+
         setForm((prev) => ({
             ...prev,
-            [field]: value,
+            [field]: normalizedValue,
         }));
 
         setErrors((prev) => ({
@@ -38,7 +40,6 @@ export default function ContactForm({ submitting = false, onSubmit }) {
 
         setSubmitted(false);
     }
-
     async function handleSubmit(e) {
         e.preventDefault();
 
@@ -52,7 +53,7 @@ export default function ContactForm({ submitting = false, onSubmit }) {
         const success = await onSubmit({
             full_name: form.full_name.trim(),
             email: form.email.trim(),
-            phone: form.phone.trim() || null,
+            phone: normalizePhone(form.phone) || null,
             subject: form.subject.trim(),
             message: form.message.trim(),
         });
@@ -231,8 +232,10 @@ function validateForm(form) {
         errors.email = 'Email không đúng định dạng';
     }
 
-    if (form.phone.trim() && !/^[0-9+\-\s().]{8,20}$/.test(form.phone.trim())) {
-        errors.phone = 'Số điện thoại không hợp lệ';
+    const normalizedPhone = normalizePhone(form.phone);
+
+    if (normalizedPhone && !/^0\d{9}$/.test(normalizedPhone)) {
+        errors.phone = 'Số điện thoại phải gồm đúng 10 số và bắt đầu bằng số 0.';
     }
 
     if (!form.subject.trim()) {
@@ -248,4 +251,10 @@ function validateForm(form) {
     }
 
     return errors;
+}
+
+function normalizePhone(value) {
+    return String(value || '')
+        .replace(/[^\d]/g, '')
+        .slice(0, 10);
 }

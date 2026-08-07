@@ -21,7 +21,7 @@ export default function OrderTimeLine({ order }) {
             title: order.fulfillmentMethod === 'pickup' ? 'Sẵn sàng nhận tại phòng' : 'Đang giao',
             desc:
                 order.fulfillmentMethod === 'pickup'
-                    ? 'Đơn hàng đã sẵn sàng để nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.'
+                    ? 'Đơn hàng đã sẵn sàng để nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ.'
                     : 'Đơn hàng đang được giao đến địa chỉ bạn đã đăng ký.',
             icon: Truck,
         },

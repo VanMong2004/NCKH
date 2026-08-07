@@ -16,8 +16,6 @@ const defaultFilters = {
     category_id: '',
     min_price: '',
     max_price: '',
-    sizes: '',
-    colors: '',
     rating: '',
     in_stock: '',
     sort: 'newest',
@@ -33,8 +31,6 @@ const defaultMeta = {
 
 const defaultFilterOptions = {
     categories: [],
-    sizes: [],
-    colors: [],
     priceRange: {
         min: 0,
         max: 0,
@@ -62,8 +58,6 @@ export default function Shop() {
                 filters.category_id ||
                 filters.min_price ||
                 filters.max_price ||
-                filters.sizes ||
-                filters.colors ||
                 filters.rating ||
                 filters.in_stock,
         );
@@ -299,8 +293,6 @@ function parseFiltersFromUrl(search) {
         category_id: params.get('category_id') || '',
         min_price: params.get('min_price') || '',
         max_price: params.get('max_price') || '',
-        sizes: params.get('sizes') || '',
-        colors: params.get('colors') || '',
         rating: params.get('rating') || '',
         in_stock: params.get('in_stock') || '',
         sort: params.get('sort') || 'newest',
@@ -314,8 +306,6 @@ function isSameFilter(current, next) {
         current.category_id === next.category_id &&
         current.min_price === next.min_price &&
         current.max_price === next.max_price &&
-        current.sizes === next.sizes &&
-        current.colors === next.colors &&
         current.rating === next.rating &&
         current.in_stock === next.in_stock &&
         current.sort === next.sort &&

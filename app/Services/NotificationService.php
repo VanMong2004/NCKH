@@ -148,7 +148,7 @@ class NotificationService
             : 'Đơn hàng đang giao';
 
         $awaitingReceiptMessage = $order->fulfillment_method === 'pickup'
-            ? "Đơn hàng {$order->order_code} đã sẵn sàng để bạn nhận tại Phòng Công tác Chính trị và Quản lý sinh viên."
+            ? "Đơn hàng {$order->order_code} đã sẵn sàng để bạn nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp."
             : "Đơn hàng {$order->order_code} đang được giao đến bạn.";
 
         $map = [

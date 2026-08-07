@@ -467,7 +467,7 @@ class OrderService
     private function resolveFulfillmentAddress(array $data, string $fulfillmentMethod): string
     {
         if ($fulfillmentMethod === 'pickup') {
-            return 'Phòng Công tác Chính trị và Quản lý sinh viên';
+            return 'Phòng Công tác chính trị - Sinh viên - Khởi nghiệp';
         }
 
         return $this->formatAddress([

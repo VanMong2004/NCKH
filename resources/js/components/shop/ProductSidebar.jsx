@@ -3,16 +3,6 @@ import { Search } from 'lucide-react';
 export default function ProductSidebar({ filters, filterOptions, onChange, onApply, onReset }) {
     const categories = buildCategoryOptions(filterOptions.categories || []);
 
-    const SIZE_ORDER = {
-        XS: 1,
-        S: 2,
-        M: 3,
-        L: 4,
-        XL: 5,
-        XXL: 6,
-        XXXL: 7,
-    };
-
     function handleSubmit(e) {
         e.preventDefault();
         onApply();
@@ -93,40 +83,6 @@ export default function ProductSidebar({ filters, filterOptions, onChange, onApp
                             onChange={(value) => onChange('max_price', value)}
                         />
                     </div>
-
-                    <Select
-                        label="Size"
-                        value={filters.sizes}
-                        onChange={(value) => onChange('sizes', value)}
-                        options={[
-                            { value: '', label: 'Tất cả size' },
-                            ...(filterOptions.sizes || [])
-                                .slice()
-                                .sort((a, b) => {
-                                    const orderA = SIZE_ORDER[a] ?? 999;
-                                    const orderB = SIZE_ORDER[b] ?? 999;
-
-                                    return orderA - orderB;
-                                })
-                                .map((size) => ({
-                                    value: size,
-                                    label: size,
-                                })),
-                        ]}
-                    />
-
-                    <Select
-                        label="Màu sắc"
-                        value={filters.colors}
-                        onChange={(value) => onChange('colors', value)}
-                        options={[
-                            { value: '', label: 'Tất cả màu' },
-                            ...(filterOptions.colors || []).map((color) => ({
-                                value: color,
-                                label: color,
-                            })),
-                        ]}
-                    />
 
                     <Select
                         label="Đánh giá"
@@ -211,7 +167,7 @@ function buildCategoryOptions(categories) {
             category.children.forEach((child) => {
                 options.push({
                     value: String(child.id),
-                    label: `— ${child.name}`,
+                    label: `- ${child.name}`,
                 });
             });
         }

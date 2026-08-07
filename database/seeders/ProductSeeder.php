@@ -24,7 +24,7 @@ class ProductSeeder extends Seeder
             ['name' => 'Nón lưỡi trai CTUT', 'category' => 'Nón', 'department' => null, 'author' => 'CTUT UniShop', 'featured' => false],
             ['name' => 'Móc khóa CTUT', 'category' => 'Móc khóa', 'department' => null, 'author' => 'CTUT UniShop', 'featured' => false],
             ['name' => 'Sticker CTUT', 'category' => 'Sticker', 'department' => null, 'author' => 'CTUT UniShop', 'featured' => false],
-            ['name' => 'Bảng tên sinh viên CTUT', 'category' => 'Bảng tên', 'department' => null, 'author' => 'Phòng Công tác Chính trị và Quản lý sinh viên', 'featured' => false],
+            ['name' => 'Bảng tên sinh viên CTUT', 'category' => 'Bảng tên', 'department' => null, 'author' => 'Phòng Công tác chính trị - Sinh viên - Khởi nghiệp', 'featured' => false],
             ['name' => 'Dây đeo thẻ CTUT', 'category' => 'Dây đeo thẻ', 'department' => null, 'author' => 'Đoàn Thanh niên CTUT', 'featured' => false],
             ['name' => 'Sổ tay CTUT', 'category' => 'Sổ tay', 'department' => null, 'author' => 'CTUT UniShop', 'featured' => false],
             ['name' => 'Bút CTUT', 'category' => 'Bút', 'department' => null, 'author' => 'CTUT UniShop', 'featured' => false],

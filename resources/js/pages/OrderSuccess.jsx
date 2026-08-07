@@ -413,7 +413,7 @@ export default function OrderSuccess() {
                         <Card title="Hướng dẫn nhận hàng">
                             <Guide icon={MapPin}>
                                 {order.pickup?.location ||
-                                    'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
+                                    'Nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo địa chỉ đã đăng ký.'}
                             </Guide>
 
                             <Guide icon={Info}>

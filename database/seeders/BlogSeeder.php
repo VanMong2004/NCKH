@@ -17,7 +17,7 @@ class BlogSeeder extends Seeder
                 'featured' => true,
             ],
             [
-                'title' => 'Hướng dẫn nhận hàng tại Phòng Công tác Chính trị và Quản lý sinh viên',
+                'title' => 'Hướng dẫn nhận hàng tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp',
                 'summary' => 'Quy trình nhận hàng tại trường dành cho đơn pickup hoặc thanh toán tại phòng.',
                 'featured' => true,
             ],

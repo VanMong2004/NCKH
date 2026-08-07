@@ -1,7 +1,7 @@
 import { CreditCard } from 'lucide-react';
 
 const pickupPaymentText =
-    'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+    'Thanh toán trực tiếp khi nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
 export default function OrderPaymentInfo({ order }) {
     const payment = order?.payment || null;

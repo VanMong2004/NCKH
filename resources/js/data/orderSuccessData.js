@@ -6,10 +6,10 @@ export const orderSuccess = {
 };
 
 export const pickupGuide = {
-    location: 'Phòng Công tác Chính trị và Quản lý sinh viên',
+    location: 'Phòng Công tác chính trị - Sinh viên - Khởi nghiệp',
     address: 'Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
     time: ['Thứ Hai - Thứ Sáu: 08:00 - 18:00', 'Thứ Bảy: 08:00 - 12:00'],
-    bring: ['Thẻ sinh viên / MSSV', 'Mã QR đơn hàng hoặc mã đơn hàng', 'Số điện thoại hợp lệ'],
+    bring: ['Thẻ sinh viên / MSSV', 'Mã đơn hàng', 'Số điện thoại hợp lệ'],
 };
 
 export const orderTimeline = [

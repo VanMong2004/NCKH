@@ -1,6 +1,6 @@
 import { Banknote, CreditCard, MapPinned, Truck } from 'lucide-react';
 
-const pickupLocation = 'Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+const pickupLocation = 'Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
 const fulfillmentMethods = [
     {

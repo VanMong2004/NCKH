@@ -47,6 +47,7 @@ export default function MockPaymentQr() {
     const order = location.state?.order || fallback.order || null;
     const payment = location.state?.payment || fallback.payment || null;
     const callbackUrl = location.state?.callbackUrl || fallback.callbackUrl || payment?.redirectUrl || '';
+    const guestEmail = location.state?.guestEmail || fallback.guestEmail || '';
     const guestPhone = location.state?.guestPhone || fallback.guestPhone || '';
     const isGuest = Boolean(location.state?.isGuest ?? fallback.isGuest);
 
@@ -94,6 +95,7 @@ export default function MockPaymentQr() {
                 isGuest,
                 orderId: order.id || order.orderId,
                 orderCode: order.orderCode || order.code,
+                guestEmail,
                 guestPhone,
                 guestToken: order.guestToken,
             }),

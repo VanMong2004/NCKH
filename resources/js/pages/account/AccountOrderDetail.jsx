@@ -901,7 +901,7 @@ function PickupCard({ order }) {
         <Card title="Hướng dẫn nhận hàng" icon={MapPin}>
             <Guide icon={MapPin}>
                 {order.pickup?.location ||
-                    'Nhận tại Phòng Công tác Chính trị và Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo thông báo từ cửa hàng.'}
+                    'Nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ hoặc theo thông báo từ cửa hàng.'}
             </Guide>
 
             <Guide icon={Info}>{order.pickup?.instruction || 'Vui lòng giữ mã đơn hàng khi nhận sản phẩm.'}</Guide>

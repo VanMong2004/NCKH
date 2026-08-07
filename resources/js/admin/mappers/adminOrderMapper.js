@@ -103,7 +103,7 @@ export function getNextVatInvoiceStatuses(status) {
 export function getFulfillmentMethodText(method) {
     const map = {
         delivery: 'Giao hàng tận nơi',
-        pickup: 'Nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+        pickup: 'Nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
     };
 
     return map[method] || method || '-';

@@ -8,7 +8,7 @@ import orderService from '../../services/orderService';
 import { cancelReasonText } from '../../services/mappers/orderMapper';
 
 const pickupPaymentText =
-    'Thanh toán trực tiếp khi nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+    'Thanh toán trực tiếp khi nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
 const STATUS_OPTIONS = [
     { value: '', label: 'Tất cả' },

@@ -166,11 +166,11 @@ function getFallbackSections(policy) {
                 ],
             },
             {
-                title: 'Xác nhận bằng mã QR',
+                title: 'Xác nhận khi nhận hàng',
                 icon: QrCode,
                 items: [
-                    'Vui lòng xuất trình mã QR trong email hoặc trang chi tiết đơn hàng khi nhận sản phẩm.',
-                    'Nhân viên sẽ quét mã QR để xác minh và hoàn tất quy trình nhận hàng.',
+                    'Vui lòng xuất trình mã đơn hàng khi nhận sản phẩm.',
+                    'Nhân viên sẽ đối chiếu mã đơn hàng để xác minh và hoàn tất quy trình nhận hàng.',
                 ],
             },
         ];

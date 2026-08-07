@@ -15,7 +15,7 @@ export default function PickupForm() {
                     </span>
 
                     <select className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-950 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
-                        <option>Phòng Công tác Chính trị và Quản lý sinh viên</option>
+                        <option>Phòng Công tác chính trị - Sinh viên - Khởi nghiệp</option>
                     </select>
                 </label>
 
@@ -24,7 +24,7 @@ export default function PickupForm() {
 
                     <div>
                         <p className="font-bold text-blue-950 dark:text-white">
-                            Phòng Công tác Chính trị và Quản lý sinh viên
+                            Phòng Công tác chính trị - Sinh viên - Khởi nghiệp
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

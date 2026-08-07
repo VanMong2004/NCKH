@@ -65,7 +65,7 @@ class OrderQueryService
             'status' => in_array($order->status, ['awaiting_receipt', 'completed'], true),
             'time' => $awaitingReceiptTime,
             'note' => $order->fulfillment_method === 'pickup'
-                ? 'Đơn hàng đã sẵn sàng để nhận tại Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ'
+                ? 'Đơn hàng đã sẵn sàng để nhận tại Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ'
                 : 'Đơn hàng đang được giao đến người nhận',
         ];
 
@@ -372,7 +372,7 @@ class OrderQueryService
                 ];
             })->values(),
             'pickup' => [
-                'location' => 'Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
+                'location' => 'Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ',
                 'instruction' => 'Vui lòng mang theo mã đơn hàng khi đến nhận hàng.',
             ],
             'timeline' => $this->buildOrderTimeline($order, $payment),

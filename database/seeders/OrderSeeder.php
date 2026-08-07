@@ -11,7 +11,7 @@ use Illuminate\Database\Seeder;
 
 class OrderSeeder extends Seeder
 {
-    private const PICKUP_ADDRESS = 'Phòng Công tác Chính trị & Quản lý sinh viên Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
+    private const PICKUP_ADDRESS = 'Phòng Công tác chính trị - Sinh viên - Khởi nghiệp Trường Đại học Kỹ thuật - Công nghệ Cần Thơ';
 
     public function run(): void
     {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\GuestCheckoutLimitException;
 use App\Http\Controllers\Controller;
 use App\Services\Analytics\AnalyticsEventService;
 use App\Services\OrderQueryService;
@@ -112,6 +113,13 @@ class OrderController extends Controller
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);
+        } catch (GuestCheckoutLimitException $e) {
+            return response()->json([
+                'success' => false,
+                'code' => $e->getApiCode(),
+                'message' => $e->getMessage(),
+                'data' => $e->getPayload(),
+            ], $e->getCode());
         } catch (RuntimeException $e) {
             $statusCode = in_array($e->getCode(), [400, 401, 404, 409, 422], true)
                 ? $e->getCode()

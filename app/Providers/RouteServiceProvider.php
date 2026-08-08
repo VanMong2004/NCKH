@@ -42,6 +42,15 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('checkout', function (Request $request) {
+            if (!$request->user()) {
+                return $this->limitPerMinutes(
+                    (int) config('guest_checkout.rate_limit_attempts', 5),
+                    (int) config('guest_checkout.rate_limit_minutes', 10),
+                    'checkout-guest:' . $request->ip(),
+                    'Bạn thao tác đặt hàng quá nhanh, vui lòng thử lại sau ít phút.'
+                );
+            }
+
             return $this->limitPerMinute(10, $this->userOrIpKey($request), 'Bạn thao tác đặt hàng quá nhanh, vui lòng thử lại sau ít phút.');
         });
 

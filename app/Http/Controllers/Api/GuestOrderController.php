@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\GuestCheckoutGuardService;
 use App\Services\GuestOrderService;
 use App\Services\VatInvoiceRequestService;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,8 @@ class GuestOrderController extends Controller
 {
     public function __construct(
         protected GuestOrderService $service,
-        protected VatInvoiceRequestService $vatInvoiceRequestService
+        protected VatInvoiceRequestService $vatInvoiceRequestService,
+        protected GuestCheckoutGuardService $guestCheckoutGuardService
     ) {}
 
     public function lookup(Request $request): JsonResponse
@@ -28,6 +30,12 @@ class GuestOrderController extends Controller
             ], [
                 'phone.regex' => 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0.',
             ]);
+
+            $data['email'] = $this->guestCheckoutGuardService->normalizeEmail($data['email'] ?? '');
+
+            if (!empty($data['phone'])) {
+                $data['phone'] = $this->guestCheckoutGuardService->normalizePhone($data['phone']);
+            }
 
             $hasOrderCode = !empty($data['order_code']);
             $hasPhone = !empty($data['phone']);

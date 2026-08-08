@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import MainLayout from '../layout/MainLayout';
 
+import ConfirmDialog from '../admin/components/ui/ConfirmDialog';
 import CheckoutSteps from '../components/checkout/CheckoutSteps';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 import PaymentMethod from '../components/checkout/PaymentMethod';
@@ -23,6 +24,20 @@ const paymentMethodOptions = {
     pickup: ['cash_on_pickup', 'mock_bank'],
 };
 
+function initialGuestLimitDialog() {
+    return {
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        cancelText: 'Đóng',
+        type: 'warning',
+        onConfirm: null,
+        onCancel: null,
+    };
+}
+
 export default function Checkout() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -34,7 +49,6 @@ export default function Checkout() {
 
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [saveAddress, setSaveAddress] = useState(false);
-
     const [receiver, setReceiver] = useState({
         guest_name: '',
         guest_email: user?.email || '',
@@ -45,28 +59,32 @@ export default function Checkout() {
         address_line: '',
         postal_code: '',
     });
-
     const [fulfillmentMethod, setFulfillmentMethod] = useState('delivery');
     const [paymentMethod, setPaymentMethod] = useState('cod');
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [pendingPaymentOrder, setPendingPaymentOrder] = useState(null);
+    const [guestLimitDialog, setGuestLimitDialog] = useState(initialGuestLimitDialog);
 
-    const stateCartItemIds = Array.isArray(location.state?.cartItemIds) ? location.state.cartItemIds : [];
+    const stateCartItemIds = Array.isArray(location.state?.cartItemIds)
+        ? location.state.cartItemIds
+        : [];
 
     useEffect(() => {
         fetchCart();
     }, []);
 
     useEffect(() => {
-        if (user) {
-            setReceiver((prev) => ({
-                ...prev,
-                guest_name: prev.guest_name || user.name || '',
-                guest_email: prev.guest_email || user.email || '',
-                guest_phone: normalizePhone(prev.guest_phone || user.phone || ''),
-            }));
+        if (!user) {
+            return;
         }
+
+        setReceiver((prev) => ({
+            ...prev,
+            guest_name: prev.guest_name || user.name || '',
+            guest_email: prev.guest_email || user.email || '',
+            guest_phone: normalizePhone(prev.guest_phone || user.phone || ''),
+        }));
     }, [user]);
 
     useEffect(() => {
@@ -86,8 +104,8 @@ export default function Checkout() {
             }
 
             if (
-                receiver.guest_email.trim() &&
-                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())
+                receiver.guest_email.trim()
+                && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiver.guest_email.trim())
             ) {
                 delete next.guest_email;
             }
@@ -131,7 +149,9 @@ export default function Checkout() {
     }, [cartItems, stateCartItemIds]);
 
     const checkoutCartItemIds = useMemo(() => {
-        return checkoutItems.map((item) => Number(item.cartItemId)).filter((id) => Number.isFinite(id) && id > 0);
+        return checkoutItems
+            .map((item) => Number(item.cartItemId))
+            .filter((id) => Number.isFinite(id) && id > 0);
     }, [checkoutItems]);
 
     const originalSubtotal = useMemo(() => {
@@ -173,9 +193,15 @@ export default function Checkout() {
     }
 
     function clearError(field) {
-        if (!errors[field]) return;
+        if (!errors[field]) {
+            return;
+        }
 
         updateFieldError(field, '');
+    }
+
+    function closeGuestLimitDialog() {
+        setGuestLimitDialog(initialGuestLimitDialog());
     }
 
     function validate() {
@@ -234,11 +260,14 @@ export default function Checkout() {
         }
 
         setErrors(nextErrors);
+
         return Object.keys(nextErrors).length === 0;
     }
 
     function saveGuestOrderToSession(order) {
-        if (user) return;
+        if (user) {
+            return;
+        }
 
         sessionStorage.setItem(
             'guest_order_success',
@@ -254,9 +283,13 @@ export default function Checkout() {
     }
 
     async function handleCheckout() {
-        if (loading) return;
+        if (loading) {
+            return;
+        }
 
-        if (!validate()) return;
+        if (!validate()) {
+            return;
+        }
 
         try {
             setLoading(true);
@@ -284,13 +317,13 @@ export default function Checkout() {
                 payload.address_line = receiver.address_line.trim();
                 payload.postal_code = receiver.postal_code.trim();
                 payload.save_address = Boolean(
-                    user &&
-                        saveAddress &&
-                        fulfillmentMethod === 'delivery' &&
-                        receiver.province.trim() &&
-                        receiver.district.trim() &&
-                        receiver.ward.trim() &&
-                        receiver.address_line.trim(),
+                    user
+                        && saveAddress
+                        && fulfillmentMethod === 'delivery'
+                        && receiver.province.trim()
+                        && receiver.district.trim()
+                        && receiver.ward.trim()
+                        && receiver.address_line.trim(),
                 );
             }
 
@@ -307,7 +340,6 @@ export default function Checkout() {
                 sessionStorage.removeItem('mock_payment_qr');
 
                 await fetchCart();
-
                 saveGuestOrderToSession(order);
 
                 toast.success('Đặt hàng thành công.');
@@ -331,7 +363,6 @@ export default function Checkout() {
             }
 
             setPendingPaymentOrder(order);
-
             await payExistingOrder(order, false);
         } catch (error) {
             console.error('Checkout error:', error);
@@ -345,6 +376,16 @@ export default function Checkout() {
                 return;
             }
 
+            if (error?.raw?.code === 'GUEST_PENDING_PAYMENT_ORDER') {
+                openPendingPaymentDialog(error.raw?.data || {});
+                return;
+            }
+
+            if (error?.raw?.code === 'GUEST_ACTIVE_ORDER_LIMIT') {
+                openGuestOrderLimitDialog();
+                return;
+            }
+
             toast.error(error?.message || 'Không thể đặt hàng.');
         } finally {
             setLoading(false);
@@ -354,13 +395,11 @@ export default function Checkout() {
     async function payExistingOrder(order, useDemoDelay = true) {
         try {
             const method = order.paymentMethod || paymentMethod;
-
             const payment = useDemoDelay
                 ? await withMinimumDelay(paymentService.pay(order.id, method))
                 : await paymentService.pay(order.id, method);
 
             setPendingPaymentOrder(null);
-
             await fetchCart();
 
             if (payment.redirectUrl) {
@@ -397,8 +436,7 @@ export default function Checkout() {
                 return;
             }
 
-            toast.success('Đặt hàng thành công. Vui lòng thanh toán trong ít phút tới.');
-
+            toast.success('Đặt hàng thành công. Vui lòng thanh toán trong thời gian cho phép.');
             saveGuestOrderToSession(order);
 
             navigate(`/order-success?order_code=${encodeURIComponent(order.orderCode)}`, {
@@ -412,11 +450,64 @@ export default function Checkout() {
             });
         } catch (paymentError) {
             console.error('Payment error:', paymentError);
-
             setPendingPaymentOrder(order);
 
             toast.error(paymentError?.message || 'Không thể tạo thanh toán cho đơn hàng này.');
         }
+    }
+
+    function openPendingPaymentDialog(data = {}) {
+        const canRetryPayment = Boolean(data.can_retry_payment && data.order_id);
+
+        setGuestLimitDialog({
+            open: true,
+            title: 'Bạn có đơn hàng chưa hoàn tất',
+            message: 'Bạn đang có một đơn hàng chờ thanh toán.',
+            description: canRetryPayment
+                ? 'Để tránh tạo nhiều đơn giữ tồn kho, vui lòng hoàn tất đơn hiện tại trước khi tạo thêm đơn mới.'
+                : 'Để tránh tạo nhiều đơn giữ tồn kho, vui lòng tra cứu và hoàn tất đơn hiện tại trước khi tạo thêm đơn mới.',
+            confirmText: canRetryPayment ? 'Tiếp tục thanh toán' : 'Tra cứu đơn hàng',
+            cancelText: canRetryPayment ? 'Tra cứu đơn hàng' : 'Đóng',
+            type: 'warning',
+            onConfirm: async () => {
+                if (!canRetryPayment) {
+                    navigate('/guest-order-lookup');
+                    return;
+                }
+
+                const existingOrder = {
+                    id: data.order_id,
+                    orderId: data.order_id,
+                    orderCode: data.order_code || '',
+                    paymentMethod: data.payment_method || 'mock_bank',
+                    guestToken: data.guest_token || '',
+                };
+
+                setPendingPaymentOrder(existingOrder);
+                await payExistingOrder(existingOrder, false);
+            },
+            onCancel: canRetryPayment
+                ? async () => {
+                    navigate('/guest-order-lookup');
+                }
+                : null,
+        });
+    }
+
+    function openGuestOrderLimitDialog() {
+        setGuestLimitDialog({
+            open: true,
+            title: 'Bạn đang có nhiều đơn hàng chưa hoàn thành',
+            message: 'Bạn đang có 2 đơn hàng chưa hoàn thành.',
+            description: 'Vui lòng hoàn tất hoặc hủy các đơn hiện tại trước khi tạo thêm đơn hàng mới.',
+            confirmText: 'Tra cứu đơn hàng',
+            cancelText: 'Đóng',
+            type: 'warning',
+            onConfirm: async () => {
+                navigate('/guest-order-lookup');
+            },
+            onCancel: null,
+        });
     }
 
     return (
@@ -425,6 +516,29 @@ export default function Checkout() {
                 show={loading}
                 text={pendingPaymentOrder ? 'Đang chuyển sang bước thanh toán...' : 'Đang xử lý đơn hàng...'}
                 description="Vui lòng chờ trong giây lát, hệ thống đang kiểm tra giỏ hàng và thông tin thanh toán."
+            />
+
+            <ConfirmDialog
+                open={guestLimitDialog.open}
+                title={guestLimitDialog.title}
+                message={guestLimitDialog.message}
+                description={guestLimitDialog.description}
+                confirmText={guestLimitDialog.confirmText}
+                cancelText={guestLimitDialog.cancelText}
+                type={guestLimitDialog.type}
+                onConfirm={guestLimitDialog.onConfirm}
+                onCancel={guestLimitDialog.onCancel}
+                onOpenChange={(next) => {
+                    if (!next) {
+                        closeGuestLimitDialog();
+                        return;
+                    }
+
+                    setGuestLimitDialog((prev) => ({
+                        ...prev,
+                        open: true,
+                    }));
+                }}
             />
 
             <main className="mx-auto max-w-7xl px-4 py-6">
@@ -454,7 +568,9 @@ export default function Checkout() {
                             errors={errors}
                             disabled={Boolean(pendingPaymentOrder)}
                             onFulfillmentChange={(method) => {
-                                if (pendingPaymentOrder) return;
+                                if (pendingPaymentOrder) {
+                                    return;
+                                }
 
                                 setFulfillmentMethod(method);
                                 clearError('fulfillment_method');
@@ -465,7 +581,9 @@ export default function Checkout() {
                                 }
                             }}
                             onPaymentChange={(method) => {
-                                if (pendingPaymentOrder) return;
+                                if (pendingPaymentOrder) {
+                                    return;
+                                }
 
                                 setPaymentMethod(method);
                                 clearError('payment_method');
@@ -494,7 +612,15 @@ export default function Checkout() {
 }
 
 function normalizePhone(value) {
-    return String(value || '').replace(/[^\d]/g, '').slice(0, 10);
+    let digits = String(value || '').replace(/[^\d]/g, '');
+
+    if (digits.startsWith('840') && digits.length === 12) {
+        digits = `0${digits.slice(3)}`;
+    } else if (digits.startsWith('84') && digits.length === 11) {
+        digits = `0${digits.slice(2)}`;
+    }
+
+    return digits.slice(0, 10);
 }
 
 function normalizeApiErrors(errors = {}) {

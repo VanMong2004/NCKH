@@ -8,6 +8,10 @@ use RuntimeException;
 
 class GuestOrderService
 {
+    public function __construct(
+        protected GuestCheckoutGuardService $guestCheckoutGuardService
+    ) {}
+
     public function lookup(array $data): array
     {
         if (!empty($data['order_code'])) {

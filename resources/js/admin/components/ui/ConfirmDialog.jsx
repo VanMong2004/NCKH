@@ -12,6 +12,7 @@ export default function ConfirmDialog({
     cancelText = 'Hủy',
     type = 'info',
     onConfirm,
+    onCancel,
     onOpenChange,
 }) {
     const [loading, setLoading] = useState(false);
@@ -26,6 +27,23 @@ export default function ConfirmDialog({
         try {
             setLoading(true);
             await onConfirm();
+            onOpenChange(false);
+        } catch (error) {
+            toast.error(getApiErrorMessage(error));
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleCancel() {
+        if (!onCancel) {
+            onOpenChange(false);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await onCancel();
             onOpenChange(false);
         } catch (error) {
             toast.error(getApiErrorMessage(error));
@@ -76,15 +94,26 @@ export default function ConfirmDialog({
                     </div>
 
                     <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
-                        <AlertDialog.Cancel asChild>
+                        {onCancel ? (
                             <button
                                 type="button"
                                 disabled={loading}
+                                onClick={handleCancel}
                                 className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                             >
                                 {cancelText}
                             </button>
-                        </AlertDialog.Cancel>
+                        ) : (
+                            <AlertDialog.Cancel asChild>
+                                <button
+                                    type="button"
+                                    disabled={loading}
+                                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                >
+                                    {cancelText}
+                                </button>
+                            </AlertDialog.Cancel>
+                        )}
 
                         <button
                             type="button"

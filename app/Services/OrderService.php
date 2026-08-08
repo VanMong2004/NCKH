@@ -21,7 +21,8 @@ use RuntimeException;
 class OrderService
 {
     public function __construct(
-        protected PromotionPriceService $promotionPriceService
+        protected PromotionPriceService $promotionPriceService,
+        protected GuestCheckoutGuardService $guestCheckoutGuardService
     ) {}
 
     public function checkout($user, ?string $guestToken, array $data)
@@ -30,6 +31,7 @@ class OrderService
             throw new RuntimeException('Thiếu mã giỏ hàng khách', 400);
         }
 
+        $data = $this->normalizeCheckoutData($data);
         $autoCancelMinutes = $this->getOrderAutoCancelMinutes();
         $fulfillmentMethod = $data['fulfillment_method'];
         $paymentMethod = $data['payment_method'];
@@ -39,7 +41,7 @@ class OrderService
             $paymentMethod
         );
 
-        $order = DB::transaction(function () use (
+        $executeCheckout = function () use (
             $user,
             $guestToken,
             $data,
@@ -47,235 +49,256 @@ class OrderService
             $fulfillmentMethod,
             $paymentMethod
         ) {
-            $cartQuery = Cart::with([
-                'items' => function ($query) use ($data) {
-                    $query->whereIn('id', $data['cart_item_ids']);
-                },
-                'items.productVariant.product',
-            ])->where('status', 'active');
+            return DB::transaction(function () use (
+                $user,
+                $guestToken,
+                $data,
+                $autoCancelMinutes,
+                $fulfillmentMethod,
+                $paymentMethod
+            ) {
+                if (!$user) {
+                    $this->guestCheckoutGuardService->assertCanCheckout($data, $guestToken);
+                }
 
-            if ($user) {
-                $cartQuery->where('user_id', $user->id);
-            } else {
-                $cartQuery->where('guest_token', $guestToken);
-            }
+                $cartQuery = Cart::with([
+                    'items' => function ($query) use ($data) {
+                        $query->whereIn('id', $data['cart_item_ids']);
+                    },
+                    'items.productVariant.product',
+                ])->where('status', 'active');
 
-            $cart = $cartQuery
-                ->lockForUpdate()
-                ->first();
+                if ($user) {
+                    $cartQuery->where('user_id', $user->id);
+                } else {
+                    $cartQuery->where('guest_token', $guestToken);
+                }
 
-            if (!$cart) {
-                throw new RuntimeException('Giỏ hàng trống', 400);
-            }
-
-            $selectedItems = $cart->items;
-
-            if ($selectedItems->isEmpty()) {
-                throw new RuntimeException(
-                    'Không có sản phẩm nào được chọn',
-                    400
-                );
-            }
-
-            foreach ($selectedItems as $item) {
-                $variant = ProductVariant::with('product')
+                $cart = $cartQuery
                     ->lockForUpdate()
-                    ->find($item->product_variant_id);
+                    ->first();
 
-                if (!$variant) {
-                    throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+                if (!$cart) {
+                    throw new RuntimeException('Giỏ hàng trống', 400);
                 }
 
-                if (!$variant->is_active || !$variant->product?->is_active) {
-                    throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
-                }
+                $selectedItems = $cart->items;
 
-                $available = $variant->stock - $variant->reserved_stock;
-
-                if ($available < $item->quantity) {
-                    $productName = $variant->product?->name ?? 'Sản phẩm';
-
+                if ($selectedItems->isEmpty()) {
                     throw new RuntimeException(
-                        "Sản phẩm {$productName} không đủ hàng",
+                        'Không có sản phẩm nào được chọn',
                         400
                     );
                 }
-            }
 
-            $shipping = $this->resolveShippingInfo($user, $data, $fulfillmentMethod);
-
-            $order = Order::create([
-                'user_id' => $user?->id,
-                'guest_token' => $user ? null : $guestToken,
-                'guest_name' => $shipping['guest_name'],
-                'guest_email' => $shipping['guest_email'],
-                'guest_phone' => $shipping['guest_phone'],
-                'fulfillment_method' => $fulfillmentMethod,
-                'order_code' => 'TEMP-' . uniqid(),
-                'status' => 'pending',
-                'payment_status' => 'unpaid',
-                'expired_at' => $paymentMethod === 'mock_bank'
-                    ? now()->addMinutes($autoCancelMinutes)
-                    : null,
-                'total' => 0,
-                'shipping_fee' => $fulfillmentMethod === 'delivery' ? 35000 : 0,
-                'shipping_name' => $shipping['name'],
-                'shipping_phone' => $shipping['phone'],
-                'shipping_address' => $shipping['address'],
-            ]);
-
-            $order->update([
-                'order_code' => $this->generateOrderCode($order->id),
-            ]);
-
-            OrderStatusHistory::create([
-                'order_id' => $order->id,
-                'changed_by' => $user?->id,
-                'old_status' => null,
-                'new_status' => 'pending',
-                'note' => 'Đơn hàng được tạo từ đặt hàng.',
-            ]);
-
-            if ($order->user_id) {
-                app(NotificationService::class)
-                    ->order($order, 'pending');
-            }
-
-            $total = 0;
-            $totalDiscount = 0;
-
-            foreach ($selectedItems as $item) {
-                $variant = ProductVariant::with('product')
-                    ->lockForUpdate()
-                    ->find($item->product_variant_id);
-
-                if (!$variant) {
-                    throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
-                }
-
-                if (!$variant->is_active || !$variant->product?->is_active) {
-                    throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
-                }
-
-                $before = clone $variant;
-                $variant->increment('reserved_stock', $item->quantity);
-                $after = $variant->fresh();
-
-                app(\App\Services\Admin\InventoryHistoryService::class)->record(
-                    $before,
-                    $after,
-                    'checkout_reserve',
-                    (int) $item->quantity,
-                    $order->id,
-                    $user?->id,
-                    'Checkout giữ hàng'
-                );
-
-                $priceData = $this->promotionPriceService
-                    ->calculateForVariant(
-                        $variant,
-                        $user,
-                        (int) $item->quantity
-                    );
-
-                $originalPrice = $priceData['original_price'];
-                $discountAmount = $priceData['discount_amount'];
-                $finalPrice = $priceData['final_price'];
-
-                $promotionId = $user
-                    ? ($priceData['promotion']['id'] ?? null)
-                    : null;
-
-                $promotionItemId = $user
-                    ? ($priceData['promotion']['promotion_item_id'] ?? null)
-                    : null;
-
-                $promotionSnapshot = $user
-                    ? ($priceData['promotion'] ?? null)
-                    : null;
-
-                if ($promotionItemId) {
-                    $promotionItem = PromotionItem::with('promotion')
+                foreach ($selectedItems as $item) {
+                    $variant = ProductVariant::with('product')
                         ->lockForUpdate()
-                        ->find($promotionItemId);
+                        ->find($item->product_variant_id);
 
-                    if (
-                        !$promotionItem
-                        || !$promotionItem->is_active
-                        || !$promotionItem->promotion
-                        || !$promotionItem->promotion->isRunning()
-                    ) {
-                        throw new RuntimeException('Khuyến mãi không còn hiệu lực', 400);
+                    if (!$variant) {
+                        throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
                     }
 
-                    if (!is_null($promotionItem->limit_quantity)) {
-                        $remaining = $promotionItem->limit_quantity
-                            - $promotionItem->sold_quantity
-                            - $promotionItem->reserved_quantity;
-
-                        if ($remaining < $item->quantity) {
-                            throw new RuntimeException('Khuyến mãi không đủ lượt áp dụng', 400);
-                        }
+                    if (!$variant->is_active || !$variant->product?->is_active) {
+                        throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
                     }
 
-                    $promotionItem->increment(
-                        'reserved_quantity',
-                        $item->quantity
-                    );
+                    $available = $variant->stock - $variant->reserved_stock;
+
+                    if ($available < $item->quantity) {
+                        $productName = $variant->product?->name ?? 'Sản phẩm';
+
+                        throw new RuntimeException(
+                            "Sản phẩm {$productName} không đủ hàng",
+                            400
+                        );
+                    }
                 }
 
-                $lineTotal = $finalPrice * $item->quantity;
-                $totalDiscount += $discountAmount * $item->quantity;
+                $shipping = $this->resolveShippingInfo($user, $data, $fulfillmentMethod);
 
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_variant_id' => $variant->id,
-                    'price' => $finalPrice,
-                    'original_price' => $originalPrice,
-                    'discount_amount' => $discountAmount,
-                    'final_price' => $finalPrice,
-                    'quantity' => $item->quantity,
-                    'product_name' => $variant->product?->name ?? 'Sản phẩm',
-                    'variant_snapshot' => [
-                        'sku' => $variant->sku,
-                        'size' => $variant->size,
-                        'color' => $variant->color,
-                        'attributes' => $variant->attributes ?? [],
-                    ],
-                    'promotion_id' => $promotionId,
-                    'promotion_snapshot' => $promotionSnapshot,
+                $order = Order::create([
+                    'user_id' => $user?->id,
+                    'guest_token' => $user ? null : $guestToken,
+                    'guest_name' => $shipping['guest_name'],
+                    'guest_email' => $shipping['guest_email'],
+                    'guest_phone' => $shipping['guest_phone'],
+                    'fulfillment_method' => $fulfillmentMethod,
+                    'order_code' => 'TEMP-' . uniqid(),
+                    'status' => 'pending',
+                    'payment_status' => 'unpaid',
+                    'expired_at' => $paymentMethod === 'mock_bank'
+                        ? now()->addMinutes($autoCancelMinutes)
+                        : null,
+                    'total' => 0,
+                    'shipping_fee' => $fulfillmentMethod === 'delivery' ? 35000 : 0,
+                    'shipping_name' => $shipping['name'],
+                    'shipping_phone' => $shipping['phone'],
+                    'shipping_address' => $shipping['address'],
                 ]);
 
-                $total += $lineTotal;
-            }
+                $order->update([
+                    'order_code' => $this->generateOrderCode($order->id),
+                ]);
 
-            $order->update([
-                'sub_total' => $total + $totalDiscount,
-                'discount_total' => $totalDiscount,
-                'grand_total' => $total + (float) $order->shipping_fee,
-                'total' => $total + (float) $order->shipping_fee,
-            ]);
+                OrderStatusHistory::create([
+                    'order_id' => $order->id,
+                    'changed_by' => $user?->id,
+                    'old_status' => null,
+                    'new_status' => 'pending',
+                    'note' => 'Đơn hàng được tạo từ đặt hàng.',
+                ]);
 
-            $order->refresh();
+                if ($order->user_id) {
+                    app(NotificationService::class)
+                        ->order($order, 'pending');
+                }
 
-            Payment::create([
-                'order_id' => $order->id,
-                'method' => $paymentMethod,
-                'status' => 'unpaid',
-                'amount' => $order->total,
-                'transaction_id' => in_array($paymentMethod, ['cod', 'cash_on_pickup'], true)
-                    ? null
-                    : Str::uuid(),
-            ]);
+                $total = 0;
+                $totalDiscount = 0;
 
-            event(new \App\Events\OrderCreated($order));
-            app(\App\Services\Analytics\AnalyticsEventService::class)
-                ->broadcastDashboardRefresh();
+                foreach ($selectedItems as $item) {
+                    $variant = ProductVariant::with('product')
+                        ->lockForUpdate()
+                        ->find($item->product_variant_id);
 
-            CartItem::whereIn('id', $selectedItems->pluck('id'))->delete();
+                    if (!$variant) {
+                        throw new RuntimeException('Biến thể sản phẩm không tồn tại', 404);
+                    }
 
-            return $order;
-        });
+                    if (!$variant->is_active || !$variant->product?->is_active) {
+                        throw new RuntimeException('Sản phẩm hiện không còn được mở bán', 400);
+                    }
+
+                    $before = clone $variant;
+                    $variant->increment('reserved_stock', $item->quantity);
+                    $after = $variant->fresh();
+
+                    app(\App\Services\Admin\InventoryHistoryService::class)->record(
+                        $before,
+                        $after,
+                        'checkout_reserve',
+                        (int) $item->quantity,
+                        $order->id,
+                        $user?->id,
+                        'Checkout giữ hàng'
+                    );
+
+                    $priceData = $this->promotionPriceService
+                        ->calculateForVariant(
+                            $variant,
+                            $user,
+                            (int) $item->quantity
+                        );
+
+                    $originalPrice = $priceData['original_price'];
+                    $discountAmount = $priceData['discount_amount'];
+                    $finalPrice = $priceData['final_price'];
+
+                    $promotionId = $user
+                        ? ($priceData['promotion']['id'] ?? null)
+                        : null;
+
+                    $promotionItemId = $user
+                        ? ($priceData['promotion']['promotion_item_id'] ?? null)
+                        : null;
+
+                    $promotionSnapshot = $user
+                        ? ($priceData['promotion'] ?? null)
+                        : null;
+
+                    if ($promotionItemId) {
+                        $promotionItem = PromotionItem::with('promotion')
+                            ->lockForUpdate()
+                            ->find($promotionItemId);
+
+                        if (
+                            !$promotionItem
+                            || !$promotionItem->is_active
+                            || !$promotionItem->promotion
+                            || !$promotionItem->promotion->isRunning()
+                        ) {
+                            throw new RuntimeException('Khuyến mãi không còn hiệu lực', 400);
+                        }
+
+                        if (!is_null($promotionItem->limit_quantity)) {
+                            $remaining = $promotionItem->limit_quantity
+                                - $promotionItem->sold_quantity
+                                - $promotionItem->reserved_quantity;
+
+                            if ($remaining < $item->quantity) {
+                                throw new RuntimeException('Khuyến mãi không đủ lượt áp dụng', 400);
+                            }
+                        }
+
+                        $promotionItem->increment(
+                            'reserved_quantity',
+                            $item->quantity
+                        );
+                    }
+
+                    $lineTotal = $finalPrice * $item->quantity;
+                    $totalDiscount += $discountAmount * $item->quantity;
+
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_variant_id' => $variant->id,
+                        'price' => $finalPrice,
+                        'original_price' => $originalPrice,
+                        'discount_amount' => $discountAmount,
+                        'final_price' => $finalPrice,
+                        'quantity' => $item->quantity,
+                        'product_name' => $variant->product?->name ?? 'Sản phẩm',
+                        'variant_snapshot' => [
+                            'sku' => $variant->sku,
+                            'size' => $variant->size,
+                            'color' => $variant->color,
+                            'attributes' => $variant->attributes ?? [],
+                        ],
+                        'promotion_id' => $promotionId,
+                        'promotion_snapshot' => $promotionSnapshot,
+                    ]);
+
+                    $total += $lineTotal;
+                }
+
+                $order->update([
+                    'sub_total' => $total + $totalDiscount,
+                    'discount_total' => $totalDiscount,
+                    'grand_total' => $total + (float) $order->shipping_fee,
+                    'total' => $total + (float) $order->shipping_fee,
+                ]);
+
+                $order->refresh();
+
+                Payment::create([
+                    'order_id' => $order->id,
+                    'method' => $paymentMethod,
+                    'status' => 'unpaid',
+                    'amount' => $order->total,
+                    'transaction_id' => in_array($paymentMethod, ['cod', 'cash_on_pickup'], true)
+                        ? null
+                        : Str::uuid(),
+                ]);
+
+                event(new \App\Events\OrderCreated($order));
+                app(\App\Services\Analytics\AnalyticsEventService::class)
+                    ->broadcastDashboardRefresh();
+
+                CartItem::whereIn('id', $selectedItems->pluck('id'))->delete();
+
+                return $order;
+            });
+        };
+
+        $order = $user
+            ? $executeCheckout()
+            : $this->guestCheckoutGuardService->withGuestLock(
+                $data['guest_email'] ?? null,
+                $data['guest_phone'] ?? null,
+                $executeCheckout
+            );
 
         if ($paymentMethod === 'mock_bank') {
             try {
@@ -361,7 +384,7 @@ class OrderService
 
                 return [
                     'name' => $address->full_name,
-                    'phone' => $address->phone,
+                    'phone' => $this->guestCheckoutGuardService->normalizePhone($address->phone),
                     'address' => $this->formatAddress([
                         $address->address_line,
                         $address->ward,
@@ -397,7 +420,7 @@ class OrderService
 
                 Address::create([
                     'user_id' => $user->id,
-                    'full_name' => $data['guest_name'],
+                    'full_name' => trim((string) $data['guest_name']),
                     'phone' => $data['guest_phone'],
                     'province' => $data['province'] ?? null,
                     'district' => $data['district'] ?? null,
@@ -409,7 +432,7 @@ class OrderService
             }
 
             return [
-                'name' => $data['guest_name'],
+                'name' => trim((string) $data['guest_name']),
                 'phone' => $data['guest_phone'],
                 'address' => $this->resolveFulfillmentAddress($data, $fulfillmentMethod),
                 'guest_name' => null,
@@ -421,10 +444,10 @@ class OrderService
         $this->validateInlineAddress($data, true, $fulfillmentMethod);
 
         return [
-            'name' => $data['guest_name'],
+            'name' => trim((string) $data['guest_name']),
             'phone' => $data['guest_phone'],
             'address' => $this->resolveFulfillmentAddress($data, $fulfillmentMethod),
-            'guest_name' => $data['guest_name'],
+            'guest_name' => trim((string) $data['guest_name']),
             'guest_email' => $data['guest_email'] ?? null,
             'guest_phone' => $data['guest_phone'],
         ];
@@ -509,5 +532,18 @@ class OrderService
                 ->value('order_auto_cancel_minutes')
             ?? 15
         );
+    }
+
+    private function normalizeCheckoutData(array $data): array
+    {
+        if (array_key_exists('guest_email', $data)) {
+            $data['guest_email'] = $this->guestCheckoutGuardService->normalizeEmail($data['guest_email']);
+        }
+
+        if (array_key_exists('guest_phone', $data)) {
+            $data['guest_phone'] = $this->guestCheckoutGuardService->normalizePhone($data['guest_phone']);
+        }
+
+        return $data;
     }
 }

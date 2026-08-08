@@ -474,21 +474,39 @@ export default function Checkout() {
                     navigate('/guest-order-lookup');
                     return;
                 }
+                const guestEmail = receiver.guest_email.trim();
+                const params = new URLSearchParams();
 
-                const existingOrder = {
-                    id: data.order_id,
-                    orderId: data.order_id,
-                    orderCode: data.order_code || '',
-                    paymentMethod: data.payment_method || 'mock_bank',
-                    guestToken: data.guest_token || '',
-                };
+                params.set('mode', 'order_code_email');
 
-                setPendingPaymentOrder(existingOrder);
-                await payExistingOrder(existingOrder, false);
+                if (data.order_code) {
+                    params.set('order_code', data.order_code);
+                }
+
+                if (guestEmail) {
+                    params.set('email', guestEmail);
+                }
+
+                params.set('focus', 'payment');
+
+                navigate(`/guest-order-lookup?${params.toString()}`);
             },
             onCancel: canRetryPayment
                 ? async () => {
-                    navigate('/guest-order-lookup');
+                    const guestEmail = receiver.guest_email.trim();
+                    const params = new URLSearchParams();
+
+                    params.set('mode', 'order_code_email');
+
+                    if (data.order_code) {
+                        params.set('order_code', data.order_code);
+                    }
+
+                    if (guestEmail) {
+                        params.set('email', guestEmail);
+                    }
+
+                    navigate(`/guest-order-lookup?${params.toString()}`);
                 }
                 : null,
         });

@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Circle, Mail, Phone, Search } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import MainLayout from '../layout/MainLayout';
 import guestOrderService from '../services/guestOrderService';
+import paymentService from '../services/paymentService';
 import { cancelReasonText } from '../services/mappers/orderMapper';
 
 const LOOKUP_MODES = {
@@ -17,13 +20,17 @@ const EMPTY_FORM = {
 };
 
 export default function GuestOrderLookup() {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [mode, setMode] = useState(LOOKUP_MODES.order_code_email);
     const [form, setForm] = useState(EMPTY_FORM);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [payingOrderCode, setPayingOrderCode] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [lookupResult, setLookupResult] = useState(null);
     const [selectedOrderCode, setSelectedOrderCode] = useState('');
+    const hydratedFromQuery = useRef(false);
 
     const selectedOrder = useMemo(() => {
         if (!lookupResult) return null;
@@ -34,6 +41,52 @@ export default function GuestOrderLookup() {
 
         return lookupResult.orders.find((order) => order.code === selectedOrderCode) || lookupResult.orders[0] || null;
     }, [lookupResult, selectedOrderCode]);
+
+    useEffect(() => {
+        if (hydratedFromQuery.current) {
+            return;
+        }
+
+        hydratedFromQuery.current = true;
+
+        const nextMode = searchParams.get('mode');
+        const orderCode = searchParams.get('order_code') || '';
+        const phone = searchParams.get('phone') || '';
+        const email = searchParams.get('email') || '';
+
+        if (nextMode && Object.values(LOOKUP_MODES).includes(nextMode)) {
+            setMode(nextMode);
+        }
+
+        if (orderCode || phone || email) {
+            setForm({
+                order_code: orderCode,
+                phone,
+                email,
+            });
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const shouldAutoLookup = searchParams.get('focus') === 'payment';
+
+        if (!shouldAutoLookup) {
+            return;
+        }
+
+        if (mode !== LOOKUP_MODES.order_code_email) {
+            return;
+        }
+
+        if (!form.order_code || !form.email || loading || lookupResult) {
+            return;
+        }
+
+        handleLookup({
+            order_code: form.order_code,
+            email: form.email,
+        });
+    }, [searchParams, mode, form.order_code, form.email, loading, lookupResult]);
 
     function updateField(field, value) {
         setForm((prev) => ({
@@ -69,10 +122,8 @@ export default function GuestOrderLookup() {
             nextErrors.email = 'Email không đúng định dạng. Vui lòng nhập đúng địa chỉ email.';
         }
 
-        if (mode === LOOKUP_MODES.order_code_email) {
-            if (!orderCode) {
-                nextErrors.order_code = 'Vui lòng nhập mã đơn hàng để tra cứu.';
-            }
+        if (mode === LOOKUP_MODES.order_code_email && !orderCode) {
+            nextErrors.order_code = 'Vui lòng nhập mã đơn hàng để tra cứu.';
         }
 
         if (mode === LOOKUP_MODES.phone_email) {
@@ -94,19 +145,23 @@ export default function GuestOrderLookup() {
             return;
         }
 
+        const payload = {
+            email: String(form.email || '').trim(),
+        };
+
+        if (mode === LOOKUP_MODES.order_code_email) {
+            payload.order_code = String(form.order_code || '').trim();
+        } else {
+            payload.phone = normalizePhone(form.phone);
+        }
+
+        await handleLookup(payload);
+    }
+
+    async function handleLookup(payload) {
         try {
             setLoading(true);
             setSubmitError('');
-
-            const payload = {
-                email: String(form.email || '').trim(),
-            };
-
-            if (mode === LOOKUP_MODES.order_code_email) {
-                payload.order_code = String(form.order_code || '').trim();
-            } else {
-                payload.phone = normalizePhone(form.phone);
-            }
 
             const result = await guestOrderService.lookup(payload);
 
@@ -134,6 +189,70 @@ export default function GuestOrderLookup() {
             setSelectedOrderCode('');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handlePayAgain(order) {
+        if (!order?.id) {
+            return;
+        }
+
+        const method = order.payment?.method || order.raw?.payment_method || '';
+
+        if (method !== 'mock_bank') {
+            toast.warning('Đơn hàng này không hỗ trợ thanh toán trực tuyến.');
+            return;
+        }
+
+        try {
+            setPayingOrderCode(order.code || String(order.id));
+
+            const payment = await paymentService.pay(order.id, method);
+
+            if (payment.redirectUrl) {
+                sessionStorage.setItem(
+                    'mock_payment_qr',
+                    JSON.stringify({
+                        order,
+                        payment,
+                        callbackUrl: payment.redirectUrl,
+                        guestEmail: form.email.trim(),
+                        guestPhone: normalizePhone(form.phone || order.receiver?.phone || ''),
+                        isGuest: true,
+                    }),
+                );
+
+                navigate('/payment/qr', {
+                    state: {
+                        order,
+                        payment,
+                        callbackUrl: payment.redirectUrl,
+                        guestEmail: form.email.trim(),
+                        guestPhone: normalizePhone(form.phone || order.receiver?.phone || ''),
+                        isGuest: true,
+                    },
+                });
+
+                return;
+            }
+
+            toast.success(payment.message || 'Đã chuyển sang bước thanh toán.');
+
+            await handleLookup(
+                lookupResult?.lookupType === LOOKUP_MODES.phone_email
+                    ? {
+                          phone: normalizePhone(form.phone),
+                          email: form.email.trim(),
+                      }
+                    : {
+                          order_code: order.code,
+                          email: form.email.trim(),
+                      },
+            );
+        } catch (error) {
+            toast.error(error.message || 'Không thể chuyển sang bước thanh toán.');
+        } finally {
+            setPayingOrderCode('');
         }
     }
 
@@ -259,7 +378,11 @@ export default function GuestOrderLookup() {
                             </div>
 
                             <div>
-                                <OrderDetailPanel order={selectedOrder} />
+                                <OrderDetailPanel
+                                    order={selectedOrder}
+                                    onPayAgain={handlePayAgain}
+                                    paying={payingOrderCode === (selectedOrder?.code || String(selectedOrder?.id || ''))}
+                                />
                             </div>
                         </div>
                     </section>
@@ -267,7 +390,11 @@ export default function GuestOrderLookup() {
 
                 {lookupResult?.lookupType !== LOOKUP_MODES.phone_email && lookupResult?.order && (
                     <section className="mt-6">
-                        <OrderDetailPanel order={lookupResult.order} />
+                        <OrderDetailPanel
+                            order={lookupResult.order}
+                            onPayAgain={handlePayAgain}
+                            paying={payingOrderCode === (lookupResult.order?.code || String(lookupResult.order?.id || ''))}
+                        />
                     </section>
                 )}
             </main>
@@ -317,7 +444,7 @@ function InputField({ label, value, onChange, placeholder, error, icon: Icon = n
     );
 }
 
-function OrderDetailPanel({ order }) {
+function OrderDetailPanel({ order, onPayAgain, paying = false }) {
     if (!order) {
         return (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
@@ -337,7 +464,20 @@ function OrderDetailPanel({ order }) {
                         </p>
                     </div>
 
-                    <StatusBadge text={order.statusText} status={order.status} />
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                        {order.actions?.canPayAgain ? (
+                            <button
+                                type="button"
+                                onClick={() => onPayAgain?.(order)}
+                                disabled={paying}
+                                className="rounded-2xl bg-blue-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
+                            >
+                                {paying ? 'Đang chuyển sang thanh toán...' : 'Thanh toán'}
+                            </button>
+                        ) : null}
+
+                        <StatusBadge text={order.statusText} status={order.status} />
+                    </div>
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -524,7 +664,15 @@ function StatusBadge({ text, status }) {
 }
 
 function normalizePhone(value) {
-    return String(value || '').replace(/\D/g, '');
+    let digits = String(value || '').replace(/\D/g, '');
+
+    if (digits.startsWith('840') && digits.length === 12) {
+        digits = `0${digits.slice(3)}`;
+    } else if (digits.startsWith('84') && digits.length === 11) {
+        digits = `0${digits.slice(2)}`;
+    }
+
+    return digits.slice(0, 10);
 }
 
 function formatMoney(value) {

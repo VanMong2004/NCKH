@@ -105,11 +105,11 @@ Route::prefix('cart')->group(function () {
 });
 
 // CHECKOUT - GUEST + USER
-Route::prefix('orders')->middleware('throttle:checkout')->group(function () {
-    Route::post('/checkout', [OrderController::class, 'checkout']);
+Route::prefix('orders')->group(function () {
+    Route::post('/checkout', [OrderController::class, 'checkout'])->middleware('throttle:checkout');
 
     // Guest/user đều có thể thanh toán nếu có order_id + quyền hợp lệ
-    Route::post('/{id}/pay', [PaymentController::class, 'pay']);
+    Route::post('/{id}/pay', [PaymentController::class, 'pay'])->middleware('throttle:payment');
 });
 
 // GUEST ORDER LOOKUP (DÙNG CHO VIỆC KHÁCH HÀNG KIỂM TRA TÌNH TRẠNG ĐƠN HÀNG MÀ KHÔNG CẦN ĐĂNG NHẬP, CHỈ CẦN CÓ ORDER CODE VÀ SĐT LIÊN KẾT VỚI ĐƠN HÀNG) - PUBLIC

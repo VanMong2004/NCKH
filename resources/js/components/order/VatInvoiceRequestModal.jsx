@@ -55,6 +55,8 @@ export default function VatInvoiceRequestModal({
 
         if (!form.tax_code.trim()) {
             nextErrors.tax_code = 'Vui lòng nhập mã số thuế';
+        } else if (!/^\d{10,13}$/.test(form.tax_code.trim())) {
+            nextErrors.tax_code = 'Mã số thuế phải gồm từ 10 đến 13 chữ số';
         }
 
         if (!form.company_address.trim()) {
@@ -144,6 +146,7 @@ export default function VatInvoiceRequestModal({
                             value={form.tax_code}
                             error={errors.tax_code}
                             onChange={(value) => updateField('tax_code', value)}
+                            placeholder="Nhập 10 đến 13 chữ số"
                         />
 
                         <Input
@@ -198,7 +201,7 @@ export default function VatInvoiceRequestModal({
     );
 }
 
-function Input({ label, value, error, onChange, type = 'text' }) {
+function Input({ label, value, error, onChange, type = 'text', placeholder = '' }) {
     return (
         <label className="block">
             <span className="mb-1.5 block text-sm font-bold text-blue-950 dark:text-white">{label}</span>
@@ -206,6 +209,7 @@ function Input({ label, value, error, onChange, type = 'text' }) {
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
                 className={`h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none focus:border-blue-950 dark:bg-slate-950 dark:text-white ${
                     error ? 'border-red-300 dark:border-red-800' : 'border-slate-300 dark:border-slate-700'
                 }`}

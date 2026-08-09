@@ -142,10 +142,13 @@ class GuestOrderController extends Controller
         try {
             $data = $request->validate([
                 'company_name' => 'required|string|max:255',
-                'tax_code' => 'required|string|max:50',
+                'tax_code' => ['required', 'regex:/^\d{10,13}$/'],
                 'company_address' => 'required|string|max:500',
                 'invoice_email' => 'required|email|max:255',
                 'note' => 'nullable|string|max:1000',
+            ], [
+                'tax_code.required' => 'Vui lòng nhập mã số thuế.',
+                'tax_code.regex' => 'Mã số thuế phải gồm từ 10 đến 13 chữ số.',
             ]);
 
             $user = auth('sanctum')->user();

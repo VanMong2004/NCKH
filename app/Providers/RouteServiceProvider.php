@@ -11,18 +11,8 @@ use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    /**
-     * The path to your application's "home" route.
-     *
-     * Typically, users are redirected here after authentication.
-     *
-     * @var string
-     */
     public const HOME = '/home';
 
-    /**
-     * Define your route model bindings, pattern filters, and other route configuration.
-     */
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
@@ -52,6 +42,19 @@ class RouteServiceProvider extends ServiceProvider
             }
 
             return $this->limitPerMinute(10, $this->userOrIpKey($request), 'Bạn thao tác đặt hàng quá nhanh, vui lòng thử lại sau ít phút.');
+        });
+
+        RateLimiter::for('payment', function (Request $request) {
+            if (!$request->user()) {
+                return $this->limitPerMinutes(
+                    (int) config('guest_checkout.payment_rate_limit_attempts', 12),
+                    (int) config('guest_checkout.payment_rate_limit_minutes', 10),
+                    'payment-guest:' . $request->ip(),
+                    'Bạn thao tác thanh toán quá nhanh, vui lòng thử lại sau ít phút.'
+                );
+            }
+
+            return $this->limitPerMinute(20, 'payment:' . $this->userOrIpKey($request), 'Bạn thao tác thanh toán quá nhanh, vui lòng thử lại sau ít phút.');
         });
 
         RateLimiter::for('chatbot', function (Request $request) {

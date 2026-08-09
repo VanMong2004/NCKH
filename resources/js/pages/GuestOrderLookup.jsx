@@ -7,6 +7,7 @@ import MainLayout from '../layout/MainLayout';
 import guestOrderService from '../services/guestOrderService';
 import paymentService from '../services/paymentService';
 import { cancelReasonText } from '../services/mappers/orderMapper';
+import ConfirmDialog from '../admin/components/ui/ConfirmDialog';
 
 const LOOKUP_MODES = {
     order_code_email: 'order_code_email',
@@ -30,6 +31,15 @@ export default function GuestOrderLookup() {
     const [submitError, setSubmitError] = useState('');
     const [lookupResult, setLookupResult] = useState(null);
     const [selectedOrderCode, setSelectedOrderCode] = useState('');
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        title: '',
+        message: '',
+        description: '',
+        confirmText: 'Xác nhận',
+        type: 'info',
+        onConfirm: null,
+    });
     const hydratedFromQuery = useRef(false);
 
     const selectedOrder = useMemo(() => {
@@ -70,11 +80,7 @@ export default function GuestOrderLookup() {
     useEffect(() => {
         const shouldAutoLookup = searchParams.get('focus') === 'payment';
 
-        if (!shouldAutoLookup) {
-            return;
-        }
-
-        if (mode !== LOOKUP_MODES.order_code_email) {
+        if (!shouldAutoLookup || mode !== LOOKUP_MODES.order_code_email) {
             return;
         }
 
@@ -119,16 +125,16 @@ export default function GuestOrderLookup() {
         if (!email) {
             nextErrors.email = 'Vui lòng nhập email để tra cứu đơn hàng.';
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            nextErrors.email = 'Email không đúng định dạng. Vui lòng nhập đúng địa chỉ email.';
+            nextErrors.email = 'Email không đúng định dạng.';
         }
 
         if (mode === LOOKUP_MODES.order_code_email && !orderCode) {
-            nextErrors.order_code = 'Vui lòng nhập mã đơn hàng để tra cứu.';
+            nextErrors.order_code = 'Vui lòng nhập mã đơn hàng.';
         }
 
         if (mode === LOOKUP_MODES.phone_email) {
             if (!phone) {
-                nextErrors.phone = 'Vui lòng nhập số điện thoại để tra cứu lịch sử đơn hàng.';
+                nextErrors.phone = 'Vui lòng nhập số điện thoại.';
             } else if (!/^0\d{9}$/.test(phone)) {
                 nextErrors.phone = 'Số điện thoại phải gồm 10 số và bắt đầu bằng số 0.';
             }
@@ -192,6 +198,26 @@ export default function GuestOrderLookup() {
         }
     }
 
+    async function refreshCurrentLookup(orderCodeOverride = '') {
+        if (lookupResult?.lookupType === LOOKUP_MODES.phone_email) {
+            await handleLookup({
+                phone: normalizePhone(form.phone),
+                email: form.email.trim(),
+            });
+
+            if (orderCodeOverride) {
+                setSelectedOrderCode(orderCodeOverride);
+            }
+
+            return;
+        }
+
+        await handleLookup({
+            order_code: orderCodeOverride || selectedOrder?.code || form.order_code.trim(),
+            email: form.email.trim(),
+        });
+    }
+
     async function handlePayAgain(order) {
         if (!order?.id) {
             return;
@@ -237,23 +263,48 @@ export default function GuestOrderLookup() {
             }
 
             toast.success(payment.message || 'Đã chuyển sang bước thanh toán.');
-
-            await handleLookup(
-                lookupResult?.lookupType === LOOKUP_MODES.phone_email
-                    ? {
-                          phone: normalizePhone(form.phone),
-                          email: form.email.trim(),
-                      }
-                    : {
-                          order_code: order.code,
-                          email: form.email.trim(),
-                      },
-            );
+            await refreshCurrentLookup(order.code);
         } catch (error) {
             toast.error(error.message || 'Không thể chuyển sang bước thanh toán.');
         } finally {
             setPayingOrderCode('');
         }
+    }
+
+    function handleCancelOrder(order) {
+        if (!order?.code) return;
+
+        setConfirmDialog({
+            open: true,
+            title: 'Xác nhận hủy đơn hàng',
+            message: `Bạn có chắc muốn hủy đơn hàng "${order.code}"?`,
+            description: 'Đơn hàng sau khi hủy sẽ không thể khôi phục và giao dịch chờ thanh toán sẽ được đóng lại.',
+            confirmText: 'Hủy đơn hàng',
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    const result = await guestOrderService.cancelOrder(order.code, {
+                        email: form.email.trim(),
+                    });
+
+                    toast.success('Đã hủy đơn hàng');
+
+                    if (lookupResult?.lookupType === LOOKUP_MODES.phone_email) {
+                        await refreshCurrentLookup(result.orderCode || order.code);
+                    } else {
+                        setLookupResult({
+                            success: true,
+                            message: 'Hủy đơn hàng thành công',
+                            lookupType: LOOKUP_MODES.order_code_email,
+                            order: result,
+                            orders: [],
+                        });
+                    }
+                } catch (error) {
+                    toast.error(error.message || 'Không thể hủy đơn hàng');
+                }
+            },
+        });
     }
 
     return (
@@ -294,7 +345,7 @@ export default function GuestOrderLookup() {
                                 label="Mã đơn hàng"
                                 value={form.order_code}
                                 onChange={(value) => updateField('order_code', value)}
-                                placeholder="Ví dụ: ORD-20260731-000012"
+                                placeholder="Ví dụ: ORD-20260809-000001"
                                 error={errors.order_code}
                             />
                         ) : (
@@ -381,6 +432,7 @@ export default function GuestOrderLookup() {
                                 <OrderDetailPanel
                                     order={selectedOrder}
                                     onPayAgain={handlePayAgain}
+                                    onCancelOrder={handleCancelOrder}
                                     paying={payingOrderCode === (selectedOrder?.code || String(selectedOrder?.id || ''))}
                                 />
                             </div>
@@ -393,10 +445,27 @@ export default function GuestOrderLookup() {
                         <OrderDetailPanel
                             order={lookupResult.order}
                             onPayAgain={handlePayAgain}
+                            onCancelOrder={handleCancelOrder}
                             paying={payingOrderCode === (lookupResult.order?.code || String(lookupResult.order?.id || ''))}
                         />
                     </section>
                 )}
+
+                <ConfirmDialog
+                    open={confirmDialog.open}
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    description={confirmDialog.description}
+                    confirmText={confirmDialog.confirmText}
+                    type={confirmDialog.type}
+                    onConfirm={confirmDialog.onConfirm}
+                    onOpenChange={(open) => {
+                        setConfirmDialog((prev) => ({
+                            ...prev,
+                            open,
+                        }));
+                    }}
+                />
             </main>
         </MainLayout>
     );
@@ -444,7 +513,7 @@ function InputField({ label, value, onChange, placeholder, error, icon: Icon = n
     );
 }
 
-function OrderDetailPanel({ order, onPayAgain, paying = false }) {
+function OrderDetailPanel({ order, onPayAgain, onCancelOrder, paying = false }) {
     if (!order) {
         return (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
@@ -473,6 +542,16 @@ function OrderDetailPanel({ order, onPayAgain, paying = false }) {
                                 className="rounded-2xl bg-blue-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
                             >
                                 {paying ? 'Đang chuyển sang thanh toán...' : 'Thanh toán'}
+                            </button>
+                        ) : null}
+
+                        {order.actions?.canCancel ? (
+                            <button
+                                type="button"
+                                onClick={() => onCancelOrder?.(order)}
+                                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
+                            >
+                                Hủy đơn
                             </button>
                         ) : null}
 
@@ -508,54 +587,35 @@ function OrderDetailPanel({ order, onPayAgain, paying = false }) {
 
                     <Card title="Sản phẩm đã đặt">
                         <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
-                            {(order.items || []).map((item) => {
-                                const originalPrice = Number(item.originalPrice || item.price || 0);
-                                const finalPrice = Number(item.finalPrice || item.price || 0);
-                                const hasDiscount = originalPrice > finalPrice;
-
-                                return (
-                                    <div
-                                        key={item.id}
-                                        className="flex gap-3 rounded-2xl border border-slate-100 p-3 dark:border-slate-800"
-                                    >
-                                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
-                                            <img
-                                                src={item.thumbnail || '/images/no-image.png'}
-                                                alt={item.productName}
-                                                className="max-h-full max-w-full object-contain"
-                                            />
-                                        </div>
-
-                                        <div className="min-w-0 flex-1">
-                                            <p className="line-clamp-2 font-bold text-blue-950 dark:text-white">
-                                                {item.productName}
-                                            </p>
-
-                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                {item.variant?.size ? `Size: ${item.variant.size}` : ''}
-                                                {item.variant?.size && item.variant?.color ? ' · ' : ''}
-                                                {item.variant?.color ? `Màu: ${item.variant.color}` : ''}
-                                            </p>
-
-                                            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                                                <span className="text-slate-500 dark:text-slate-400">
-                                                    SL: {item.quantity} · {formatMoney(finalPrice)}
-                                                </span>
-
-                                                {hasDiscount ? (
-                                                    <span className="text-xs text-slate-400 line-through">
-                                                        {formatMoney(originalPrice)}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                        </div>
-
-                                        <p className="text-sm font-bold text-blue-950 dark:text-blue-300">
-                                            {formatMoney(item.total)}
-                                        </p>
+                            {(order.items || []).map((item) => (
+                                <div key={item.id} className="flex gap-3 rounded-2xl border border-slate-100 p-3 dark:border-slate-800">
+                                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
+                                        <img
+                                            src={item.thumbnail || '/images/no-image.png'}
+                                            alt={item.productName}
+                                            className="max-h-full max-w-full object-contain"
+                                        />
                                     </div>
-                                );
-                            })}
+
+                                    <div className="min-w-0 flex-1">
+                                        <p className="line-clamp-2 font-bold text-blue-950 dark:text-white">{item.productName}</p>
+                                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                            {item.variant?.size ? `Size: ${item.variant.size}` : ''}
+                                            {item.variant?.size && item.variant?.color ? ' · ' : ''}
+                                            {item.variant?.color ? `Màu: ${item.variant.color}` : ''}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                                            <span className="text-slate-500 dark:text-slate-400">
+                                                SL: {item.quantity} · {formatMoney(item.finalPrice || item.price)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm font-bold text-blue-950 dark:text-blue-300">
+                                        {formatMoney(item.total)}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
                     </Card>
                 </div>
@@ -599,9 +659,7 @@ function OrderDetailPanel({ order, onPayAgain, paying = false }) {
                                             {step.time || 'Đang chờ cập nhật'}
                                         </p>
                                         {step.note ? (
-                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                {step.note}
-                                            </p>
+                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{step.note}</p>
                                         ) : null}
                                     </div>
                                 </div>

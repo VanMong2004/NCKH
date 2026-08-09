@@ -115,6 +115,7 @@ Route::prefix('orders')->group(function () {
 // GUEST ORDER LOOKUP (DÙNG CHO VIỆC KHÁCH HÀNG KIỂM TRA TÌNH TRẠNG ĐƠN HÀNG MÀ KHÔNG CẦN ĐĂNG NHẬP, CHỈ CẦN CÓ ORDER CODE VÀ SĐT LIÊN KẾT VỚI ĐƠN HÀNG) - PUBLIC
 Route::prefix('guest/orders')->group(function () {
     Route::post('/lookup', [GuestOrderController::class,'lookup']);
+    Route::post('/{orderCode}/cancel', [GuestOrderController::class, 'cancel']);
     Route::get('/{orderCode}/vat-invoice-request', [GuestOrderController::class, 'vatInvoiceRequest']);
     Route::post('/{orderCode}/vat-invoice-request', [GuestOrderController::class, 'storeVatInvoiceRequest']);
 });

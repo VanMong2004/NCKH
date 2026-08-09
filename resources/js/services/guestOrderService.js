@@ -9,6 +9,24 @@ const guestOrderService = {
         return mapGuestOrderLookupResponse(res.data);
     },
 
+    async cancelOrder(orderCode, payload, options = {}) {
+        const guestToken = resolveGuestToken(options);
+
+        const res = await api.post(
+            `/guest/orders/${encodeURIComponent(orderCode)}/cancel`,
+            payload,
+            {
+                headers: guestToken
+                    ? {
+                          'X-Guest-Token': guestToken,
+                      }
+                    : {},
+            }
+        );
+
+        return mapGuestOrderLookupResponse(res.data);
+    },
+
     async getVatInvoiceRequest(orderCode, options = {}) {
         const guestToken = resolveGuestToken(options);
 

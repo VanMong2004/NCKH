@@ -128,7 +128,7 @@ class GuestCheckoutLimitTest extends TestCase
         $response = $this->postGuestCheckout(
             $guestToken,
             $this->guestPayload($cartItem->id, [
-                'guest_phone' => '0909 123 456',
+                'guest_phone' => '0909123456',
             ])
         );
 
@@ -486,7 +486,7 @@ class GuestCheckoutLimitTest extends TestCase
         $response = $this->postGuestCheckout(
             $guestToken,
             $this->guestPayload($cartItem->id, [
-                'guest_phone' => '0909.123.456',
+                'guest_phone' => '0909123456',
             ])
         );
 
@@ -521,6 +521,69 @@ class GuestCheckoutLimitTest extends TestCase
 
         $response->assertStatus(409)
             ->assertJsonPath('code', 'GUEST_PENDING_PAYMENT_ORDER');
+    }
+
+    public function test_guest_can_cancel_pending_order_via_lookup_flow(): void
+    {
+        $guestToken = 'guest-cancel-token';
+        $order = $this->createGuestOrder([
+            'guest_token' => $guestToken,
+            'guest_email' => 'guest@example.com',
+            'guest_phone' => '0909123456',
+            'shipping_phone' => '0909123456',
+            'payment_status' => 'unpaid',
+            'status' => 'pending',
+            'expired_at' => now()->addMinutes(15),
+        ], [
+            'method' => 'mock_bank',
+            'status' => 'unpaid',
+        ]);
+
+        $response = $this->withHeaders([
+            'X-Guest-Token' => $guestToken,
+        ])->postJson("/api/guest/orders/{$order->order_code}/cancel", [
+            'email' => 'guest@example.com',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'cancelled')
+            ->assertJsonPath('data.cancel_reason', 'user_cancelled');
+
+        $order->refresh();
+
+        $this->assertSame('cancelled', $order->status);
+        $this->assertSame('failed', $order->payment_status);
+        $this->assertDatabaseHas('order_status_histories', [
+            'order_id' => $order->id,
+            'new_status' => 'cancelled',
+        ]);
+    }
+
+    public function test_guest_cannot_cancel_completed_order(): void
+    {
+        $guestToken = 'guest-cancel-completed-token';
+        $order = $this->createGuestOrder([
+            'guest_token' => $guestToken,
+            'guest_email' => 'guest@example.com',
+            'guest_phone' => '0909123456',
+            'shipping_phone' => '0909123456',
+            'payment_status' => 'paid',
+            'status' => 'completed',
+            'expired_at' => null,
+        ], [
+            'method' => 'mock_bank',
+            'status' => 'paid',
+        ]);
+
+        $response = $this->withHeaders([
+            'X-Guest-Token' => $guestToken,
+        ])->postJson("/api/guest/orders/{$order->order_code}/cancel", [
+            'email' => 'guest@example.com',
+        ]);
+
+        $response->assertStatus(400)
+            ->assertJsonPath('success', false);
     }
 
     private function postGuestCheckout(string $guestToken, array $payload, string $ip = '127.0.0.1')
@@ -576,7 +639,7 @@ class GuestCheckoutLimitTest extends TestCase
         return array_merge([
             'guest_name' => 'Khách Test',
             'guest_email' => 'guest@example.com',
-            'guest_phone' => '0909 123 456',
+            'guest_phone' => '0909123456',
             'province' => 'Cần Thơ',
             'district' => 'Ninh Kiều',
             'ward' => 'An Khánh',

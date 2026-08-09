@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderStatusHistory;
 use App\Models\Review;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class GuestOrderService
@@ -75,6 +77,78 @@ class GuestOrderService
         }
 
         return $this->formatOrder($order);
+    }
+
+    public function cancel(?string $guestToken, string $orderCode, string $email): array
+    {
+        return DB::transaction(function () use ($guestToken, $orderCode, $email) {
+            $order = Order::with($this->relations())
+                ->whereNull('user_id')
+                ->where('order_code', $orderCode)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$order) {
+                throw new RuntimeException('Không tìm thấy đơn hàng', 404);
+            }
+
+            $hasValidGuestToken = !empty($guestToken)
+                && hash_equals((string) $order->guest_token, (string) $guestToken);
+            $hasValidEmail = !empty($email)
+                && strcasecmp((string) $order->guest_email, (string) $email) === 0;
+
+            if (!$hasValidGuestToken && !$hasValidEmail) {
+                throw new RuntimeException('Không đủ thông tin để hủy đơn hàng khách', 401);
+            }
+
+            $payment = $order->payments->sortByDesc('created_at')->first();
+            $paymentMethod = $payment?->method;
+            $paymentStatus = $order->payment_status ?? $payment?->status;
+            $isExpired = $order->expired_at && now()->greaterThan($order->expired_at);
+            $supportsOnlineRepayment = $paymentMethod === 'mock_bank';
+            $supportsOfflineCancel = in_array($paymentMethod, ['cod', 'cash_on_pickup'], true);
+
+            $canCancel = $order->status === 'pending'
+                && !$isExpired
+                && (
+                    ($supportsOnlineRepayment && in_array($paymentStatus, ['unpaid', 'failed'], true))
+                    || ($supportsOfflineCancel && $paymentStatus === 'unpaid')
+                );
+
+            if (!$canCancel) {
+                throw new RuntimeException('Đơn hàng hiện không thể hủy', 400);
+            }
+
+            app(\App\Services\Admin\OrderReleaseService::class)->release($order);
+
+            $order->update([
+                'status' => 'cancelled',
+                'cancel_reason' => 'user_cancelled',
+                'payment_status' => $order->payment_status === 'paid' ? 'paid' : 'failed',
+            ]);
+
+            OrderStatusHistory::create([
+                'order_id' => $order->id,
+                'changed_by' => null,
+                'old_status' => 'pending',
+                'new_status' => 'cancelled',
+                'note' => 'Khách chưa đăng nhập hủy đơn hàng',
+            ]);
+
+            $order->payments()
+                ->where('status', 'unpaid')
+                ->update([
+                    'status' => 'failed',
+                    'response_data' => [
+                        'reason' => 'user_cancelled',
+                    ],
+                ]);
+
+            app(\App\Services\Analytics\AnalyticsEventService::class)
+                ->broadcastDashboardRefresh();
+
+            return $this->formatOrder($order->fresh($this->relations()));
+        });
     }
 
     private function relations(): array
@@ -187,14 +261,12 @@ class GuestOrderService
         $supportsOnlineRepayment = $paymentMethod === 'mock_bank';
         $supportsOfflineCancel = in_array($paymentMethod, ['cod', 'cash_on_pickup'], true);
 
-        $canCancel = $order->user_id
-            ? $isPendingOrder
-                && !$isExpired
-                && (
-                    ($supportsOnlineRepayment && in_array($paymentStatus, ['unpaid', 'failed'], true))
-                    || ($supportsOfflineCancel && $paymentStatus === 'unpaid')
-                )
-            : false;
+        $canCancel = $isPendingOrder
+            && !$isExpired
+            && (
+                ($supportsOnlineRepayment && in_array($paymentStatus, ['unpaid', 'failed'], true))
+                || ($supportsOfflineCancel && $paymentStatus === 'unpaid')
+            );
 
         $canPayAgain = $isPendingOrder
             && !$isExpired

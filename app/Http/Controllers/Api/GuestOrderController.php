@@ -186,4 +186,45 @@ class GuestOrderController extends Controller
             ], 500);
         }
     }
+
+    public function cancel(Request $request, string $orderCode): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'email' => 'required|email|max:255',
+            ]);
+
+            $guestToken = $request->header('X-Guest-Token')
+                ?: $request->query('guest_token');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Hủy đơn hàng thành công',
+                'data' => $this->service->cancel(
+                    $guestToken,
+                    $orderCode,
+                    $this->guestCheckoutGuardService->normalizeEmail($data['email'])
+                ),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu hủy đơn hàng không hợp lệ',
+                'errors' => $e->errors(),
+                'data' => null,
+            ], 422);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null,
+            ], in_array($e->getCode(), [400, 401, 404, 409], true) ? $e->getCode() : 400);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống',
+                'data' => null,
+            ], 500);
+        }
+    }
 }

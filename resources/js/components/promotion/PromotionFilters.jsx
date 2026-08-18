@@ -2,9 +2,9 @@ import { Search, SlidersHorizontal } from 'lucide-react';
 
 const statuses = [
     { value: '', label: 'Tất cả' },
+    { value: 'upcoming', label: 'Sắp diễn ra', dot: 'bg-orange-400' },
     { value: 'active', label: 'Đang diễn ra', dot: 'bg-emerald-500' },
     { value: 'ending_soon', label: 'Sắp kết thúc', dot: 'bg-amber-400' },
-    { value: 'upcoming', label: 'Sắp diễn ra', dot: 'bg-orange-400' },
     { value: 'ended', label: 'Đã kết thúc', dot: 'bg-slate-400' },
 ];
 

@@ -159,7 +159,7 @@ export default function Home() {
 
                     {/* <HomeSearchSection trendingKeywords={home.trendingKeywords} /> */}
 
-                    <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <section className="mt-5 w-full">
                         <HomePromotionGrid promotions={promotions} />
                     </section>
 

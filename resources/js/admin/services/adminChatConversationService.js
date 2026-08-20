@@ -5,6 +5,7 @@ import {
     mapAdminChatConversationListResponse,
     mapAdminChatConversationStatisticsResponse,
 } from '../mappers/adminChatConversationMapper';
+import adminChatApprovedAnswerService from './adminChatApprovedAnswerService';
 
 const adminChatConversationService = {
     async getConversations(params = {}) {
@@ -25,6 +26,10 @@ const adminChatConversationService = {
     async closeConversation(id) {
         const res = await api.patch(`/admin/chat/conversations/${id}/close`);
         return mapAdminChatConversationDetailResponse(res.data);
+    },
+
+    async promoteMessage(messageId) {
+        return adminChatApprovedAnswerService.promoteMessage(messageId);
     },
 };
 

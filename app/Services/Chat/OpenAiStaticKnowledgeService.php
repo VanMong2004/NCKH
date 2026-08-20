@@ -3,6 +3,7 @@
 namespace App\Services\Chat;
 
 use App\Models\ChatConversation;
+use App\Models\ChatKnowledgeFile;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
@@ -12,14 +13,37 @@ class OpenAiStaticKnowledgeService
     private const SAFE_FALLBACK = 'Mình chưa tìm thấy thông tin này trong tài liệu hỗ trợ của CTUT UniShop.';
 
     public function __construct(
-        protected ChatSessionService $sessionService
+        protected ChatSessionService $sessionService,
+        protected ChatbotApprovedAnswerService $approvedAnswerService
     ) {}
 
     public function answer(ChatConversation $conversation, string $latestMessage): array
     {
+        $approved = $this->approvedAnswerService->findBestMatch($latestMessage, 'static_knowledge');
+
+        if ($approved !== null) {
+            return [
+                'response_id' => null,
+                'answer' => $approved['answer'],
+                'intent' => 'static_knowledge',
+                'sources' => [],
+                'tool_calls' => [],
+                'products' => [],
+                'promotions' => [],
+                'debug' => [
+                    'source_used' => 'approved_answer_library',
+                    'answer_id' => $approved['id'],
+                    'match_type' => $approved['match_type'],
+                    'confidence' => $approved['confidence'],
+                    'lexical_score' => $approved['lexical_score'] ?? null,
+                    'semantic_score' => $approved['semantic_score'] ?? null,
+                ],
+            ];
+        }
+
         $response = $this->createResponse($this->buildPayload($conversation, $latestMessage));
         $answer = $this->sanitizeAnswer($this->extractAnswer($response));
-        $sources = $this->extractSources($response);
+        $sources = $this->filterValidSources($this->extractSources($response));
         $fileSearchResults = $this->extractFileSearchResults($response);
         $hasFileSearchResults = !empty($fileSearchResults);
 
@@ -55,6 +79,7 @@ class OpenAiStaticKnowledgeService
                 'source_used' => 'vector_store',
                 'source_count' => count($sources),
                 'has_file_search_results' => $hasFileSearchResults,
+                'approved_answer_checked' => true,
                 'prompt_id_used' => $this->hasStaticPromptId(),
                 'prompt_version' => config('services.openai.static_prompt_version'),
             ],
@@ -276,5 +301,56 @@ Không trả lời về dữ liệu động như sản phẩm đang bán, giá, 
 Nếu không tìm thấy nguồn phù hợp trong tài liệu, hãy trả lời đúng câu: Mình chưa tìm thấy thông tin này trong tài liệu hỗ trợ của CTUT UniShop.
 Luôn trả lời bằng tiếng Việt, ngắn gọn, tự nhiên, không dùng markdown.
 PROMPT;
+    }
+
+    private function filterValidSources(array $sources): array
+    {
+        if (empty($sources)) {
+            return [];
+        }
+
+        $fileIds = collect($sources)
+            ->pluck('file_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($fileIds)) {
+            return $sources;
+        }
+
+        $knowledgeFiles = ChatKnowledgeFile::query()
+            ->whereIn('openai_file_id', $fileIds)
+            ->get()
+            ->keyBy('openai_file_id');
+
+        return collect($sources)
+            ->filter(function ($source) use ($knowledgeFiles) {
+                $fileId = $source['file_id'] ?? null;
+
+                if (!$fileId || !$knowledgeFiles->has($fileId)) {
+                    return false;
+                }
+
+                $file = $knowledgeFiles->get($fileId);
+                $now = now();
+
+                if (!$file->is_active || $file->status !== 'completed') {
+                    return false;
+                }
+
+                if ($file->effective_from && $file->effective_from->gt($now)) {
+                    return false;
+                }
+
+                if ($file->effective_to && $file->effective_to->lt($now)) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->values()
+            ->toArray();
     }
 }

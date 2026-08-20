@@ -1208,3 +1208,46 @@ Nếu có điều cấm thay đổi mới, cập nhật thêm:
 * Frontend `Checkout.jsx` đã tích hợp `TurnstileWidget.jsx`; khi có `VITE_TURNSTILE_SITE_KEY` thì widget mới hiển thị, token được gửi kèm lúc đặt hàng và tự reset nếu checkout lỗi để tránh dùng lại token cũ.
 * Cấu hình mới nằm ở `config/guest_checkout.php`, `config/services.php`, `.env.example`: `GUEST_CHECKOUT_TURNSTILE_ENABLED`, `VITE_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `TURNSTILE_VERIFY_URL`.
 * Đã bổ sung test backend cho 3 case: guest chuyển khoản thiếu Turnstile bị chặn, guest chuyển khoản có token hợp lệ được checkout, guest COD không bị yêu cầu Turnstile. `tests/Feature/GuestCheckoutLimitTest.php` hiện pass 22 tests.
+* Đã chuẩn hóa lại `docs/chatbot-test-cases.md` theo source chatbot hiện tại: thêm thang chấm `Đúng / Đúng một phần / Sai`, công thức quy đổi độ tin cậy, checklist kỹ thuật, bộ test ngữ cảnh nối tiếp và bộ test tiếng Việt có dấu/không dấu.
+* Đã thay mới `docs/chatbot-audit-report.md` để mô tả đúng kiến trúc chatbot đang chạy: GPT intent classification + database cho dữ liệu động + OpenAI Responses API / Vector Store cho dữ liệu tĩnh + metadata hội thoại cho câu hỏi nối tiếp.
+* Giai đoạn chatbot trong kế hoạch góp ý Hội đồng hiện nên hiểu là đã có bộ tài liệu audit và test nền tảng để trình bày/đo độ tin cậy; chưa có số phần trăm cố định cho chatbot nếu nhóm chưa tự chạy chấm toàn bộ bộ test thủ công trên dữ liệu runtime thực tế.
+* Đã nâng cấp nền tảng chatbot theo hướng `structured conversation memory` nhưng vẫn giữ kiến trúc `Hybrid RAG` hiện có:
+  * thêm `ConversationMemoryService` để duy trì `context_state` theo topic `promotion/product` trên `chat_conversations`
+  * thêm `ContextualReferenceResolver` để resolve follow-up như `đợt số 1`, `cái thứ 2` về canonical ID trước khi route tool
+  * `OpenAiHybridRagChatService` giờ ưu tiên resolve context trước, không còn chỉ phụ thuộc `latest assistant message context`
+* Đã vá bug context chính:
+  * case `các đợt khuyến mãi` -> `các sản phẩm trong đợt số 1` giờ đi theo `promotion_id` thay vì đẩy text kiểu `so 1` xuống tool search
+  * small talk/off-topic không tự xóa `promotion/product context`; typo không có reference signal sẽ không kéo context cũ vào
+* Đã nâng tool/chat catalog theo hướng ưu tiên ID:
+  * `get_promotion_products` hỗ trợ `promotion_id`
+  * `get_product_price`, `get_product_stock`, `get_product_variants` hỗ trợ `product_id`
+* Đã bổ sung `Approved Answer Library` cho tri thức tĩnh:
+  * model `ChatbotApprovedAnswer`
+  * service normalize / lexical / semantic / confidence
+  * `OpenAiStaticKnowledgeService` giờ ưu tiên `approved_answer_library`, không match mới fallback sang `file_search`
+* Đã bổ sung kiểm tra hiệu lực tri thức tĩnh:
+  * `chat_knowledge_files` có thêm `effective_from`, `effective_to`
+  * runtime `OpenAiStaticKnowledgeService` chỉ chấp nhận source còn active + completed + còn hiệu lực; nếu nguồn không hợp lệ sẽ fallback an toàn
+* Đã thêm admin API backend cho thư viện câu trả lời duyệt sẵn:
+  * `GET/POST /api/admin/chat/approved-answers`
+  * `GET/PUT/DELETE /api/admin/chat/approved-answers/{id}`
+  * `POST /api/admin/chat/approved-answers/{id}/toggle`
+  * `POST /api/admin/chat/messages/{messageId}/promote-to-answer`
+* Đã thêm migration mới:
+  * `2026_08_20_210000_add_context_state_and_approved_answers.php`
+  * migration này thêm `chat_conversations.context_state`, `chat_knowledge_files.effective_from/effective_to` và tạo bảng `chatbot_approved_answers`
+* Đã thêm test regression mới cho lớp nền chatbot:
+  * `tests/Unit/ConversationMemoryServiceTest.php`
+  * `tests/Unit/ContextualReferenceResolverTest.php`
+  * `tests/Unit/ChatbotApprovedAnswerServiceTest.php`
+  * chạy bằng PHP 8.4 + SQLite schema tối thiểu: `6 tests, 18 assertions` pass
+* Chưa chạy migration thật trên DB dự án và chưa chạy test end-to-end `POST /api/chat/send`; cần xác nhận môi trường DB trước khi test tay toàn luồng.
+* Đã nối thêm admin UI cho chatbot:
+  * thêm trang `Approved Answers AI` ở route `/admin/chat-approved-answers`
+  * có list/filter/paging, form tạo-sửa, toggle active, xóa
+  * có thể promote trực tiếp từ một assistant message trong màn `Hội thoại AI` sang thư viện approved answers
+* Màn `AdminChatConversations` đã mở rộng debug context:
+  * hiển thị `conversation.context_state`
+  * hiển thị `answer_source`, `confidence`, `resolution`, `context_reference`
+  * giúp debug rõ chatbot đang đi theo `database`, `approved_answer_library`, `vector_store` hay `clarify`
+* Frontend build production đã pass sau đợt nối admin UI chatbot bằng Node bundled của workspace.

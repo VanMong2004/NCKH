@@ -132,9 +132,9 @@ class ChatbotProductCatalogService
         });
     }
 
-    public function getProductStock(string $productName, ?string $size = null, ?string $color = null): array
+    public function getProductStock(?int $productId, string $productName, ?string $size = null, ?string $color = null): array
     {
-        $product = $this->findProduct($productName);
+        $product = $productId ? $this->findProductById($productId) : $this->findProduct($productName);
 
         if (!$product) {
             return [
@@ -159,9 +159,9 @@ class ChatbotProductCatalogService
         ];
     }
 
-    public function getProductPrice(string $productName, ?string $size = null, ?string $color = null, $user = null): array
+    public function getProductPrice(?int $productId, string $productName, ?string $size = null, ?string $color = null, $user = null): array
     {
-        $product = $this->findProduct($productName);
+        $product = $productId ? $this->findProductById($productId) : $this->findProduct($productName);
 
         if (!$product) {
             return [
@@ -186,9 +186,9 @@ class ChatbotProductCatalogService
         ];
     }
 
-    public function getProductVariants(string $productName, $user = null): array
+    public function getProductVariants(?int $productId, string $productName, $user = null): array
     {
-        $product = $this->findProduct($productName);
+        $product = $productId ? $this->findProductById($productId) : $this->findProduct($productName);
 
         if (!$product) {
             return [
@@ -349,16 +349,18 @@ class ChatbotProductCatalogService
         ];
     }
 
-    public function getPromotionProducts(string $query, int $limit = 6, $user = null): array
+    public function getPromotionProducts(?int $promotionId, string $query, int $limit = 6, $user = null): array
     {
         $query = trim($query);
         $limit = max(1, min($limit, 12));
 
-        if ($query === '') {
+        if ($promotionId) {
+            $promotion = $this->findPromotionById($promotionId);
+        } elseif ($query === '') {
             return $this->getProductsFromActivePromotions($limit, $user);
+        } else {
+            $promotion = $this->findPromotion($query);
         }
-
-        $promotion = $this->findPromotion($query);
 
         if (!$promotion) {
             return [
@@ -730,6 +732,16 @@ class ChatbotProductCatalogService
             ->first(function (Promotion $promotion) use ($query, $normalizedQuery) {
                 return $this->calculatePromotionSearchScore($promotion, $query, $normalizedQuery) > 0;
             });
+    }
+
+    private function findPromotionById(int $promotionId): ?Promotion
+    {
+        return $this->basePromotionQuery()->find($promotionId);
+    }
+
+    private function findProductById(int $productId): ?Product
+    {
+        return $this->baseProductQuery()->find($productId);
     }
 
     private function calculatePromotionSearchScore(Promotion $promotion, string $query, string $normalizedQuery): int

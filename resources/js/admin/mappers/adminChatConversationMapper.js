@@ -25,6 +25,7 @@ export function mapAdminChatConversation(item = {}) {
         lastMessageAt: item.last_message_at || '',
         expiredAt: item.expired_at || '',
         createdAt: item.created_at || '',
+        contextState: item.context_state && typeof item.context_state === 'object' ? item.context_state : {},
         messages: Array.isArray(item.messages) ? item.messages.map(mapAdminChatMessage) : [],
         raw: item,
     };

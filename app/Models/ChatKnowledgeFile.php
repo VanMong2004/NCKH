@@ -20,6 +20,8 @@ class ChatKnowledgeFile extends Model
         'error_message',
         'metadata',
         'is_active',
+        'effective_from',
+        'effective_to',
         'uploaded_by',
     ];
 
@@ -27,6 +29,8 @@ class ChatKnowledgeFile extends Model
         'size' => 'integer',
         'metadata' => 'array',
         'is_active' => 'boolean',
+        'effective_from' => 'datetime',
+        'effective_to' => 'datetime',
     ];
 
     public function uploader(): BelongsTo

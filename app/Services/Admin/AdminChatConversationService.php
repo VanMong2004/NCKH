@@ -100,6 +100,7 @@ class AdminChatConversationService
         return [
             ...$this->formatConversation($conversation),
             'messages' => $messages,
+            'context_state' => $conversation->context_state ?? data_get($conversation->metadata, 'context_state', []),
         ];
     }
 

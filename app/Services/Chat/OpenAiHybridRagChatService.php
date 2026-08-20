@@ -33,7 +33,9 @@ class OpenAiHybridRagChatService
     public function __construct(
         protected ProductChatToolService $productToolService,
         protected ChatSessionService $sessionService,
-        protected OpenAiStaticKnowledgeService $staticKnowledgeService
+        protected OpenAiStaticKnowledgeService $staticKnowledgeService,
+        protected ConversationMemoryService $conversationMemoryService,
+        protected ContextualReferenceResolver $contextualReferenceResolver
     ) {}
 
     public function sendMessage($user, ?string $guestToken, ?int $conversationId, string $message): array
@@ -77,8 +79,13 @@ class OpenAiHybridRagChatService
                     'debug' => $openAiResult['debug'] ?? [],
                     'products' => $openAiResult['products'] ?? [],
                     'promotions' => $openAiResult['promotions'] ?? [],
+                    'answer_source' => $openAiResult['answer_source'] ?? null,
+                    'confidence' => $openAiResult['confidence'] ?? null,
+                    'context_reference' => $openAiResult['context_reference'] ?? null,
                 ],
             ]);
+
+            $this->conversationMemoryService->updateFromAssistantMessage($conversation, $assistantMessage);
 
             $this->sessionService->touchSession($conversation);
 
@@ -244,6 +251,63 @@ class OpenAiHybridRagChatService
         $startedAt = microtime(true);
         $entities = $this->extractEntities($latestMessage);
         $intent = $entities['intent'];
+        $reference = $this->contextualReferenceResolver->resolve($conversation, $latestMessage);
+
+        if (($reference['matched'] ?? false) && ($resolved = $this->handleResolvedReference($reference, $latestMessage, $user, $entities)) !== null) {
+            return [
+                ...$resolved,
+                'debug' => [
+                    'intent' => $resolved['intent'] ?? $intent,
+                    'original_message' => $entities['original_message'] ?? $latestMessage,
+                    'normalized_message' => $reference['normalized_message'] ?? ($entities['normalized_message'] ?? null),
+                    'entities' => $entities,
+                    'confidence' => $entities['confidence'],
+                    'source_used' => 'conversation_memory',
+                    'context_reference' => $reference,
+                    'tool_count' => count($resolved['tool_calls'] ?? []),
+                    'tool_names' => collect($resolved['tool_calls'] ?? [])->pluck('name')->unique()->values()->toArray(),
+                    'product_count' => count($resolved['products'] ?? []),
+                    'promotion_count' => count($resolved['promotions'] ?? []),
+                    'source_count' => 0,
+                    'tool_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                    'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                    'resolution' => $reference['reference_type'] ?? 'context',
+                ],
+                'answer_source' => 'database',
+                'confidence' => $reference['confidence'] ?? null,
+                'context_reference' => $reference,
+            ];
+        }
+
+        if (($reference['has_reference_signal'] ?? false) && !($reference['matched'] ?? false) && !in_array($intent, ['small_talk', 'off_topic'], true)) {
+            return [
+                ...$this->dynamicEmptyResponse(
+                    'clarify',
+                    [],
+                    'Mình chưa chắc bạn đang nói đến mục nào trong ngữ cảnh trước đó. Bạn có thể nói rõ tên chương trình hoặc số thứ tự giúp mình không?'
+                ),
+                'debug' => [
+                    'intent' => 'clarify',
+                    'original_message' => $entities['original_message'] ?? $latestMessage,
+                    'normalized_message' => $reference['normalized_message'] ?? ($entities['normalized_message'] ?? null),
+                    'entities' => $entities,
+                    'confidence' => $entities['confidence'],
+                    'source_used' => 'clarify',
+                    'context_reference' => $reference,
+                    'tool_count' => 0,
+                    'tool_names' => [],
+                    'product_count' => 0,
+                    'promotion_count' => 0,
+                    'source_count' => 0,
+                    'tool_duration_ms' => 0,
+                    'total_duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                    'resolution' => 'ambiguous',
+                ],
+                'answer_source' => 'clarify',
+                'confidence' => $reference['confidence'] ?? null,
+                'context_reference' => $reference,
+            ];
+        }
 
         if ($intent === 'off_topic') {
             return [
@@ -466,11 +530,13 @@ class OpenAiHybridRagChatService
 
         $arguments = match ($toolName) {
             'get_product_price', 'get_product_stock' => [
+                'product_id' => null,
                 'product_name' => $productName,
                 'size' => $entities['size'] ?? null,
                 'color' => $entities['color'] ?? null,
             ],
             default => [
+                'product_id' => null,
                 'product_name' => $productName,
             ],
         };
@@ -623,14 +689,16 @@ class OpenAiHybridRagChatService
         $toolCalls = [];
 
         if ($this->isPromotionProductQuestion($message)) {
-            $result = $this->productToolService->execute('get_promotion_products', [
-                'query' => $promotionQuery,
-                'limit' => 12,
-            ], $user);
+        $result = $this->productToolService->execute('get_promotion_products', [
+            'promotion_id' => null,
+            'query' => $promotionQuery,
+            'limit' => 12,
+        ], $user);
 
             $toolCalls[] = [
                 'name' => 'get_promotion_products',
                 'arguments' => [
+                    'promotion_id' => null,
                     'query' => $promotionQuery,
                     'limit' => 12,
                 ],
@@ -1430,6 +1498,7 @@ class OpenAiHybridRagChatService
 
         if ($this->isPromotionProductQuestion($message)) {
             $result = $this->productToolService->execute('get_promotion_products', [
+                'promotion_id' => null,
                 'query' => $promotionQuery,
                 'limit' => 12,
             ], $user);
@@ -1437,6 +1506,7 @@ class OpenAiHybridRagChatService
             $toolCalls[] = [
                 'name' => 'get_promotion_products',
                 'arguments' => [
+                    'promotion_id' => null,
                     'query' => $promotionQuery,
                     'limit' => 12,
                 ],
@@ -1477,6 +1547,12 @@ class OpenAiHybridRagChatService
 
     private function resolveContextualFollowUp(ChatConversation $conversation, string $latestMessage, $user, array $entities): ?array
     {
+        $reference = $this->contextualReferenceResolver->resolve($conversation, $latestMessage);
+
+        if (($reference['matched'] ?? false)) {
+            return $this->handleResolvedReference($reference, $latestMessage, $user, $entities);
+        }
+
         $context = $this->getLatestAssistantContext($conversation);
 
         if (!$context) {
@@ -1538,6 +1614,166 @@ class OpenAiHybridRagChatService
             'products' => [$selectedProduct],
             'promotions' => $promotions,
         ];
+    }
+
+    private function handleResolvedReference(array $reference, string $message, $user, array $entities): ?array
+    {
+        if (($reference['entity_type'] ?? null) === 'promotion' && $this->isPromotionProductQuestion($message)) {
+            return $this->handleResolvedPromotionProducts($reference, $user);
+        }
+
+        if (($reference['entity_type'] ?? null) === 'product') {
+            return $this->handleResolvedProductReference($reference, $message, $user, $entities);
+        }
+
+        return null;
+    }
+
+    private function handleResolvedPromotionProducts(array $reference, $user): array
+    {
+        $arguments = [
+            'promotion_id' => $reference['entity_id'] ?? null,
+            'query' => '',
+            'limit' => 12,
+        ];
+
+        $result = $this->productToolService->execute('get_promotion_products', $arguments, $user);
+        $toolCalls = [[
+            'name' => 'get_promotion_products',
+            'arguments' => $arguments,
+            'result' => $result,
+            'summary' => $this->summarizeToolResult('get_promotion_products', $result),
+        ]];
+
+        $products = $this->extractProductsFromToolCalls($toolCalls);
+        $promotions = $this->extractPromotionsFromToolCalls($toolCalls);
+
+        if (empty($products)) {
+            return $this->dynamicEmptyResponse('promotion_query', $toolCalls, 'Hiện chưa có sản phẩm khuyến mãi phù hợp.');
+        }
+
+        $promotionTitle = data_get($result, 'promotion.title', $reference['entity_name'] ?? 'chương trình khuyến mãi');
+        $promotionUrl = data_get($result, 'promotion.url');
+        $answer = 'Mình tìm thấy ' . count($products) . " sản phẩm trong {$promotionTitle}:\n"
+            . $this->buildProductListingLines($products)
+            . "\nBạn muốn xem chi tiết sản phẩm nào? Chỉ cần nhắn tên sản phẩm hoặc số thứ tự, mình sẽ hỗ trợ tiếp.";
+
+        if ($promotionUrl) {
+            $answer .= "\nBạn cũng có thể xem toàn bộ chương trình tại: {$promotionUrl}";
+        }
+
+        return [
+            'response_id' => null,
+            'answer' => $answer,
+            'intent' => 'promotion_query',
+            'sources' => [],
+            'tool_calls' => $toolCalls,
+            'products' => $products,
+            'promotions' => $promotions,
+        ];
+    }
+
+    private function handleResolvedProductReference(array $reference, string $message, $user, array $entities): ?array
+    {
+        $normalized = $this->normalizeVietnameseText($message);
+        $productId = $reference['entity_id'] ?? null;
+
+        if (!$productId) {
+            return null;
+        }
+
+        if ($this->containsAny($normalized, ['gia', 'bao nhieu', 'may tien'])) {
+            return $this->handleResolvedProductToolCall(
+                'get_product_price',
+                'product_price',
+                $productId,
+                $reference,
+                $user,
+                $entities
+            );
+        }
+
+        if ($this->containsAny($normalized, ['con hang', 'het hang', 'ton kho', 'con size', 'con mau', 'stock', 'con bao nhieu'])) {
+            return $this->handleResolvedProductToolCall(
+                'get_product_stock',
+                'product_stock',
+                $productId,
+                $reference,
+                $user,
+                $entities
+            );
+        }
+
+        if ($this->containsAny($normalized, ['size', 'mau', 'color', 'bien the', 'phan loai', 'kich thuoc'])) {
+            return $this->handleResolvedProductToolCall(
+                'get_product_variants',
+                'product_variant',
+                $productId,
+                $reference,
+                $user,
+                $entities
+            );
+        }
+
+        $productUrl = data_get($reference, 'entity.attributes.url');
+        $answer = 'Đây là sản phẩm bạn đang hỏi: ' . ($reference['entity_name'] ?? 'Sản phẩm') . '.';
+        if ($productUrl) {
+            $answer .= "\nLink xem chi tiết: {$productUrl}";
+        }
+
+        return [
+            'response_id' => null,
+            'answer' => $answer,
+            'intent' => 'product_search',
+            'sources' => [],
+            'tool_calls' => [],
+            'products' => [$reference['entity']],
+            'promotions' => [],
+        ];
+    }
+
+    private function handleResolvedProductToolCall(
+        string $toolName,
+        string $intent,
+        int $productId,
+        array $reference,
+        $user,
+        array $entities
+    ): array {
+        $arguments = [
+            'product_id' => $productId,
+            'product_name' => $reference['entity_name'] ?? '',
+            'size' => $entities['size'] ?? null,
+            'color' => $entities['color'] ?? null,
+        ];
+
+        if ($toolName === 'get_product_variants') {
+            $arguments = [
+                'product_id' => $productId,
+                'product_name' => $reference['entity_name'] ?? '',
+            ];
+        }
+
+        $result = $this->productToolService->execute($toolName, $arguments, $user);
+        $toolCalls = [[
+            'name' => $toolName,
+            'arguments' => $arguments,
+            'result' => $result,
+            'summary' => $this->summarizeToolResult($toolName, $result),
+        ]];
+
+        if (empty($result['found'])) {
+            return $this->dynamicEmptyResponse($intent, $toolCalls, 'Mình chưa tìm thấy dữ liệu phù hợp của sản phẩm trong hệ thống.');
+        }
+
+        $products = $this->extractProductsFromToolCalls($toolCalls);
+        $answer = match ($intent) {
+            'product_price' => $this->buildProductPriceAnswer($result),
+            'product_stock' => $this->buildProductStockAnswer($result),
+            default => $this->buildProductVariantAnswer($result),
+        };
+
+        return $this->dynamicSuccessResponse($intent, $answer, $toolCalls, $products);
     }
 
     private function getLatestAssistantContext(ChatConversation $conversation): ?array

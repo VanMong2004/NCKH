@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\Admin\AdminPromotionController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminReviewController;
 use App\Http\Controllers\Api\Admin\AdminChatConversationController;
+use App\Http\Controllers\Api\Admin\AdminChatApprovedAnswerController;
 use App\Http\Controllers\Api\Admin\AdminSiteContentController;
 use App\Http\Controllers\Api\Admin\AdminUploadController;
 use App\Http\Controllers\Api\Admin\ChatKnowledgeController;
@@ -441,6 +442,17 @@ Route::middleware(['auth:sanctum', 'admin', 'throttle:admin'])->prefix('admin')-
         Route::patch('/{id}/close', [AdminChatConversationController::class, 'close']);
         Route::get('/{id}', [AdminChatConversationController::class, 'show']);
     });
+
+    Route::prefix('chat/approved-answers')->group(function () {
+        Route::get('/', [AdminChatApprovedAnswerController::class, 'index']);
+        Route::post('/', [AdminChatApprovedAnswerController::class, 'store']);
+        Route::get('/{id}', [AdminChatApprovedAnswerController::class, 'show']);
+        Route::put('/{id}', [AdminChatApprovedAnswerController::class, 'update']);
+        Route::delete('/{id}', [AdminChatApprovedAnswerController::class, 'destroy']);
+        Route::post('/{id}/toggle', [AdminChatApprovedAnswerController::class, 'toggle']);
+    });
+
+    Route::post('/chat/messages/{messageId}/promote-to-answer', [AdminChatApprovedAnswerController::class, 'promote']);
 
     
 });

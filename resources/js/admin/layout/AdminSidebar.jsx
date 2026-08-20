@@ -34,6 +34,7 @@ const groups = [
             { label: 'Đánh giá', to: '/admin/reviews', icon: Star },
             { label: 'Nội dung site', to: '/admin/site-content', icon: FileText },
             { label: 'Tài liệu AI', to: '/admin/chat-knowledge', icon: Bot },
+            { label: 'Approved Answers AI', to: '/admin/chat-approved-answers', icon: FileText },
             { label: 'Hội thoại AI', to: '/admin/chat-conversations', icon: MessageSquareText },
         ],
     },

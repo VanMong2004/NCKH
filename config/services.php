@@ -68,6 +68,9 @@ return [
         'chat_session_expire_days' => (int) env('OPENAI_CHAT_SESSION_EXPIRE_DAYS', 7),
         'intent_classifier_enabled' => filter_var(env('OPENAI_INTENT_CLASSIFIER_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
         'intent_classifier_threshold' => (float) env('OPENAI_INTENT_CLASSIFIER_THRESHOLD', 0.78),
+        'context_resolver_enabled' => filter_var(env('OPENAI_CONTEXT_RESOLVER_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        'embedding_model' => env('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small'),
+        'approved_answer_threshold' => (float) env('CHATBOT_APPROVED_ANSWER_THRESHOLD', 0.82),
     ],
 
     'misa_invoice' => [

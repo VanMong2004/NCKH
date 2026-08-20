@@ -38,12 +38,14 @@ class ProductChatToolService
             ),
 
             'get_product_stock' => $this->getProductStock(
+                $arguments['product_id'] ?? null,
                 (string) ($arguments['product_name'] ?? ''),
                 $arguments['size'] ?? null,
                 $arguments['color'] ?? null
             ),
 
             'get_product_price' => $this->getProductPrice(
+                $arguments['product_id'] ?? null,
                 (string) ($arguments['product_name'] ?? ''),
                 $arguments['size'] ?? null,
                 $arguments['color'] ?? null,
@@ -51,6 +53,7 @@ class ProductChatToolService
             ),
 
             'get_product_variants' => $this->getProductVariants(
+                $arguments['product_id'] ?? null,
                 (string) ($arguments['product_name'] ?? ''),
                 $user
             ),
@@ -69,6 +72,7 @@ class ProductChatToolService
             ),
 
             'get_promotion_products' => $this->catalogService->getPromotionProducts(
+                $arguments['promotion_id'] ?? null,
                 (string) ($arguments['query'] ?? ''),
                 (int) ($arguments['limit'] ?? 6),
                 $user
@@ -216,9 +220,9 @@ class ProductChatToolService
         ];
     }
 
-    public function getProductStock(string $productName, ?string $size = null, ?string $color = null): array
+    public function getProductStock(?int $productId, string $productName, ?string $size = null, ?string $color = null): array
     {
-        return $this->catalogService->getProductStock($productName, $size, $color);
+        return $this->catalogService->getProductStock($productId, $productName, $size, $color);
 
         $product = $this->findProduct($productName);
 
@@ -269,9 +273,9 @@ class ProductChatToolService
         ];
     }
 
-    public function getProductPrice(string $productName, ?string $size = null, ?string $color = null, $user = null): array
+    public function getProductPrice(?int $productId, string $productName, ?string $size = null, ?string $color = null, $user = null): array
     {
-        return $this->catalogService->getProductPrice($productName, $size, $color, $user);
+        return $this->catalogService->getProductPrice($productId, $productName, $size, $color, $user);
 
         $product = $this->findProduct($productName);
 
@@ -322,9 +326,9 @@ class ProductChatToolService
         ];
     }
 
-    public function getProductVariants(string $productName, $user = null): array
+    public function getProductVariants(?int $productId, string $productName, $user = null): array
     {
-        return $this->catalogService->getProductVariants($productName, $user);
+        return $this->catalogService->getProductVariants($productId, $productName, $user);
 
         $product = $this->findProduct($productName);
 

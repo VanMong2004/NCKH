@@ -15,12 +15,14 @@ class ChatConversation extends Model
         'title',
         'last_message_at',
         'metadata',
+        'context_state',
         'status',
         'expired_at',
     ];
 
     protected $casts = [
         'metadata' => 'array',
+        'context_state' => 'array',
         'last_message_at' => 'datetime',
         'expired_at' => 'datetime',
     ];

@@ -2,6 +2,7 @@ import {
     Bot,
     Box,
     CornerDownRight,
+    CopyPlus,
     Loader2,
     MessageSquareText,
     RefreshCcw,
@@ -354,6 +355,18 @@ function ChatDetailPanel({ conversation, loading, closeLoading, onCloseConversat
                 </div>
             ) : null}
 
+            {conversation.contextState && Object.keys(conversation.contextState).length ? (
+                <details className="mb-4 rounded-lg border border-slate-200 bg-white p-3 text-[11px] dark:border-slate-800 dark:bg-slate-900">
+                    <summary className="cursor-pointer font-black text-slate-600 dark:text-slate-300">
+                        Conversation memory
+                    </summary>
+
+                    <pre className="mt-3 max-h-56 overflow-auto rounded bg-slate-950 p-2 text-[10px] text-slate-100">
+                        {safeJson(conversation.contextState)}
+                    </pre>
+                </details>
+            ) : null}
+
             <div className="max-h-[640px] space-y-4 overflow-y-auto pr-1">
                 {messageGroups.map((group) => (
                     <MessagePair key={group.question?.id || group.replies[0]?.id} group={group} />
@@ -377,6 +390,7 @@ function MessagePair({ group }) {
                     <MessageBubble message={reply} />
                     <ProductPreview products={reply.products} />
                     <DebugPreview message={reply} />
+                    <PromoteAnswerButton message={reply} />
                 </div>
             ))}
         </div>
@@ -447,6 +461,10 @@ function DebugPreview({ message }) {
     const sourceCount = message.sources?.length || 0;
     const debug = message.metadata?.debug || {};
     const intent = message.metadata?.intent || debug.intent || '';
+    const contextReference = message.metadata?.context_reference || debug.context_reference || null;
+    const answerSource = message.metadata?.answer_source || debug.source_used || '';
+    const confidence = message.metadata?.confidence ?? debug.confidence ?? null;
+    const resolution = debug.resolution || contextReference?.reference_type || '';
 
     if (!toolCount && !sourceCount && !intent) return null;
 
@@ -461,9 +479,21 @@ function DebugPreview({ message }) {
                 <DebugBadge label="Tool" value={toolCount} tone="emerald" />
                 <DebugBadge label="Sản phẩm" value={debug.product_count ?? message.products?.length ?? 0} tone="amber" />
                 <DebugBadge label="RAG" value={sourceCount} tone="violet" />
+                {answerSource ? <DebugBadge label="Route" value={answerSource} tone="slate" /> : null}
+                {resolution ? <DebugBadge label="Resolution" value={resolution} tone="slate" /> : null}
+                {confidence !== null && confidence !== undefined ? <DebugBadge label="Confidence" value={Number(confidence).toFixed(2)} tone="slate" /> : null}
                 {debug.total_duration_ms ? <DebugBadge label="Tổng" value={`${debug.total_duration_ms}ms`} tone="slate" /> : null}
                 {debug.tool_duration_ms ? <DebugBadge label="Tool time" value={`${debug.tool_duration_ms}ms`} tone="slate" /> : null}
             </div>
+
+            {contextReference ? (
+                <div className="mt-3 rounded-lg bg-slate-50 p-2 dark:bg-slate-950">
+                    <div className="font-black text-slate-800 dark:text-slate-100">Context reference</div>
+                    <pre className="mt-2 max-h-32 overflow-auto rounded bg-slate-950 p-2 text-[10px] text-slate-100">
+                        {safeJson(contextReference)}
+                    </pre>
+                </div>
+            ) : null}
 
             {message.toolCalls?.length ? (
                 <div className="mt-3 space-y-2">
@@ -496,6 +526,38 @@ function DebugPreview({ message }) {
                 </div>
             ) : null}
         </details>
+    );
+}
+
+function PromoteAnswerButton({ message }) {
+    const [loading, setLoading] = useState(false);
+
+    if (message.role !== 'assistant' || !message.parentMessageId) {
+        return null;
+    }
+
+    async function handlePromote() {
+        try {
+            setLoading(true);
+            await adminChatConversationService.promoteMessage(message.id);
+            toast.success('Đã tạo bản nháp approved answer từ câu trả lời AI');
+        } catch (error) {
+            toast.error(error?.message || 'Không thể promote câu trả lời AI');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={handlePromote}
+            disabled={loading}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-xs font-extrabold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-500/30 dark:text-blue-300 dark:hover:bg-blue-500/10"
+        >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <CopyPlus size={14} />}
+            Promote thành approved answer
+        </button>
     );
 }
 

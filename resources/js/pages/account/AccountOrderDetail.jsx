@@ -172,7 +172,7 @@ export default function AccountOrderDetail() {
     async function openVatInvoiceModal() {
         if (!order?.id) return;
         if (!isOrderPaid(order)) {
-            toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn đỏ');
+            toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn giá trị gia tăng');
             return;
         }
 
@@ -182,7 +182,7 @@ export default function AccountOrderDetail() {
             setVatInvoiceRequest(result);
             setVatInvoiceModalOpen(true);
         } catch (error) {
-            toast.error(error.message || 'Không thể kiểm tra yêu cầu hóa đơn đỏ');
+            toast.error(error.message || 'Không thể kiểm tra yêu cầu hóa đơn giá trị gia tăng');
         }
     }
 
@@ -196,10 +196,10 @@ export default function AccountOrderDetail() {
 
             setVatInvoiceRequest(result);
             toast.success(
-                'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
+                'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn giá trị gia tăng. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
             );
         } catch (error) {
-            toast.error(error.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
+            toast.error(error.message || 'Không thể gửi yêu cầu hóa đơn giá trị gia tăng');
         } finally {
             setSubmittingVatInvoice(false);
         }
@@ -270,7 +270,7 @@ export default function AccountOrderDetail() {
                             onClick={openVatInvoiceModal}
                             className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
                         >
-                            Yêu cầu hóa đơn đỏ
+                            Yêu cầu hóa đơn giá trị gia tăng
                         </button>
 
                         {canPayAgain && (
@@ -446,6 +446,11 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
 
                                         <span className="text-slate-500 dark:text-slate-400">x {item.quantity}</span>
                                     </div>
+
+                                    <div className="mt-2 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                        <p>Giá tại thời điểm đặt: {formatMoney(finalPrice)}</p>
+                                        {promotion?.title ? <p>Khuyến mãi áp dụng khi đặt: {promotion.title}</p> : null}
+                                    </div>
                                 </div>
                             </div>
 
@@ -458,7 +463,6 @@ function OrderItemsCard({ order, onReviewSubmitted }) {
                                     {Number(item.discountAmount || 0) > 0 && (
                                         <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                                             Giảm {formatMoney(Number(item.discountAmount || 0) * Number(item.quantity || 0))}
-                                            {formatMoney(Number(item.discountAmount || 0) * Number(item.quantity || 0))}
                                         </p>
                                     )}
                                 </div>

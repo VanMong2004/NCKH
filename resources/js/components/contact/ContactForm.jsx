@@ -1,10 +1,11 @@
 import { AlertCircle, CheckCircle2, Loader2, Mail, MessageSquareText, Phone, Send, UserRound } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const SUBJECT_OPTIONS = [
     'Hỗ trợ đơn hàng',
     'Hỗ trợ thanh toán',
     'Tư vấn khuyến mãi',
+    'Yêu cầu đổi trả / hoàn trả',
     'Tài khoản người dùng',
     'Góp ý hệ thống',
     'Khác',
@@ -18,7 +19,7 @@ const INITIAL_FORM = {
     message: '',
 };
 
-export default function ContactForm({ submitting = false, onSubmit }) {
+export default function ContactForm({ submitting = false, initialValues = null, onSubmit }) {
     const [form, setForm] = useState(INITIAL_FORM);
     const [errors, setErrors] = useState({});
     const [submitted, setSubmitted] = useState(false);
@@ -59,10 +60,28 @@ export default function ContactForm({ submitting = false, onSubmit }) {
         });
 
         if (success) {
-            setForm(INITIAL_FORM);
+            setForm({
+                ...INITIAL_FORM,
+                full_name: initialValues?.full_name || '',
+                email: initialValues?.email || '',
+                phone: normalizePhone(initialValues?.phone || ''),
+            });
             setSubmitted(true);
         }
     }
+
+    useEffect(() => {
+        if (!initialValues) {
+            return;
+        }
+
+        setForm((prev) => ({
+            ...prev,
+            full_name: prev.full_name || initialValues.full_name || '',
+            email: prev.email || initialValues.email || '',
+            phone: prev.phone || normalizePhone(initialValues.phone || ''),
+        }));
+    }, [initialValues]);
 
     return (
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">

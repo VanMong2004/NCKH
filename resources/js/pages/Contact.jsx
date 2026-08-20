@@ -6,14 +6,22 @@ import { toast } from 'react-toastify';
 import ContactForm from '../components/contact/ContactForm';
 import ContactInfo from '../components/contact/ContactInfo';
 import ContactSupport from '../components/contact/ContactSupport';
+import { useAuth } from '../contexts/AuthContext';
 import MainLayout from '../layout/MainLayout';
 import contactService from '../services/contactService';
 
 export default function Contact() {
+    const { user } = useAuth();
     const [contactInfo, setContactInfo] = useState(null);
     const [loadingInfo, setLoadingInfo] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    const initialContactValues = {
+        full_name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+    };
 
     useEffect(() => {
         loadContactInfo();
@@ -77,7 +85,11 @@ export default function Contact() {
                     ) : (
                         <section className="mt-7 grid gap-7 lg:grid-cols-[minmax(0,1fr)_390px]">
                             <div className="min-w-0 space-y-7">
-                                <ContactForm submitting={submitting} onSubmit={handleSubmit} />
+                                <ContactForm
+                                    submitting={submitting}
+                                    initialValues={initialContactValues}
+                                    onSubmit={handleSubmit}
+                                />
 
                                 <ContactSupport />
                             </div>
@@ -130,7 +142,7 @@ function ContactHero() {
 
                     <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 md:text-base">
                         Gửi câu hỏi, phản hồi hoặc yêu cầu hỗ trợ liên quan đến đơn hàng, thanh toán, khuyến mãi và tài
-                        khoản người dùng.
+                        khoản người dùng, đổi trả hoặc hoàn trả sản phẩm.
                     </p>
                 </div>
 

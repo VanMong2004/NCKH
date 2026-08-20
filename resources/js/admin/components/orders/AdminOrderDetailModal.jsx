@@ -129,19 +129,19 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         e.preventDefault();
 
         if (!vatInvoiceForm.status) {
-            toast.warning('Vui lòng chọn trạng thái hóa đơn đỏ cần chuyển');
+            toast.warning('Vui lòng chọn trạng thái hóa đơn giá trị gia tăng cần chuyển');
             return;
         }
 
         if (vatInvoiceForm.status === 'rejected' && !vatInvoiceForm.admin_note.trim()) {
-            toast.warning('Vui lòng nhợp lệ do từ chối hóa đơn đỏ');
+            toast.warning('Vui lòng nhập lý do từ chối hóa đơn giá trị gia tăng');
             return;
         }
 
         setConfirmDialog({
             open: true,
-            title: 'Cập nhật hóa đơn đỏ',
-            message: `Chuyển yêu cầu hóa đơn đỏ của đơn ${order.orderCode} sang "${getVatInvoiceStatusText(vatInvoiceForm.status)}"?`,
+            title: 'Cập nhật hóa đơn giá trị gia tăng',
+            message: `Chuyển yêu cầu hóa đơn giá trị gia tăng của đơn ${order.orderCode} sang "${getVatInvoiceStatusText(vatInvoiceForm.status)}"?`,
             description: '',
             confirmText: 'Cập nhật',
             type: 'warning',
@@ -183,10 +183,10 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                 admin_note: result?.vatInvoiceRequest?.adminNote || '',
             });
 
-            toast.success('Đã cập nhật trạng thái hóa đơn đỏ');
+            toast.success('Đã cập nhật trạng thái hóa đơn giá trị gia tăng');
             onUpdated?.();
         } catch (error) {
-            toast.error(error?.message || 'Không thể cập nhật trạng thái hóa đơn đỏ');
+            toast.error(error?.message || 'Không thể cập nhật trạng thái hóa đơn giá trị gia tăng');
         } finally {
             setSavingVatInvoice(false);
         }
@@ -198,10 +198,10 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 p-3">
             <LoadingOverlay
                 show={savingStatus || savingVatInvoice}
-                text={savingVatInvoice ? 'Đang cập nhật hóa đơn đỏ...' : 'Đang cập nhật trạng thái đơn hàng...'}
+                text={savingVatInvoice ? 'Đang cập nhật hóa đơn giá trị gia tăng...' : 'Đang cập nhật trạng thái đơn hàng...'}
                 description={
                     savingVatInvoice
-                        ? 'Hệ thống đang kiểm tra luồng trạng thái hóa đơn đỏ và lưu dữ liệu xử lý.'
+                        ? 'Hệ thống đang kiểm tra luồng trạng thái hóa đơn giá trị gia tăng và lưu dữ liệu xử lý.'
                         : 'Hệ thống đang kiểm tra quyền, trạng thái hợp lệ và cập nhật dữ liệu đơn hàng.'
                 }
             />
@@ -328,7 +328,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
 
                                 {order.vatInvoiceRequest && (
                                     <>
-                                        <Section title="Yêu cầu hóa đơn đỏ">
+                                        <Section title="Yêu cầu hóa đơn giá trị gia tăng">
                                             <div className="grid gap-3">
                                                 <InfoLine
                                                     label="Trạng thái"
@@ -369,10 +369,10 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                             </div>
                                         </Section>
 
-                                        <Section title="Xử lý hóa đơn đỏ">
+                                        <Section title="Xử lý hóa đơn giá trị gia tăng">
                                             {nextVatInvoiceStatuses.length > 0 ? (
                                                 <form onSubmit={handleUpdateVatInvoiceStatus} className="space-y-4">
-                                                    <Field label="Chuyển trạng thái hóa đơn đỏ">
+                                                    <Field label="Chuyển trạng thái hóa đơn giá trị gia tăng">
                                                         <select
                                                             value={vatInvoiceForm.status}
                                                             onChange={(e) => updateVatInvoiceForm('status', e.target.value)}
@@ -400,7 +400,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                                             rows={3}
                                                             placeholder={
                                                                 vatInvoiceForm.status === 'rejected'
-                                                                    ? 'Nhập lý do từ chối hóa đơn đỏ'
+                                                                    ? 'Nhập lý do từ chối hóa đơn giá trị gia tăng'
                                                                     : 'Ghi chú xử lý nếu có'
                                                             }
                                                             className={textareaClass}
@@ -417,12 +417,12 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                                         ) : (
                                                             <Save size={16} />
                                                         )}
-                                                        Cập nhật hóa đơn đỏ
+                                                        Cập nhật hóa đơn giá trị gia tăng
                                                     </button>
                                                 </form>
                                             ) : (
                                                 <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-950">
-                                                    Yêu cầu hóa đơn đỏ ở trạng thái hiện tại không thể chuyển tiếp.
+                                                    Yêu cầu hóa đơn giá trị gia tăng ở trạng thái hiện tại không thể chuyển tiếp.
                                                 </div>
                                             )}
                                         </Section>

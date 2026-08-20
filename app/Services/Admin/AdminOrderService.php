@@ -196,7 +196,7 @@ class AdminOrderService
                 ->first();
 
             if (!$request) {
-                throw new RuntimeException('Đơn hàng này chưa có yêu cầu hóa đơn đỏ', 404);
+                throw new RuntimeException('Đơn hàng này chưa có yêu cầu hóa đơn giá trị gia tăng', 404);
             }
 
             $oldStatus = $request->status;
@@ -211,11 +211,11 @@ class AdminOrderService
             ];
 
             if (!in_array($newStatus, $allowedTransitions[$oldStatus] ?? [], true)) {
-                throw new RuntimeException('Không thể chuyển trạng thái hóa đơn đỏ theo luồng hiện tại', 409);
+                throw new RuntimeException('Không thể chuyển trạng thái hóa đơn giá trị gia tăng theo luồng hiện tại', 409);
             }
 
             if ($newStatus === 'rejected' && $adminNote === '') {
-                throw new RuntimeException('Vui lòng nhập lý do từ chối hóa đơn đỏ', 422);
+                throw new RuntimeException('Vui lòng nhập lý do từ chối hóa đơn giá trị gia tăng', 422);
             }
 
             $payload = [
@@ -253,7 +253,7 @@ class AdminOrderService
 
             return [
                 'success' => true,
-                'message' => 'Cập nhật trạng thái hóa đơn đỏ thành công',
+                'message' => 'Cập nhật trạng thái hóa đơn giá trị gia tăng thành công',
                 'data' => $this->formatDetail($order),
             ];
         });

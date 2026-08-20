@@ -69,7 +69,7 @@ class VatInvoiceRequestService
                 throw new RuntimeException('Bạn không có quyền xem đơn hàng này', 403);
             }
         } elseif (!$guestToken || $order->guest_token !== $guestToken) {
-            throw new RuntimeException('Không đủ thông tin để yêu cầu hóa đơn đỏ', 401);
+            throw new RuntimeException('Không đủ thông tin để yêu cầu hóa đơn giá trị gia tăng', 401);
         }
 
         return $order;
@@ -79,7 +79,7 @@ class VatInvoiceRequestService
     {
         return DB::transaction(function () use ($order, $data) {
             if ($order->payment_status !== 'paid') {
-                throw new RuntimeException('Chỉ có thể yêu cầu hóa đơn đỏ cho đơn hàng đã thanh toán.', 409);
+                throw new RuntimeException('Chỉ có thể yêu cầu hóa đơn giá trị gia tăng cho đơn hàng đã thanh toán.', 409);
             }
 
             $existing = VatInvoiceRequest::where('order_id', $order->id)

@@ -123,7 +123,7 @@ class AdminOrderController extends Controller
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Trạng thái hóa đơn đỏ không hợp lệ',
+                'message' => 'Trạng thái hóa đơn giá trị gia tăng không hợp lệ',
                 'errors' => $e->errors(),
             ], 422);
         } catch (RuntimeException $e) {
@@ -135,7 +135,7 @@ class AdminOrderController extends Controller
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi cập nhật trạng thái hóa đơn đỏ',
+                'message' => 'Lỗi khi cập nhật trạng thái hóa đơn giá trị gia tăng',
                 'data' => null,
             ], 500);
         }

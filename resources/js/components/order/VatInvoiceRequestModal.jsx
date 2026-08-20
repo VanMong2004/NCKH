@@ -93,7 +93,7 @@ export default function VatInvoiceRequestModal({
 
                         <div>
                             <h2 className="text-lg font-extrabold text-blue-950 dark:text-white">
-                                Yêu cầu hóa đơn đỏ
+                                Yêu cầu hóa đơn giá trị gia tăng
                             </h2>
                             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                 Thông tin này sẽ được gửi cho quản trị viên để xử lý hóa đơn VAT.
@@ -114,7 +114,7 @@ export default function VatInvoiceRequestModal({
                     <div className="p-5">
                         <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
                             <p className="font-bold text-emerald-700 dark:text-emerald-300">
-                                Đơn hàng này đã có yêu cầu hóa đơn đỏ.
+                                Đơn hàng này đã có yêu cầu hóa đơn giá trị gia tăng.
                             </p>
                             <div className="mt-3 space-y-2 text-slate-700 dark:text-slate-200">
                                 <Info label="Trạng thái" value={getStatusText(existingRequest.status)} />
@@ -127,8 +127,8 @@ export default function VatInvoiceRequestModal({
                             </div>
 
                             <p className="mt-4 rounded-xl bg-white/80 px-4 py-3 text-sm font-medium text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
-                                Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa
-                                đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.
+                                Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn giá trị gia tăng. Bộ phận phụ trách sẽ xử
+                                lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.
                             </p>
                         </div>
                     </div>

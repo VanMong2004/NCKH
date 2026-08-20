@@ -273,7 +273,7 @@ class OrderController extends Controller
         try {
             return response()->json([
                 'success' => true,
-                'message' => 'Lấy yêu cầu hóa đơn đỏ thành công',
+                'message' => 'Lấy yêu cầu hóa đơn giá trị gia tăng thành công',
                 'data' => $this->vatInvoiceRequestService->showForUser(
                     $request->user(),
                     (int) $id
@@ -316,7 +316,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Gửi yêu cầu hóa đơn đỏ thành công',
+                'message' => 'Gửi yêu cầu hóa đơn giá trị gia tăng thành công',
                 'data' => $this->vatInvoiceRequestService->createForUser(
                     $request->user(),
                     (int) $id,
@@ -326,7 +326,7 @@ class OrderController extends Controller
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Dữ liệu hóa đơn đỏ không hợp lệ',
+                'message' => 'Dữ liệu hóa đơn giá trị gia tăng không hợp lệ',
                 'errors' => $e->errors(),
                 'data' => null,
             ], 422);

@@ -80,7 +80,7 @@ export default function OrderSuccess() {
         if (!order) return;
 
         if (!isOrderPaid(order)) {
-            toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn đỏ');
+            toast.warning('Chỉ đơn hàng đã thanh toán mới được yêu cầu hóa đơn giá trị gia tăng');
             return;
         }
 
@@ -101,7 +101,7 @@ export default function OrderSuccess() {
             setVatInvoiceRequest(result);
             setVatInvoiceModalOpen(true);
         } catch (err) {
-            toast.error(err.message || 'Không thể tải yêu cầu hóa đơn đỏ');
+            toast.error(err.message || 'Không thể tải yêu cầu hóa đơn giá trị gia tăng');
         }
     }
 
@@ -115,7 +115,7 @@ export default function OrderSuccess() {
                 const result = await orderService.createVatInvoiceRequest(order.id, payload);
                 setVatInvoiceRequest(result);
                 toast.success(
-                    'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
+                    'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn giá trị gia tăng. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
                 );
                 return;
             }
@@ -128,10 +128,10 @@ export default function OrderSuccess() {
 
             setVatInvoiceRequest(result);
             toast.success(
-                'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn đỏ. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
+                'Hệ thống đã tiếp nhận yêu cầu xuất hóa đơn giá trị gia tăng. Bộ phận phụ trách sẽ xử lý và gửi hóa đơn cho bạn. Mọi thắc mắc vui lòng liên hệ quản trị viên hỗ trợ.',
             );
         } catch (err) {
-            toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn đỏ');
+            toast.error(err.message || 'Không thể gửi yêu cầu hóa đơn giá trị gia tăng');
         } finally {
             setSubmittingVatInvoice(false);
         }
@@ -347,6 +347,13 @@ export default function OrderSuccess() {
                                                         </span>
                                                     )}
                                                 </div>
+
+                                                <div className="mt-2 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                                    <p>Giá tại thời điểm đặt: {formatMoney(finalPrice)}</p>
+                                                    {item.promotion?.title ? (
+                                                        <p>Khuyến mãi áp dụng khi đặt: {item.promotion.title}</p>
+                                                    ) : null}
+                                                </div>
                                             </div>
 
                                             <p className="text-sm font-bold text-blue-950 dark:text-blue-300">
@@ -455,7 +462,7 @@ export default function OrderSuccess() {
                         onClick={openVatInvoiceModal}
                         className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
                     >
-                        Yêu cầu hóa đơn đỏ
+                        Yêu cầu hóa đơn giá trị gia tăng
                     </button>
 
                     <Link

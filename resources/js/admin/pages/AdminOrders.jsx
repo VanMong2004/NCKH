@@ -31,7 +31,7 @@ const paymentStatusOptions = [
 ];
 
 const vatInvoiceStatusOptions = [
-    { value: '', label: 'Tất cả hóa đơn đỏ' },
+    { value: '', label: 'Tất cả hóa đơn giá trị gia tăng' },
     { value: 'none', label: 'Không có yêu cầu' },
     { value: 'pending', label: 'Chờ xử lý' },
     { value: 'processing', label: 'Đang xử lý' },
@@ -223,7 +223,7 @@ export default function AdminOrders() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Đơn hàng</h1>
 
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Theo dõi đơn hàng, thanh toán, hóa đơn đỏ và xử lý trạng thái.
+                        Theo dõi đơn hàng, thanh toán, hóa đơn giá trị gia tăng và xử lý trạng thái.
                     </p>
                 </div>
 
@@ -288,7 +288,7 @@ export default function AdminOrders() {
                             ))}
                         </select>
 
-                        {/* Hóa đơn đỏ */}
+                        {/* Hóa đơn giá trị gia tăng */}
                         <select
                             value={filters.vat_invoice_status}
                             onChange={(e) => updateFilter('vat_invoice_status', e.target.value)}
@@ -368,7 +368,7 @@ export default function AdminOrders() {
                                 <Th>Đơn hàng</Th>
                                 <Th>Khách hàng</Th>
                                 <Th>Thanh toán</Th>
-                                <Th>Hóa đơn đỏ</Th>
+                                <Th>Hóa đơn giá trị gia tăng</Th>
                                 <Th className="text-center">Sản phẩm</Th>
                                 <Th>Tổng tiền</Th>
                                 <Th>Trạng thái đơn</Th>

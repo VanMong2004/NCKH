@@ -484,10 +484,13 @@ export default function Checkout() {
             toast.success('Đặt hàng thành công. Vui lòng thanh toán trong thời gian cho phép.');
             saveGuestOrderToSession(hydratedOrder);
 
-            navigate(`/order-success?order_code=${encodeURIComponent(hydratedOrder.orderCode)}`, {
+            navigate(
+                `/order-success?order_id=${encodeURIComponent(hydratedOrder.id)}&order_code=${encodeURIComponent(hydratedOrder.orderCode)}`,
+                {
                 replace: true,
                 state: {
                     isGuest: !user,
+                    orderId: hydratedOrder.id,
                     orderCode: hydratedOrder.orderCode,
                     paymentMethod: method,
                     guestLookupToken: hydratedOrder.guestLookupToken || '',

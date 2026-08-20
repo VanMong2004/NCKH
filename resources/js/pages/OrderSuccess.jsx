@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Clock, Copy, Info, MapPin, Phone, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -205,17 +205,6 @@ export default function OrderSuccess() {
 
     const canPayAgain = Boolean(order?.actions?.canPayAgain);
     const canRequestVatInvoice = isOrderPaid(order);
-    const guestLookupToken = !user ? order?.guestLookupToken || order?.raw?.guest_lookup_token || '' : '';
-
-    function copyGuestLookupToken() {
-        if (!guestLookupToken) {
-            toast.warning('Không tìm thấy mã tra cứu của đơn hàng này.');
-            return;
-        }
-
-        navigator.clipboard?.writeText(guestLookupToken);
-        toast.success('Đã sao chép mã tra cứu đơn hàng.');
-    }
 
     if (loading) {
         return (
@@ -283,31 +272,6 @@ export default function OrderSuccess() {
                         Mã đơn hàng: {order.code}
                     </div>
 
-                    {!user && guestLookupToken ? (
-                        <div className="mt-4 rounded-2xl border border-blue-100 bg-white/90 p-4 text-left shadow-sm dark:border-blue-900/40 dark:bg-slate-900/80">
-                            <p className="text-sm font-bold text-blue-950 dark:text-white">Mã tra cứu đơn hàng</p>
-
-                            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p className="text-xl font-extrabold tracking-wide text-blue-950 dark:text-blue-300">
-                                        {guestLookupToken}
-                                    </p>
-                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                        Vui lòng lưu lại mã này để tra cứu đơn hàng, thanh toán hoặc hủy đơn sau này.
-                                    </p>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={copyGuestLookupToken}
-                                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-blue-950 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
-                                >
-                                    <Copy size={16} />
-                                    Sao chép mã tra cứu
-                                </button>
-                            </div>
-                        </div>
-                    ) : null}
                 </section>
 
                 <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">

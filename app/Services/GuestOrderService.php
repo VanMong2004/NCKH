@@ -31,6 +31,18 @@ class GuestOrderService
                         ->orWhere('shipping_phone', $phone);
                 })
                 ->whereRaw('LOWER(COALESCE(guest_email, "")) = ?', [$email]);
+
+            $orders = $query->latest('id')->get();
+
+            if ($orders->isEmpty()) {
+                throw new RuntimeException('Không tìm thấy đơn hàng', 404);
+            }
+
+            return [
+                'lookup_type' => $lookupType,
+                'order' => $this->formatOrder($orders->first()),
+                'orders' => $orders->map(fn (Order $order) => $this->formatOrder($order))->values()->all(),
+            ];
         } elseif ($lookupType === 'order_code_email') {
             $orderCode = trim((string) ($data['order_code'] ?? ''));
             $email = $this->normalizeEmail($data['email'] ?? '');
@@ -52,8 +64,9 @@ class GuestOrderService
         }
 
         return [
-            ...$this->formatOrder($order),
             'lookup_type' => $lookupType,
+            'order' => $this->formatOrder($order),
+            'orders' => [],
         ];
     }
 

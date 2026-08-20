@@ -252,13 +252,17 @@ export function mapOrderDetailResponse(response = {}) {
 export function mapGuestOrderLookupResponse(response = {}) {
     const item = response.data || {};
     const lookupType = item.lookup_type || 'order_code_lookup';
+    const orders = Array.isArray(item.orders) ? item.orders.map(mapOrderDetail) : [];
+    const mappedOrder = item.order
+        ? mapOrderDetail(item.order)
+        : orders[0] || null;
 
     return {
         success: Boolean(response.success),
         message: response.message || '',
         lookupType,
-        order: mapOrderDetail(item),
-        orders: [],
+        order: mappedOrder,
+        orders,
         raw: item,
     };
 }

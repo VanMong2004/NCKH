@@ -39,6 +39,7 @@ export default function GuestOrderLookup() {
     const [payingOrderCode, setPayingOrderCode] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [lookupResult, setLookupResult] = useState(null);
+    const [selectedOrderCode, setSelectedOrderCode] = useState('');
     const [confirmDialog, setConfirmDialog] = useState({
         open: false,
         title: '',
@@ -50,7 +51,12 @@ export default function GuestOrderLookup() {
     });
     const hydratedFromQuery = useRef(false);
 
-    const order = lookupResult?.order || null;
+    const orders = lookupResult?.orders || [];
+    const order =
+        orders.find((item) => item.code === selectedOrderCode)
+        || lookupResult?.order
+        || orders[0]
+        || null;
 
     useEffect(() => {
         if (hydratedFromQuery.current) {
@@ -144,6 +150,7 @@ export default function GuestOrderLookup() {
             const result = await guestOrderService.lookup(payload);
 
             setLookupResult(result);
+            setSelectedOrderCode(result.order?.code || result.orders?.[0]?.code || '');
         } catch (error) {
             const responseErrors = error.errors || {};
             const nextErrors = {};
@@ -164,16 +171,17 @@ export default function GuestOrderLookup() {
     }
 
     async function refreshCurrentLookup() {
-        const lookupToken = normalizeLookupToken(form.lookup_token);
+        const payload = buildLookupPayload(form);
 
-        if (!lookupToken) {
+        if (
+            (payload.lookup_type === 'phone_email' && (!payload.phone || !payload.email))
+            || (payload.lookup_type === 'order_code_email' && (!payload.order_code || !payload.email))
+            || (payload.lookup_type === 'lookup_token' && !payload.lookup_token)
+        ) {
             return;
         }
 
-        await handleLookup({
-            lookup_type: 'lookup_token',
-            lookup_token: lookupToken,
-        });
+        await handleLookup(payload);
     }
 
     async function handlePayAgain(targetOrder) {
@@ -191,7 +199,7 @@ export default function GuestOrderLookup() {
         try {
             setPayingOrderCode(targetOrder.code || String(targetOrder.id));
 
-            const guestLookupToken = normalizeLookupToken(form.lookup_token);
+            const guestLookupToken = normalizeLookupToken(targetOrder?.guestLookupToken || form.lookup_token);
             const payment = await paymentService.pay(targetOrder.id, method, {
                 guestLookupToken,
             });
@@ -235,7 +243,7 @@ export default function GuestOrderLookup() {
             return;
         }
 
-        const guestLookupToken = normalizeLookupToken(form.lookup_token);
+        const guestLookupToken = normalizeLookupToken(targetOrder?.guestLookupToken || form.lookup_token);
 
         setConfirmDialog({
             open: true,
@@ -370,6 +378,7 @@ export default function GuestOrderLookup() {
                                     type="button"
                                     onClick={() => {
                                         setLookupResult(null);
+                                        setSelectedOrderCode('');
                                         setSubmitError('');
                                     }}
                                     className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 px-6 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -389,6 +398,14 @@ export default function GuestOrderLookup() {
 
                 {order ? (
                     <section className="mt-6">
+                        {lookupResult?.lookupType === 'phone_email' && orders.length > 1 ? (
+                            <OrderListPanel
+                                orders={orders}
+                                selectedOrderCode={selectedOrderCode}
+                                onSelect={setSelectedOrderCode}
+                            />
+                        ) : null}
+
                         <OrderDetailPanel
                             order={order}
                             onPayAgain={handlePayAgain}
@@ -440,6 +457,59 @@ function InputField({ label, value, onChange, placeholder, error, icon: Icon = n
 
             {error ? <p className="mt-2 text-sm font-medium text-red-500">{error}</p> : null}
         </label>
+    );
+}
+
+function OrderListPanel({ orders, selectedOrderCode, onSelect }) {
+    return (
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-2xl font-extrabold text-blue-950 dark:text-white">Danh sách đơn hàng</h2>
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                        Đây là các đơn hàng tìm được theo số điện thoại và email bạn đã nhập.
+                    </p>
+                </div>
+                <div className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {orders.length} đơn
+                </div>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+                {orders.map((item) => {
+                    const active = item.code === selectedOrderCode;
+
+                    return (
+                        <button
+                            key={item.code || item.id}
+                            type="button"
+                            onClick={() => onSelect?.(item.code)}
+                            className={`rounded-2xl border p-4 text-left transition ${
+                                active
+                                    ? 'border-blue-300 bg-blue-50 dark:border-blue-500/50 dark:bg-blue-950/30'
+                                    : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900'
+                            }`}
+                        >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <p className="font-bold text-blue-950 dark:text-white">{item.code}</p>
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                        Ngày đặt: {formatDate(item.createdAt)}
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                        Tổng tiền: {formatMoney(item.summary?.grandTotal)}
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <StatusBadge text={item.statusText} status={item.status} />
+                                </div>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </section>
     );
 }
 

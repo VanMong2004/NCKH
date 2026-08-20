@@ -22,6 +22,7 @@ class AdminOrderController extends Controller
                 'status' => 'nullable|string|in:pending,processing,awaiting_receipt,completed,cancelled',
                 'payment_status' => 'nullable|string|in:unpaid,paid,failed,refunded',
                 'vat_invoice_status' => 'nullable|string|in:none,pending,processing,fulfilled,rejected',
+                'customer_type' => 'nullable|string|in:user,guest',
                 'keyword' => 'nullable|string|max:255',
                 'date_from' => 'nullable|date',
                 'date_to' => 'nullable|date',

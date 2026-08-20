@@ -45,6 +45,16 @@ class AdminOrderService
             }
         }
 
+        if (!empty($filters['customer_type'])) {
+            if ($filters['customer_type'] === 'user') {
+                $query->whereNotNull('user_id');
+            }
+
+            if ($filters['customer_type'] === 'guest') {
+                $query->whereNull('user_id');
+            }
+        }
+
         if (!empty($filters['keyword'])) {
             $keyword = $filters['keyword'];
 

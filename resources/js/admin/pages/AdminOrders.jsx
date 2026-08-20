@@ -39,6 +39,12 @@ const vatInvoiceStatusOptions = [
     { value: 'rejected', label: 'Đã từ chối' },
 ];
 
+const customerTypeOptions = [
+    { value: '', label: 'Tất cả khách hàng' },
+    { value: 'user', label: 'Khách đã đăng nhập' },
+    { value: 'guest', label: 'Khách vãng lai' },
+];
+
 const sortOptions = [
     { value: 'latest', label: 'Mới nhất' },
     { value: 'oldest', label: 'Cũ nhất' },
@@ -53,6 +59,7 @@ export default function AdminOrders() {
         status: '',
         payment_status: '',
         vat_invoice_status: '',
+        customer_type: '',
         date_from: '',
         date_to: '',
         sort: 'latest',
@@ -90,6 +97,7 @@ export default function AdminOrders() {
         filters.status,
         filters.payment_status,
         filters.vat_invoice_status,
+        filters.customer_type,
         filters.date_from,
         filters.date_to,
         filters.sort,
@@ -122,6 +130,7 @@ export default function AdminOrders() {
         filters.status,
         filters.payment_status,
         filters.vat_invoice_status,
+        filters.customer_type,
         filters.date_from,
         filters.date_to,
         filters.sort,
@@ -138,6 +147,7 @@ export default function AdminOrders() {
                 status: filters.status || undefined,
                 payment_status: filters.payment_status || undefined,
                 vat_invoice_status: filters.vat_invoice_status || undefined,
+                customer_type: filters.customer_type || undefined,
                 date_from: filters.date_from || undefined,
                 date_to: filters.date_to || undefined,
                 sort: filters.sort || undefined,
@@ -175,6 +185,7 @@ export default function AdminOrders() {
             status: '',
             payment_status: '',
             vat_invoice_status: '',
+            customer_type: '',
             date_from: '',
             date_to: '',
             sort: 'latest',
@@ -249,60 +260,97 @@ export default function AdminOrders() {
 
             <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                 <div className="border-b border-slate-200 p-4 dark:border-slate-800">
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-12">
-                        {/* Tìm kiếm */}
-                        <div className="relative md:col-span-2 xl:col-span-4">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="grid gap-4 xl:grid-cols-12">
+                        <div className="xl:col-span-5">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Tìm kiếm
+                            </label>
 
-                            <input
-                                value={filters.keyword}
-                                onChange={(e) => updateFilter('keyword', e.target.value)}
-                                placeholder="Tìm mã đơn, khách hàng..."
-                                className={controlClass + ' pl-9'}
-                            />
+                            <div className="relative">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+
+                                <input
+                                    value={filters.keyword}
+                                    onChange={(e) => updateFilter('keyword', e.target.value)}
+                                    placeholder="Tìm mã đơn, khách hàng..."
+                                    className={controlClass + ' pl-9'}
+                                />
+                            </div>
                         </div>
 
-                        {/* Trạng thái đơn */}
-                        <select
-                            value={filters.status}
-                            onChange={(e) => updateFilter('status', e.target.value)}
-                            className={controlClass + ' xl:col-span-3'}
-                        >
-                            {orderStatusOptions.map((option) => (
-                                <option key={option.value || 'all'} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="md:col-span-1 xl:col-span-3">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Trạng thái đơn hàng
+                            </label>
 
-                        {/* Trạng thái thanh toán */}
-                        <select
-                            value={filters.payment_status}
-                            onChange={(e) => updateFilter('payment_status', e.target.value)}
-                            className={controlClass + ' xl:col-span-3'}
-                        >
-                            {paymentStatusOptions.map((option) => (
-                                <option key={option.value || 'all'} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                            <select
+                                value={filters.status}
+                                onChange={(e) => updateFilter('status', e.target.value)}
+                                className={controlClass}
+                            >
+                                {orderStatusOptions.map((option) => (
+                                    <option key={option.value || 'all'} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                        {/* Hóa đơn giá trị gia tăng */}
-                        <select
-                            value={filters.vat_invoice_status}
-                            onChange={(e) => updateFilter('vat_invoice_status', e.target.value)}
-                            className={controlClass + ' md:col-span-2 xl:col-span-2'}
-                        >
-                            {vatInvoiceStatusOptions.map((option) => (
-                                <option key={option.value || 'all'} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="md:col-span-1 xl:col-span-2">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Loại khách hàng
+                            </label>
 
-                        {/* Từ ngày */}
-                        <div className="xl:col-span-3">
+                            <select
+                                value={filters.customer_type}
+                                onChange={(e) => updateFilter('customer_type', e.target.value)}
+                                className={controlClass}
+                            >
+                                {customerTypeOptions.map((option) => (
+                                    <option key={option.value || 'all'} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-1 xl:col-span-2">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Trạng thái thanh toán
+                            </label>
+
+                            <select
+                                value={filters.payment_status}
+                                onChange={(e) => updateFilter('payment_status', e.target.value)}
+                                className={controlClass}
+                            >
+                                {paymentStatusOptions.map((option) => (
+                                    <option key={option.value || 'all'} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-1 xl:col-span-2">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Hóa đơn giá trị gia tăng
+                            </label>
+
+                            <select
+                                value={filters.vat_invoice_status}
+                                onChange={(e) => updateFilter('vat_invoice_status', e.target.value)}
+                                className={controlClass}
+                            >
+                                {vatInvoiceStatusOptions.map((option) => (
+                                    <option key={option.value || 'all'} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-1 xl:col-span-2">
                             <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                                 Từ ngày
                             </label>
@@ -315,8 +363,7 @@ export default function AdminOrders() {
                             />
                         </div>
 
-                        {/* Đến ngày */}
-                        <div className="xl:col-span-3">
+                        <div className="md:col-span-1 xl:col-span-2">
                             <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                                 Đến ngày
                             </label>
@@ -329,8 +376,7 @@ export default function AdminOrders() {
                             />
                         </div>
 
-                        {/* Sắp xếp */}
-                        <div className="xl:col-span-3">
+                        <div className="md:col-span-1 xl:col-span-2">
                             <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
                                 Sắp xếp
                             </label>
@@ -348,8 +394,11 @@ export default function AdminOrders() {
                             </select>
                         </div>
 
-                        {/* Đặt lại */}
-                        <div className="flex items-end xl:col-span-3">
+                        <div className="md:col-span-2 xl:col-span-2">
+                            <label className="mb-1.5 block text-xs font-semibold text-transparent select-none">
+                                Làm mới
+                            </label>
+
                             <button
                                 type="button"
                                 onClick={resetFilters}

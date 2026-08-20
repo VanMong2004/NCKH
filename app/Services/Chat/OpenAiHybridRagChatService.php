@@ -279,7 +279,12 @@ class OpenAiHybridRagChatService
             ];
         }
 
-        if (($reference['has_reference_signal'] ?? false) && !($reference['matched'] ?? false) && !in_array($intent, ['small_talk', 'off_topic'], true)) {
+        if (
+            ($reference['has_reference_signal'] ?? false)
+            && !($reference['matched'] ?? false)
+            && in_array($intent, ['clarify', 'unknown'], true)
+            && !in_array($intent, ['small_talk', 'off_topic'], true)
+        ) {
             return [
                 ...$this->dynamicEmptyResponse(
                     'clarify',
@@ -855,12 +860,12 @@ class OpenAiHybridRagChatService
             'khuyen mai', 'giam gia', 'voucher', 'deal', 'sale', 'uu dai',
         ]);
         $hasOrderSignal = $this->containsAny($text, [
-            'don hang', 'ma don', 'order', 'ord-', 'trang thai don', 'van chuyen',
+            'don hang', 'ma don', 'order', 'ord-', 'trang thai don',
         ]);
         $hasStaticKnowledgeSignal = $this->containsAny($text, [
             'chinh sach', 'faq', 'cau hoi thuong gap', 'huong dan', 'huong dan mua hang',
-            'cach mua', 'cach dat hang', 'doi tra', 'hoan tien', 'hoan tra', 'bao hanh',
-            'thanh toan', 'thanh toan khi nhan hang', 'cod', 'giao hang', 'nhan hang',
+            'cach mua', 'cach dat hang', 'mua hang', 'dat hang', 'doi tra', 'hoan tien', 'hoan tra', 'bao hanh',
+            'thanh toan', 'thanh toan khi nhan hang', 'cod', 'giao hang', 'giao nhan', 'van chuyen', 'nhan hang',
             'lien he', 'ho tro', 'gioi thieu', 'ctut unishop', 'CTUT UniShop',
             'cua hang la gi', 'quy dinh',
         ]);
@@ -990,6 +995,20 @@ class OpenAiHybridRagChatService
             && trim((string) ($merged['product_query'] ?? '')) === ''
         ) {
             $merged['intent'] = 'clarify';
+        }
+
+        if (
+            in_array($merged['intent'] ?? null, ['product_price', 'product_stock', 'product_variant'], true)
+            && (
+                !empty($ruleEntities['category_query'])
+                || !empty($ruleEntities['department_query'])
+                || $this->isGenericProductSuggestionQuery((string) ($ruleEntities['original_message'] ?? $message))
+            )
+        ) {
+            $merged['intent'] = 'product_search';
+            $merged['product_query'] = trim((string) ($ruleEntities['product_query'] ?? $merged['product_query'] ?? ''));
+            $merged['category_query'] = $ruleEntities['category_query'] ?? ($merged['category_query'] ?? null);
+            $merged['department_query'] = $ruleEntities['department_query'] ?? ($merged['department_query'] ?? null);
         }
 
         return $merged;
@@ -1244,7 +1263,7 @@ class OpenAiHybridRagChatService
     private function cleanProductQuery(string $text, ?string $categoryQuery, ?string $departmentQuery, ?string $size, ?string $color): string
     {
         $query = ' ' . $text . ' ';
-        $query = preg_replace('/\b(shop oi|cho minh|giup minh|tu van|toi muon hoi|xin hoi|tim|kiem|xem|hoi|mua)\b/u', ' ', $query);
+        $query = preg_replace('/\b(shop oi|cho minh|giup minh|tu van|toi muon hoi|xin hoi|tim|kiem|xem|hoi|mua|lam)\b/u', ' ', $query);
         $query = preg_replace('/\b(gia|bao nhieu|may tien|gia nhieu|nhieu tien|price|con hang|het hang|ton kho|stock|con khong|co san|san hang|con size|con mau|so luong|con bao nhieu)\b/u', ' ', $query);
         $query = preg_replace('/\b(size|mau|color|kich thuoc|bien the|phan loai|mau nao|mau gi|may mau|form|loai nao)\b/u', ' ', $query);
         $query = preg_replace('/\b(duoi|tren|tu|den|nho hon|lon hon|toi da|khong qua)\s+\d+(?:[.,]\d+)?\s*(k|nghin|ngan|trieu|m|vnd|d|dong)?\b/u', ' ', $query);
@@ -1308,8 +1327,23 @@ class OpenAiHybridRagChatService
 
     private function extractSize(string $text): ?string
     {
-        if (preg_match('/\b(size|co|cỡ)?\s*(xs|s|m|l|xl|xxl|xxxl)\b/iu', $text, $matches)) {
-            return mb_strtoupper($matches[2]);
+        if (preg_match('/(?:\b(?:size|co|cỡ)\s*)\b(xs|s|m|l|xl|xxl|xxxl)\b|\b(xs|s|m|l|xl|xxl|xxxl)\b/iu', $text, $matches)) {
+            $size = $matches[1] ?: $matches[2] ?: null;
+
+            if ($size === null) {
+                return null;
+            }
+
+            $standaloneToken = mb_strtolower($size);
+            if (in_array($standaloneToken, ['s', 'm', 'l'], true)) {
+                $normalizedText = ' ' . preg_replace('/\s+/', ' ', trim($text)) . ' ';
+
+                if (!preg_match('/\b(size|co|cỡ)\s*' . preg_quote($standaloneToken, '/') . '\b/iu', $normalizedText)) {
+                    return null;
+                }
+            }
+
+            return mb_strtoupper($size);
         }
 
         return null;
@@ -1318,6 +1352,14 @@ class OpenAiHybridRagChatService
     private function extractColor(string $text): ?string
     {
         foreach (['xanh navy', 'navy', 'xanh', 'do', 'den', 'trang', 'vang', 'tim', 'hong', 'xam', 'nau', 'cam'] as $color) {
+            if ($color === 'tim') {
+                if (preg_match('/\b(mau|color)\s+tim\b|\btim\s+(mau|ao|quan|hoodie|tui|non)\b/u', $text)) {
+                    return $color;
+                }
+
+                continue;
+            }
+
             if (preg_match('/\b' . preg_quote($color, '/') . '\b/u', $text)) {
                 return $color;
             }

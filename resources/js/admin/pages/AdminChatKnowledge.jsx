@@ -550,6 +550,7 @@ function FileTable({ files, expandedId, actionId, onToggleExpand, onToggle, onDe
                             const isExpanded = expandedId === file.id;
                             const isToggling = actionId === `toggle-${file.id}`;
                             const isDeleting = actionId === `delete-${file.id}`;
+                            const isManageable = file.manageable !== false;
 
                             return (
                                 <tr
@@ -590,8 +591,9 @@ function FileTable({ files, expandedId, actionId, onToggleExpand, onToggle, onDe
                                             <button
                                                 type="button"
                                                 onClick={() => onToggle(file)}
-                                                disabled={isToggling || isDeleting}
+                                                disabled={!isManageable || isToggling || isDeleting}
                                                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                title={isManageable ? '' : 'File này đang được đọc trực tiếp từ OpenAI Vector Store, chưa có bản ghi local để bật/tắt.'}
                                             >
                                                 {isToggling ? (
                                                     <Loader2 size={15} className="animate-spin" />
@@ -607,8 +609,9 @@ function FileTable({ files, expandedId, actionId, onToggleExpand, onToggle, onDe
                                             <button
                                                 type="button"
                                                 onClick={() => onDelete(file)}
-                                                disabled={isToggling || isDeleting}
+                                                disabled={!isManageable || isToggling || isDeleting}
                                                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 px-3 text-xs font-extrabold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-500/30 dark:text-red-300 dark:hover:bg-red-500/10"
+                                                title={isManageable ? '' : 'File này đang được đọc trực tiếp từ OpenAI Vector Store, chưa có bản ghi local để xóa từ trang này.'}
                                             >
                                                 {isDeleting ? (
                                                     <Loader2 size={15} className="animate-spin" />

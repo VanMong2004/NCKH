@@ -14,7 +14,11 @@ class ContextualReferenceResolverTest extends TestCase
     {
         parent::setUp();
 
+        Schema::disableForeignKeyConstraints();
+        Schema::dropIfExists('chat_conversation_summaries');
+        Schema::dropIfExists('chat_messages');
         Schema::dropIfExists('chat_conversations');
+        Schema::enableForeignKeyConstraints();
 
         Schema::create('chat_conversations', function (Blueprint $table) {
             $table->id();
@@ -100,5 +104,59 @@ class ContextualReferenceResolverTest extends TestCase
 
         $this->assertFalse($result['matched']);
         $this->assertFalse($result['has_reference_signal']);
+    }
+
+    public function test_missing_ordinal_does_not_fallback_to_single_known_promotion(): void
+    {
+        $conversation = ChatConversation::query()->create([
+            'title' => 'AI',
+            'status' => 'active',
+            'last_message_at' => now(),
+            'context_state' => [
+                'topics' => [
+                    'promotion' => [
+                        'last_list' => [
+                            ['type' => 'promotion', 'position' => 1, 'id' => 14, 'name' => 'Flash Sale cuối tuần CTUT'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $result = app(ContextualReferenceResolver::class)->resolve($conversation, 'cac san pham dot khuyen mai 2');
+
+        $this->assertFalse($result['matched']);
+        $this->assertTrue($result['has_reference_signal']);
+        $this->assertTrue($result['ambiguous']);
+    }
+
+    public function test_promotion_ordinal_does_not_fallback_to_product_list(): void
+    {
+        $conversation = ChatConversation::query()->create([
+            'title' => 'AI',
+            'status' => 'active',
+            'last_message_at' => now(),
+            'context_state' => [
+                'topics' => [
+                    'promotion' => [
+                        'last_list' => [
+                            ['type' => 'promotion', 'position' => 1, 'id' => 14, 'name' => 'Flash Sale cuối tuần CTUT'],
+                        ],
+                    ],
+                    'product' => [
+                        'last_list' => [
+                            ['type' => 'product', 'position' => 1, 'id' => 101, 'name' => 'Ly giữ nhiệt CTUT'],
+                            ['type' => 'product', 'position' => 2, 'id' => 102, 'name' => 'Sticker CTUT'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $result = app(ContextualReferenceResolver::class)->resolve($conversation, 'cac san pham trong khuyen mai 2');
+
+        $this->assertFalse($result['matched']);
+        $this->assertTrue($result['has_reference_signal']);
+        $this->assertTrue($result['ambiguous']);
     }
 }

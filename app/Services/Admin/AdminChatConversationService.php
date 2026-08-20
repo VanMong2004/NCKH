@@ -5,12 +5,25 @@ namespace App\Services\Admin;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 class AdminChatConversationService
 {
     public function statistics(): array
     {
+        if (!$this->hasChatMessageTable()) {
+            return [
+                'total_sessions' => ChatConversation::query()->count(),
+                'active_sessions' => ChatConversation::query()->where('status', 'active')->count(),
+                'expired_sessions' => ChatConversation::query()->where('status', 'expired')->count(),
+                'closed_sessions' => ChatConversation::query()->where('status', 'closed')->count(),
+                'total_messages' => 0,
+                'user_messages' => 0,
+                'assistant_messages' => 0,
+            ];
+        }
+
         return [
             'total_sessions' => ChatConversation::query()->count(),
             'active_sessions' => ChatConversation::query()->where('status', 'active')->count(),
@@ -25,8 +38,11 @@ class AdminChatConversationService
     public function list(array $filters = [])
     {
         $query = ChatConversation::query()
-            ->with(['summary', 'user:id,name,email'])
-            ->withCount('messages');
+            ->with(['summary', 'user:id,name,email']);
+
+        if ($this->hasChatMessageTable()) {
+            $query->withCount('messages');
+        }
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -75,27 +91,32 @@ class AdminChatConversationService
     {
         $conversation = ChatConversation::query()
             ->with(['summary', 'user:id,name,email'])
-            ->withCount('messages')
             ->findOrFail($id);
 
-        $messages = ChatMessage::query()
-            ->select(['id', 'conversation_id', 'parent_message_id', 'role', 'content', 'sources', 'tool_calls', 'metadata', 'created_at'])
-            ->where('conversation_id', $conversation->id)
-            ->orderBy('id')
-            ->limit(100)
-            ->get()
-            ->map(fn (ChatMessage $message) => [
-                'id' => $message->id,
-                'parent_message_id' => $message->parent_message_id,
-                'role' => $message->role,
-                'content' => $message->content,
-                'sources' => $message->sources ?? [],
-                'tool_calls' => $message->tool_calls ?? [],
-                'metadata' => $message->metadata ?? [],
-                'products' => data_get($message->metadata, 'products', []),
-                'created_at' => optional($message->created_at)->format('d/m/Y H:i'),
-            ])
-            ->values();
+        if ($this->hasChatMessageTable()) {
+            $conversation->loadCount('messages');
+
+            $messages = ChatMessage::query()
+                ->select(['id', 'conversation_id', 'parent_message_id', 'role', 'content', 'sources', 'tool_calls', 'metadata', 'created_at'])
+                ->where('conversation_id', $conversation->id)
+                ->orderBy('id')
+                ->limit(100)
+                ->get()
+                ->map(fn (ChatMessage $message) => [
+                    'id' => $message->id,
+                    'parent_message_id' => $message->parent_message_id,
+                    'role' => $message->role,
+                    'content' => $message->content,
+                    'sources' => $message->sources ?? [],
+                    'tool_calls' => $message->tool_calls ?? [],
+                    'metadata' => $message->metadata ?? [],
+                    'products' => data_get($message->metadata, 'products', []),
+                    'created_at' => optional($message->created_at)->format('d/m/Y H:i'),
+                ])
+                ->values();
+        } else {
+            $messages = collect();
+        }
 
         return [
             ...$this->formatConversation($conversation),
@@ -120,7 +141,9 @@ class AdminChatConversationService
         }
 
         $conversation->load(['summary', 'user:id,name,email']);
-        $conversation->loadCount('messages');
+        if ($this->hasChatMessageTable()) {
+            $conversation->loadCount('messages');
+        }
 
         return $this->formatConversation($conversation);
     }
@@ -143,5 +166,10 @@ class AdminChatConversationService
             'expired_at' => optional($conversation->expired_at)->format('d/m/Y H:i'),
             'created_at' => optional($conversation->created_at)->format('d/m/Y H:i'),
         ];
+    }
+
+    private function hasChatMessageTable(): bool
+    {
+        return Schema::hasTable('chat_messages');
     }
 }

@@ -68,6 +68,7 @@ export function mapAdminChatKnowledgeFile(item = {}) {
         vectorStoreId: item.vector_store_id || '',
         vectorStoreFileId: item.vector_store_file_id || '',
         documentKey: item.document_key || '',
+        manageable: item.manageable !== false,
 
         status: item.status || 'pending',
         statusText: getKnowledgeStatusText(item.status || 'pending'),

@@ -16,16 +16,45 @@ class GuestOrderService
 
     public function lookup(array $data): array
     {
-        $order = Order::with($this->relations())
-            ->whereNull('user_id')
-            ->where('guest_lookup_token', $this->guestCheckoutGuardService->normalizeLookupToken($data['lookup_token'] ?? ''))
-            ->first();
+        $lookupType = (string) ($data['lookup_type'] ?? 'lookup_token');
+
+        $query = Order::with($this->relations())
+            ->whereNull('user_id');
+
+        if ($lookupType === 'phone_email') {
+            $phone = $this->normalizePhone($data['phone'] ?? '');
+            $email = $this->normalizeEmail($data['email'] ?? '');
+
+            $query
+                ->where(function ($builder) use ($phone) {
+                    $builder->where('guest_phone', $phone)
+                        ->orWhere('shipping_phone', $phone);
+                })
+                ->whereRaw('LOWER(COALESCE(guest_email, "")) = ?', [$email]);
+        } elseif ($lookupType === 'order_code_email') {
+            $orderCode = trim((string) ($data['order_code'] ?? ''));
+            $email = $this->normalizeEmail($data['email'] ?? '');
+
+            $query
+                ->where('order_code', $orderCode)
+                ->whereRaw('LOWER(COALESCE(guest_email, "")) = ?', [$email]);
+        } else {
+            $query->where(
+                'guest_lookup_token',
+                $this->guestCheckoutGuardService->normalizeLookupToken($data['lookup_token'] ?? '')
+            );
+        }
+
+        $order = $query->latest('id')->first();
 
         if (!$order) {
             throw new RuntimeException('Không tìm thấy đơn hàng', 404);
         }
 
-        return $this->formatOrder($order);
+        return [
+            ...$this->formatOrder($order),
+            'lookup_type' => $lookupType,
+        ];
     }
 
     public function showByCode($user, ?string $guestToken, ?string $guestLookupToken, string $orderCode)
@@ -377,5 +406,15 @@ class GuestOrderService
             ->firstWhere('new_status', $status);
 
         return optional($history?->created_at)->format('d/m/Y H:i');
+    }
+
+    private function normalizePhone(?string $value): string
+    {
+        return preg_replace('/\D+/', '', (string) $value) ?: '';
+    }
+
+    private function normalizeEmail(?string $value): string
+    {
+        return mb_strtolower(trim((string) $value));
     }
 }

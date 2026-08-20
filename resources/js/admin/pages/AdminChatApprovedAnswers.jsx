@@ -91,14 +91,18 @@ export default function AdminChatApprovedAnswers() {
         try {
             const result = await adminChatApprovedAnswerService.getAnswers(filters);
             setAnswers(result.answers || []);
-            setMeta(result.meta || meta);
+            setMeta(result.meta || {
+                currentPage: 1,
+                lastPage: 1,
+                total: 0,
+            });
         } catch (error) {
             toast.error(error.message || 'Không thể tải thư viện câu trả lời');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [filters, meta]);
+    }, [filters]);
 
     useEffect(() => {
         loadAnswers();
@@ -234,9 +238,9 @@ export default function AdminChatApprovedAnswers() {
                             <FileCheck2 size={22} />
                         </div>
                         <div>
-                            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Approved Answers AI</h1>
+                            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">Thư viện câu trả lời AI</h1>
                             <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                                Quản lý thư viện câu trả lời tĩnh đã duyệt để chatbot ưu tiên tái sử dụng trước khi gọi file_search.
+                                Quản lý các câu trả lời tĩnh đã kiểm duyệt để chatbot ưu tiên tái sử dụng trước khi tra cứu tài liệu.
                             </p>
                         </div>
                     </div>
@@ -267,8 +271,8 @@ export default function AdminChatApprovedAnswers() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard label="Tổng câu trả lời" value={summary.total} tone="blue" icon={Bot} desc="Tất cả bản ghi thư viện" />
                 <StatCard label="Đã duyệt" value={summary.approved} tone="emerald" icon={CheckCircle2} desc="Sẵn sàng cho chatbot" />
-                <StatCard label="Đang bật" value={summary.active} tone="violet" icon={ToggleRight} desc="Được phép reuse" />
-                <StatCard label="Lượt tái sử dụng" value={summary.totalUse} tone="amber" icon={PencilLine} desc="Tổng use_count hiện có" />
+                <StatCard label="Đang bật" value={summary.active} tone="violet" icon={ToggleRight} desc="Được phép chatbot sử dụng" />
+                <StatCard label="Lượt tái sử dụng" value={summary.totalUse} tone="amber" icon={PencilLine} desc="Tổng số lần đã dùng" />
             </div>
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
@@ -384,7 +388,7 @@ export default function AdminChatApprovedAnswers() {
                             </div>
 
                             <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm dark:border-slate-800">
-                                <span className="text-slate-500">Trang {meta.currentPage}/{meta.lastPage} - {meta.total} bản ghi</span>
+                                <span className="text-slate-500">Trang {meta.currentPage}/{meta.lastPage} - {meta.total} mục</span>
                                 <div className="flex gap-2">
                                     <button type="button" disabled={meta.currentPage <= 1} onClick={() => updateFilter('page', meta.currentPage - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 font-bold disabled:opacity-50 dark:border-slate-800">
                                         Trước
@@ -426,12 +430,12 @@ export default function AdminChatApprovedAnswers() {
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Intent</label>
+                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Loại intent</label>
                                 <input value={form.intent} onChange={(event) => updateForm('intent', event.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Intent signature</label>
-                                <input value={form.intentSignature} onChange={(event) => updateForm('intentSignature', event.target.value)} className={inputClass} placeholder="Tùy chọn" />
+                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Chữ ký intent</label>
+                                <input value={form.intentSignature} onChange={(event) => updateForm('intentSignature', event.target.value)} className={inputClass} placeholder="Không bắt buộc" />
                             </div>
                         </div>
 
@@ -463,11 +467,11 @@ export default function AdminChatApprovedAnswers() {
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Source type</label>
+                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Loại nguồn gốc</label>
                                 <input value={form.sourceType} onChange={(event) => updateForm('sourceType', event.target.value)} className={inputClass} placeholder="VD: chat_message" />
                             </div>
                             <div>
-                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Source reference</label>
+                                <label className="mb-1.5 block text-sm font-bold text-slate-700 dark:text-slate-200">Mã tham chiếu nguồn</label>
                                 <input value={form.sourceReference} onChange={(event) => updateForm('sourceReference', event.target.value)} className={inputClass} placeholder="VD: chat_message:15" />
                             </div>
                         </div>
@@ -475,9 +479,9 @@ export default function AdminChatApprovedAnswers() {
 
                     {selected ? (
                         <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
-                            <p><span className="font-bold">use_count:</span> {selected.useCount}</p>
-                            <p><span className="font-bold">last_used_at:</span> {selected.lastUsedAt || '-'}</p>
-                            <p><span className="font-bold">updated_at:</span> {selected.updatedAt || '-'}</p>
+                            <p><span className="font-bold">Số lần đã dùng:</span> {selected.useCount}</p>
+                            <p><span className="font-bold">Lần dùng gần nhất:</span> {selected.lastUsedAt || '-'}</p>
+                            <p><span className="font-bold">Cập nhật lúc:</span> {selected.updatedAt || '-'}</p>
                         </div>
                     ) : null}
 
@@ -536,7 +540,7 @@ function EmptyState() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                 <Bot size={26} />
             </div>
-            <h3 className="mt-4 text-base font-extrabold text-slate-900 dark:text-white">Chưa có approved answer</h3>
+            <h3 className="mt-4 text-base font-extrabold text-slate-900 dark:text-white">Chưa có câu trả lời duyệt sẵn</h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
                 Tạo thư viện câu trả lời đã kiểm duyệt để chatbot tái sử dụng cho FAQ, chính sách và hướng dẫn tĩnh.
             </p>

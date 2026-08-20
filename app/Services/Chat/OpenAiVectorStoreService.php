@@ -4,8 +4,8 @@ namespace App\Services\Chat;
 
 use App\Models\ChatKnowledgeFile;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -14,30 +14,59 @@ class OpenAiVectorStoreService
 {
     public function listKnowledgeFiles(array $filters = [])
     {
-        $query = ChatKnowledgeFile::query()
-            ->latest();
+        $vectorStoreId = config('services.openai.vector_store_id');
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (!$vectorStoreId) {
+            throw new RuntimeException('Chưa cấu hình OPENAI_VECTOR_STORE_ID', 500);
         }
 
-        if (array_key_exists('is_active', $filters) && $filters['is_active'] !== null && $filters['is_active'] !== '') {
-            $query->where('is_active', (bool) $filters['is_active']);
-        }
+        $remoteFiles = $this->listOpenAiVectorStoreFiles($vectorStoreId);
+        $localFiles = ChatKnowledgeFile::query()
+            ->get()
+            ->keyBy(fn (ChatKnowledgeFile $file) => (string) ($file->openai_file_id ?: $file->vector_store_file_id ?: $file->id));
 
-        if (!empty($filters['keyword'])) {
-            $keyword = trim($filters['keyword']);
+        $items = collect($remoteFiles)
+            ->map(function (array $remoteFile) use ($localFiles, $vectorStoreId) {
+                $openaiFileId = (string) ($remoteFile['file_id'] ?? '');
+                $vectorStoreFileId = (string) ($remoteFile['id'] ?? '');
+                $local = $localFiles->get($openaiFileId)
+                    ?? $localFiles->get($vectorStoreFileId);
 
-            $query->where(function ($q) use ($keyword) {
-                $q->where('title', 'like', "%{$keyword}%")
-                    ->orWhere('original_name', 'like', "%{$keyword}%")
-                    ->orWhere('description', 'like', "%{$keyword}%");
+                return $this->formatKnowledgeFileFromSources($remoteFile, $vectorStoreId, $local);
             });
-        }
 
-        return $query->get()
-            ->map(fn ($file) => $this->formatKnowledgeFile($file))
+        $items = $items
+            ->filter(function (array $item) use ($filters) {
+                if (!empty($filters['status']) && ($item['status'] ?? null) !== $filters['status']) {
+                    return false;
+                }
+
+                if (array_key_exists('is_active', $filters) && $filters['is_active'] !== null && $filters['is_active'] !== '') {
+                    if ((bool) ($item['is_active'] ?? false) !== (bool) $filters['is_active']) {
+                        return false;
+                    }
+                }
+
+                if (!empty($filters['keyword'])) {
+                    $keyword = Str::lower(trim((string) $filters['keyword']));
+                    $haystack = Str::lower(implode(' ', array_filter([
+                        $item['title'] ?? '',
+                        $item['original_name'] ?? '',
+                        $item['description'] ?? '',
+                        $item['openai_file_id'] ?? '',
+                    ])));
+
+                    if ($keyword !== '' && !str_contains($haystack, $keyword)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            ->sortByDesc(fn (array $item) => strtotime($this->normalizeDateForSort($item['updated_at'] ?? $item['created_at'] ?? null)))
             ->values();
+
+        return $items;
     }
 
     public function showKnowledgeFile(int $id): array
@@ -221,6 +250,45 @@ class OpenAiVectorStoreService
 
             'created_at' => optional($file->created_at)->format('d/m/Y H:i'),
             'updated_at' => optional($file->updated_at)->format('d/m/Y H:i'),
+            'manageable' => true,
+        ];
+    }
+
+    private function formatKnowledgeFileFromSources(array $remoteFile, string $vectorStoreId, ?ChatKnowledgeFile $localFile = null): array
+    {
+        $openAiFile = $remoteFile['openai_file'] ?? [];
+        $openaiFileId = $remoteFile['file_id'] ?? $remoteFile['id'] ?? data_get($openAiFile, 'id');
+        $filename = data_get($openAiFile, 'filename')
+            ?: data_get($remoteFile, 'filename')
+            ?: ($localFile?->original_name ?: 'Tài liệu AI');
+        $localTitle = trim((string) ($localFile?->title ?? ''));
+        $normalizedLocalTitle = Str::of($localTitle)->lower()->ascii()->value();
+        $fallbackTitle = pathinfo($filename, PATHINFO_FILENAME);
+        $title = $localTitle !== '' && !in_array($normalizedLocalTitle, ['tai lieu ai', 'tai lieu tri thuc'], true)
+            ? $localTitle
+            : $fallbackTitle;
+        $createdAt = $this->formatUnixTimestamp(data_get($openAiFile, 'created_at'))
+            ?: optional($localFile?->created_at)->format('d/m/Y H:i');
+        $updatedAt = optional($localFile?->updated_at)->format('d/m/Y H:i') ?: $createdAt;
+
+        return [
+            'id' => $localFile?->id ?: 'remote:' . ($remoteFile['id'] ?? $openaiFileId ?? Str::uuid()->toString()),
+            'title' => $title,
+            'description' => $localFile?->description,
+            'original_name' => $filename,
+            'mime_type' => data_get($openAiFile, 'mime_type', $localFile?->mime_type),
+            'size' => (int) (data_get($openAiFile, 'bytes') ?? $localFile?->size ?? 0),
+            'openai_file_id' => $openaiFileId,
+            'vector_store_id' => $localFile?->vector_store_id ?: $vectorStoreId,
+            'vector_store_file_id' => $localFile?->vector_store_file_id ?: ($remoteFile['id'] ?? $openaiFileId),
+            'status' => $localFile?->status ?: $this->normalizeOpenAiStatus($remoteFile['status'] ?? 'processing'),
+            'error_message' => $localFile?->error_message,
+            'is_active' => $localFile?->is_active ?? true,
+            'uploaded_by' => $localFile?->uploaded_by,
+            'document_key' => data_get($localFile?->metadata, 'document_key'),
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+            'manageable' => (bool) $localFile,
         ];
     }
 
@@ -338,6 +406,81 @@ class OpenAiVectorStoreService
                 ->json();
         } catch (Throwable $e) {
             throw new RuntimeException('Không thể kiểm tra trạng thái file trên OpenAI: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function listOpenAiVectorStoreFiles(string $vectorStoreId): array
+    {
+        $apiKey = config('services.openai.api_key');
+        $baseUrl = rtrim(config('services.openai.base_url'), '/');
+
+        if (!$apiKey) {
+            throw new RuntimeException('Chưa cấu hình OPENAI_API_KEY', 500);
+        }
+
+        try {
+            $response = Http::withToken($apiKey)
+                ->acceptJson()
+                ->timeout(60)
+                ->get($baseUrl . "/vector_stores/{$vectorStoreId}/files")
+                ->throw()
+                ->json();
+        } catch (Throwable $e) {
+            throw new RuntimeException('Không thể tải danh sách tài liệu từ OpenAI Vector Store: ' . $e->getMessage(), 500);
+        }
+
+        $items = collect($response['data'] ?? [])
+            ->map(function (array $item) use ($baseUrl, $apiKey) {
+                $openAiFile = null;
+                $fileId = $item['file_id'] ?? $item['id'] ?? null;
+
+                if ($fileId) {
+                    try {
+                        $openAiFile = Http::withToken($apiKey)
+                            ->acceptJson()
+                            ->timeout(30)
+                            ->get($baseUrl . "/files/{$fileId}")
+                            ->throw()
+                            ->json();
+                    } catch (Throwable) {
+                        $openAiFile = null;
+                    }
+                }
+
+                $item['openai_file'] = $openAiFile;
+
+                return $item;
+            })
+            ->filter(function (array $item) {
+                $openAiFile = $item['openai_file'] ?? [];
+
+                return !empty($openAiFile['id']) && !empty($openAiFile['filename']);
+            })
+            ->values()
+            ->toArray();
+
+        return $items;
+    }
+
+    private function formatUnixTimestamp($timestamp): ?string
+    {
+        if (!is_numeric($timestamp)) {
+            return null;
+        }
+
+        return now()->setTimestamp((int) $timestamp)->format('d/m/Y H:i');
+    }
+
+    private function normalizeDateForSort(?string $value): string
+    {
+        if (!$value) {
+            return '1970-01-01 00:00:00';
+        }
+
+        try {
+            return \Carbon\Carbon::createFromFormat('d/m/Y H:i', $value)->format('Y-m-d H:i:s');
+        } catch (Throwable) {
+            return '1970-01-01 00:00:00';
         }
     }
 

@@ -24,12 +24,55 @@ class GuestOrderController extends Controller
     {
         try {
             $data = $request->validate([
-                'lookup_token' => 'required|string|max:64',
+                'lookup_type' => 'nullable|string|in:lookup_token,phone_email,order_code_email',
+                'lookup_token' => 'nullable|string|max:64',
+                'phone' => 'nullable|string|max:20',
+                'email' => 'nullable|email|max:255',
+                'order_code' => 'nullable|string|max:50',
             ], [
-                'lookup_token.required' => 'Vui lòng nhập mã tra cứu đơn hàng.',
+                'email.email' => 'Email không hợp lệ.',
             ]);
 
+            $lookupType = (string) ($data['lookup_type'] ?? 'lookup_token');
+
+            if ($lookupType === 'phone_email') {
+                $errors = [];
+
+                if (trim((string) ($data['phone'] ?? '')) === '') {
+                    $errors['phone'] = ['Vui lòng nhập số điện thoại đặt hàng.'];
+                }
+
+                if (trim((string) ($data['email'] ?? '')) === '') {
+                    $errors['email'] = ['Vui lòng nhập email đặt hàng.'];
+                }
+
+                if (!empty($errors)) {
+                    throw ValidationException::withMessages($errors);
+                }
+            } elseif ($lookupType === 'order_code_email') {
+                $errors = [];
+
+                if (trim((string) ($data['order_code'] ?? '')) === '') {
+                    $errors['order_code'] = ['Vui lòng nhập mã đơn hàng.'];
+                }
+
+                if (trim((string) ($data['email'] ?? '')) === '') {
+                    $errors['email'] = ['Vui lòng nhập email đặt hàng.'];
+                }
+
+                if (!empty($errors)) {
+                    throw ValidationException::withMessages($errors);
+                }
+            } else {
+                if (trim((string) ($data['lookup_token'] ?? '')) === '') {
+                    throw ValidationException::withMessages([
+                        'lookup_token' => ['Vui lòng nhập mã tra cứu đơn hàng.'],
+                    ]);
+                }
+            }
+
             $data['lookup_token'] = $this->guestCheckoutGuardService->normalizeLookupToken($data['lookup_token'] ?? '');
+            $data['lookup_type'] = $lookupType;
 
             $order = $this->service->lookup($data);
 

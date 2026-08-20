@@ -15,7 +15,7 @@ const pageTitles = [
     { path: '/admin/reviews', title: 'Đánh giá' },
     { path: '/admin/site-content', title: 'Nội dung site' },
     { path: '/admin/chat-knowledge', title: 'Tài liệu AI' },
-    { path: '/admin/chat-approved-answers', title: 'Approved Answers AI' },
+    { path: '/admin/chat-approved-answers', title: 'Thư viện câu trả lời AI' },
     { path: '/admin/chat-conversations', title: 'Hội thoại AI' },
     { path: '/admin/analytics', title: 'Thống kê' },
 ];

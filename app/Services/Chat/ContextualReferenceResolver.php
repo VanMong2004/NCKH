@@ -27,6 +27,9 @@ class ContextualReferenceResolver
             ];
         }
 
+        $promotionOrdinal = $this->extractOrdinal($normalized);
+        $hasPromotionSignal = $this->hasPromotionTopicSignal($normalized);
+
         $promotionMatch = $this->resolveTopicReference($normalized, data_get($state, 'topics.promotion.last_list', []), 'promotion');
         if ($promotionMatch['matched'] ?? false) {
             return [
@@ -37,6 +40,15 @@ class ContextualReferenceResolver
             ];
         }
 
+        if ($hasPromotionSignal && $promotionOrdinal !== null) {
+            return [
+                'matched' => false,
+                'has_reference_signal' => true,
+                'normalized_message' => $normalized,
+                'ambiguous' => true,
+            ];
+        }
+
         $productMatch = $this->resolveTopicReference($normalized, data_get($state, 'topics.product.last_list', []), 'product');
         if ($productMatch['matched'] ?? false) {
             return [
@@ -44,6 +56,15 @@ class ContextualReferenceResolver
                 'has_reference_signal' => true,
                 'normalized_message' => $normalized,
                 'source' => 'conversation_memory',
+            ];
+        }
+
+        if ($this->extractOrdinal($normalized) !== null) {
+            return [
+                'matched' => false,
+                'has_reference_signal' => true,
+                'normalized_message' => $normalized,
+                'ambiguous' => true,
             ];
         }
 
@@ -71,7 +92,9 @@ class ContextualReferenceResolver
             return ['matched' => false];
         }
 
-        if ($ordinal = $this->extractOrdinal($normalizedMessage)) {
+        $ordinal = $this->extractOrdinal($normalizedMessage);
+
+        if ($ordinal !== null) {
             foreach ($entities as $entity) {
                 if ((int) ($entity['position'] ?? 0) === $ordinal) {
                     return [
@@ -85,6 +108,12 @@ class ContextualReferenceResolver
                     ];
                 }
             }
+
+            return [
+                'matched' => false,
+                'reference_type' => 'ordinal_not_found',
+                'confidence' => 0.0,
+            ];
         }
 
         $matchingByName = collect($entities)->first(function (array $entity) use ($normalizedMessage) {
@@ -219,10 +248,6 @@ class ContextualReferenceResolver
     {
         return $this->containsAny($normalizedMessage, [
             'dot',
-            'chuong trinh',
-            'khuyen mai',
-            'san pham',
-            'sp',
             'cai',
             'thu',
             'so',
@@ -232,7 +257,22 @@ class ContextualReferenceResolver
             'tren',
             'tiep theo',
             'luc nay',
+            'cai do',
+            'san pham do',
+            'dot do',
+            'chuong trinh do',
+            'con cai nao',
+            'con san pham nao',
         ]) || $this->extractOrdinal($normalizedMessage) !== null;
+    }
+
+    private function hasPromotionTopicSignal(string $normalizedMessage): bool
+    {
+        return $this->containsAny($normalizedMessage, [
+            'khuyen mai',
+            'chuong trinh',
+            'dot',
+        ]);
     }
 
     private function extractOrdinal(string $normalizedMessage): ?int

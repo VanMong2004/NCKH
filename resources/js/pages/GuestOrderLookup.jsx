@@ -10,8 +10,30 @@ import { cancelReasonText } from '../services/mappers/orderMapper';
 import ConfirmDialog from '../admin/components/ui/ConfirmDialog';
 
 const EMPTY_FORM = {
+    lookup_type: 'lookup_token',
     lookup_token: '',
+    phone: '',
+    email: '',
+    order_code: '',
 };
+
+const LOOKUP_OPTIONS = [
+    {
+        value: 'lookup_token',
+        label: 'Mã tra cứu',
+        description: 'Dùng mã tra cứu được cấp riêng cho từng đơn.',
+    },
+    {
+        value: 'phone_email',
+        label: 'SĐT + email',
+        description: 'Tra cứu bằng số điện thoại và email đặt hàng.',
+    },
+    {
+        value: 'order_code_email',
+        label: 'Mã đơn + email',
+        description: 'Tra cứu bằng mã đơn hàng và email đặt hàng.',
+    },
+];
 
 export default function GuestOrderLookup() {
     const navigate = useNavigate();
@@ -46,7 +68,11 @@ export default function GuestOrderLookup() {
 
         if (lookupToken) {
             setForm({
+                lookup_type: 'lookup_token',
                 lookup_token: lookupToken,
+                phone: '',
+                email: '',
+                order_code: '',
             });
         }
     }, [searchParams]);
@@ -59,6 +85,7 @@ export default function GuestOrderLookup() {
         }
 
         handleLookup({
+            lookup_type: 'lookup_token',
             lookup_token: normalizeLookupToken(form.lookup_token),
         });
     }, [searchParams, form.lookup_token, loading, lookupResult]);
@@ -79,7 +106,23 @@ export default function GuestOrderLookup() {
     function validateForm() {
         const nextErrors = {};
 
-        if (!normalizeLookupToken(form.lookup_token)) {
+        if (form.lookup_type === 'phone_email') {
+            if (!normalizePhone(form.phone)) {
+                nextErrors.phone = 'Vui lòng nhập số điện thoại đặt hàng.';
+            }
+
+            if (!normalizeEmail(form.email)) {
+                nextErrors.email = 'Vui lòng nhập email đặt hàng.';
+            }
+        } else if (form.lookup_type === 'order_code_email') {
+            if (!String(form.order_code || '').trim()) {
+                nextErrors.order_code = 'Vui lòng nhập mã đơn hàng.';
+            }
+
+            if (!normalizeEmail(form.email)) {
+                nextErrors.email = 'Vui lòng nhập email đặt hàng.';
+            }
+        } else if (!normalizeLookupToken(form.lookup_token)) {
             nextErrors.lookup_token = 'Vui lòng nhập mã tra cứu đơn hàng.';
         }
 
@@ -94,9 +137,7 @@ export default function GuestOrderLookup() {
             return;
         }
 
-        await handleLookup({
-            lookup_token: normalizeLookupToken(form.lookup_token),
-        });
+        await handleLookup(buildLookupPayload(form));
     }
 
     async function handleLookup(payload) {
@@ -134,6 +175,7 @@ export default function GuestOrderLookup() {
         }
 
         await handleLookup({
+            lookup_type: 'lookup_token',
             lookup_token: lookupToken,
         });
     }
@@ -247,21 +289,86 @@ export default function GuestOrderLookup() {
                                 Tra cứu đơn hàng dành cho khách
                             </h1>
                             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                                Nhập mã đơn hàng và mã tra cứu để xem chi tiết đơn, thanh toán hoặc hủy đơn khi còn hợp lệ.
-                                Mã tra cứu được cấp riêng cho từng đơn nhằm hạn chế lộ thông tin đơn hàng.
+                                Bạn có thể tra cứu bằng mã tra cứu, số điện thoại kèm email, hoặc mã đơn hàng kèm email.
+                                Mã tra cứu vẫn được giữ nguyên để thanh toán lại hoặc hủy đơn khi còn hợp lệ.
                             </p>
                         </div>
                     </div>
 
                     <form className="mt-6 grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
-                        <InputField
-                            label="Mã tra cứu"
-                            value={form.lookup_token}
-                            onChange={(value) => updateField('lookup_token', normalizeLookupToken(value))}
-                            placeholder="Ví dụ: GLK-AB12CD34EF"
-                            error={errors.lookup_token}
-                            icon={KeyRound}
-                        />
+                        <div className="lg:col-span-2">
+                            <span className="mb-2 block text-sm font-bold text-blue-950 dark:text-white">Cách tra cứu</span>
+                            <div className="grid gap-3 md:grid-cols-3">
+                                {LOOKUP_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => updateField('lookup_type', option.value)}
+                                        className={`rounded-2xl border px-4 py-3 text-left transition ${
+                                            form.lookup_type === option.value
+                                                ? 'border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-500/50 dark:bg-blue-950/30 dark:text-white'
+                                                : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300'
+                                        }`}
+                                    >
+                                        <div className="font-bold">{option.label}</div>
+                                        <div className="mt-1 text-xs leading-5 opacity-80">{option.description}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {form.lookup_type === 'lookup_token' ? (
+                            <InputField
+                                label="Mã tra cứu"
+                                value={form.lookup_token}
+                                onChange={(value) => updateField('lookup_token', normalizeLookupToken(value))}
+                                placeholder="Ví dụ: GLK-AB12CD34EF"
+                                error={errors.lookup_token}
+                                icon={KeyRound}
+                            />
+                        ) : null}
+
+                        {form.lookup_type === 'phone_email' ? (
+                            <>
+                                <InputField
+                                    label="Số điện thoại"
+                                    value={form.phone}
+                                    onChange={(value) => updateField('phone', value)}
+                                    placeholder="Ví dụ: 0909123456"
+                                    error={errors.phone}
+                                    icon={Search}
+                                />
+                                <InputField
+                                    label="Email đặt hàng"
+                                    value={form.email}
+                                    onChange={(value) => updateField('email', value)}
+                                    placeholder="Ví dụ: nguyenvana@gmail.com"
+                                    error={errors.email}
+                                    icon={Search}
+                                />
+                            </>
+                        ) : null}
+
+                        {form.lookup_type === 'order_code_email' ? (
+                            <>
+                                <InputField
+                                    label="Mã đơn hàng"
+                                    value={form.order_code}
+                                    onChange={(value) => updateField('order_code', value.toUpperCase())}
+                                    placeholder="Ví dụ: ORD-20260820-001"
+                                    error={errors.order_code}
+                                    icon={Search}
+                                />
+                                <InputField
+                                    label="Email đặt hàng"
+                                    value={form.email}
+                                    onChange={(value) => updateField('email', value)}
+                                    placeholder="Ví dụ: nguyenvana@gmail.com"
+                                    error={errors.email}
+                                    icon={Search}
+                                />
+                            </>
+                        ) : null}
 
                         <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
                             <button
@@ -564,6 +671,37 @@ function StatusBadge({ text, status }) {
 
 function normalizeLookupToken(value) {
     return String(value || '').trim().toUpperCase();
+}
+
+function normalizePhone(value) {
+    return String(value || '').replace(/\D+/g, '');
+}
+
+function normalizeEmail(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function buildLookupPayload(form) {
+    if (form.lookup_type === 'phone_email') {
+        return {
+            lookup_type: 'phone_email',
+            phone: normalizePhone(form.phone),
+            email: normalizeEmail(form.email),
+        };
+    }
+
+    if (form.lookup_type === 'order_code_email') {
+        return {
+            lookup_type: 'order_code_email',
+            order_code: String(form.order_code || '').trim().toUpperCase(),
+            email: normalizeEmail(form.email),
+        };
+    }
+
+    return {
+        lookup_type: 'lookup_token',
+        lookup_token: normalizeLookupToken(form.lookup_token),
+    };
 }
 
 function formatMoney(value) {

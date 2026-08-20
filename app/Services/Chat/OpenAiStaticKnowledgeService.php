@@ -329,8 +329,12 @@ PROMPT;
             ->filter(function ($source) use ($knowledgeFiles) {
                 $fileId = $source['file_id'] ?? null;
 
-                if (!$fileId || !$knowledgeFiles->has($fileId)) {
-                    return false;
+                if (!$fileId) {
+                    return !empty($source['filename']);
+                }
+
+                if (!$knowledgeFiles->has($fileId)) {
+                    return true;
                 }
 
                 $file = $knowledgeFiles->get($fileId);

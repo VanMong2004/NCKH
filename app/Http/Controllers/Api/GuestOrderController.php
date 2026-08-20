@@ -24,29 +24,12 @@ class GuestOrderController extends Controller
     {
         try {
             $data = $request->validate([
-                'order_code' => 'nullable|string',
-                'phone' => ['nullable', 'regex:/^0\d{9}$/'],
-                'email' => 'required|email|max:255',
+                'lookup_token' => 'required|string|max:64',
             ], [
-                'phone.regex' => 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0.',
+                'lookup_token.required' => 'Vui lòng nhập mã tra cứu đơn hàng.',
             ]);
 
-            $data['email'] = $this->guestCheckoutGuardService->normalizeEmail($data['email'] ?? '');
-
-            if (!empty($data['phone'])) {
-                $data['phone'] = $this->guestCheckoutGuardService->normalizePhone($data['phone']);
-            }
-
-            $hasOrderCode = !empty($data['order_code']);
-            $hasPhone = !empty($data['phone']);
-
-            if ($hasOrderCode === $hasPhone) {
-                throw ValidationException::withMessages([
-                    'lookup' => [
-                        'Vui lòng nhập `order_code + email` hoặc `phone + email`.',
-                    ],
-                ]);
-            }
+            $data['lookup_token'] = $this->guestCheckoutGuardService->normalizeLookupToken($data['lookup_token'] ?? '');
 
             $order = $this->service->lookup($data);
 
@@ -83,8 +66,10 @@ class GuestOrderController extends Controller
             $user = auth('sanctum')->user();
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
+            $guestLookupToken = $request->header('X-Guest-Lookup-Token')
+                ?: $request->query('guest_lookup_token');
 
-            $order = $this->service->showByCode($user, $guestToken, $orderCode);
+            $order = $this->service->showByCode($user, $guestToken, $guestLookupToken, $orderCode);
 
             return response()->json([
                 'success' => true,
@@ -112,6 +97,8 @@ class GuestOrderController extends Controller
             $user = auth('sanctum')->user();
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
+            $guestLookupToken = $request->header('X-Guest-Lookup-Token')
+                ?: $request->query('guest_lookup_token');
 
             return response()->json([
                 'success' => true,
@@ -119,6 +106,7 @@ class GuestOrderController extends Controller
                 'data' => $this->vatInvoiceRequestService->showForGuest(
                     $user,
                     $guestToken,
+                    $guestLookupToken,
                     $orderCode
                 ),
             ]);
@@ -154,6 +142,8 @@ class GuestOrderController extends Controller
             $user = auth('sanctum')->user();
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
+            $guestLookupToken = $request->header('X-Guest-Lookup-Token')
+                ?: $request->query('guest_lookup_token');
 
             return response()->json([
                 'success' => true,
@@ -161,6 +151,7 @@ class GuestOrderController extends Controller
                 'data' => $this->vatInvoiceRequestService->createForGuest(
                     $user,
                     $guestToken,
+                    $guestLookupToken,
                     $orderCode,
                     $data
                 ),
@@ -190,20 +181,19 @@ class GuestOrderController extends Controller
     public function cancel(Request $request, string $orderCode): JsonResponse
     {
         try {
-            $data = $request->validate([
-                'email' => 'required|email|max:255',
-            ]);
-
             $guestToken = $request->header('X-Guest-Token')
                 ?: $request->query('guest_token');
+            $guestLookupToken = $request->header('X-Guest-Lookup-Token')
+                ?: $request->query('guest_lookup_token')
+                ?: $request->input('lookup_token');
 
             return response()->json([
                 'success' => true,
                 'message' => 'Hủy đơn hàng thành công',
                 'data' => $this->service->cancel(
                     $guestToken,
+                    $guestLookupToken,
                     $orderCode,
-                    $this->guestCheckoutGuardService->normalizeEmail($data['email'])
                 ),
             ]);
         } catch (ValidationException $e) {

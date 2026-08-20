@@ -528,6 +528,7 @@ class GuestCheckoutLimitTest extends TestCase
         $guestToken = 'guest-cancel-token';
         $order = $this->createGuestOrder([
             'guest_token' => $guestToken,
+            'guest_lookup_token' => 'GLK-CANCEL0001',
             'guest_email' => 'guest@example.com',
             'guest_phone' => '0909123456',
             'shipping_phone' => '0909123456',
@@ -540,10 +541,8 @@ class GuestCheckoutLimitTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'X-Guest-Token' => $guestToken,
-        ])->postJson("/api/guest/orders/{$order->order_code}/cancel", [
-            'email' => 'guest@example.com',
-        ]);
+            'X-Guest-Lookup-Token' => 'GLK-CANCEL0001',
+        ])->postJson("/api/guest/orders/{$order->order_code}/cancel", []);
 
         $response->assertOk()
             ->assertJsonPath('success', true)
@@ -565,6 +564,7 @@ class GuestCheckoutLimitTest extends TestCase
         $guestToken = 'guest-cancel-completed-token';
         $order = $this->createGuestOrder([
             'guest_token' => $guestToken,
+            'guest_lookup_token' => 'GLK-CANCEL0002',
             'guest_email' => 'guest@example.com',
             'guest_phone' => '0909123456',
             'shipping_phone' => '0909123456',
@@ -577,13 +577,28 @@ class GuestCheckoutLimitTest extends TestCase
         ]);
 
         $response = $this->withHeaders([
-            'X-Guest-Token' => $guestToken,
-        ])->postJson("/api/guest/orders/{$order->order_code}/cancel", [
-            'email' => 'guest@example.com',
-        ]);
+            'X-Guest-Lookup-Token' => 'GLK-CANCEL0002',
+        ])->postJson("/api/guest/orders/{$order->order_code}/cancel", []);
 
         $response->assertStatus(400)
             ->assertJsonPath('success', false);
+    }
+
+    public function test_guest_can_lookup_order_by_lookup_token_only(): void
+    {
+        $order = $this->createGuestOrder([
+            'guest_lookup_token' => 'GLK-LOOKUP0001',
+            'order_code' => 'ORD-LOOKUP-0001',
+        ]);
+
+        $response = $this->postJson('/api/guest/orders/lookup', [
+            'lookup_token' => 'glk-lookup0001',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.order_code', $order->order_code)
+            ->assertJsonPath('data.guest_lookup_token', 'GLK-LOOKUP0001');
     }
 
     private function postGuestCheckout(string $guestToken, array $payload, string $ip = '127.0.0.1')
@@ -678,6 +693,7 @@ class GuestCheckoutLimitTest extends TestCase
         $order = Order::create(array_merge([
             'user_id' => null,
             'guest_token' => 'guest-order-' . Str::uuid(),
+            'guest_lookup_token' => 'GLK-' . Str::upper(Str::random(10)),
             'guest_name' => 'Khách Test',
             'guest_email' => 'guest@example.com',
             'guest_phone' => '0909123456',

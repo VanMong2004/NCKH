@@ -275,9 +275,8 @@ export default function Checkout() {
                 isGuest: true,
                 orderId: order.id,
                 orderCode: order.orderCode,
-                guestEmail: receiver.guest_email.trim(),
-                guestPhone: normalizePhone(receiver.guest_phone),
                 guestToken: order.guestToken,
+                guestLookupToken: order.guestLookupToken || '',
             }),
         );
     }
@@ -352,9 +351,9 @@ export default function Checkout() {
                             isGuest: !user,
                             orderId: order.id,
                             orderCode: order.orderCode,
-                            guestPhone: normalizePhone(receiver.guest_phone),
                             paymentMethod: method,
                             paymentStatus: 'unpaid',
+                            guestLookupToken: order.guestLookupToken || '',
                         },
                     },
                 );
@@ -412,9 +411,8 @@ export default function Checkout() {
                             order,
                             payment,
                             callbackUrl: payment.redirectUrl,
-                            guestEmail: receiver.guest_email.trim(),
-                            guestPhone: normalizePhone(receiver.guest_phone),
                             isGuest: !user,
+                            guestLookupToken: order.guestLookupToken || '',
                         }),
                     );
 
@@ -423,9 +421,8 @@ export default function Checkout() {
                             order,
                             payment,
                             callbackUrl: payment.redirectUrl,
-                            guestEmail: receiver.guest_email.trim(),
-                            guestPhone: normalizePhone(receiver.guest_phone),
                             isGuest: !user,
+                            guestLookupToken: order.guestLookupToken || '',
                         },
                     });
 
@@ -444,8 +441,8 @@ export default function Checkout() {
                 state: {
                     isGuest: !user,
                     orderCode: order.orderCode,
-                    guestPhone: normalizePhone(receiver.guest_phone),
                     paymentMethod: method,
+                    guestLookupToken: order.guestLookupToken || '',
                 },
             });
         } catch (paymentError) {
@@ -474,17 +471,10 @@ export default function Checkout() {
                     navigate('/guest-order-lookup');
                     return;
                 }
-                const guestEmail = receiver.guest_email.trim();
                 const params = new URLSearchParams();
 
-                params.set('mode', 'order_code_email');
-
-                if (data.order_code) {
-                    params.set('order_code', data.order_code);
-                }
-
-                if (guestEmail) {
-                    params.set('email', guestEmail);
+                if (data.guest_lookup_token) {
+                    params.set('lookup_token', data.guest_lookup_token);
                 }
 
                 params.set('focus', 'payment');
@@ -493,17 +483,10 @@ export default function Checkout() {
             },
             onCancel: canRetryPayment
                 ? async () => {
-                    const guestEmail = receiver.guest_email.trim();
                     const params = new URLSearchParams();
 
-                    params.set('mode', 'order_code_email');
-
-                    if (data.order_code) {
-                        params.set('order_code', data.order_code);
-                    }
-
-                    if (guestEmail) {
-                        params.set('email', guestEmail);
+                    if (data.guest_lookup_token) {
+                        params.set('lookup_token', data.guest_lookup_token);
                     }
 
                     navigate(`/guest-order-lookup?${params.toString()}`);

@@ -121,6 +121,7 @@ class OrderService
                 $order = Order::create([
                     'user_id' => $user?->id,
                     'guest_token' => $user ? null : $guestToken,
+                    'guest_lookup_token' => $user ? null : $this->generateGuestLookupToken(),
                     'guest_name' => $shipping['guest_name'],
                     'guest_email' => $shipping['guest_email'],
                     'guest_phone' => $shipping['guest_phone'],
@@ -331,6 +332,7 @@ class OrderService
         return [
             'user_id' => $order->user_id,
             'guestToken' => $order->guest_token,
+            'guestLookupToken' => $order->guest_lookup_token,
             'order_id' => $order->id,
             'order_code' => $order->order_code,
             'status' => $order->status,
@@ -363,6 +365,15 @@ class OrderService
             . now()->format('Ymd')
             . '-'
             . str_pad($orderId, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function generateGuestLookupToken(): string
+    {
+        do {
+            $token = 'GLK-' . Str::upper(Str::random(10));
+        } while (Order::query()->where('guest_lookup_token', $token)->exists());
+
+        return $token;
     }
 
     private function resolveShippingInfo($user, array $data, string $fulfillmentMethod): array

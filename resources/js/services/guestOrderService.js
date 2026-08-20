@@ -10,17 +10,13 @@ const guestOrderService = {
     },
 
     async cancelOrder(orderCode, payload, options = {}) {
-        const guestToken = resolveGuestToken(options);
+        const headers = resolveGuestHeaders(options);
 
         const res = await api.post(
             `/guest/orders/${encodeURIComponent(orderCode)}/cancel`,
             payload,
             {
-                headers: guestToken
-                    ? {
-                          'X-Guest-Token': guestToken,
-                      }
-                    : {},
+                headers,
             }
         );
 
@@ -28,16 +24,12 @@ const guestOrderService = {
     },
 
     async getVatInvoiceRequest(orderCode, options = {}) {
-        const guestToken = resolveGuestToken(options);
+        const headers = resolveGuestHeaders(options);
 
         const res = await api.get(
             `/guest/orders/${encodeURIComponent(orderCode)}/vat-invoice-request`,
             {
-                headers: guestToken
-                    ? {
-                          'X-Guest-Token': guestToken,
-                      }
-                    : {},
+                headers,
             }
         );
 
@@ -45,17 +37,13 @@ const guestOrderService = {
     },
 
     async createVatInvoiceRequest(orderCode, payload, options = {}) {
-        const guestToken = resolveGuestToken(options);
+        const headers = resolveGuestHeaders(options);
 
         const res = await api.post(
             `/guest/orders/${encodeURIComponent(orderCode)}/vat-invoice-request`,
             payload,
             {
-                headers: guestToken
-                    ? {
-                          'X-Guest-Token': guestToken,
-                      }
-                    : {},
+                headers,
             }
         );
 
@@ -63,12 +51,24 @@ const guestOrderService = {
     },
 };
 
-function resolveGuestToken(options = {}) {
+function resolveGuestHeaders(options = {}) {
     const guest = JSON.parse(
         sessionStorage.getItem('guest_order_success') || '{}'
     );
 
-    return options.guestToken || guest.guestToken || guestTokenService.peekToken() || '';
+    const guestToken = options.guestToken || guest.guestToken || guestTokenService.peekToken() || '';
+    const guestLookupToken = String(options.guestLookupToken || guest.guestLookupToken || '').trim().toUpperCase();
+    const headers = {};
+
+    if (guestToken) {
+        headers['X-Guest-Token'] = guestToken;
+    }
+
+    if (guestLookupToken) {
+        headers['X-Guest-Lookup-Token'] = guestLookupToken;
+    }
+
+    return headers;
 }
 
 export default guestOrderService;

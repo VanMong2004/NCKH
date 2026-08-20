@@ -18,9 +18,9 @@ class VatInvoiceRequestService
         );
     }
 
-    public function showForGuest($user, ?string $guestToken, string $orderCode): ?array
+    public function showForGuest($user, ?string $guestToken, ?string $guestLookupToken, string $orderCode): ?array
     {
-        $order = $this->resolveGuestOrder($user, $guestToken, $orderCode);
+        $order = $this->resolveGuestOrder($user, $guestToken, $guestLookupToken, $orderCode);
 
         return $this->format(
             VatInvoiceRequest::where('order_id', $order->id)->first()
@@ -34,9 +34,9 @@ class VatInvoiceRequestService
         return $this->create($order, $data);
     }
 
-    public function createForGuest($user, ?string $guestToken, string $orderCode, array $data): array
+    public function createForGuest($user, ?string $guestToken, ?string $guestLookupToken, string $orderCode, array $data): array
     {
-        $order = $this->resolveGuestOrder($user, $guestToken, $orderCode);
+        $order = $this->resolveGuestOrder($user, $guestToken, $guestLookupToken, $orderCode);
 
         return $this->create($order, $data);
     }
@@ -56,7 +56,7 @@ class VatInvoiceRequestService
         return $order;
     }
 
-    private function resolveGuestOrder($user, ?string $guestToken, string $orderCode): Order
+    private function resolveGuestOrder($user, ?string $guestToken, ?string $guestLookupToken, string $orderCode): Order
     {
         $order = Order::where('order_code', $orderCode)->first();
 
@@ -68,7 +68,7 @@ class VatInvoiceRequestService
             if ((int) $order->user_id !== (int) $user->id) {
                 throw new RuntimeException('Bạn không có quyền xem đơn hàng này', 403);
             }
-        } elseif (!$guestToken || $order->guest_token !== $guestToken) {
+        } elseif (!app(GuestCheckoutGuardService::class)->orderMatchesGuestAccess($order, $guestToken, $guestLookupToken)) {
             throw new RuntimeException('Không đủ thông tin để yêu cầu hóa đơn giá trị gia tăng', 401);
         }
 

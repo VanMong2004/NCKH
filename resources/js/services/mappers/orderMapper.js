@@ -78,6 +78,7 @@ export function mapCheckoutOrderResponse(response = {}) {
         code: item.order_code || '',
         orderCode: item.order_code || '',
         guestToken: item.guestToken || item.guest_token || '',
+        guestLookupToken: item.guestLookupToken || item.guest_lookup_token || '',
         status: item.status || '',
         statusText: orderStatusText(item.status, item.fulfillment_method || 'delivery'),
         statusClass: orderStatusClass(item.status),
@@ -199,6 +200,7 @@ function mapOrderDetail(item = {}) {
         id: item.id,
         code: item.order_code || '',
         orderCode: item.order_code || '',
+        guestLookupToken: item.guest_lookup_token || item.guestLookupToken || '',
         createdAt: item.created_at || item.timeline?.[0]?.time || '',
         type: item.type || '',
         status: item.status || '',
@@ -248,17 +250,14 @@ export function mapOrderDetailResponse(response = {}) {
 
 export function mapGuestOrderLookupResponse(response = {}) {
     const item = response.data || {};
-    const lookupType = item.lookup_type || 'order_code_email';
+    const lookupType = item.lookup_type || 'order_code_lookup';
 
     return {
         success: Boolean(response.success),
         message: response.message || '',
         lookupType,
-        order: lookupType === 'phone_email' ? null : mapOrderDetail(item),
-        orders:
-            lookupType === 'phone_email'
-                ? (Array.isArray(item.orders) ? item.orders : []).map((order) => mapOrderDetail(order))
-                : [],
+        order: mapOrderDetail(item),
+        orders: [],
         raw: item,
     };
 }

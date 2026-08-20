@@ -16,20 +16,28 @@ class PaymentService
         protected MockPaymentGatewayService $mockGateway
     ) {}
 
-    public function pay($user, ?string $guestToken, int $orderId, string $method)
+    public function pay($user, ?string $guestToken, ?string $guestLookupToken, int $orderId, string $method)
     {
-        if (!$user && !$guestToken) {
+        if (!$user && !$guestToken && !$guestLookupToken) {
             throw new RuntimeException('Thiếu mã đơn hàng khách', 400);
         }
 
-        return DB::transaction(function () use ($user, $guestToken, $orderId, $method) {
+        return DB::transaction(function () use ($user, $guestToken, $guestLookupToken, $orderId, $method) {
             $orderQuery = Order::lockForUpdate()
                 ->whereIn('status', ['pending', 'processing']);
 
             if ($user) {
                 $orderQuery->where('user_id', $user->id);
             } else {
-                $orderQuery->where('guest_token', $guestToken);
+                $orderQuery->where(function ($query) use ($guestToken, $guestLookupToken) {
+                    if (!empty($guestToken)) {
+                        $query->orWhere('guest_token', $guestToken);
+                    }
+
+                    if (!empty($guestLookupToken)) {
+                        $query->orWhere('guest_lookup_token', app(GuestCheckoutGuardService::class)->normalizeLookupToken($guestLookupToken));
+                    }
+                });
             }
 
             $order = $orderQuery->find($orderId);

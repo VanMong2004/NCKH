@@ -21,6 +21,24 @@ function formatCurrency(value) {
     }).format(Number(value || 0));
 }
 
+function resolveSummaryValue(order, key, fallback = 0) {
+    if (!order) return Number(fallback || 0);
+
+    const directValue = order[key];
+
+    if (directValue !== undefined && directValue !== null && directValue !== '') {
+        return Number(directValue || 0);
+    }
+
+    const summaryValue = order.summary?.[key];
+
+    if (summaryValue !== undefined && summaryValue !== null && summaryValue !== '') {
+        return Number(summaryValue || 0);
+    }
+
+    return Number(fallback || 0);
+}
+
 function getStoredPayment() {
     try {
         return JSON.parse(sessionStorage.getItem('mock_payment_qr') || '{}');
@@ -47,8 +65,11 @@ export default function MockPaymentQr() {
     const order = location.state?.order || fallback.order || null;
     const payment = location.state?.payment || fallback.payment || null;
     const callbackUrl = location.state?.callbackUrl || fallback.callbackUrl || payment?.redirectUrl || '';
-    const guestEmail = location.state?.guestEmail || fallback.guestEmail || '';
-    const guestPhone = location.state?.guestPhone || fallback.guestPhone || '';
+    const guestLookupToken =
+        location.state?.guestLookupToken
+        || fallback.guestLookupToken
+        || order?.guestLookupToken
+        || '';
     const isGuest = Boolean(location.state?.isGuest ?? fallback.isGuest);
 
     const [submitting, setSubmitting] = useState(false);
@@ -66,7 +87,10 @@ export default function MockPaymentQr() {
     }
 
     const transferContent = `CTUT ${order.orderCode || order.code || order.id}`;
-    const paymentAmount = Number(order.grandTotal || payment.raw?.amount || 0);
+    const paymentAmount = resolveSummaryValue(order, 'grandTotal', payment.raw?.amount || payment.amount || 0);
+    const subTotal = resolveSummaryValue(order, 'subTotal');
+    const discount = resolveSummaryValue(order, 'discount');
+    const grandTotal = resolveSummaryValue(order, 'grandTotal', paymentAmount);
     const qrImageUrl = buildVietQrUrl({
         accountNumber: MOCK_BANK.accountNumber,
         accountName: MOCK_BANK.accountName,
@@ -95,9 +119,8 @@ export default function MockPaymentQr() {
                 isGuest,
                 orderId: order.id || order.orderId,
                 orderCode: order.orderCode || order.code,
-                guestEmail,
-                guestPhone,
                 guestToken: order.guestToken,
+                guestLookupToken,
             }),
         );
 
@@ -242,7 +265,7 @@ export default function MockPaymentQr() {
                                     ) : (
                                         <CheckCircle2 size={18} />
                                     )}
-                                    {submitting ? 'Đang xác nhận thanh toán...' : 'Tôi đã chuyển khoản'}
+                                    {submitting ? 'Đang kiểm tra kết quả giao dịch...' : 'Kiểm tra kết quả giao dịch'}
                                 </button>
                             </div>
                         </div>
@@ -257,9 +280,54 @@ export default function MockPaymentQr() {
                             <InfoRow label="Mã đơn" value={order.orderCode || order.code || '-'} />
                             <InfoRow label="Mã giao dịch" value={payment.transactionId || '-'} />
                             <InfoRow label="Phương thức" value="Chuyển khoản ngân hàng" />
-                            <InfoRow label="Tạm tính" value={formatCurrency(order.subTotal)} />
-                            <InfoRow label="Giảm giá" value={formatCurrency(order.discount)} />
-                            <InfoRow label="Tổng cộng" value={formatCurrency(order.grandTotal)} strong />
+                            <InfoRow label="Tạm tính" value={formatCurrency(subTotal)} />
+                            <InfoRow label="Giảm giá" value={formatCurrency(discount)} />
+                            <InfoRow label="Tổng cộng" value={formatCurrency(grandTotal)} strong />
+                        </div>
+
+                        <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
+                            <h3 className="text-sm font-extrabold text-blue-950 dark:text-white">
+                                Sản phẩm trong đơn
+                            </h3>
+
+                            <div className="mt-3 max-h-72 space-y-3 overflow-y-auto pr-1">
+                                {(order.items || []).length > 0 ? (
+                                    (order.items || []).map((item, index) => (
+                                        <div
+                                            key={item.id || `${item.productName || 'item'}-${index}`}
+                                            className="flex items-start gap-3 rounded-2xl border border-slate-200 p-3 dark:border-slate-700"
+                                        >
+                                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
+                                                {item.thumbnail ? (
+                                                    <img
+                                                        src={item.thumbnail}
+                                                        alt={item.productName || 'Sản phẩm'}
+                                                        className="h-full w-full rounded-lg object-cover"
+                                                    />
+                                                ) : (
+                                                    <QrCode size={18} className="text-slate-300 dark:text-slate-500" />
+                                                )}
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+                                                <p className="line-clamp-2 text-sm font-bold text-blue-950 dark:text-white">
+                                                    {item.productName || 'Sản phẩm'}
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                    SL: {item.quantity || 0}
+                                                </p>
+                                                <p className="mt-1 text-sm font-extrabold text-blue-950 dark:text-white">
+                                                    {formatCurrency(item.total || (item.price || 0) * (item.quantity || 0))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                                        Chưa có danh sách sản phẩm để hiển thị.
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </aside>
                 </section>

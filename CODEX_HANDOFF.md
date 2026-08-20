@@ -1,5 +1,91 @@
 # CODEX_HANDOFF.md
 
+## Cap nhat nhanh 2026-08-04 - nang cap QR mock bank va them GPT fallback cho chatbot
+
+* Da doi man `mock_bank` QR tu dang `FakeQr` tu ve thanh anh QR ngan hang that qua dich vu `img.vietqr.io`.
+* Luong thanh toan `mock_bank` khong doi callback hay nghiep vu:
+  * van giu `completePayment()`
+  * van quay ve `callbackUrl` nhu cu
+* Giao dien QR moi hien:
+  * ten ngan hang
+  * chu tai khoan
+  * so tai khoan
+  * so tien
+  * noi dung chuyen khoan
+  * nut copy so tai khoan va noi dung
+* Neu anh QR ngoai khong tai duoc, FE co fallback hien thong tin chuyen khoan thu cong de tranh vo luong thanh toan.
+* Chatbot da duoc nang cap theo huong hybrid classify:
+  * rule-based van la lop guard dau tien
+  * GPT chi duoc goi khi cau hoi mo ho, confidence thap hoac roi vao `clarify/rag`
+  * du lieu dong van duoc chan de uu tien database, tranh cho GPT day nham sang `static_knowledge`
+* Da bo sung config moi trong `config/services.php`:
+  * `openai.intent_classifier_enabled`
+  * `openai.intent_classifier_threshold`
+* `OpenAiHybridRagChatService` hien co:
+  * `refineEntitiesWithGpt()`
+  * `shouldUseGptIntentClassifier()`
+  * `classifyIntentWithGpt()`
+  * `parseIntentClassifierPayload()`
+  * `intentClassifierPrompt()`
+* Da kiem tra:
+  * `php -l app/Services/Chat/OpenAiHybridRagChatService.php`
+  * `php -l config/services.php`
+  * `vite build`
+* File da thay doi o buoc nay:
+  * `app/Services/Chat/OpenAiHybridRagChatService.php`
+  * `config/services.php`
+  * `resources/js/pages/MockPaymentQr.jsx`
+  * `CODEX_HANDOFF.md`
+
+## Cap nhat nhanh 2026-08-01 - chinh lai module admin Khuyen mai theo nghiep vu moi
+
+* Da chinh backend admin khuyen mai theo huong:
+  * tach bo loc `status` (draft/active/inactive) va `progress` (active/ending_soon/upcoming/ended)
+  * bo validate giam gia cap khuyen mai khi tao/sua khuyen mai
+  * luu `discount_type`, `discount_value` cap khuyen mai ve `null`, uu dai se quan ly o tung `promotion_item`
+  * khi khuyen mai dang dien ra (`is_item_locked = true`) thi khong cho sua danh sach san pham ap dung
+  * khi xoa san pham khoi khuyen mai thi chi tat `is_active = false`, khong xoa cung
+  * bo hoan toan `limit_quantity`, khuyen mai se bam truc tiep theo ton kho thuc te cua san pham/bien the
+* Da bo sung response admin promotion:
+  * `timeline_status`
+  * `timeline_status_text`
+  * `is_item_locked`
+* Da kiem tra luong hinh anh:
+  * user list/card dang dung `thumbnail`
+  * user detail dang uu tien `banner`
+  * vi vay chua xoa field nao de tranh vo giao dien public
+* Frontend admin khuyen mai da doi:
+  * form khuyen mai bo field giam gia cap chuong trinh
+  * bang danh sach them cot `Anh` va cot `Dien bien`
+  * draft/da tat hien thi mo hon
+  * khuyen mai dang dien ra khoa nut xoa
+  * chi tiet khuyen mai doi thao tac `Xoa` item thanh `Tat`
+  * modal xac nhan da doi tu `window.confirm` sang `ConfirmDialog`
+* Da sua lai font/chuoi module admin khuyen mai ve UTF-8 sach o cac file vua dong vao.
+* Da sua them migration goc `create_promotions_table`:
+  * `discount_type` -> `nullable()`
+  * `discount_value` -> `nullable()`
+* Muc dich:
+  * khop voi nghiep vu moi la khuyen mai cap chuong trinh khong con luu muc giam gia
+  * tranh loi `Column 'discount_type' cannot be null` khi tao khuyen mai moi va chay `migrate:refresh --seed`
+* Da kiem tra:
+  * `php -l app/Services/Admin/AdminPromotionService.php`
+  * `php -l app/Http/Controllers/Api/Admin/AdminPromotionController.php`
+  * `php -l database/migrations/2026_04_25_103122_create_promotions_table.php`
+  * `vite build`
+* File da thay doi o buoc nay:
+  * `app/Http/Controllers/Api/Admin/AdminPromotionController.php`
+  * `app/Services/Admin/AdminPromotionService.php`
+  * `database/migrations/2026_04_25_103122_create_promotions_table.php`
+  * `resources/js/admin/mappers/adminPromotionMapper.js`
+  * `resources/js/admin/services/adminPromotionService.js`
+  * `resources/js/admin/components/promotions/AdminPromotionFormModal.jsx`
+  * `resources/js/admin/components/promotions/AdminPromotionItemFormModal.jsx`
+  * `resources/js/admin/components/ui/ConfirmDialog.jsx`
+  * `resources/js/admin/pages/AdminPromotions.jsx`
+  * `resources/js/admin/pages/AdminPromotionDetail.jsx`
+  * `CODEX_HANDOFF.md`
+
 ## Cap nhat nhanh 2026-08-01 - toi gian hoa module Blog theo luong Tin tuc
 
 * Da chuyen module `Blog` sang mo hinh toi gian, phu hop luong dang tin va huong dan cua CTUT UniShop.
@@ -578,7 +664,7 @@
 * Quyết định: danh sách sản phẩm chỉ lấy dữ liệu card cần dùng, không eager load toàn bộ `images`, `category.parent`, `description` nếu frontend không dùng.
 * TODO tiếp: sau khi test `/api/products` và `/api/home`, tiếp tục rà API nặng ở admin orders, analytics và chatbot.
 
-# CTUT Store (NCKH) - Handoff cho Codex/ChatGPT
+# CTUT UniShop (NCKH) - Handoff cho Codex/ChatGPT
 
 Version: 1.1
 
@@ -1058,11 +1144,11 @@ Nếu có điều cấm thay đổi mới, cập nhật thêm:
 * `InventoryHistorySeeder` giờ mô phỏng đúng 3 bước `checkout_reserve`, `order_completed`, `order_release` thay vì ghi lịch sử không khớp flow thật.
 * `SystemSettingSeeder` đã được sửa để chỉ seed một bản ghi cấu hình thống nhất, tránh lệch khi runtime đọc `first()` hoặc `value()`.
 * `NotificationSeeder` đã được sửa để notification `order/payment` chỉ bám theo đơn hàng thực có của từng user, tránh tạo dữ liệu demo sai nghiệp vụ.
-* NhÃ³m seed content `Blog/Faq/Policy/Contact/ProductImage` Ä‘Ã£ chuyá»ƒn sang `updateOrCreate()` Ä‘á»ƒ trÃ¡nh nhÃ¢n báº£n dá»¯ liá»‡u khi cháº¡y láº».
-* `AboutSeeder` Ä‘Ã£ Ä‘Æ°a cÃ¡c chá»‰ sá»‘ thá»‘ng kÃª máº«u vá» `0` Ä‘á»ƒ trÃ¡nh hiá»ƒu nháº§m lÃ  sá»‘ liá»‡u thá»±c táº¿ cá»§a TrÆ°á»ng.
-* CÃ¡c seeder `Address/Cart/CartItem/RecentlyViewed/SearchHistory/Review/ReviewImage/Promotion/Notification/Payment/PromotionItem/OrderStatusHistory` Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn sang hÆ°á»›ng idempotent Ä‘á»ƒ háº¡n cháº¿ trÃ¹ng dá»¯ liá»‡u khi cháº¡y láº¡i.
-* `ProductVariantSeeder` Ä‘Ã£ dÃ¹ng `updateOrCreate()` theo `sku`; `OrderSeeder` dÃ¹ng `firstOrCreate()` theo `order_code` Ä‘á»ƒ trÃ¡nh táº¡o láº·p biáº¿n thá»ƒ/Ä‘Æ¡n hÃ ng.
-* `InventoryHistorySeeder` cÅ©ng Ä‘Ã£ chuyá»ƒn sang `updateOrCreate()` theo `product_variant_id + type + order_id` cho bá»™ seed máº«u hiá»‡n táº¡i.
+* Nhóm seed content `Blog/Faq/Policy/Contact/ProductImage` đã chuyển sang `updateOrCreate()` để tránh nhân bản dữ liệu khi chạy lại.
+* `AboutSeeder` đã đưa các chỉ số thống kê mẫu về `0` để tránh hiểu nhầm là số liệu thực tế của Trường.
+* Các seeder `Address/Cart/CartItem/RecentlyViewed/SearchHistory/Review/ReviewImage/Promotion/Notification/Payment/PromotionItem/OrderStatusHistory` đã được chuyển sang hướng idempotent để hạn chế trùng dữ liệu khi chạy lại.
+* `ProductVariantSeeder` đã dùng `updateOrCreate()` theo `sku`; `OrderSeeder` dùng `firstOrCreate()` theo `order_code` để tránh tạo lặp biến thể/đơn hàng.
+* `InventoryHistorySeeder` cũng đã chuyển sang `updateOrCreate()` theo `product_variant_id + type + order_id` cho bộ seed mẫu hiện tại.
 
 ## Cập nhật nhanh 2026-07-09
 
@@ -1082,3 +1168,39 @@ Nếu có điều cấm thay đổi mới, cập nhật thêm:
 * User không có địa chỉ sẽ trả `addresses: []`.
 * PHP lint đã pass cho `app/Services/Admin/AdminUserService.php`.
 - 2026-08-01: Chuẩn hóa lại nhãn hiển thị frontend cho user/admin để dùng tiếng Việt có dấu; trên giao diện người dùng không còn hiện các cụm kỹ thuật như "giả lập ngân hàng/mô phỏng", thay bằng "Chuyển khoản ngân hàng". Đã sửa các khu vực: navbar user, sidebar/topbar admin, trang QR thanh toán, phương thức thanh toán checkout, mapper hiển thị đơn hàng/giao dịch.
+- 2026-08-01: Da dong bo module admin don hang de uu tien `order.payment_status` khi hien thi danh sach, giup badge/trang thai thanh toan khop voi bo loc backend. Dong thoi da thay 3 file frontend admin order sang noi dung UTF-8 sach de loai bo chuoi tieng Viet loi ma o danh sach don va modal chi tiet.
+- 2026-08-01: Da chinh lai buoc loc san pham/khuyen mai cho user. `best_selling` o `ProductService` da uu tien tong `sold_stock` cua variant active, `filterMeta` chi lay bien the con hang; `PromotionService` da ho tro day du `active`, `ending_soon`, `upcoming`, `ended`, bo mac dinh chi hien khuyen mai dang dien ra. Frontend user da dong bo lai `Promotions.jsx` va `PromotionFilters.jsx` theo nhan tieng Viet ro rang.
+- 2026-08-01: Da bo sung fallback gia bien the o admin san pham. Neu admin de trong gia o bien the sau, frontend/backend se tu ke thua gia cua bien the truoc do. Seeder `ProductVariantSeeder` da chuan hoa de moi san pham co cung gia giua cac bien the; `PromotionSeeder` va `PromotionItemSeeder` da tao du 4 khuyen mai demo cho trang thai dang dien ra, sap ket thuc, sap dien ra, da ket thuc.
+- 2026-08-01: Da sua rollback migration `2026_04_25_103157...` de doi du lieu `vat_invoice_requests.status` truoc roi moi `ALTER TABLE`, tranh loi `Data truncated` khi `migrate:refresh --seed`. Da bo sung rule trong `AdminPromotionService`: khuyen mai chi duoc bat khi co it nhat 1 san pham ap dung dang active; luong dang Facebook tiep tuc chi hoat dong voi khuyen mai dang bat va co san pham hop le.
+- 2026-08-01: Da chot huong quan ly khuyen mai theo ton kho thuc te, bo gioi han `limit_quantity` o form admin item promotion va seeder demo. Backend tao/sua item khuyen mai gio luon luu `limit_quantity = null`, frontend admin khong con nhap gioi han rieng, danh sach san pham co the them chi hien ton kho kha dung hien tai.
+- 2026-08-01: Da don sach phan frontend public khong con dung cua `FAQ` va `Gioi thieu`: xoa page, service, mapper va component React lien quan. Backend `FaqController/AboutController`, service va du lieu cu van duoc giu nguyen de tranh anh huong admin hoac cac thanh phan khac.
+- 2026-08-01: Da ngung khai bao route API public cho `FAQ` va `Gioi thieu` trong `routes/api.php` vi frontend user khong con su dung. Controller/service/backend va du lieu cu van duoc giu lai, chua xoa model hay migration.
+- 2026-08-01: Da go sach phan backend du thua cua luong bill va hoa don do cu. `VatInvoiceRequestService` chi con giu luong xem/tao yeu cau hoa don do; da xoa `OrderBillService` va `MockMisaInvoiceProvider` vi route download bill/PDF mock da bo tu truoc va khong con thanh phan nao su dung.
+- 2026-08-01: Da don tiep phan frontend service du thua cua luong bill/hoa don do cu. `resources/js/services/orderService.js` va `guestOrderService.js` khong con giu cac method `downloadBill` / `downloadVatInvoice`, chi con luong tra cuu don va xem/tao yeu cau hoa don do dang duoc su dung thuc te.
+- 2026-08-01: Da bo sung luong dang nhap Google toi thieu theo huong it anh huong: frontend tai Google Identity Services va gui `credential` ve `POST /api/auth/google`, backend xac thuc qua `https://oauth2.googleapis.com/tokeninfo`, tu dong lien ket theo `email` hoac tao moi user voi `google_id`. Can cau hinh them `GOOGLE_CLIENT_ID` va `VITE_GOOGLE_CLIENT_ID` truoc khi test thuc te. Dong thoi login thuong da tach ro thong bao `tai khoan khong ton tai` va `sai email hoac mat khau`.
+- 2026-08-01: Da tam tat mem nut Google o frontend do production hien tai chay bang IP raw, khong dap ung quy dinh `Authorized JavaScript Origins` cua Google. Form dang nhap/dang ky hien chi hien nut mo cung thong bao se tich hop sau; backend route/service/migration cua Google van duoc giu nguyen de bat lai nhanh khi co domain/subdomain hop le.
+- 2026-08-01: Da don tiep phan client cua Google login sau khi tat mem nut tren giao dien: `AuthContext` va `authService` khong con expose/goi luong `loginWithGoogle` nua. Frontend hien tai chi thong bao "se tich hop sau", tranh de lai handler chet; backend route/service/migration van giu nguyen.
+- 2026-08-01: Da siep tiep `logic actions` cua order/payment cho user va guest lookup: chi con cho `cancel` voi don `pending` chua het han va dung theo nhom thanh toan (`mock_bank` chi khi `unpaid/failed`, `cod/cash_on_pickup` chi khi `unpaid`); `pay_again` chi hien voi don `pending` online chua het han va `payment_status` la `unpaid` hoac `failed`. Muc tieu la de UI khong hien nut sai nghiep vu truoc khi backend tu choi.
+- 2026-08-01: Da dong bo timeline don hang giua user va guest lookup. Timeline guest nay co them `note` giong luong user, phan `cancelled` tach ro `Đã hết hạn` va `Đã hủy`, buoc `pickup`/`delivery` co mo ta ngan ro hon. Frontend `OrderSuccess`, `GuestOrderLookup` va `AccountOrderDetail` da hien them ghi chu duoi moi moc timeline.
+## Cập nhật nhanh 2026-08-04 - hoàn thiện chatbot khuyến mãi và giao diện QR
+
+* Khung chat AI phía người dùng không còn cắt còn 3 sản phẩm; `FloatingAIChat.jsx` đã render toàn bộ danh sách `products` backend trả về.
+* `OpenAiHybridRagChatService` đã thêm nhánh `handlePromotionIntentV2()` để trả lời khuyến mãi theo dạng liệt kê tên sản phẩm, giá và mời người dùng chọn sản phẩm cần xem chi tiết.
+* Chatbot đã tận dụng `metadata.products/promotions` của tin nhắn assistant gần nhất để hiểu follow-up theo ngữ cảnh như `còn sản phẩm nào nữa không?` hoặc chọn sản phẩm theo tên/số thứ tự.
+* `MockPaymentQr.jsx` đã được viết lại sạch UTF-8, dùng bố cục card QR + thông tin chuyển khoản + tóm tắt đơn hàng rõ hơn để màn hình quét QR nhìn chuyên nghiệp hơn.
+
+## Cập nhật nhanh 2026-08-04 - chuẩn hóa lại 2 báo cáo hệ thống
+
+* Đã thay mới hoàn toàn `docs/bao-cao-he-thong-ctut-unishop.md` và `docs/bao-cao-tong-ket-ctut-unishop.md` bằng bản UTF-8 sạch, không còn lỗi mã hóa tiếng Việt.
+* Nội dung báo cáo đã bám lại trạng thái hệ thống hiện tại: checkout tách `fulfillment_method` và `payment_method`, tra cứu đơn guest, tin tức thay cho blog cũ, quản lý chính sách, hóa đơn đỏ thủ công, chatbot AI lai và workflow n8n.
+* Các báo cáo mới chỉ mô tả đúng những gì hệ thống đang có thật; không còn giữ các mô tả cũ dễ gây hiểu nhầm như FAQ/Giới thiệu trên frontend, blog nhiều tầng, hóa đơn điện tử tự phát hành hoặc Google login production đang hoạt động.
+* Đã thêm sẵn nhiều vị trí `[Chèn Hình ...]` để tiện dàn trang Word và tách ảnh minh họa sang phần phù hợp sau này.
+## Cập nhật nhanh 2026-08-20
+
+* Đăng ký tài khoản đã mở rộng thêm địa chỉ nhận hàng ban đầu: `province`, `district`, `ward`, `address_line`, `postal_code`; sau khi đăng ký thành công backend tự tạo `addresses` mặc định cho user mới.
+* Trang chi tiết sản phẩm đã thêm nút `Mua ngay`; luồng xử lý tái sử dụng `addToCartByVariant` hiện có rồi chuyển thẳng sang `/checkout` với đúng `cartItemIds` của sản phẩm vừa chọn để không kéo toàn bộ giỏ hàng vào checkout.
+* Luồng tra cứu đơn guest đã được siết lại theo hướng an toàn hơn: backend/frontend chuyển từ `order_code + email` hoặc `phone + email` sang `order_code + guest_lookup_token`.
+* Mỗi đơn guest mới giờ được cấp thêm `guest_lookup_token` riêng trong bảng `orders`; checkout response, session `guest_order_success`, trang kết quả đơn hàng, trang QR và trang tra cứu guest đều đã đồng bộ dùng token này.
+* Guest vẫn có thể thanh toán lại, hủy đơn và gửi yêu cầu hóa đơn giá trị gia tăng, nhưng các thao tác đó giờ ưu tiên xác thực bằng `X-Guest-Lookup-Token`; `guest_token` chỉ còn là lớp hỗ trợ cho cùng trình duyệt.
+* Frontend `GuestOrderLookup.jsx` đã được rút gọn thành một form duy nhất gồm `Mã đơn hàng` + `Mã tra cứu`, không còn chế độ tra cứu theo `phone + email`.
+* Cần chạy migration mới `2026_08_20_170000_add_guest_lookup_token_to_orders_table.php` trước khi test tay trên môi trường thật, nếu không các luồng guest lookup/pay again/cancel mới sẽ chưa hoạt động.

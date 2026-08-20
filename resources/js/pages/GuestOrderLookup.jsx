@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Circle, Mail, Phone, Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CheckCircle2, Circle, KeyRound, Search, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -9,28 +9,19 @@ import paymentService from '../services/paymentService';
 import { cancelReasonText } from '../services/mappers/orderMapper';
 import ConfirmDialog from '../admin/components/ui/ConfirmDialog';
 
-const LOOKUP_MODES = {
-    order_code_email: 'order_code_email',
-    phone_email: 'phone_email',
-};
-
 const EMPTY_FORM = {
-    order_code: '',
-    phone: '',
-    email: '',
+    lookup_token: '',
 };
 
 export default function GuestOrderLookup() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const [mode, setMode] = useState(LOOKUP_MODES.order_code_email);
     const [form, setForm] = useState(EMPTY_FORM);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [payingOrderCode, setPayingOrderCode] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [lookupResult, setLookupResult] = useState(null);
-    const [selectedOrderCode, setSelectedOrderCode] = useState('');
     const [confirmDialog, setConfirmDialog] = useState({
         open: false,
         title: '',
@@ -42,15 +33,7 @@ export default function GuestOrderLookup() {
     });
     const hydratedFromQuery = useRef(false);
 
-    const selectedOrder = useMemo(() => {
-        if (!lookupResult) return null;
-
-        if (lookupResult.lookupType !== LOOKUP_MODES.phone_email) {
-            return lookupResult.order || null;
-        }
-
-        return lookupResult.orders.find((order) => order.code === selectedOrderCode) || lookupResult.orders[0] || null;
-    }, [lookupResult, selectedOrderCode]);
+    const order = lookupResult?.order || null;
 
     useEffect(() => {
         if (hydratedFromQuery.current) {
@@ -59,20 +42,11 @@ export default function GuestOrderLookup() {
 
         hydratedFromQuery.current = true;
 
-        const nextMode = searchParams.get('mode');
-        const orderCode = searchParams.get('order_code') || '';
-        const phone = searchParams.get('phone') || '';
-        const email = searchParams.get('email') || '';
+        const lookupToken = normalizeLookupToken(searchParams.get('lookup_token') || '');
 
-        if (nextMode && Object.values(LOOKUP_MODES).includes(nextMode)) {
-            setMode(nextMode);
-        }
-
-        if (orderCode || phone || email) {
+        if (lookupToken) {
             setForm({
-                order_code: orderCode,
-                phone,
-                email,
+                lookup_token: lookupToken,
             });
         }
     }, [searchParams]);
@@ -80,19 +54,14 @@ export default function GuestOrderLookup() {
     useEffect(() => {
         const shouldAutoLookup = searchParams.get('focus') === 'payment';
 
-        if (!shouldAutoLookup || mode !== LOOKUP_MODES.order_code_email) {
-            return;
-        }
-
-        if (!form.order_code || !form.email || loading || lookupResult) {
+        if (!shouldAutoLookup || !form.lookup_token || loading || lookupResult) {
             return;
         }
 
         handleLookup({
-            order_code: form.order_code,
-            email: form.email,
+            lookup_token: normalizeLookupToken(form.lookup_token),
         });
-    }, [searchParams, mode, form.order_code, form.email, loading, lookupResult]);
+    }, [searchParams, form.lookup_token, loading, lookupResult]);
 
     function updateField(field, value) {
         setForm((prev) => ({
@@ -107,37 +76,11 @@ export default function GuestOrderLookup() {
         }));
     }
 
-    function switchMode(nextMode) {
-        setMode(nextMode);
-        setForm(EMPTY_FORM);
-        setErrors({});
-        setSubmitError('');
-        setLookupResult(null);
-        setSelectedOrderCode('');
-    }
-
     function validateForm() {
         const nextErrors = {};
-        const email = String(form.email || '').trim();
-        const orderCode = String(form.order_code || '').trim();
-        const phone = normalizePhone(form.phone);
 
-        if (!email) {
-            nextErrors.email = 'Vui lòng nhập email để tra cứu đơn hàng.';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            nextErrors.email = 'Email không đúng định dạng.';
-        }
-
-        if (mode === LOOKUP_MODES.order_code_email && !orderCode) {
-            nextErrors.order_code = 'Vui lòng nhập mã đơn hàng.';
-        }
-
-        if (mode === LOOKUP_MODES.phone_email) {
-            if (!phone) {
-                nextErrors.phone = 'Vui lòng nhập số điện thoại.';
-            } else if (!/^0\d{9}$/.test(phone)) {
-                nextErrors.phone = 'Số điện thoại phải gồm 10 số và bắt đầu bằng số 0.';
-            }
+        if (!normalizeLookupToken(form.lookup_token)) {
+            nextErrors.lookup_token = 'Vui lòng nhập mã tra cứu đơn hàng.';
         }
 
         setErrors(nextErrors);
@@ -151,17 +94,9 @@ export default function GuestOrderLookup() {
             return;
         }
 
-        const payload = {
-            email: String(form.email || '').trim(),
-        };
-
-        if (mode === LOOKUP_MODES.order_code_email) {
-            payload.order_code = String(form.order_code || '').trim();
-        } else {
-            payload.phone = normalizePhone(form.phone);
-        }
-
-        await handleLookup(payload);
+        await handleLookup({
+            lookup_token: normalizeLookupToken(form.lookup_token),
+        });
     }
 
     async function handleLookup(payload) {
@@ -172,12 +107,6 @@ export default function GuestOrderLookup() {
             const result = await guestOrderService.lookup(payload);
 
             setLookupResult(result);
-
-            if (result.lookupType === LOOKUP_MODES.phone_email) {
-                setSelectedOrderCode(result.orders[0]?.code || '');
-            } else {
-                setSelectedOrderCode(result.order?.code || '');
-            }
         } catch (error) {
             const responseErrors = error.errors || {};
             const nextErrors = {};
@@ -192,38 +121,29 @@ export default function GuestOrderLookup() {
             }));
             setSubmitError(error.message || 'Không thể tra cứu đơn hàng lúc này.');
             setLookupResult(null);
-            setSelectedOrderCode('');
         } finally {
             setLoading(false);
         }
     }
 
-    async function refreshCurrentLookup(orderCodeOverride = '') {
-        if (lookupResult?.lookupType === LOOKUP_MODES.phone_email) {
-            await handleLookup({
-                phone: normalizePhone(form.phone),
-                email: form.email.trim(),
-            });
+    async function refreshCurrentLookup() {
+        const lookupToken = normalizeLookupToken(form.lookup_token);
 
-            if (orderCodeOverride) {
-                setSelectedOrderCode(orderCodeOverride);
-            }
-
+        if (!lookupToken) {
             return;
         }
 
         await handleLookup({
-            order_code: orderCodeOverride || selectedOrder?.code || form.order_code.trim(),
-            email: form.email.trim(),
+            lookup_token: lookupToken,
         });
     }
 
-    async function handlePayAgain(order) {
-        if (!order?.id) {
+    async function handlePayAgain(targetOrder) {
+        if (!targetOrder?.id) {
             return;
         }
 
-        const method = order.payment?.method || order.raw?.payment_method || '';
+        const method = targetOrder.payment?.method || targetOrder.raw?.payment_method || '';
 
         if (method !== 'mock_bank') {
             toast.warning('Đơn hàng này không hỗ trợ thanh toán trực tuyến.');
@@ -231,31 +151,32 @@ export default function GuestOrderLookup() {
         }
 
         try {
-            setPayingOrderCode(order.code || String(order.id));
+            setPayingOrderCode(targetOrder.code || String(targetOrder.id));
 
-            const payment = await paymentService.pay(order.id, method);
+            const guestLookupToken = normalizeLookupToken(form.lookup_token);
+            const payment = await paymentService.pay(targetOrder.id, method, {
+                guestLookupToken,
+            });
 
             if (payment.redirectUrl) {
                 sessionStorage.setItem(
                     'mock_payment_qr',
                     JSON.stringify({
-                        order,
+                        order: targetOrder,
                         payment,
                         callbackUrl: payment.redirectUrl,
-                        guestEmail: form.email.trim(),
-                        guestPhone: normalizePhone(form.phone || order.receiver?.phone || ''),
                         isGuest: true,
+                        guestLookupToken,
                     }),
                 );
 
                 navigate('/payment/qr', {
                     state: {
-                        order,
+                        order: targetOrder,
                         payment,
                         callbackUrl: payment.redirectUrl,
-                        guestEmail: form.email.trim(),
-                        guestPhone: normalizePhone(form.phone || order.receiver?.phone || ''),
                         isGuest: true,
+                        guestLookupToken,
                     },
                 });
 
@@ -263,7 +184,7 @@ export default function GuestOrderLookup() {
             }
 
             toast.success(payment.message || 'Đã chuyển sang bước thanh toán.');
-            await refreshCurrentLookup(order.code);
+            await refreshCurrentLookup();
         } catch (error) {
             toast.error(error.message || 'Không thể chuyển sang bước thanh toán.');
         } finally {
@@ -271,37 +192,42 @@ export default function GuestOrderLookup() {
         }
     }
 
-    function handleCancelOrder(order) {
-        if (!order?.code) return;
+    async function handleCancelOrder(targetOrder) {
+        if (!targetOrder?.code) {
+            return;
+        }
+
+        const guestLookupToken = normalizeLookupToken(form.lookup_token);
 
         setConfirmDialog({
             open: true,
             title: 'Xác nhận hủy đơn hàng',
-            message: `Bạn có chắc muốn hủy đơn hàng "${order.code}"?`,
-            description: 'Đơn hàng sau khi hủy sẽ không thể khôi phục và giao dịch chờ thanh toán sẽ được đóng lại.',
-            confirmText: 'Hủy đơn hàng',
-            type: 'danger',
+            message: `Bạn có chắc muốn hủy đơn ${targetOrder.code}?`,
+            description: 'Thao tác này chỉ áp dụng với các đơn còn cho phép hủy.',
+            confirmText: 'Hủy đơn',
+            type: 'warning',
             onConfirm: async () => {
                 try {
-                    const result = await guestOrderService.cancelOrder(order.code, {
-                        email: form.email.trim(),
-                    });
+                    const result = await guestOrderService.cancelOrder(
+                        targetOrder.code,
+                        {
+                            lookup_token: guestLookupToken,
+                        },
+                        {
+                            guestLookupToken,
+                        },
+                    );
 
-                    toast.success('Đã hủy đơn hàng');
-
-                    if (lookupResult?.lookupType === LOOKUP_MODES.phone_email) {
-                        await refreshCurrentLookup(result.orderCode || order.code);
-                    } else {
-                        setLookupResult({
-                            success: true,
-                            message: 'Hủy đơn hàng thành công',
-                            lookupType: LOOKUP_MODES.order_code_email,
-                            order: result,
-                            orders: [],
-                        });
-                    }
+                    toast.success(result.message || 'Hủy đơn hàng thành công.');
+                    setLookupResult(result);
+                    await refreshCurrentLookup();
                 } catch (error) {
-                    toast.error(error.message || 'Không thể hủy đơn hàng');
+                    toast.error(error.message || 'Không thể hủy đơn hàng.');
+                } finally {
+                    setConfirmDialog((prev) => ({
+                        ...prev,
+                        open: false,
+                    }));
                 }
             },
         });
@@ -309,147 +235,76 @@ export default function GuestOrderLookup() {
 
     return (
         <MainLayout>
-            <main className="mx-auto max-w-6xl px-4 py-6">
+            <main className="mx-auto max-w-6xl px-4 py-8">
                 <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div className="max-w-3xl">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-                            <Search size={14} />
-                            Tra cứu đơn hàng
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                            <ShieldCheck size={24} />
                         </div>
 
-                        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            Bạn có thể tra cứu theo mã đơn hàng và email, hoặc nhập số điện thoại cùng email để xem lịch sử
-                            các đơn đã đặt.
-                        </p>
+                        <div>
+                            <h1 className="text-2xl font-extrabold text-blue-950 dark:text-white">
+                                Tra cứu đơn hàng dành cho khách
+                            </h1>
+                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                                Nhập mã đơn hàng và mã tra cứu để xem chi tiết đơn, thanh toán hoặc hủy đơn khi còn hợp lệ.
+                                Mã tra cứu được cấp riêng cho từng đơn nhằm hạn chế lộ thông tin đơn hàng.
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="mt-6 grid gap-3 md:grid-cols-2">
-                        <ModeCard
-                            active={mode === LOOKUP_MODES.order_code_email}
-                            title="Tra cứu 1 đơn hàng"
-                            description="Nhập mã đơn hàng và email để xem đúng đơn cần tìm."
-                            onClick={() => switchMode(LOOKUP_MODES.order_code_email)}
-                        />
-
-                        <ModeCard
-                            active={mode === LOOKUP_MODES.phone_email}
-                            title="Xem lịch sử đơn hàng"
-                            description="Nhập số điện thoại và email để xem danh sách các đơn đã đặt."
-                            onClick={() => switchMode(LOOKUP_MODES.phone_email)}
-                        />
-                    </div>
-
-                    <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-                        {mode === LOOKUP_MODES.order_code_email ? (
-                            <InputField
-                                label="Mã đơn hàng"
-                                value={form.order_code}
-                                onChange={(value) => updateField('order_code', value)}
-                                placeholder="Ví dụ: ORD-20260809-000001"
-                                error={errors.order_code}
-                            />
-                        ) : (
-                            <InputField
-                                label="Số điện thoại"
-                                value={form.phone}
-                                onChange={(value) => updateField('phone', value)}
-                                placeholder="Nhập số điện thoại đã đặt hàng"
-                                error={errors.phone}
-                                icon={Phone}
-                            />
-                        )}
-
+                    <form className="mt-6 grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
                         <InputField
-                            label="Email"
-                            value={form.email}
-                            onChange={(value) => updateField('email', value)}
-                            placeholder="Nhập email đã dùng khi đặt hàng"
-                            error={errors.email}
-                            icon={Mail}
+                            label="Mã tra cứu"
+                            value={form.lookup_token}
+                            onChange={(value) => updateField('lookup_token', normalizeLookupToken(value))}
+                            placeholder="Ví dụ: GLK-AB12CD34EF"
+                            error={errors.lookup_token}
+                            icon={KeyRound}
                         />
 
-                        {(errors.lookup || submitError) && (
-                            <div className="md:col-span-2">
-                                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-                                    {errors.lookup || submitError}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="md:col-span-2">
+                        <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="inline-flex min-w-[220px] items-center justify-center rounded-2xl bg-blue-950 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
+                                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-950 px-6 text-sm font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-700 dark:hover:bg-blue-600"
                             >
+                                <Search size={18} />
                                 {loading ? 'Đang tra cứu...' : 'Tra cứu đơn hàng'}
                             </button>
+
+                            {lookupResult ? (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setLookupResult(null);
+                                        setSubmitError('');
+                                    }}
+                                    className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 px-6 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                >
+                                    Xóa kết quả
+                                </button>
+                            ) : null}
                         </div>
                     </form>
+
+                    {submitError ? (
+                        <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+                            {submitError}
+                        </div>
+                    ) : null}
                 </section>
 
-                {lookupResult?.lookupType === LOOKUP_MODES.phone_email && lookupResult.orders.length > 0 && (
-                    <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                        <h2 className="text-xl font-bold text-blue-950 dark:text-white">Lịch sử đơn hàng</h2>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            Tìm thấy {lookupResult.orders.length} đơn hàng khớp với thông tin bạn cung cấp.
-                        </p>
-
-                        <div className="mt-5 grid gap-4 lg:grid-cols-[380px_1fr]">
-                            <div className="space-y-3">
-                                {lookupResult.orders.map((order) => (
-                                    <button
-                                        key={order.code}
-                                        type="button"
-                                        onClick={() => setSelectedOrderCode(order.code)}
-                                        className={`w-full rounded-2xl border p-4 text-left transition ${
-                                            selectedOrder?.code === order.code
-                                                ? 'border-blue-200 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-950/30'
-                                                : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950'
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p className="font-bold text-blue-950 dark:text-white">{order.code}</p>
-                                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                    {formatDate(order.createdAt)}
-                                                </p>
-                                            </div>
-
-                                            <StatusBadge text={order.statusText} status={order.status} />
-                                        </div>
-
-                                        <div className="mt-3 grid gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                            <span>Thanh toán: {order.payment?.statusText || 'Đang cập nhật'}</span>
-                                            <span>Phương thức: {order.payment?.methodText || 'Đang cập nhật'}</span>
-                                            <span>Tổng tiền: {formatMoney(order.summary?.grandTotal)}</span>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div>
-                                <OrderDetailPanel
-                                    order={selectedOrder}
-                                    onPayAgain={handlePayAgain}
-                                    onCancelOrder={handleCancelOrder}
-                                    paying={payingOrderCode === (selectedOrder?.code || String(selectedOrder?.id || ''))}
-                                />
-                            </div>
-                        </div>
-                    </section>
-                )}
-
-                {lookupResult?.lookupType !== LOOKUP_MODES.phone_email && lookupResult?.order && (
+                {order ? (
                     <section className="mt-6">
                         <OrderDetailPanel
-                            order={lookupResult.order}
+                            order={order}
                             onPayAgain={handlePayAgain}
                             onCancelOrder={handleCancelOrder}
-                            paying={payingOrderCode === (lookupResult.order?.code || String(lookupResult.order?.id || ''))}
+                            paying={payingOrderCode === (order.code || String(order.id || ''))}
                         />
                     </section>
-                )}
+                ) : null}
 
                 <ConfirmDialog
                     open={confirmDialog.open}
@@ -468,23 +323,6 @@ export default function GuestOrderLookup() {
                 />
             </main>
         </MainLayout>
-    );
-}
-
-function ModeCard({ active, title, description, onClick }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={`rounded-2xl border p-4 text-left transition ${
-                active
-                    ? 'border-blue-200 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-950/30'
-                    : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950'
-            }`}
-        >
-            <p className="font-bold text-blue-950 dark:text-white">{title}</p>
-            <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
-        </button>
     );
 }
 
@@ -588,7 +426,10 @@ function OrderDetailPanel({ order, onPayAgain, onCancelOrder, paying = false }) 
                     <Card title="Sản phẩm đã đặt">
                         <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
                             {(order.items || []).map((item) => (
-                                <div key={item.id} className="flex gap-3 rounded-2xl border border-slate-100 p-3 dark:border-slate-800">
+                                <div
+                                    key={item.id}
+                                    className="flex gap-3 rounded-2xl border border-slate-100 p-3 dark:border-slate-800"
+                                >
                                     <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-50 p-2 dark:bg-slate-800">
                                         <img
                                             src={item.thumbnail || '/images/no-image.png'}
@@ -721,16 +562,8 @@ function StatusBadge({ text, status }) {
     return <span className={`rounded-full px-3 py-1 text-xs font-bold ${className}`}>{text}</span>;
 }
 
-function normalizePhone(value) {
-    let digits = String(value || '').replace(/\D/g, '');
-
-    if (digits.startsWith('840') && digits.length === 12) {
-        digits = `0${digits.slice(3)}`;
-    } else if (digits.startsWith('84') && digits.length === 11) {
-        digits = `0${digits.slice(2)}`;
-    }
-
-    return digits.slice(0, 10);
+function normalizeLookupToken(value) {
+    return String(value || '').trim().toUpperCase();
 }
 
 function formatMoney(value) {

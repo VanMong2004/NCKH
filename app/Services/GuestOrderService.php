@@ -16,47 +16,19 @@ class GuestOrderService
 
     public function lookup(array $data): array
     {
-        if (!empty($data['order_code'])) {
-            $order = Order::with($this->relations())
-                ->where('order_code', $data['order_code'])
-                ->where(function ($query) use ($data) {
-                    $query->where('guest_email', $data['email'])
-                        ->orWhereHas('user', fn ($q) => $q->where('email', $data['email']));
-                })
-                ->first();
+        $order = Order::with($this->relations())
+            ->whereNull('user_id')
+            ->where('guest_lookup_token', $this->guestCheckoutGuardService->normalizeLookupToken($data['lookup_token'] ?? ''))
+            ->first();
 
-            if (!$order) {
-                throw new RuntimeException('Không tìm thấy đơn hàng', 404);
-            }
-
-            return $this->formatOrder($order);
-        }
-
-        $orders = Order::with($this->relations())
-            ->where(function ($query) use ($data) {
-                $query->where('guest_phone', $data['phone'])
-                    ->orWhere('shipping_phone', $data['phone']);
-            })
-            ->where(function ($query) use ($data) {
-                $query->where('guest_email', $data['email'])
-                    ->orWhereHas('user', fn ($q) => $q->where('email', $data['email']));
-            })
-            ->latest()
-            ->get()
-            ->map(fn ($order) => $this->formatOrder($order))
-            ->values();
-
-        if ($orders->isEmpty()) {
+        if (!$order) {
             throw new RuntimeException('Không tìm thấy đơn hàng', 404);
         }
 
-        return [
-            'lookup_type' => 'phone_email',
-            'orders' => $orders,
-        ];
+        return $this->formatOrder($order);
     }
 
-    public function showByCode($user, ?string $guestToken, string $orderCode)
+    public function showByCode($user, ?string $guestToken, ?string $guestLookupToken, string $orderCode)
     {
         $order = Order::with($this->relations())
             ->where('order_code', $orderCode)
@@ -71,7 +43,7 @@ class GuestOrderService
                 throw new RuntimeException('Bạn không có quyền xem đơn hàng này', 403);
             }
         } else {
-            if (!$guestToken || $order->guest_token !== $guestToken) {
+            if (!$this->guestCheckoutGuardService->orderMatchesGuestAccess($order, $guestToken, $guestLookupToken)) {
                 throw new RuntimeException('Không đủ thông tin để tra cứu đơn hàng khách', 401);
             }
         }
@@ -79,9 +51,9 @@ class GuestOrderService
         return $this->formatOrder($order);
     }
 
-    public function cancel(?string $guestToken, string $orderCode, string $email): array
+    public function cancel(?string $guestToken, ?string $guestLookupToken, string $orderCode): array
     {
-        return DB::transaction(function () use ($guestToken, $orderCode, $email) {
+        return DB::transaction(function () use ($guestToken, $guestLookupToken, $orderCode) {
             $order = Order::with($this->relations())
                 ->whereNull('user_id')
                 ->where('order_code', $orderCode)
@@ -92,12 +64,7 @@ class GuestOrderService
                 throw new RuntimeException('Không tìm thấy đơn hàng', 404);
             }
 
-            $hasValidGuestToken = !empty($guestToken)
-                && hash_equals((string) $order->guest_token, (string) $guestToken);
-            $hasValidEmail = !empty($email)
-                && strcasecmp((string) $order->guest_email, (string) $email) === 0;
-
-            if (!$hasValidGuestToken && !$hasValidEmail) {
+            if (!$this->guestCheckoutGuardService->orderMatchesGuestAccess($order, $guestToken, $guestLookupToken)) {
                 throw new RuntimeException('Không đủ thông tin để hủy đơn hàng khách', 401);
             }
 
@@ -173,6 +140,7 @@ class GuestOrderService
         return [
             'id' => $order->id,
             'order_code' => $order->order_code,
+            'guest_lookup_token' => $order->guest_lookup_token,
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'fulfillment_method' => $order->fulfillment_method,

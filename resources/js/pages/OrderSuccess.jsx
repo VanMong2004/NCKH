@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Clock, Info, MapPin, Phone, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Copy, Info, MapPin, Phone, XCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -46,7 +46,10 @@ export default function OrderSuccess() {
             const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
             const savedOrderId = state.orderId || savedGuestOrder.orderId || orderIdParam;
-            const guestEmail = state.guestEmail || savedGuestOrder.guestEmail || '';
+            const guestLookupToken =
+                state.guestLookupToken
+                || savedGuestOrder.guestLookupToken
+                || '';
 
             if (!orderCode) {
                 setError('Không tìm thấy mã đơn hàng.');
@@ -56,10 +59,10 @@ export default function OrderSuccess() {
             const result =
                 user && savedOrderId
                     ? await orderService.getOrderDetail(savedOrderId)
-                    : guestEmail
+                    : guestLookupToken
                       ? (await guestOrderService.lookup({
                             order_code: orderCode,
-                            email: guestEmail,
+                            lookup_token: guestLookupToken,
                         })).order
                       : null;
 
@@ -96,6 +99,7 @@ export default function OrderSuccess() {
 
             const result = await guestOrderService.getVatInvoiceRequest(order.code, {
                 guestToken: savedGuestOrder.guestToken,
+                guestLookupToken: order.guestLookupToken || savedGuestOrder.guestLookupToken || '',
             });
 
             setVatInvoiceRequest(result);
@@ -124,6 +128,7 @@ export default function OrderSuccess() {
 
             const result = await guestOrderService.createVatInvoiceRequest(order.code, payload, {
                 guestToken: savedGuestOrder.guestToken,
+                guestLookupToken: order.guestLookupToken || savedGuestOrder.guestLookupToken || '',
             });
 
             setVatInvoiceRequest(result);
@@ -141,6 +146,7 @@ export default function OrderSuccess() {
         if (!order?.id) return;
 
         const method = order.payment?.method || order.raw?.payment_method || '';
+        const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
 
         if (method !== 'mock_bank') {
             toast.warning('Phương thức thanh toán này không hỗ trợ thao tác này.');
@@ -150,20 +156,20 @@ export default function OrderSuccess() {
         try {
             setPaying(true);
 
-            const payment = await paymentService.pay(order.id, method);
+            const payment = await paymentService.pay(order.id, method, {
+                guestLookupToken: order.guestLookupToken || savedGuestOrder.guestLookupToken || '',
+            });
 
             if (payment.redirectUrl) {
                 if (method === 'mock_bank') {
-                    const savedGuestOrder = JSON.parse(sessionStorage.getItem('guest_order_success') || '{}');
-
                     sessionStorage.setItem(
                         'mock_payment_qr',
                         JSON.stringify({
                             order,
                             payment,
                             callbackUrl: payment.redirectUrl,
-                            guestPhone: savedGuestOrder.guestPhone || '',
                             isGuest: !user,
+                            guestLookupToken: order.guestLookupToken || savedGuestOrder.guestLookupToken || '',
                         }),
                     );
 
@@ -172,8 +178,8 @@ export default function OrderSuccess() {
                             order,
                             payment,
                             callbackUrl: payment.redirectUrl,
-                            guestPhone: savedGuestOrder.guestPhone || '',
                             isGuest: !user,
+                            guestLookupToken: order.guestLookupToken || savedGuestOrder.guestLookupToken || '',
                         },
                     });
 
@@ -199,6 +205,17 @@ export default function OrderSuccess() {
 
     const canPayAgain = Boolean(order?.actions?.canPayAgain);
     const canRequestVatInvoice = isOrderPaid(order);
+    const guestLookupToken = !user ? order?.guestLookupToken || order?.raw?.guest_lookup_token || '' : '';
+
+    function copyGuestLookupToken() {
+        if (!guestLookupToken) {
+            toast.warning('Không tìm thấy mã tra cứu của đơn hàng này.');
+            return;
+        }
+
+        navigator.clipboard?.writeText(guestLookupToken);
+        toast.success('Đã sao chép mã tra cứu đơn hàng.');
+    }
 
     if (loading) {
         return (
@@ -265,6 +282,32 @@ export default function OrderSuccess() {
                     <div className="mt-5 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-bold text-blue-950 shadow-sm dark:bg-slate-900 dark:text-white">
                         Mã đơn hàng: {order.code}
                     </div>
+
+                    {!user && guestLookupToken ? (
+                        <div className="mt-4 rounded-2xl border border-blue-100 bg-white/90 p-4 text-left shadow-sm dark:border-blue-900/40 dark:bg-slate-900/80">
+                            <p className="text-sm font-bold text-blue-950 dark:text-white">Mã tra cứu đơn hàng</p>
+
+                            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-xl font-extrabold tracking-wide text-blue-950 dark:text-blue-300">
+                                        {guestLookupToken}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                        Vui lòng lưu lại mã này để tra cứu đơn hàng, thanh toán hoặc hủy đơn sau này.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={copyGuestLookupToken}
+                                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-blue-950 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+                                >
+                                    <Copy size={16} />
+                                    Sao chép mã tra cứu
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
                 </section>
 
                 <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">

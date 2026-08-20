@@ -37,8 +37,8 @@ export default function PaymentResult() {
                     replace: true,
                     state: {
                         paymentStatus: status,
-                        guestPhone: guestOrder.guestPhone,
                         isGuest: guestOrder.isGuest || false,
+                        guestLookupToken: guestOrder.guestLookupToken || '',
                     },
                 }
             );

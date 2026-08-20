@@ -40,6 +40,9 @@ class PaymentController extends Controller
             $result = $this->paymentService->pay(
                 $user,
                 $request->header('X-Guest-Token'),
+                $request->header('X-Guest-Lookup-Token')
+                    ?: $request->input('guest_lookup_token')
+                    ?: $request->query('guest_lookup_token'),
                 $data['order_id'],
                 $data['method']
             );

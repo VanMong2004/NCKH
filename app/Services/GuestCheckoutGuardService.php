@@ -30,6 +30,26 @@ class GuestCheckoutGuardService
         return substr($digits, 0, 10);
     }
 
+    public function normalizeLookupToken(?string $token): string
+    {
+        return strtoupper(trim((string) $token));
+    }
+
+    public function orderMatchesGuestAccess(Order $order, ?string $guestToken = null, ?string $guestLookupToken = null): bool
+    {
+        $normalizedLookupToken = $this->normalizeLookupToken($guestLookupToken);
+
+        $hasValidGuestToken = !empty($guestToken)
+            && !empty($order->guest_token)
+            && hash_equals((string) $order->guest_token, (string) $guestToken);
+
+        $hasValidLookupToken = $normalizedLookupToken !== ''
+            && !empty($order->guest_lookup_token)
+            && hash_equals((string) $order->guest_lookup_token, $normalizedLookupToken);
+
+        return $hasValidGuestToken || $hasValidLookupToken;
+    }
+
     public function withGuestLock(?string $email, ?string $phone, callable $callback): mixed
     {
         $keys = collect([
@@ -201,6 +221,7 @@ class GuestCheckoutGuardService
         return [
             'order_id' => $order->id,
             'order_code' => $order->order_code,
+            'guest_lookup_token' => $order->guest_lookup_token,
             'payment_status' => $order->payment_status,
             'payment_method' => 'mock_bank',
             'can_retry_payment' => true,

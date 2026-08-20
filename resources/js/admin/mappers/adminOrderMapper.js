@@ -126,6 +126,7 @@ export function mapAdminOrder(item = {}) {
     return {
         id: item.id,
         orderCode: item.order_code || '',
+        guestLookupToken: item.guest_lookup_token || '',
         status: item.status || '',
         statusText: getDisplayOrderStatusText(item.status, fulfillmentMethod),
         paymentStatus: item.payment_status || '',
@@ -171,6 +172,7 @@ export function mapAdminOrderDetail(item = {}) {
     const order = mapAdminOrder({
         id: item.id,
         order_code: item.order_code,
+        guest_lookup_token: item.guest_lookup_token,
         status: item.status,
         fulfillment_method: item.fulfillment_method,
         customer: item.customer,

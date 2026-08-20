@@ -405,6 +405,10 @@ export default function AdminOrders() {
                                                     </p>
 
                                                     <p className="mt-0.5 text-xs text-slate-500">ID: {order.id}</p>
+
+                                                    <p className="mt-0.5 text-xs text-slate-500">
+                                                        Mã tra cứu: {order.guestLookupToken || 'Không áp dụng'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>

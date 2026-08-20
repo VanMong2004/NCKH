@@ -290,6 +290,7 @@ export default function AdminOrderDetailModal({ open, orderId, onClose, onUpdate
                                 <Section title="Thông tin đơn hàng">
                                     <div className="grid gap-3">
                                         <InfoLine label="Mã đơn" value={order.orderCode || `#${order.id}`} />
+                                        <InfoLine label="Mã tra cứu" value={order.guestLookupToken || 'Không áp dụng'} />
                                         <InfoLine label="Ngày đặt" value={order.createdAt || '—'} />
                                         <InfoLine label="Trạng thái đơn" value={order.statusText} />
                                         <InfoLine label="Số sản phẩm" value={order.itemCount} />

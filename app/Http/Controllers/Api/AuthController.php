@@ -101,7 +101,12 @@ class AuthController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',
                 'password' => 'required|min:6|confirmed',
-                'phone' => 'nullable|string|max:20',
+                'phone' => ['required', 'string', 'regex:/^0\d{9}$/'],
+                'province' => 'required|string|max:255',
+                'district' => 'required|string|max:255',
+                'ward' => 'required|string|max:255',
+                'address_line' => 'required|string|max:500',
+                'postal_code' => 'nullable|string|max:20',
             ], [
                 'name.required' => 'Vui lòng nhập họ tên',
                 'name.max' => 'Họ tên không được vượt quá 255 ký tự',
@@ -111,7 +116,13 @@ class AuthController extends Controller
                 'password.required' => 'Vui lòng nhập mật khẩu',
                 'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
                 'password.confirmed' => 'Xác nhận mật khẩu không khớp',
-                'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
+                'phone.required' => 'Vui lòng nhập số điện thoại',
+                'phone.regex' => 'Số điện thoại phải gồm đúng 10 số và bắt đầu bằng số 0',
+                'province.required' => 'Vui lòng nhập tỉnh/thành phố',
+                'district.required' => 'Vui lòng nhập quận/huyện',
+                'ward.required' => 'Vui lòng nhập phường/xã',
+                'address_line.required' => 'Vui lòng nhập địa chỉ chi tiết',
+                'postal_code.max' => 'Mã bưu chính không được vượt quá 20 ký tự',
             ]);
 
             $result = $this->authService->register($data);

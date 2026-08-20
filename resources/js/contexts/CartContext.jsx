@@ -79,7 +79,7 @@ export const CartProvider = ({ children }) => {
                 toast.success(response.message || 'Đã thêm sản phẩm vào giỏ hàng');
             }
 
-            return true;
+            return response.data || null;
         } catch (error) {
             console.error('Lỗi addToCartByVariant:', error);
 

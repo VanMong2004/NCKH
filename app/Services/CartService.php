@@ -109,7 +109,7 @@ class CartService
                     $item->quantity = $newQty;
                     $item->save();
                 } else {
-                    CartItem::create([
+                    $item = CartItem::create([
                         'cart_id' => $cart->id,
                         'product_variant_id' => $variant->id,
                         'quantity' => $newQty,
@@ -119,6 +119,11 @@ class CartService
                 return [
                     'success' => true,
                     'warning' => 'Số lượng vượt tồn kho, đã tự điều chỉnh',
+                    'data' => [
+                        'cart_item_id' => $item->id,
+                        'product_variant_id' => $variant->id,
+                        'quantity' => $item->quantity,
+                    ],
                 ];
             }
 
@@ -126,7 +131,7 @@ class CartService
                 $item->quantity = $newQty;
                 $item->save();
             } else {
-                CartItem::create([
+                $item = CartItem::create([
                     'cart_id' => $cart->id,
                     'product_variant_id' => $variant->id,
                     'quantity' => $newQty,
@@ -136,6 +141,11 @@ class CartService
             return [
                 'success' => true,
                 'message' => 'Đã thêm sản phẩm vào giỏ hàng',
+                'data' => [
+                    'cart_item_id' => $item->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => $item->quantity,
+                ],
             ];
         });
     }

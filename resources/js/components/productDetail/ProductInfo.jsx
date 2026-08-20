@@ -1,5 +1,6 @@
-import { BadgePercent, Building2, Minus, PackageCheck, Plus, ShoppingCart, Star } from 'lucide-react';
+import { BadgePercent, Building2, Minus, PackageCheck, Plus, ShoppingCart, Star, Wallet } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { useCart } from '../../contexts/CartContext';
@@ -17,6 +18,7 @@ const SIZE_ORDER = {
 };
 
 export default function ProductInfo({ product }) {
+    const navigate = useNavigate();
     const { addToCartByVariant } = useCart();
     const { isAuthenticated } = useAuth();
 
@@ -26,6 +28,7 @@ export default function ProductInfo({ product }) {
     const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [adding, setAdding] = useState(false);
+    const [buyingNow, setBuyingNow] = useState(false);
 
     const sizes = getSizes(variants);
     const colors = getColors(variants);
@@ -133,42 +136,79 @@ export default function ProductInfo({ product }) {
         setQuantity(quantity - 1);
     }
 
-    async function handleAddToCart() {
+    function validateBeforePurchase() {
         if (variants.length === 0) {
             toast.warn('Sản phẩm chưa có biến thể để thêm vào giỏ hàng');
-            return;
+            return null;
         }
 
         if (hasSize && !selectedSize) {
             toast.warn('Vui lòng chọn size');
-            return;
+            return null;
         }
 
         if (hasColor && !selectedColor) {
             toast.warn('Vui lòng chọn màu sắc');
-            return;
+            return null;
         }
 
         if (!selectedVariant) {
             toast.warn('Không tìm thấy phân loại phù hợp');
-            return;
+            return null;
         }
 
         if (!selectedVariant.inStock) {
             toast.warn('Sản phẩm đã hết hàng');
-            return;
+            return null;
         }
 
         if (quantity > Number(selectedVariant.availableStock || 0)) {
             toast.warn(`Chỉ còn ${selectedVariant.availableStock} sản phẩm`);
+            return null;
+        }
+
+        return selectedVariant;
+    }
+
+    async function handleAddToCart() {
+        const variant = validateBeforePurchase();
+
+        if (!variant) {
             return;
         }
 
         try {
             setAdding(true);
-            await addToCartByVariant(selectedVariant.id, quantity);
+            await addToCartByVariant(variant.id, quantity);
         } finally {
             setAdding(false);
+        }
+    }
+
+    async function handleBuyNow() {
+        const variant = validateBeforePurchase();
+
+        if (!variant) {
+            return;
+        }
+
+        try {
+            setBuyingNow(true);
+
+            const cartItem = await addToCartByVariant(variant.id, quantity);
+
+            if (!cartItem?.cart_item_id) {
+                navigate('/checkout');
+                return;
+            }
+
+            navigate('/checkout', {
+                state: {
+                    cartItemIds: [cartItem.cart_item_id],
+                },
+            });
+        } finally {
+            setBuyingNow(false);
         }
     }
 
@@ -226,15 +266,27 @@ export default function ProductInfo({ product }) {
                 onDecrease={decreaseQuantity}
             />
 
-            <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={adding || !inStock}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-950 py-3.5 text-sm font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
-            >
-                <ShoppingCart size={18} />
-                {adding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
-            </button>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                    type="button"
+                    onClick={handleBuyNow}
+                    disabled={buyingNow || adding || !inStock}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-950 bg-white py-3.5 text-sm font-bold text-blue-950 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-400 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-slate-800"
+                >
+                    <Wallet size={18} />
+                    {buyingNow ? 'Đang chuyển...' : 'Mua ngay'}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={adding || buyingNow || !inStock}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-950 py-3.5 text-sm font-bold text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+                >
+                    <ShoppingCart size={18} />
+                    {adding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
+                </button>
+            </div>
         </section>
     );
 }

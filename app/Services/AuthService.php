@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\User;
@@ -98,14 +99,20 @@ class AuthService
 
     public function register(array $data)
     {
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'phone' => $data['phone'] ?? null,
-            'role' => 'user',
-            'avatar' => $this->getDefaultAvatar(),
-        ]);
+        $user = DB::transaction(function () use ($data) {
+            $user = User::create([
+                'name' => trim((string) $data['name']),
+                'email' => Str::lower(trim((string) $data['email'])),
+                'password' => Hash::make($data['password']),
+                'phone' => trim((string) ($data['phone'] ?? '')),
+                'role' => 'user',
+                'avatar' => $this->getDefaultAvatar(),
+            ]);
+
+            $this->createDefaultAddressFromRegisterData($user, $data);
+
+            return $user;
+        });
 
         return $this->buildAuthResponse($user, 'Đăng ký thành công');
     }
@@ -312,6 +319,23 @@ class AuthService
         }
 
         return $payload;
+    }
+
+    private function createDefaultAddressFromRegisterData(User $user, array $data): void
+    {
+        Address::create([
+            'user_id' => $user->id,
+            'full_name' => trim((string) $user->name),
+            'phone' => trim((string) ($data['phone'] ?? '')),
+            'province' => trim((string) ($data['province'] ?? '')),
+            'district' => trim((string) ($data['district'] ?? '')),
+            'ward' => trim((string) ($data['ward'] ?? '')),
+            'address_line' => trim((string) ($data['address_line'] ?? '')),
+            'postal_code' => !empty($data['postal_code'])
+                ? trim((string) $data['postal_code'])
+                : null,
+            'is_default' => true,
+        ]);
     }
 
     private function buildAuthResponse(User $user, string $message): array

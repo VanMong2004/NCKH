@@ -1,4 +1,4 @@
-import { Mail, Phone, User } from 'lucide-react';
+import { Mail, MapPinned, MapPinHouse, Phone, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
@@ -20,6 +20,11 @@ export default function RegisterForm() {
         name: '',
         email: '',
         phone: '',
+        province: '',
+        district: '',
+        ward: '',
+        address_line: '',
+        postal_code: '',
         user_type: 'student',
         password: '',
         password_confirmation: '',
@@ -48,6 +53,10 @@ export default function RegisterForm() {
 
         if (!form.name.trim()) nextErrors.name = 'Vui lòng nhập họ tên';
         if (!form.email.trim()) nextErrors.email = 'Vui lòng nhập email';
+        if (!form.province.trim()) nextErrors.province = 'Vui lòng nhập tỉnh/thành phố';
+        if (!form.district.trim()) nextErrors.district = 'Vui lòng nhập quận/huyện';
+        if (!form.ward.trim()) nextErrors.ward = 'Vui lòng nhập phường/xã';
+        if (!form.address_line.trim()) nextErrors.address_line = 'Vui lòng nhập địa chỉ chi tiết';
 
         const normalizedPhone = normalizePhone(form.phone);
 
@@ -153,6 +162,56 @@ export default function RegisterForm() {
                     value={form.phone}
                     onChange={handleChange}
                     error={errors.phone}
+                />
+
+                <AuthInput
+                    name="province"
+                    label="Tỉnh/Thành phố"
+                    placeholder="Nhập tỉnh/thành phố"
+                    icon={<MapPinned size={18} />}
+                    value={form.province}
+                    onChange={handleChange}
+                    error={errors.province}
+                />
+
+                <AuthInput
+                    name="district"
+                    label="Quận/Huyện"
+                    placeholder="Nhập quận/huyện"
+                    icon={<MapPinned size={18} />}
+                    value={form.district}
+                    onChange={handleChange}
+                    error={errors.district}
+                />
+
+                <AuthInput
+                    name="ward"
+                    label="Phường/Xã"
+                    placeholder="Nhập phường/xã"
+                    icon={<MapPinned size={18} />}
+                    value={form.ward}
+                    onChange={handleChange}
+                    error={errors.ward}
+                />
+
+                <AuthInput
+                    name="address_line"
+                    label="Địa chỉ chi tiết"
+                    placeholder="Số nhà, tên đường..."
+                    icon={<MapPinHouse size={18} />}
+                    value={form.address_line}
+                    onChange={handleChange}
+                    error={errors.address_line}
+                />
+
+                <AuthInput
+                    name="postal_code"
+                    label="Mã bưu chính"
+                    placeholder="Không bắt buộc"
+                    icon={<MapPinned size={18} />}
+                    value={form.postal_code}
+                    onChange={handleChange}
+                    error={errors.postal_code}
                 />
 
                 <PasswordInput

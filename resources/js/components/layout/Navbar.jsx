@@ -48,13 +48,17 @@ export default function Navbar({ siteContent, unreadCount = 0, notificationRefre
                   { label: 'Chính sách', link_url: '/policy' },
               ];
 
-    const normalizedDesktopLinks = ensureGuestOrderLookupLink(normalizePublicLinks(filterPublicLinks(desktopLinks)));
+    const normalizedDesktopLinks = ensureGuestOrderLookupLink(
+        normalizePublicLinks(filterPublicLinks(desktopLinks)),
+        Boolean(user),
+    );
     const mobileLinks = ensureGuestOrderLookupLink(
         normalizePublicLinks(
             filterPublicLinks(
                 Array.isArray(mobileMenu.links) && mobileMenu.links.length ? mobileMenu.links : normalizedDesktopLinks,
             ),
         ),
+        Boolean(user),
     );
 
     const [keyword, setKeyword] = useState('');
@@ -630,12 +634,13 @@ function normalizePublicLinks(links = []) {
     });
 }
 
-function ensureGuestOrderLookupLink(links = []) {
-    if (links.some((item) => (item?.link_url || '') === '/guest-order-lookup')) {
-        return links;
+function ensureGuestOrderLookupLink(links = [], isAuthenticated = false) {
+    const nextLinks = links.filter((item) => (item?.link_url || '') !== '/guest-order-lookup');
+
+    if (isAuthenticated) {
+        return nextLinks;
     }
 
-    const nextLinks = [...links];
     const contactIndex = nextLinks.findIndex((item) => (item?.link_url || '') === '/contact');
     const guestLookupLink = { label: 'Tra cứu đơn', link_url: '/guest-order-lookup' };
 

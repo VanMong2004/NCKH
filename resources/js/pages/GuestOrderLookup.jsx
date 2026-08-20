@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Search, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { useAuth } from '../contexts/AuthContext';
 import MainLayout from '../layout/MainLayout';
 import guestOrderService from '../services/guestOrderService';
 import paymentService from '../services/paymentService';
@@ -31,6 +32,7 @@ const LOOKUP_OPTIONS = [
 ];
 
 export default function GuestOrderLookup() {
+    const { user, isLoading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [form, setForm] = useState(EMPTY_FORM);
@@ -59,6 +61,20 @@ export default function GuestOrderLookup() {
         || null;
 
     useEffect(() => {
+        if (authLoading) {
+            return;
+        }
+
+        if (user) {
+            navigate('/account/orders', { replace: true });
+        }
+    }, [authLoading, navigate, user]);
+
+    useEffect(() => {
+        if (authLoading || user) {
+            return;
+        }
+
         if (hydratedFromQuery.current) {
             return;
         }
@@ -76,9 +92,13 @@ export default function GuestOrderLookup() {
                 order_code: '',
             });
         }
-    }, [searchParams]);
+    }, [authLoading, searchParams, user]);
 
     useEffect(() => {
+        if (authLoading || user) {
+            return;
+        }
+
         const hasHiddenLookupToken = form.lookup_type === 'lookup_token' && !!form.lookup_token;
         const shouldAutoLookup = searchParams.get('focus') === 'payment' || hasHiddenLookupToken;
 
@@ -90,7 +110,11 @@ export default function GuestOrderLookup() {
             lookup_type: 'lookup_token',
             lookup_token: normalizeLookupToken(form.lookup_token),
         });
-    }, [searchParams, form.lookup_token, loading, lookupResult]);
+    }, [authLoading, searchParams, form.lookup_token, loading, lookupResult, user]);
+
+    if (authLoading || user) {
+        return null;
+    }
 
     function updateField(field, value) {
         setForm((prev) => ({

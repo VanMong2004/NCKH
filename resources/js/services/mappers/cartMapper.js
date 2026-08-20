@@ -24,6 +24,7 @@ export function mapCartItem(item = {}) {
 
         name: item.product_name || '',
         image: item.thumbnail || '',
+        thumbnail: item.thumbnail || '',
 
         // Giữ key price để Cart.jsx / CartItem.jsx cũ vẫn chạy.
         // BE hiện đang set price = final_price.

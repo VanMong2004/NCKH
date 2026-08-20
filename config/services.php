@@ -35,6 +35,12 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
     ],
 
+    'turnstile' => [
+        'site_key' => env('VITE_TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+        'verify_url' => env('TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify'),
+    ],
+
     'n8n' => [
         'webhook' => env('N8N_WEBHOOK_URL'),
         'secret' => env('N8N_WEBHOOK_SECRET'),

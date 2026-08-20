@@ -54,6 +54,7 @@ function mapCheckoutOrderItem(item = {}) {
 
     return {
         productName: item.product_name || '',
+        thumbnail: item.thumbnail || item.image || '',
         price: finalPrice,
         originalPrice,
         discountAmount,

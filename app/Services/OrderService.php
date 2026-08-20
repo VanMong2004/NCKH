@@ -324,7 +324,7 @@ class OrderService
             }
         }
 
-        $order->load('items');
+        $order->load('items.productVariant.product');
         $items = $order->items;
         $subTotal = $items->sum(fn ($item) => $item->original_price * $item->quantity);
         $shippingFee = $order->shipping_fee ?? 0;
@@ -345,6 +345,7 @@ class OrderService
             'payment_method' => $paymentMethod,
             'items' => $items->map(fn ($item) => [
                 'product_name' => $item->product_name,
+                'thumbnail' => $item->productVariant?->product?->thumbnail,
                 'original_price' => $item->original_price,
                 'discount_amount' => $item->discount_amount,
                 'final_price' => $item->final_price,

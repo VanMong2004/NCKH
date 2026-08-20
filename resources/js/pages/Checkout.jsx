@@ -1,5 +1,5 @@
 import { ChevronRight, Home } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ import CheckoutSummary from '../components/checkout/CheckoutSummary';
 import PaymentMethod from '../components/checkout/PaymentMethod';
 import ReceiverForm from '../components/checkout/ReceiverForm';
 import LoadingOverlay from '../components/common/LoadingOverlay';
+import TurnstileWidget from '../components/common/TurnstileWidget';
 
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,8 +45,10 @@ export default function Checkout() {
 
     const { user } = useAuth();
     const isGuest = !user;
+    const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
     const { cartItems, fetchCart } = useCart();
+    const turnstileRef = useRef(null);
 
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [saveAddress, setSaveAddress] = useState(false);
@@ -65,6 +68,7 @@ export default function Checkout() {
     const [loading, setLoading] = useState(false);
     const [pendingPaymentOrder, setPendingPaymentOrder] = useState(null);
     const [guestLimitDialog, setGuestLimitDialog] = useState(initialGuestLimitDialog);
+    const [turnstileToken, setTurnstileToken] = useState('');
 
     const stateCartItemIds = Array.isArray(location.state?.cartItemIds)
         ? location.state.cartItemIds
@@ -94,6 +98,29 @@ export default function Checkout() {
             setPaymentMethod(validMethods[0] || '');
         }
     }, [fulfillmentMethod, paymentMethod]);
+
+    const requiresTurnstile = isGuest
+        && paymentMethod === 'mock_bank'
+        && Boolean(turnstileSiteKey);
+
+    useEffect(() => {
+        if (requiresTurnstile) {
+            return;
+        }
+
+        setTurnstileToken('');
+        setErrors((prev) => {
+            if (!prev.turnstile_token) {
+                return prev;
+            }
+
+            const next = { ...prev };
+
+            delete next.turnstile_token;
+
+            return next;
+        });
+    }, [requiresTurnstile]);
 
     useEffect(() => {
         setErrors((prev) => {
@@ -130,9 +157,13 @@ export default function Checkout() {
                 delete next.address_line;
             }
 
+            if (turnstileToken) {
+                delete next.turnstile_token;
+            }
+
             return next;
         });
-    }, [receiver]);
+    }, [receiver, turnstileToken]);
 
     const checkoutItems = useMemo(() => {
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
@@ -259,6 +290,10 @@ export default function Checkout() {
             nextErrors.payment_method = 'Vui lòng chọn phương thức thanh toán.';
         }
 
+        if (requiresTurnstile && !turnstileToken) {
+            nextErrors.turnstile_token = 'Vui lòng xác minh bạn không phải là robot.';
+        }
+
         setErrors(nextErrors);
 
         return Object.keys(nextErrors).length === 0;
@@ -326,6 +361,10 @@ export default function Checkout() {
                 );
             }
 
+            if (requiresTurnstile) {
+                payload.turnstile_token = turnstileToken;
+            }
+
             const order = await withMinimumDelay(orderService.checkout(payload));
 
             if (!order.id) {
@@ -366,6 +405,11 @@ export default function Checkout() {
         } catch (error) {
             console.error('Checkout error:', error);
 
+            if (requiresTurnstile) {
+                turnstileRef.current?.reset?.();
+                setTurnstileToken('');
+            }
+
             if (error?.status === 422 && error?.errors) {
                 setErrors((prev) => ({
                     ...prev,
@@ -397,32 +441,36 @@ export default function Checkout() {
             const payment = useDemoDelay
                 ? await withMinimumDelay(paymentService.pay(order.id, method))
                 : await paymentService.pay(order.id, method);
+            const detailedOrder = order?.id
+                ? await loadOrderDetailForPayment(order)
+                : order;
+            const hydratedOrder = hydrateOrderItemsForPayment(detailedOrder);
 
             setPendingPaymentOrder(null);
             await fetchCart();
 
             if (payment.redirectUrl) {
-                saveGuestOrderToSession(order);
+                saveGuestOrderToSession(hydratedOrder);
 
                 if (method === 'mock_bank') {
                     sessionStorage.setItem(
                         'mock_payment_qr',
                         JSON.stringify({
-                            order,
+                            order: hydratedOrder,
                             payment,
                             callbackUrl: payment.redirectUrl,
                             isGuest: !user,
-                            guestLookupToken: order.guestLookupToken || '',
+                            guestLookupToken: hydratedOrder.guestLookupToken || '',
                         }),
                     );
 
                     navigate('/payment/qr', {
                         state: {
-                            order,
+                            order: hydratedOrder,
                             payment,
                             callbackUrl: payment.redirectUrl,
                             isGuest: !user,
-                            guestLookupToken: order.guestLookupToken || '',
+                            guestLookupToken: hydratedOrder.guestLookupToken || '',
                         },
                     });
 
@@ -434,15 +482,15 @@ export default function Checkout() {
             }
 
             toast.success('Đặt hàng thành công. Vui lòng thanh toán trong thời gian cho phép.');
-            saveGuestOrderToSession(order);
+            saveGuestOrderToSession(hydratedOrder);
 
-            navigate(`/order-success?order_code=${encodeURIComponent(order.orderCode)}`, {
+            navigate(`/order-success?order_code=${encodeURIComponent(hydratedOrder.orderCode)}`, {
                 replace: true,
                 state: {
                     isGuest: !user,
-                    orderCode: order.orderCode,
+                    orderCode: hydratedOrder.orderCode,
                     paymentMethod: method,
-                    guestLookupToken: order.guestLookupToken || '',
+                    guestLookupToken: hydratedOrder.guestLookupToken || '',
                 },
             });
         } catch (paymentError) {
@@ -451,6 +499,52 @@ export default function Checkout() {
 
             toast.error(paymentError?.message || 'Không thể tạo thanh toán cho đơn hàng này.');
         }
+    }
+
+    async function loadOrderDetailForPayment(order) {
+        try {
+            const detail = await orderService.getOrderDetail(order.id);
+
+            return {
+                ...order,
+                ...detail,
+                guestLookupToken: order.guestLookupToken || detail.guestLookupToken || '',
+                guestToken: order.guestToken || detail.guestToken || '',
+            };
+        } catch {
+            return order;
+        }
+    }
+
+    function hydrateOrderItemsForPayment(order) {
+        if (!order || !Array.isArray(order.items) || order.items.length === 0) {
+            return order;
+        }
+
+        const cartMatches = new Map();
+
+        checkoutItems.forEach((item, index) => {
+            const key = `${String(item.name || '').trim().toLowerCase()}__${index}`;
+
+            cartMatches.set(key, item);
+        });
+
+        return {
+            ...order,
+            items: order.items.map((item, index) => {
+                if (item.thumbnail) {
+                    return item;
+                }
+
+                const key = `${String(item.productName || '').trim().toLowerCase()}__${index}`;
+                const cartItem = cartMatches.get(key);
+
+                return {
+                    ...item,
+                    thumbnail: cartItem?.thumbnail || cartItem?.image || '',
+                };
+            }),
+        };
     }
 
     function openPendingPaymentDialog(data = {}) {
@@ -590,6 +684,34 @@ export default function Checkout() {
                                 clearError('payment_method');
                             }}
                         />
+
+                        <TurnstileWidget
+                            ref={turnstileRef}
+                            siteKey={turnstileSiteKey}
+                            enabled={requiresTurnstile}
+                            action="guest_checkout"
+                            onTokenChange={(token) => {
+                                setTurnstileToken(token || '');
+                            }}
+                            onError={(message) => {
+                                setErrors((prev) => ({
+                                    ...prev,
+                                    turnstile_token: message || 'Không thể tải xác minh chống spam, vui lòng thử lại.',
+                                }));
+                            }}
+                            onExpire={() => {
+                                setErrors((prev) => ({
+                                    ...prev,
+                                    turnstile_token: 'Mã xác minh đã hết hạn, vui lòng xác minh lại.',
+                                }));
+                            }}
+                        />
+
+                        {errors.turnstile_token ? (
+                            <p className="text-sm font-medium text-red-500">
+                                {errors.turnstile_token}
+                            </p>
+                        ) : null}
                     </div>
 
                     <CheckoutSummary

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Analytics\AnalyticsEventService;
 use App\Services\OrderQueryService;
 use App\Services\OrderService;
+use App\Services\Security\TurnstileService;
 use App\Services\VatInvoiceRequestService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -21,7 +22,8 @@ class OrderController extends Controller
         protected OrderService $orderService,
         protected OrderQueryService $orderQueryService,
         protected VatInvoiceRequestService $vatInvoiceRequestService,
-        protected AnalyticsEventService $analyticsEventService
+        protected AnalyticsEventService $analyticsEventService,
+        protected TurnstileService $turnstileService
     ) {}
 
     public function checkout(Request $request)
@@ -43,6 +45,7 @@ class OrderController extends Controller
                 'is_default' => 'nullable|boolean',
                 'fulfillment_method' => 'required|in:delivery,pickup',
                 'payment_method' => 'required|in:cod,mock_bank,cash_on_pickup',
+                'turnstile_token' => 'nullable|string|max:2048',
                 'cart_item_ids' => 'required|array|min:1',
                 'cart_item_ids.*' => 'required|integer|exists:cart_items,id',
             ];
@@ -82,6 +85,7 @@ class OrderController extends Controller
                 'fulfillment_method.in' => 'Phương thức nhận hàng không hợp lệ.',
                 'payment_method.required' => 'Vui lòng chọn phương thức thanh toán.',
                 'payment_method.in' => 'Phương thức thanh toán không hợp lệ.',
+                'turnstile_token.max' => 'Mã xác minh không hợp lệ.',
                 'cart_item_ids.required' => 'Vui lòng chọn sản phẩm cần thanh toán.',
                 'cart_item_ids.array' => 'Danh sách sản phẩm không hợp lệ.',
                 'cart_item_ids.min' => 'Vui lòng chọn ít nhất một sản phẩm.',
@@ -89,6 +93,27 @@ class OrderController extends Controller
                 'cart_item_ids.*.integer' => 'Sản phẩm trong giỏ hàng không hợp lệ.',
                 'cart_item_ids.*.exists' => 'Có sản phẩm không tồn tại trong giỏ hàng.',
             ]);
+
+            if (
+                !$user
+                && $this->turnstileService->isEnabledForGuestCheckout($data['payment_method'] ?? null)
+            ) {
+                $turnstileToken = trim((string) ($data['turnstile_token'] ?? ''));
+
+                if ($turnstileToken === '') {
+                    throw ValidationException::withMessages([
+                        'turnstile_token' => ['Vui lòng xác minh bạn không phải là robot.'],
+                    ]);
+                }
+
+                $verification = $this->turnstileService->verifyToken($turnstileToken, $request->ip());
+
+                if (!($verification['success'] ?? false)) {
+                    throw ValidationException::withMessages([
+                        'turnstile_token' => ['Không thể xác minh yêu cầu đặt hàng, vui lòng thử lại.'],
+                    ]);
+                }
+            }
 
             $this->analyticsEventService->trackCheckoutStarted(
                 $request,

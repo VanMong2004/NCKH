@@ -1204,3 +1204,7 @@ Nếu có điều cấm thay đổi mới, cập nhật thêm:
 * Guest vẫn có thể thanh toán lại, hủy đơn và gửi yêu cầu hóa đơn giá trị gia tăng, nhưng các thao tác đó giờ ưu tiên xác thực bằng `X-Guest-Lookup-Token`; `guest_token` chỉ còn là lớp hỗ trợ cho cùng trình duyệt.
 * Frontend `GuestOrderLookup.jsx` đã được rút gọn thành một form duy nhất gồm `Mã đơn hàng` + `Mã tra cứu`, không còn chế độ tra cứu theo `phone + email`.
 * Cần chạy migration mới `2026_08_20_170000_add_guest_lookup_token_to_orders_table.php` trước khi test tay trên môi trường thật, nếu không các luồng guest lookup/pay again/cancel mới sẽ chưa hoạt động.
+* Đã bổ sung lớp xác minh chống spam cho guest checkout chuyển khoản: backend `OrderController` chỉ yêu cầu `turnstile_token` khi guest chọn `payment_method = mock_bank`, còn `cod` và `cash_on_pickup` giữ nguyên luồng cũ.
+* Frontend `Checkout.jsx` đã tích hợp `TurnstileWidget.jsx`; khi có `VITE_TURNSTILE_SITE_KEY` thì widget mới hiển thị, token được gửi kèm lúc đặt hàng và tự reset nếu checkout lỗi để tránh dùng lại token cũ.
+* Cấu hình mới nằm ở `config/guest_checkout.php`, `config/services.php`, `.env.example`: `GUEST_CHECKOUT_TURNSTILE_ENABLED`, `VITE_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, `TURNSTILE_VERIFY_URL`.
+* Đã bổ sung test backend cho 3 case: guest chuyển khoản thiếu Turnstile bị chặn, guest chuyển khoản có token hợp lệ được checkout, guest COD không bị yêu cầu Turnstile. `tests/Feature/GuestCheckoutLimitTest.php` hiện pass 22 tests.

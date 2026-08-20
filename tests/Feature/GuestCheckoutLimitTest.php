@@ -12,6 +12,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -464,6 +465,73 @@ class GuestCheckoutLimitTest extends TestCase
 
         $blocked->assertStatus(429)
             ->assertJsonPath('success', false);
+    }
+
+    public function test_guest_mock_bank_checkout_requires_turnstile_when_enabled(): void
+    {
+        config([
+            'guest_checkout.turnstile_enabled' => true,
+            'services.turnstile.site_key' => 'test-site-key',
+            'services.turnstile.secret_key' => 'test-secret-key',
+        ]);
+
+        [$guestToken, $cartItem] = $this->createGuestCart();
+
+        $response = $this->postGuestCheckout(
+            $guestToken,
+            $this->guestPayload($cartItem->id)
+        );
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.turnstile_token.0', 'Vui lòng xác minh bạn không phải là robot.');
+    }
+
+    public function test_guest_mock_bank_checkout_succeeds_with_valid_turnstile_token(): void
+    {
+        config([
+            'guest_checkout.turnstile_enabled' => true,
+            'services.turnstile.site_key' => 'test-site-key',
+            'services.turnstile.secret_key' => 'test-secret-key',
+        ]);
+
+        Http::fake([
+            'https://challenges.cloudflare.com/*' => Http::response([
+                'success' => true,
+            ], 200),
+        ]);
+
+        [$guestToken, $cartItem] = $this->createGuestCart();
+        $payload = $this->guestPayload($cartItem->id);
+        $payload['turnstile_token'] = 'valid-turnstile-token';
+
+        $response = $this->postGuestCheckout($guestToken, $payload);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.payment_method', 'mock_bank');
+    }
+
+    public function test_guest_cod_checkout_does_not_require_turnstile_when_feature_is_enabled(): void
+    {
+        config([
+            'guest_checkout.turnstile_enabled' => true,
+            'services.turnstile.site_key' => 'test-site-key',
+            'services.turnstile.secret_key' => 'test-secret-key',
+        ]);
+
+        [$guestToken, $cartItem] = $this->createGuestCart();
+
+        $response = $this->postGuestCheckout(
+            $guestToken,
+            $this->guestPayload($cartItem->id, [
+                'payment_method' => 'cod',
+            ])
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.payment_method', 'cod');
     }
 
     public function test_guest_phone_is_normalized_when_checking_existing_orders(): void

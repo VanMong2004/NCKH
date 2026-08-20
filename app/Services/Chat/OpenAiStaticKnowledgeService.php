@@ -5,12 +5,16 @@ namespace App\Services\Chat;
 use App\Models\ChatConversation;
 use App\Models\ChatKnowledgeFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
 class OpenAiStaticKnowledgeService
 {
     private const SAFE_FALLBACK = 'Mình chưa tìm thấy thông tin này trong tài liệu hỗ trợ của CTUT UniShop.';
+    private const STATIC_FALLBACK_ANSWERS = [
+        'chinh sach van chuyen' => 'CTUT UniShop hỗ trợ hai hình thức nhận hàng: giao tận nơi và nhận trực tiếp tại trường. Với đơn giao tận nơi, bạn cần cung cấp đầy đủ thông tin người nhận và phí vận chuyển sẽ áp dụng theo đơn hàng. Nếu nhận trực tiếp tại trường, bạn chỉ cần theo dõi trạng thái đơn và mang mã đơn hàng khi đến nhận.',
+    ];
 
     public function __construct(
         protected ChatSessionService $sessionService,
@@ -19,6 +23,23 @@ class OpenAiStaticKnowledgeService
 
     public function answer(ChatConversation $conversation, string $latestMessage): array
     {
+        $localFallback = $this->localStaticFallback($latestMessage);
+        if ($localFallback !== null) {
+            return [
+                'response_id' => null,
+                'answer' => $localFallback,
+                'intent' => 'static_knowledge',
+                'sources' => [],
+                'tool_calls' => [],
+                'products' => [],
+                'promotions' => [],
+                'debug' => [
+                    'source_used' => 'local_static_fallback',
+                    'approved_answer_checked' => false,
+                ],
+            ];
+        }
+
         $approved = $this->approvedAnswerService->findBestMatch($latestMessage, 'static_knowledge');
 
         if ($approved !== null) {
@@ -84,6 +105,21 @@ class OpenAiStaticKnowledgeService
                 'prompt_version' => config('services.openai.static_prompt_version'),
             ],
         ];
+    }
+
+    private function localStaticFallback(string $message): ?string
+    {
+        $normalized = (string) Str::of(Str::ascii(mb_strtolower(trim($message))))
+            ->replace(['?', '.', ',', ':'], ' ')
+            ->squish();
+
+        foreach (self::STATIC_FALLBACK_ANSWERS as $key => $answer) {
+            if (str_contains($normalized, $key)) {
+                return $answer;
+            }
+        }
+
+        return null;
     }
 
     private function buildPayload(ChatConversation $conversation, string $latestMessage): array

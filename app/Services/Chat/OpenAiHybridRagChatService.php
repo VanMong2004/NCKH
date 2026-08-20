@@ -6,6 +6,8 @@ use App\Jobs\SummarizeChatConversationJob;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\Order;
+use App\Services\GuestCheckoutGuardService;
+use App\Services\GuestOrderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -35,7 +37,9 @@ class OpenAiHybridRagChatService
         protected ChatSessionService $sessionService,
         protected OpenAiStaticKnowledgeService $staticKnowledgeService,
         protected ConversationMemoryService $conversationMemoryService,
-        protected ContextualReferenceResolver $contextualReferenceResolver
+        protected ContextualReferenceResolver $contextualReferenceResolver,
+        protected GuestOrderService $guestOrderService,
+        protected GuestCheckoutGuardService $guestCheckoutGuardService
     ) {}
 
     public function sendMessage($user, ?string $guestToken, ?int $conversationId, string $message): array
@@ -519,7 +523,8 @@ class OpenAiHybridRagChatService
 
         return $this->dynamicSuccessResponse(
             'product_search',
-            'Mình tìm thấy ' . count($products) . ' sản phẩm phù hợp trong hệ thống.',
+            'Mình tìm thấy ' . count($products) . " sản phẩm phù hợp trong hệ thống:\n"
+                . $this->buildProductListingLines($products),
             $toolCalls,
             $products
         );
@@ -576,11 +581,57 @@ class OpenAiHybridRagChatService
 
     private function handleOrderIntent(string $message, $user): array
     {
+        $orderCode = $this->extractOrderCode($message);
+        $lookupToken = $this->extractGuestLookupToken($message);
+
         if (!$user) {
+            if ($lookupToken !== null) {
+                try {
+                    $order = $this->guestOrderService->lookup([
+                        'lookup_type' => 'lookup_token',
+                        'lookup_token' => $lookupToken,
+                    ]);
+
+                    return $this->buildGuestOrderIntentResponse($order, 'lookup_token');
+                } catch (RuntimeException) {
+                    return $this->dynamicEmptyResponse('order_query', [], 'Không tìm thấy đơn hàng');
+                }
+            }
+
+            if ($orderCode !== null) {
+                $order = Order::query()
+                    ->with(['payments:id,order_id,method,status,amount', 'items:id,order_id,quantity'])
+                    ->whereNull('user_id')
+                    ->where('order_code', $orderCode)
+                    ->latest()
+                    ->first();
+
+                if (!$order) {
+                    return $this->dynamicEmptyResponse('order_query', [], 'Không tìm thấy đơn hàng');
+                }
+
+                $payment = $order->payments->first();
+                $total = number_format((float) ($order->grand_total ?? $order->total ?? 0), 0, ',', '.') . ' đ';
+
+                return [
+                    'response_id' => null,
+                    'answer' => "Mình đã tra cứu đơn hàng trong hệ thống:\n{$order->order_code}: trạng thái {$order->status}, thanh toán " . ($payment?->status ?? 'pending') . ", tổng {$total}.",
+                    'intent' => 'order_query',
+                    'sources' => [],
+                    'tool_calls' => [[
+                        'name' => 'lookup_guest_order_by_code',
+                        'arguments' => ['order_code' => $orderCode],
+                        'result' => ['found' => true],
+                        'summary' => ['name' => 'lookup_guest_order_by_code', 'found' => true],
+                    ]],
+                    'products' => [],
+                    'promotions' => [],
+                ];
+            }
+
             return $this->dynamicEmptyResponse('order_query', [], 'Không tìm thấy đơn hàng');
         }
 
-        $orderCode = $this->extractOrderCode($message);
         $query = Order::query()
             ->with(['payments:id,order_id,method,status,amount', 'items:id,order_id,quantity'])
             ->where('user_id', $user->id)
@@ -616,7 +667,7 @@ class OpenAiHybridRagChatService
 
     private function fallbackProductInfoBySearch(string $toolName, string $intent, string $productName, array $entities, $user, array $toolCalls): ?array
     {
-        if (!in_array($toolName, ['get_product_price', 'get_product_stock'], true)) {
+        if (!in_array($toolName, ['get_product_price', 'get_product_stock', 'get_product_variants'], true)) {
             return null;
         }
 
@@ -650,25 +701,38 @@ class OpenAiHybridRagChatService
                 ->map(fn ($product, int $index) => ($index + 1) . '. ' . ($product['name'] ?? 'Sản phẩm'))
                 ->implode("\n");
 
+            $target = match ($intent) {
+                'product_price' => 'giá',
+                'product_stock' => 'tồn kho',
+                default => 'biến thể',
+            };
+
             return $this->dynamicSuccessResponse(
                 'clarify',
-                "Mình tìm thấy một vài sản phẩm gần giống. Bạn muốn hỏi " . ($intent === 'product_price' ? 'giá' : 'tồn kho') . " sản phẩm nào?\n{$choices}",
+                "Mình tìm thấy một vài sản phẩm gần giống. Bạn muốn hỏi {$target} sản phẩm nào?\n{$choices}",
                 $toolCalls,
                 $products
             );
         }
 
         $matchedProductName = (string) ($products[0]['name'] ?? '');
+        $matchedProductId = data_get($products, '0.id');
 
         if ($matchedProductName === '') {
             return null;
         }
 
-        $arguments = [
-            'product_name' => $matchedProductName,
-            'size' => $entities['size'] ?? null,
-            'color' => $entities['color'] ?? null,
-        ];
+        $arguments = $toolName === 'get_product_variants'
+            ? [
+                'product_id' => $matchedProductId,
+                'product_name' => $matchedProductName,
+            ]
+            : [
+                'product_id' => $matchedProductId,
+                'product_name' => $matchedProductName,
+                'size' => $entities['size'] ?? null,
+                'color' => $entities['color'] ?? null,
+            ];
         $result = $this->productToolService->execute($toolName, $arguments, $user);
         $toolCalls[] = [
             'name' => $toolName,
@@ -858,6 +922,7 @@ class OpenAiHybridRagChatService
 
         $hasPromotionSignal = $this->containsAny($text, [
             'khuyen mai', 'giam gia', 'voucher', 'deal', 'sale', 'uu dai',
+            'flash sale', 'tan sinh vien', 'tuyen sinh', 'freshman',
         ]);
         $hasOrderSignal = $this->containsAny($text, [
             'don hang', 'ma don', 'order', 'ord-', 'trang thai don',
@@ -1148,9 +1213,11 @@ class OpenAiHybridRagChatService
     private function smallTalkResponse(array $entities): array
     {
         $type = $entities['small_talk_type'] ?? 'greeting';
-        $answer = in_array($type, ['thanks', 'goodbye'], true)
-            ? 'Rất vui được hỗ trợ bạn. Nếu cần thêm thông tin về CTUT UniShop, bạn cứ nhắn cho mình nhé.'
-            : 'Chào bạn, mình là trợ lý CTUT UniShop. Bạn cần mình hỗ trợ về sản phẩm, đơn hàng, khuyến mãi hay hướng dẫn mua hàng?';
+        $answer = match ($type) {
+            'thanks', 'goodbye' => 'Rất vui được hỗ trợ bạn. Nếu cần thêm thông tin về CTUT UniShop, bạn cứ nhắn cho mình nhé.',
+            'intro' => 'Mình là trợ lý CTUT UniShop, hỗ trợ bạn tra cứu sản phẩm, đơn hàng, khuyến mãi và các thông tin mua hàng của shop.',
+            default => 'Chào bạn, mình là trợ lý CTUT UniShop. Bạn cần mình hỗ trợ về sản phẩm, đơn hàng, khuyến mãi hay hướng dẫn mua hàng?',
+        };
 
         return [
             'response_id' => null,
@@ -1188,7 +1255,17 @@ class OpenAiHybridRagChatService
             return 'greeting';
         }
 
-        if (in_array($text, ['cam on', 'cam on shop', 'thanks', 'thank you', 'ok', 'duoc roi'], true)) {
+        if (
+            in_array($text, ['ban la ai', 'ban ten gi', 'ai day', 'gioi thieu ve ban than'], true)
+            || $this->containsAny($text, ['ban la ai', 'ban ten gi', 'gioi thieu ve ban'])
+        ) {
+            return 'intro';
+        }
+
+        if (
+            in_array($text, ['cam on', 'cam on shop', 'thanks', 'thank you', 'ok', 'duoc roi'], true)
+            || $this->containsAny($text, ['cam on', 'thanks', 'thank you', 'thank', 'tan tinh'])
+        ) {
             return 'thanks';
         }
 
@@ -1957,9 +2034,6 @@ class OpenAiHybridRagChatService
                 'chuong trinh',
                 'uu dai',
                 'giam gia',
-                'voucher',
-                'deal',
-                'sale',
                 'san pham',
                 'mat hang',
                 'trong',
@@ -1967,6 +2041,8 @@ class OpenAiHybridRagChatService
                 'dot',
                 'dang dien ra',
                 'ap dung',
+                'hien co',
+                'hien nay',
             ], ' ')
             ->replace(['?', '.', ',', ':'], ' ')
             ->squish();
@@ -2022,11 +2098,43 @@ class OpenAiHybridRagChatService
 
     private function extractOrderCode(string $message): ?string
     {
-        if (preg_match('/ORD-\d{8}-\d+/i', $message, $matches)) {
+        if (preg_match('/\bORD-[A-Z0-9-]{3,}\b/i', $message, $matches)) {
             return strtoupper($matches[0]);
         }
 
         return null;
+    }
+
+    private function extractGuestLookupToken(string $message): ?string
+    {
+        if (preg_match('/\bGLK-[A-Z0-9-]{3,}\b/i', $message, $matches)) {
+            return $this->guestCheckoutGuardService->normalizeLookupToken($matches[0]);
+        }
+
+        return null;
+    }
+
+    private function buildGuestOrderIntentResponse(array $order, string $lookupType): array
+    {
+        $total = number_format((float) data_get($order, 'summary.grand_total', 0), 0, ',', '.') . ' đ';
+        $paymentStatus = data_get($order, 'payment.status', data_get($order, 'payment_status', 'pending'));
+        $status = data_get($order, 'status', 'pending');
+        $orderCode = data_get($order, 'order_code', 'Đơn hàng');
+
+        return [
+            'response_id' => null,
+            'answer' => "Mình đã tra cứu đơn hàng trong hệ thống:\n{$orderCode}: trạng thái {$status}, thanh toán {$paymentStatus}, tổng {$total}.",
+            'intent' => 'order_query',
+            'sources' => [],
+            'tool_calls' => [[
+                'name' => 'lookup_guest_order',
+                'arguments' => ['lookup_type' => $lookupType],
+                'result' => ['found' => true, 'order_code' => $orderCode],
+                'summary' => ['name' => 'lookup_guest_order', 'found' => true],
+            ]],
+            'products' => [],
+            'promotions' => [],
+        ];
     }
 
     private function formatDiscountText(?string $type, mixed $value): ?string

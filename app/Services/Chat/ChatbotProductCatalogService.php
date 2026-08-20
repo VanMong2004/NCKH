@@ -106,8 +106,7 @@ class ChatbotProductCatalogService
                 ->toArray();
 
             if (empty($matchedProducts) && $this->isGenericProductSuggestionQuery($query)) {
-                $matchedProducts = $this->baseProductQuery()
-                    ->latest()
+                $matchedProducts = $this->genericSuggestionQuery($query)
                     ->limit($limit)
                     ->get()
                     ->map(function ($product) use ($user) {
@@ -1109,8 +1108,18 @@ class ChatbotProductCatalogService
             'ao' => ['thun', 'polo', 'khoac', 'dong phuc'],
             'non' => ['mu', 'cap'],
             'balo' => ['ba lo', 'tui'],
+            'tui' => ['tote', 'canvas', 'gio'],
+            'sticker' => ['dan', 'decal'],
+            'moc' => ['moc khoa'],
+            'khoa' => ['moc khoa'],
+            'so' => ['so tay', 'notebook'],
+            'tay' => ['so tay'],
+            'day' => ['day deo', 'day deo the', 'lanyard'],
+            'the' => ['bang ten', 'day deo the'],
+            'dien' => ['dien tu', 'vien thong'],
+            'cntt' => ['cong nghe thong tin'],
             'binh' => ['ly', 'giu nhiet'],
-            'qua', 'tang' => ['luu niem', 'phu kien'],
+            'qua', 'tang' => ['luu niem', 'phu kien', 'tote', 'sticker', 'moc khoa', 'giu nhiet'],
             default => [],
         };
     }
@@ -1126,6 +1135,38 @@ class ChatbotProductCatalogService
         }
 
         return false;
+    }
+
+    private function genericSuggestionQuery(string $query)
+    {
+        $normalized = $this->normalizeSearchText($query);
+        $builder = $this->baseProductQuery();
+
+        if (str_contains($normalized, 'qua tang') || str_contains($normalized, 'luu niem')) {
+            $priorityNames = [
+                'Túi tote CTUT',
+                'Ly giữ nhiệt CTUT',
+                'Móc khóa CTUT',
+                'Sticker CTUT',
+                'Nón lưỡi trai CTUT',
+                'Bảng tên sinh viên CTUT',
+            ];
+
+            $quoted = collect($priorityNames)
+                ->map(fn ($name) => "'" . str_replace("'", "''", $name) . "'")
+                ->implode(',');
+
+            return $builder
+                ->orderByRaw("CASE WHEN name IN ({$quoted}) THEN 0 ELSE 1 END")
+                ->orderByDesc('is_featured')
+                ->orderByDesc('sold_count')
+                ->latest('created_at');
+        }
+
+        return $builder
+            ->orderByDesc('is_featured')
+            ->orderByDesc('sold_count')
+            ->latest('created_at');
     }
 
     private function extractPriceConstraint(string $query): array

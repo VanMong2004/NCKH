@@ -669,6 +669,74 @@ class GuestCheckoutLimitTest extends TestCase
             ->assertJsonPath('data.guest_lookup_token', 'GLK-LOOKUP0001');
     }
 
+    public function test_guest_can_lookup_order_by_phone_and_email(): void
+    {
+        $order = $this->createGuestOrder([
+            'guest_email' => 'guest.lookup@example.com',
+            'guest_phone' => '0909123456',
+            'shipping_phone' => '0909123456',
+            'order_code' => 'ORD-LOOKUP-PHONE',
+        ]);
+
+        $response = $this->postJson('/api/guest/orders/lookup', [
+            'lookup_type' => 'phone_email',
+            'phone' => '0909 123 456',
+            'email' => 'GUEST.LOOKUP@EXAMPLE.COM',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.order_code', $order->order_code)
+            ->assertJsonPath('data.lookup_type', 'phone_email');
+    }
+
+    public function test_guest_can_lookup_order_by_order_code_and_email(): void
+    {
+        $order = $this->createGuestOrder([
+            'guest_email' => 'guest.lookup2@example.com',
+            'order_code' => 'ORD-LOOKUP-EMAIL',
+        ]);
+
+        $response = $this->postJson('/api/guest/orders/lookup', [
+            'lookup_type' => 'order_code_email',
+            'order_code' => 'ORD-LOOKUP-EMAIL',
+            'email' => 'guest.lookup2@example.com',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.order_code', $order->order_code)
+            ->assertJsonPath('data.lookup_type', 'order_code_email');
+    }
+
+    public function test_guest_lookup_requires_phone_and_email_for_phone_email_mode(): void
+    {
+        $response = $this->postJson('/api/guest/orders/lookup', [
+            'lookup_type' => 'phone_email',
+            'phone' => '',
+            'email' => '',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.phone.0', 'Vui lòng nhập số điện thoại đặt hàng.')
+            ->assertJsonPath('errors.email.0', 'Vui lòng nhập email đặt hàng.');
+    }
+
+    public function test_guest_lookup_requires_order_code_and_email_for_order_code_email_mode(): void
+    {
+        $response = $this->postJson('/api/guest/orders/lookup', [
+            'lookup_type' => 'order_code_email',
+            'order_code' => '',
+            'email' => '',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.order_code.0', 'Vui lòng nhập mã đơn hàng.')
+            ->assertJsonPath('errors.email.0', 'Vui lòng nhập email đặt hàng.');
+    }
+
     private function postGuestCheckout(string $guestToken, array $payload, string $ip = '127.0.0.1')
     {
         return $this->withHeaders([

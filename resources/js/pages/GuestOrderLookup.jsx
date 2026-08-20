@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Circle, KeyRound, Search, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Circle, Search, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -10,7 +10,7 @@ import { cancelReasonText } from '../services/mappers/orderMapper';
 import ConfirmDialog from '../admin/components/ui/ConfirmDialog';
 
 const EMPTY_FORM = {
-    lookup_type: 'lookup_token',
+    lookup_type: 'phone_email',
     lookup_token: '',
     phone: '',
     email: '',
@@ -18,11 +18,6 @@ const EMPTY_FORM = {
 };
 
 const LOOKUP_OPTIONS = [
-    {
-        value: 'lookup_token',
-        label: 'Mã tra cứu',
-        description: 'Dùng mã tra cứu được cấp riêng cho từng đơn.',
-    },
     {
         value: 'phone_email',
         label: 'SĐT + email',
@@ -78,7 +73,8 @@ export default function GuestOrderLookup() {
     }, [searchParams]);
 
     useEffect(() => {
-        const shouldAutoLookup = searchParams.get('focus') === 'payment';
+        const hasHiddenLookupToken = form.lookup_type === 'lookup_token' && !!form.lookup_token;
+        const shouldAutoLookup = searchParams.get('focus') === 'payment' || hasHiddenLookupToken;
 
         if (!shouldAutoLookup || !form.lookup_token || loading || lookupResult) {
             return;
@@ -289,8 +285,8 @@ export default function GuestOrderLookup() {
                                 Tra cứu đơn hàng dành cho khách
                             </h1>
                             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                                Bạn có thể tra cứu bằng mã tra cứu, số điện thoại kèm email, hoặc mã đơn hàng kèm email.
-                                Mã tra cứu vẫn được giữ nguyên để thanh toán lại hoặc hủy đơn khi còn hợp lệ.
+                                Bạn có thể tra cứu bằng số điện thoại kèm email, hoặc mã đơn hàng kèm email.
+                                Hệ thống vẫn giữ mã tra cứu nội bộ để hỗ trợ thanh toán lại hoặc hủy đơn khi còn hợp lệ.
                             </p>
                         </div>
                     </div>
@@ -298,7 +294,7 @@ export default function GuestOrderLookup() {
                     <form className="mt-6 grid gap-4 lg:grid-cols-2" onSubmit={handleSubmit}>
                         <div className="lg:col-span-2">
                             <span className="mb-2 block text-sm font-bold text-blue-950 dark:text-white">Cách tra cứu</span>
-                            <div className="grid gap-3 md:grid-cols-3">
+                            <div className="grid gap-3 md:grid-cols-2">
                                 {LOOKUP_OPTIONS.map((option) => (
                                     <button
                                         key={option.value}
@@ -316,17 +312,6 @@ export default function GuestOrderLookup() {
                                 ))}
                             </div>
                         </div>
-
-                        {form.lookup_type === 'lookup_token' ? (
-                            <InputField
-                                label="Mã tra cứu"
-                                value={form.lookup_token}
-                                onChange={(value) => updateField('lookup_token', normalizeLookupToken(value))}
-                                placeholder="Ví dụ: GLK-AB12CD34EF"
-                                error={errors.lookup_token}
-                                icon={KeyRound}
-                            />
-                        ) : null}
 
                         {form.lookup_type === 'phone_email' ? (
                             <>
